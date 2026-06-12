@@ -1,0 +1,111 @@
+me:
+  get:
+    tags: [users]
+    summary: Get current user profile
+    operationId: getUserProfile
+    responses:
+      '200':
+        description: Current user profile
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/auth.yaml#/UserRead'
+      '401':
+        $ref: '../schemas/common.yaml#/responses/Unauthorized'
+  patch:
+    tags: [users]
+    summary: Update current user profile
+    operationId: updateUserProfile
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/auth.yaml#/UserUpdate'
+    responses:
+      '200':
+        description: Profile updated
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/auth.yaml#/UserRead'
+      '401':
+        $ref: '../schemas/common.yaml#/responses/Unauthorized'
+      '422':
+        $ref: '../schemas/common.yaml#/responses/ValidationError'
+
+by-id:
+  get:
+    tags: [users]
+    summary: Get user by ID (superuser only)
+    operationId: getUserById
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '200':
+        description: User profile
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/auth.yaml#/UserRead'
+      '401':
+        $ref: '../schemas/common.yaml#/responses/Unauthorized'
+      '403':
+        description: Not a superuser
+      '404':
+        description: User not found
+  patch:
+    tags: [users]
+    summary: Update user by ID (superuser only)
+    operationId: updateUserById
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/auth.yaml#/UserUpdate'
+    responses:
+      '200':
+        description: User updated
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/auth.yaml#/UserRead'
+      '401':
+        $ref: '../schemas/common.yaml#/responses/Unauthorized'
+      '403':
+        description: Not a superuser
+      '404':
+        description: User not found
+  delete:
+    tags: [users]
+    summary: Delete user by ID (superuser only)
+    operationId: deleteUserById
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '204':
+        description: User deleted
+      '401':
+        $ref: '../schemas/common.yaml#/responses/Unauthorized'
+      '403':
+        description: Not a superuser
+      '404':
+        description: User not found

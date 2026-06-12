@@ -1,0 +1,999 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>AI-Coding-Template × Athena — 架構心智圖</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--
+  Live data source-of-truth (regenerate via scripts/visuals-mindmap-data.sh):
+    agents          = ls .claude/agents/*.md | grep -v tmpl | wc -l
+    athena commands = ls .claude/commands/athena/*.md | wc -l     (includes 1 pattern doc)
+    stop rules      = grep -cE '^# Rule [0-9]+' scripts/hooks/stop-verifier.sh
+    hook scripts    = ls scripts/hooks/*.sh | wc -l
+  Last synced: 2026-04-24
+-->
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --ink: #e5e7eb;
+    --muted: #94a3b8;
+    --dim: #475569;
+    --border: #1e293b;
+    --cmd: #38bdf8;    /* sky */
+    --agent: #4ade80;  /* emerald */
+    --skill: #fbbf24;  /* amber */
+    --pipe: #a78bfa;   /* violet */
+    --hook: #f87171;   /* rose */
+    --human: #fb7185;  /* pink */
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", system-ui, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink); font-family: var(--sans); min-height: 100vh; }
+
+  header {
+    padding: 24px 32px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  header h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
+  header h1 .sub { display: block; font-size: 13px; font-weight: 400; color: var(--muted); margin-top: 4px; font-family: var(--mono); letter-spacing: 0.05em; }
+  .stats { display: flex; gap: 18px; font-size: 12px; font-family: var(--mono); color: var(--muted); flex-wrap: wrap; }
+  .stat b { color: var(--ink); font-weight: 600; }
+  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); font-family: var(--mono); flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+
+  main { padding: 24px; display: grid; grid-template-columns: 1fr 420px; gap: 24px; }
+  @media (max-width: 1100px) { main { grid-template-columns: 1fr; } }
+
+  #map-wrap {
+    background: linear-gradient(180deg, #0a0e1a 0%, #0d1424 100%);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    min-height: 760px;
+  }
+  svg { display: block; width: 100%; height: 100%; }
+
+  .link { fill: none; stroke-width: 1.5; opacity: 0.4; transition: opacity .2s, stroke-width .2s; }
+  .link.dashed { stroke-dasharray: 4 4; opacity: 0.28; }
+  .link.highlighted { opacity: 0.9; stroke-width: 2.5; }
+
+  .node text { font-family: var(--sans); pointer-events: none; fill: var(--ink); }
+  .node .label { font-size: 12.5px; font-weight: 500; }
+  .node .sub { font-size: 10px; fill: var(--muted); font-family: var(--mono); }
+  .node .center-label { font-size: 15px; font-weight: 600; }
+  .node .center-sub { font-size: 11px; fill: var(--muted); font-family: var(--mono); }
+
+  .node circle, .node rect { cursor: pointer; transition: opacity .2s; }
+  .node:hover { filter: brightness(1.2); }
+  .node.dim { opacity: 0.25; }
+
+  aside {
+    background: #0d1424;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    overflow-y: auto;
+    max-height: calc(100vh - 140px);
+    position: sticky; top: 24px;
+  }
+  @media (max-width: 1100px) { aside { position: static; max-height: none; } }
+
+  aside h2 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+  aside .node-type { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; }
+  aside p { font-size: 14px; line-height: 1.7; color: var(--ink); margin-bottom: 12px; }
+  aside h3 { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 20px; margin-bottom: 8px; }
+  aside code { font-family: var(--mono); font-size: 12px; background: #161f36; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border); }
+  aside ul { padding-left: 20px; font-size: 14px; line-height: 1.8; }
+  aside .hint { font-size: 12px; color: var(--dim); font-style: italic; margin-top: 24px; }
+  aside .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 40px 0; }
+
+  .detail { display: none; }
+  .detail.active { display: block; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>AI-Coding-Template × Athena<span class="sub">CLICK ANY NODE FOR DETAIL · 10 AGENTS · 20 COMMANDS · 18 STOP RULES</span></h1>
+    <div class="stats" style="margin-top: 10px;">
+      <span class="stat">agents <b id="stat-agents">10</b></span>
+      <span class="stat">commands <b id="stat-commands">20</b></span>
+      <span class="stat">hooks <b id="stat-hooks">19</b></span>
+      <span class="stat">stop-rules <b id="stat-rules">18</b></span>
+      <span class="stat">last synced <b>2026-04-24</b></span>
+    </div>
+  </div>
+  <div class="legend">
+    <div class="legend-item"><span class="legend-dot" style="background: var(--cmd);"></span>Command</div>
+    <div class="legend-item"><span class="legend-dot" style="background: var(--agent);"></span>Agent</div>
+    <div class="legend-item"><span class="legend-dot" style="background: var(--skill);"></span>Skill</div>
+    <div class="legend-item"><span class="legend-dot" style="background: var(--pipe);"></span>Pipeline</div>
+    <div class="legend-item"><span class="legend-dot" style="background: var(--hook);"></span>Hook</div>
+    <div class="legend-item"><span class="legend-dot" style="background: var(--human);"></span>Human</div>
+  </div>
+</header>
+
+<main>
+
+  <div id="map-wrap">
+    <svg viewBox="0 0 1000 760" preserveAspectRatio="xMidYMid meet">
+      <g id="links">
+        <!-- Center → 6 hubs -->
+        <path class="link" data-from="core" data-to="hub-cmd"    d="M500,380 Q350,320 200,200" stroke="var(--cmd)"/>
+        <path class="link" data-from="core" data-to="hub-agent"  d="M500,380 Q350,460 200,580" stroke="var(--agent)"/>
+        <path class="link" data-from="core" data-to="hub-skill"  d="M500,380 Q650,340 800,200" stroke="var(--skill)"/>
+        <path class="link" data-from="core" data-to="hub-pipe"   d="M500,380 Q650,460 800,580" stroke="var(--pipe)"/>
+        <path class="link" data-from="core" data-to="hub-hook"   d="M500,380 Q500,620 500,700" stroke="var(--hook)"/>
+        <path class="link" data-from="core" data-to="hub-human"  d="M500,380 Q480,320 500,96" stroke="var(--human)"/>
+
+        <!-- Hub Command → 7 key leaves -->
+        <path class="link" data-from="hub-cmd" data-to="cmd-spec"     d="M200,200 Q130,130 60,100"  stroke="var(--cmd)"/>
+        <path class="link" data-from="hub-cmd" data-to="cmd-implement" d="M200,200 Q130,160 60,150" stroke="var(--cmd)"/>
+        <path class="link" data-from="hub-cmd" data-to="cmd-qa"       d="M200,200 Q130,200 60,200"  stroke="var(--cmd)"/>
+        <path class="link" data-from="hub-cmd" data-to="cmd-loop"     d="M200,200 Q130,230 60,250"  stroke="var(--cmd)"/>
+        <path class="link" data-from="hub-cmd" data-to="cmd-batch"    d="M200,200 Q130,260 60,300"  stroke="var(--cmd)"/>
+        <path class="link" data-from="hub-cmd" data-to="cmd-plan"     d="M200,200 Q130,290 60,350"  stroke="var(--cmd)"/>
+        <path class="link" data-from="hub-cmd" data-to="cmd-deploy"   d="M200,200 Q130,320 60,400"  stroke="var(--cmd)"/>
+
+        <!-- Hub Agent → 10 leaves -->
+        <path class="link" data-from="hub-agent" data-to="ag-spec-writer"  d="M200,580 Q130,490 60,460" stroke="var(--agent)"/>
+        <path class="link" data-from="hub-agent" data-to="ag-strategist"   d="M200,580 Q130,520 60,500" stroke="var(--agent)"/>
+        <path class="link" data-from="hub-agent" data-to="ag-best-practice" d="M200,580 Q130,550 60,540" stroke="var(--agent)"/>
+        <path class="link" data-from="hub-agent" data-to="ag-reviewer"     d="M200,580 Q130,580 60,580" stroke="var(--agent)"/>
+        <path class="link" data-from="hub-agent" data-to="ag-qa"           d="M200,580 Q130,610 60,620" stroke="var(--agent)"/>
+        <path class="link" data-from="hub-agent" data-to="ag-evaluator"    d="M200,580 Q130,640 60,660" stroke="var(--agent)"/>
+        <path class="link" data-from="hub-agent" data-to="ag-debugger"     d="M200,580 Q130,660 60,700" stroke="var(--agent)"/>
+        <path class="link" data-from="hub-agent" data-to="ag-deployer"     d="M200,580 Q260,660 280,720" stroke="var(--agent)"/>
+        <path class="link" data-from="hub-agent" data-to="ag-memory"       d="M200,580 Q310,680 380,720" stroke="var(--agent)"/>
+        <path class="link" data-from="hub-agent" data-to="ag-orchestrator" d="M200,580 Q240,660 220,720" stroke="var(--agent)"/>
+
+        <!-- Hub Skill → 4 leaves (groups) -->
+        <path class="link" data-from="hub-skill" data-to="sk-athena"      d="M800,200 Q870,160 940,120" stroke="var(--skill)"/>
+        <path class="link" data-from="hub-skill" data-to="sk-superpowers" d="M800,200 Q870,200 940,200" stroke="var(--skill)"/>
+        <path class="link" data-from="hub-skill" data-to="sk-claude-api"  d="M800,200 Q870,240 940,280" stroke="var(--skill)"/>
+        <path class="link" data-from="hub-skill" data-to="sk-tier0"       d="M800,200 Q870,280 940,360" stroke="var(--skill)"/>
+
+        <!-- Hub Pipeline → 6 leaves (Epic, QA, Loop, Batch, Deploy, Design) -->
+        <path class="link" data-from="hub-pipe" data-to="pipe-epic"   d="M800,580 Q870,500 940,440" stroke="var(--pipe)"/>
+        <path class="link" data-from="hub-pipe" data-to="pipe-qa"     d="M800,580 Q870,520 940,480" stroke="var(--pipe)"/>
+        <path class="link" data-from="hub-pipe" data-to="pipe-loop"   d="M800,580 Q870,550 940,520" stroke="var(--pipe)"/>
+        <path class="link" data-from="hub-pipe" data-to="pipe-batch"  d="M800,580 Q870,580 940,560" stroke="var(--pipe)"/>
+        <path class="link" data-from="hub-pipe" data-to="pipe-deploy" d="M800,580 Q870,610 940,600" stroke="var(--pipe)"/>
+        <path class="link" data-from="hub-pipe" data-to="pipe-design" d="M800,580 Q870,640 940,640" stroke="var(--pipe)"/>
+
+        <!-- Hub Hook → 4 leaves -->
+        <path class="link" data-from="hub-hook" data-to="hk-stop"     d="M500,700 Q420,720 400,740" stroke="var(--hook)"/>
+        <path class="link" data-from="hub-hook" data-to="hk-pretool"  d="M500,700 Q480,720 460,740" stroke="var(--hook)"/>
+        <path class="link" data-from="hub-hook" data-to="hk-posttool" d="M500,700 Q540,720 560,740" stroke="var(--hook)"/>
+        <path class="link" data-from="hub-hook" data-to="hk-session"  d="M500,700 Q580,720 620,740" stroke="var(--hook)"/>
+
+        <!-- Hub Human → 3 leaves -->
+        <path class="link" data-from="hub-human" data-to="hm-plan"     d="M500,80 Q380,50 300,40"  stroke="var(--human)"/>
+        <path class="link" data-from="hub-human" data-to="hm-pr"       d="M500,80 Q500,40 500,20"  stroke="var(--human)"/>
+        <path class="link" data-from="hub-human" data-to="hm-promote"  d="M500,80 Q620,50 700,40"  stroke="var(--human)"/>
+
+        <!-- Dashed cross-layer relations -->
+        <path class="link dashed" data-rel="epic-uses-spec"    d="M940,440 C680,440 380,460 60,460" stroke="var(--pipe)"/>
+        <path class="link dashed" data-rel="qa-uses-reviewer"  d="M940,480 C680,480 380,580 60,580" stroke="var(--pipe)"/>
+        <path class="link dashed" data-rel="qa-uses-qa"        d="M940,480 C680,480 380,620 60,620" stroke="var(--pipe)"/>
+        <path class="link dashed" data-rel="qa-uses-evaluator" d="M940,480 C680,480 380,660 60,660" stroke="var(--pipe)"/>
+        <path class="link dashed" data-rel="loop-uses-spec"    d="M940,520 C680,520 380,460 60,460" stroke="var(--pipe)"/>
+        <path class="link dashed" data-rel="batch-uses-orch"   d="M940,560 C680,560 380,680 220,720" stroke="var(--pipe)"/>
+        <path class="link dashed" data-rel="deploy-uses-deployer" d="M940,600 C680,600 380,700 280,720" stroke="var(--pipe)"/>
+        <path class="link dashed" data-rel="plan-uses-strat"   d="M60,350 C200,350 200,500 60,500" stroke="var(--cmd)"/>
+        <path class="link dashed" data-rel="debugger-tag-promote" d="M60,700 C340,700 420,40 700,40" stroke="var(--human)"/>
+        <path class="link dashed" data-rel="stop-reads-epic"   d="M400,740 C400,500 320,400 200,580" stroke="var(--hook)"/>
+      </g>
+
+      <g id="nodes">
+        <!-- Center -->
+        <g class="node" data-id="core">
+          <circle cx="500" cy="380" r="72" fill="#10172a" stroke="#334155" stroke-width="1.5"/>
+          <text class="center-label" x="500" y="368" text-anchor="middle">Claude Code</text>
+          <text class="center-label" x="500" y="388" text-anchor="middle">× Athena</text>
+          <text class="center-sub" x="500" y="410" text-anchor="middle">5-layer + hook</text>
+        </g>
+
+        <!-- Hubs -->
+        <g class="node" data-id="hub-cmd"><rect x="160" y="180" width="80" height="32" rx="6" fill="rgba(56,189,248,.1)" stroke="var(--cmd)"/><text class="label" x="200" y="201" text-anchor="middle" fill="var(--cmd)">Command</text></g>
+        <g class="node" data-id="hub-agent"><rect x="160" y="560" width="80" height="32" rx="6" fill="rgba(74,222,128,.1)" stroke="var(--agent)"/><text class="label" x="200" y="581" text-anchor="middle" fill="var(--agent)">Agent</text></g>
+        <g class="node" data-id="hub-skill"><rect x="760" y="180" width="80" height="32" rx="6" fill="rgba(251,191,36,.1)" stroke="var(--skill)"/><text class="label" x="800" y="201" text-anchor="middle" fill="var(--skill)">Skill</text></g>
+        <g class="node" data-id="hub-pipe"><rect x="760" y="560" width="80" height="32" rx="6" fill="rgba(167,139,250,.1)" stroke="var(--pipe)"/><text class="label" x="800" y="581" text-anchor="middle" fill="var(--pipe)">Pipeline</text></g>
+        <g class="node" data-id="hub-hook"><rect x="460" y="680" width="80" height="32" rx="6" fill="rgba(248,113,113,.1)" stroke="var(--hook)"/><text class="label" x="500" y="701" text-anchor="middle" fill="var(--hook)">Hook</text></g>
+        <g class="node" data-id="hub-human"><rect x="460" y="64" width="80" height="32" rx="6" fill="rgba(251,113,133,.1)" stroke="var(--human)"/><text class="label" x="500" y="85" text-anchor="middle" fill="var(--human)">人審</text></g>
+
+        <!-- Command leaves -->
+        <g class="node" data-id="cmd-spec"><circle cx="60" cy="100" r="7" fill="var(--cmd)"/><text class="label" x="76" y="98">/athena:spec</text><text class="sub" x="76" y="112">OpenAPI-first 規格</text></g>
+        <g class="node" data-id="cmd-implement"><circle cx="60" cy="150" r="7" fill="var(--cmd)"/><text class="label" x="76" y="148">/athena:implement</text><text class="sub" x="76" y="162">TDD 紅綠重構</text></g>
+        <g class="node" data-id="cmd-qa"><circle cx="60" cy="200" r="7" fill="var(--cmd)"/><text class="label" x="76" y="198">/athena:qa</text><text class="sub" x="76" y="212">review + test + eval</text></g>
+        <g class="node" data-id="cmd-loop"><circle cx="60" cy="250" r="7" fill="var(--cmd)"/><text class="label" x="76" y="248">/athena:loop</text><text class="sub" x="76" y="262">推進一步 (spec/impl/qa/...)</text></g>
+        <g class="node" data-id="cmd-batch"><circle cx="60" cy="300" r="7" fill="var(--cmd)"/><text class="label" x="76" y="298">/athena:batch</text><text class="sub" x="76" y="312">平行 wave</text></g>
+        <g class="node" data-id="cmd-plan"><circle cx="60" cy="350" r="7" fill="var(--cmd)"/><text class="label" x="76" y="348">/athena:plan</text><text class="sub" x="76" y="362">策略規劃 (人類 gate)</text></g>
+        <g class="node" data-id="cmd-deploy"><circle cx="60" cy="400" r="7" fill="var(--cmd)"/><text class="label" x="76" y="398">/athena:deploy</text><text class="sub" x="76" y="412">7-gate Zeabur</text></g>
+
+        <!-- Agent leaves (10 total) -->
+        <g class="node" data-id="ag-spec-writer"><circle cx="60" cy="460" r="7" fill="var(--agent)"/><text class="label" x="76" y="458">@spec-writer</text><text class="sub" x="76" y="472">opus · spec-log.md</text></g>
+        <g class="node" data-id="ag-strategist"><circle cx="60" cy="500" r="7" fill="var(--agent)"/><text class="label" x="76" y="498">@strategist</text><text class="sub" x="76" y="512">opus · strategy-log.md</text></g>
+        <g class="node" data-id="ag-best-practice"><circle cx="60" cy="540" r="7" fill="var(--agent)"/><text class="label" x="76" y="538">@best-practice</text><text class="sub" x="76" y="552">opus · decisions.md</text></g>
+        <g class="node" data-id="ag-reviewer"><circle cx="60" cy="580" r="7" fill="var(--agent)"/><text class="label" x="76" y="578">@reviewer</text><text class="sub" x="76" y="592">opus · review-findings.md</text></g>
+        <g class="node" data-id="ag-qa"><circle cx="60" cy="620" r="7" fill="var(--agent)"/><text class="label" x="76" y="618">@qa</text><text class="sub" x="76" y="632">sonnet · test-status.md</text></g>
+        <g class="node" data-id="ag-evaluator"><circle cx="60" cy="660" r="7" fill="var(--agent)"/><text class="label" x="76" y="658">@evaluator</text><text class="sub" x="76" y="672">sonnet · evaluation-log.md</text></g>
+        <g class="node" data-id="ag-debugger"><circle cx="60" cy="700" r="7" fill="var(--agent)"/><text class="label" x="76" y="698">@debugger</text><text class="sub" x="76" y="712">sonnet · debug-log.md</text></g>
+        <g class="node" data-id="ag-deployer"><circle cx="280" cy="720" r="7" fill="var(--agent)"/><text class="label" x="296" y="718">@deployer</text><text class="sub" x="296" y="732">sonnet · deploy-log.md</text></g>
+        <g class="node" data-id="ag-memory"><circle cx="380" cy="720" r="7" fill="var(--agent)"/><text class="label" x="396" y="718">@memory-curator</text><text class="sub" x="396" y="732">opus · Tier 0 promote</text></g>
+        <g class="node" data-id="ag-orchestrator"><circle cx="220" cy="720" r="7" fill="var(--agent)"/><text class="label" x="146" y="718" text-anchor="end">@orchestrator</text><text class="sub" x="146" y="732" text-anchor="end">opus · orchestration-log.md</text></g>
+
+        <!-- Skill leaves -->
+        <g class="node" data-id="sk-athena"><circle cx="940" cy="120" r="7" fill="var(--skill)"/><text class="label" x="924" y="118" text-anchor="end">athena:* skills</text><text class="sub" x="924" y="132" text-anchor="end">implement / qa / plan / ...</text></g>
+        <g class="node" data-id="sk-superpowers"><circle cx="940" cy="200" r="7" fill="var(--skill)"/><text class="label" x="924" y="198" text-anchor="end">superpowers:*</text><text class="sub" x="924" y="212" text-anchor="end">TDD / debugging / review</text></g>
+        <g class="node" data-id="sk-claude-api"><circle cx="940" cy="280" r="7" fill="var(--skill)"/><text class="label" x="924" y="278" text-anchor="end">claude-api</text><text class="sub" x="924" y="292" text-anchor="end">Anthropic SDK patterns</text></g>
+        <g class="node" data-id="sk-tier0"><circle cx="940" cy="360" r="7" fill="var(--skill)"/><text class="label" x="924" y="358" text-anchor="end">Tier 0 memory</text><text class="sub" x="924" y="372" text-anchor="end">~/.claude/template-memory/</text></g>
+
+        <!-- Pipeline leaves (6 — was 3, added Loop/Deploy/Design) -->
+        <g class="node" data-id="pipe-epic"><circle cx="940" cy="440" r="7" fill="var(--pipe)"/><text class="label" x="924" y="438" text-anchor="end">Epic Pipeline</text><text class="sub" x="924" y="452" text-anchor="end">spec→impl→qa→commit→merge</text></g>
+        <g class="node" data-id="pipe-qa"><circle cx="940" cy="480" r="7" fill="var(--pipe)"/><text class="label" x="924" y="478" text-anchor="end">QA Pipeline</text><text class="sub" x="924" y="492" text-anchor="end">review + test + eval (4-phase)</text></g>
+        <g class="node" data-id="pipe-loop"><circle cx="940" cy="520" r="7" fill="var(--pipe)"/><text class="label" x="924" y="518" text-anchor="end">Loop Pipeline</text><text class="sub" x="924" y="532" text-anchor="end">single-step advance</text></g>
+        <g class="node" data-id="pipe-batch"><circle cx="940" cy="560" r="7" fill="var(--pipe)"/><text class="label" x="924" y="558" text-anchor="end">Batch Pipeline</text><text class="sub" x="924" y="572" text-anchor="end">parallel waves (worktrees)</text></g>
+        <g class="node" data-id="pipe-deploy"><circle cx="940" cy="600" r="7" fill="var(--pipe)"/><text class="label" x="924" y="598" text-anchor="end">Deploy Pipeline</text><text class="sub" x="924" y="612" text-anchor="end">7-gate Zeabur</text></g>
+        <g class="node" data-id="pipe-design"><circle cx="940" cy="640" r="7" fill="var(--pipe)" opacity="0.5"/><text class="label" x="924" y="638" text-anchor="end" opacity="0.6">Design Pipeline</text><text class="sub" x="924" y="652" text-anchor="end" opacity="0.6">planned · E163 / @designer</text></g>
+
+        <!-- Hook leaves -->
+        <g class="node" data-id="hk-stop"><circle cx="400" cy="740" r="7" fill="var(--hook)"/><text class="label" x="400" y="758" text-anchor="middle">Stop verifier (18 rules)</text></g>
+        <g class="node" data-id="hk-pretool"><circle cx="460" cy="740" r="7" fill="var(--hook)"/></g>
+        <g class="node" data-id="hk-posttool"><circle cx="540" cy="740" r="7" fill="var(--hook)"/></g>
+        <g class="node" data-id="hk-session"><circle cx="620" cy="740" r="7" fill="var(--hook)"/><text class="label" x="620" y="758" text-anchor="middle">PreTool / PostTool / Session</text></g>
+
+        <!-- Human leaves -->
+        <g class="node" data-id="hm-plan"><circle cx="300" cy="40" r="7" fill="var(--human)"/><text class="label" x="290" y="38" text-anchor="end">/athena:plan approval</text></g>
+        <g class="node" data-id="hm-pr"><circle cx="500" cy="20" r="7" fill="var(--human)"/><text class="label" x="500" y="14" text-anchor="middle">PR merge</text></g>
+        <g class="node" data-id="hm-promote"><circle cx="700" cy="40" r="7" fill="var(--human)"/><text class="label" x="710" y="38">/athena:promote --apply</text></g>
+      </g>
+    </svg>
+  </div>
+
+  <aside id="panel">
+    <div class="empty" id="empty">← 點任一節點顯示詳細<br><br><span style="font-size:12px;">先讀中心 Claude Code × Athena</span></div>
+
+    <!-- Detail panels -->
+    <div class="detail" id="d-core">
+      <h2>Claude Code × Athena</h2>
+      <div class="node-type">心智圖中心</div>
+      <p>這個 repo 是 <strong>有紀律的 AI 開發</strong>的參考實作。三個 system 合作，10 agent × 20 command × 18 Stop rule 支撐。</p>
+
+      <h3>🎯 三大 System（看「做什麼」）</h3>
+      <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+        <tr style="border-bottom: 1px solid var(--border);">
+          <td style="padding: 6px 4px; width: 28%;"><strong style="color: var(--cmd);">🛠 Dev</strong></td>
+          <td style="padding: 6px 4px; color: var(--muted);">把 feature 做出來 · 6 pipeline · 8 agent 主要 · Stop verifier 守門</td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--border);">
+          <td style="padding: 6px 4px;"><strong style="color: var(--agent);">📚 Learning</strong></td>
+          <td style="padding: 6px 4px; color: var(--muted);">plan/cycle/learn/audit/metrics · @strategist 主導 · 讀 Tier 0 <strong>15 lesson</strong> 做判斷</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 4px;"><strong style="color: var(--human);">🧠 Memory</strong></td>
+          <td style="padding: 6px 4px; color: var(--muted);">Tier 0 (<strong>15</strong> · global) + Tier 1 (<strong>16</strong> · <code>docs/context/</code>) + Tier 2 (session) · @memory-curator</td>
+        </tr>
+      </table>
+
+      <h3>🔧 5-layer × Hook（看「怎麼做」）</h3>
+      <ul>
+        <li>L1 · <strong style="color:var(--cmd)">Command</strong> — <code>/athena:*</code>（20 個 runnable + 1 pattern doc）</li>
+        <li>L2 · <strong style="color:var(--agent)">Agent</strong> — 10 個職位說明書</li>
+        <li>L3 · <strong style="color:var(--skill)">Skill</strong> — Auto-inject 領域知識</li>
+        <li>L4 · <strong style="color:var(--pipe)">Pipeline</strong> — 6 條（Epic · QA · Loop · Batch · Deploy · Design 計畫）</li>
+        <li>L5 · <strong style="color:var(--human)">人審</strong> — 3 gate：plan 批准 · PR merge · promote apply</li>
+        <li>橫切 · <strong style="color:var(--hook)">Hook</strong> — 18 Stop rules · 19 hook scripts</li>
+      </ul>
+
+      <h3>📈 Status (2026-04-25)</h3>
+      <p>156 epic 已落地（E0–E155） · Phase 40/41/42 計畫中（11 epic · 46 SP）</p>
+
+      <p style="font-size: 11px; color: var(--dim); margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border);">
+        3-system 視角看 <strong>目的</strong>（你要 dev / learning / memory？）<br>
+        5-layer 視角看 <strong>機制</strong>（要改哪支 command / agent / hook？）
+      </p>
+    </div>
+
+    <div class="detail" id="d-hub-cmd">
+      <h2>Command · Layer 1</h2>
+      <div class="node-type">20 個 runnable + 1 個 pattern doc</div>
+      <p>使用者打 <code>/athena:xxx</code> 觸發的快捷 prompt。放在 <code>.claude/commands/athena/</code>。</p>
+      <h3>Namespace 價值</h3>
+      <p>Fork 後可整個資料夾改名（例：<code>shutien/</code>）→ 指令變 <code>/shutien:spec</code>。只改一個資料夾。</p>
+      <h3>完整 20 個 + 1 個</h3>
+      <ul style="font-family: var(--mono); font-size: 12px;">
+        <li>spec · implement · qa · loop · batch</li>
+        <li>plan · ship · pr · deploy · cycle</li>
+        <li>load · save · learn · promote</li>
+        <li>domain · dba · dashboard · audit · metrics</li>
+        <li>qa-report</li>
+        <li style="color: var(--muted);">qa-enforcement-pattern (lesson doc)</li>
+      </ul>
+    </div>
+
+    <div class="detail" id="d-cmd-spec">
+      <h2>/athena:spec</h2>
+      <div class="node-type">Command · L1</div>
+      <p>OpenAPI-first 規格設計。先編輯 <code>docs/openapi.yaml</code>，再 spawn <code>@spec-writer</code> 產 epic .md + 測試計畫。</p>
+      <h3>強制契約</h3>
+      <p>Stop verifier Rule #6（OpenAPI drift）會拒絕「改了 server / client 但 spec 沒動」的 commit。</p>
+      <h3>典型輸出</h3>
+      <p>新 endpoint 規格 + schema + <code>docs/epics/e{N}-{slug}.md</code> + TDD 第一輪紅燈測試清單。</p>
+    </div>
+
+    <div class="detail" id="d-cmd-implement">
+      <h2>/athena:implement</h2>
+      <div class="node-type">Command · L1</div>
+      <p>TDD 紅綠重構。從 spec → 寫測試（紅）→ 寫最少 code（綠）→ 重構。</p>
+      <h3>強制規則</h3>
+      <ul>
+        <li>測試先行：無測試的 code 會被 Stop verifier 擋</li>
+        <li>mock depth ≤ 5 / file（Rule #11）</li>
+        <li>Coverage ≥ 80%（by @qa Phase 2）</li>
+      </ul>
+    </div>
+
+    <div class="detail" id="d-cmd-qa">
+      <h2>/athena:qa</h2>
+      <div class="node-type">Command · L1 + Pipeline · L4</div>
+      <p>三合一品質 gate。3 agent 分工：<code>@reviewer</code>（audit）+ <code>@qa</code>（test + coverage）+ <code>@evaluator</code>（E147 獨立驗收）。</p>
+      <h3>Phases（post-Phase 40 會多 2.5 / 2.6）</h3>
+      <ul>
+        <li>1 · Static checks (ruff / mypy / eslint)</li>
+        <li>2 · Tests + coverage ≥80%</li>
+        <li style="color: var(--muted);">2.5 · Contract Conformance (E156 計畫)</li>
+        <li style="color: var(--muted);">2.6 · Migration Safety (E157 計畫)</li>
+        <li>3 · Test Quality Audit</li>
+        <li>4 · @evaluator 獨立驗收</li>
+      </ul>
+      <h3>Flags</h3>
+      <p><code>--review-only</code> · <code>--test-only</code> · <code>--eval-only</code> · 不加 flag 則三相順序執行。</p>
+    </div>
+
+    <div class="detail" id="d-cmd-loop">
+      <h2>/athena:loop</h2>
+      <div class="node-type">Command · L1</div>
+      <p>Epic orchestrator — 每次呼叫推進**一步**。讀 <code>docs/epics/EPIC_INDEX.md</code> 和 <code>docs/context/epic-progress.md</code> 找下一個未完成 step。</p>
+      <h3>Step 序列</h3>
+      <p><code>spec → implement → qa → commit → merge</code></p>
+      <h3>模式</h3>
+      <ul>
+        <li>無參數：推進下一步</li>
+        <li><code>status</code>：show 當前 state，不執行</li>
+      </ul>
+    </div>
+
+    <div class="detail" id="d-cmd-batch">
+      <h2>/athena:batch</h2>
+      <div class="node-type">Command · L1</div>
+      <p>平行執行 — 根據 dependency 圖分 wave，一 wave 內 epic 全部併發。</p>
+      <h3>併發策略</h3>
+      <ul>
+        <li>Max 4 concurrent agents per wave</li>
+        <li>每 agent 在獨立 worktree（<code>scripts/hooks/worktree-setup.sh</code>）</li>
+        <li>Wave 完成 → 整合測試 gate（E91）→ 下一 wave</li>
+      </ul>
+      <h3>模式</h3>
+      <p><code>auto</code>（偵測 phase）· <code>--phase N</code>（特定 phase）· 指定 epic list</p>
+    </div>
+
+    <div class="detail" id="d-cmd-plan">
+      <h2>/athena:plan</h2>
+      <div class="node-type">Command · L1 · 人類 Gate</div>
+      <p>策略規劃 → <code>@strategist</code> 審視 codebase 和 recent activity → 提出 epic 提案 → <strong>人類批准</strong> 才進 EPIC_INDEX。</p>
+      <h3>Input signals</h3>
+      <ul>
+        <li>近期 debug-log（重複出現的 bug → 可能是新 epic）</li>
+        <li>Review findings（系統性問題）</li>
+        <li>產業信號（如 Phase 41 靠 OpenMythos/RDT/Drafted）</li>
+      </ul>
+      <h3>Output</h3>
+      <p>Phase PRD + 若干 e&lt;N&gt;-&lt;slug&gt;.md 草稿 + dependency 圖更新。</p>
+    </div>
+
+    <div class="detail" id="d-cmd-deploy">
+      <h2>/athena:deploy</h2>
+      <div class="node-type">Command · L1</div>
+      <p>Zeabur 部署。<code>@deployer</code> 跑 7-gate 協議，任一失敗就 abort。</p>
+      <h3>7 Gates</h3>
+      <ol>
+        <li>CI 綠（tests + coverage + lint）</li>
+        <li>No uncommitted changes</li>
+        <li>On main branch（或 preview flag）</li>
+        <li>Migration dry-run OK</li>
+        <li>Pre-deploy guard pass（scripts/hooks/pre-deploy-guard.sh）</li>
+        <li>Env vars present（特別是 VITE_API_URL build-time baked）</li>
+        <li>Rollback plan recorded（<code>deploy-log.md</code>）</li>
+      </ol>
+    </div>
+
+    <div class="detail" id="d-hub-agent">
+      <h2>Agent · Layer 2</h2>
+      <div class="node-type">10 個 agent，分工接力</div>
+      <p>每個 <code>.claude/agents/*.md</code> 是一份職位說明書 — 角色、模型、允許工具、write-back 檔案。</p>
+      <h3>紀律</h3>
+      <ul>
+        <li>單一 LLM 身兼三角 → confirmation bias。分工解這個。</li>
+        <li>Subagent narrow-scoped：有 MAX_ITERATIONS + BUDGET + stuck detection</li>
+        <li>絕不讓 agent 無限跑（E145 context health monitor）</li>
+      </ul>
+      <h3>模型策略</h3>
+      <p>opus（策略 / 審閱 / 評估 · 需判斷）vs sonnet（執行 · 跑測試 / debug / 部署）。</p>
+    </div>
+
+    <div class="detail" id="d-ag-spec-writer">
+      <h2>@spec-writer</h2>
+      <div class="node-type">Agent · L2 · opus</div>
+      <p>Feature 規格設計。OpenAPI-first — 先定契約，再寫 server / client。</p>
+      <h3>Write-back</h3>
+      <p><code>docs/context/spec-log.md</code></p>
+      <h3>典型任務</h3>
+      <ul>
+        <li>編輯 <code>docs/openapi.yaml</code> 新增 endpoint</li>
+        <li>產 <code>docs/epics/e&lt;N&gt;-&lt;slug&gt;.md</code></li>
+        <li>寫第一輪 TDD 紅燈測試清單</li>
+      </ul>
+    </div>
+
+    <div class="detail" id="d-ag-strategist">
+      <h2>@strategist</h2>
+      <div class="node-type">Agent · L2 · opus</div>
+      <p>策略規劃。Audit repo、掃 context / debug log、比對產業信號，提出 epic 提案。</p>
+      <h3>Write-back</h3>
+      <p><code>docs/context/strategy-log.md</code></p>
+      <h3>Triggered by</h3>
+      <p><code>/athena:plan</code> 或 <code>/athena:cycle</code>。</p>
+      <h3>Hallmark output</h3>
+      <p>Phase 40 PRD + Phase 41 PRD 都是 <code>@strategist</code> 2026-04-24 批次產出。</p>
+    </div>
+
+    <div class="detail" id="d-ag-best-practice">
+      <h2>@best-practice</h2>
+      <div class="node-type">Agent · L2 · opus</div>
+      <p>架構決策、trade-off 諮詢。不寫 code，只寫判斷。</p>
+      <h3>Write-back</h3>
+      <p><code>docs/context/decisions.md</code> + <code>TECHSTACK.md §12</code></p>
+      <h3>Typical question</h3>
+      <p>「該用 session store 還是 stateless JWT？」「fastapi-users 還是手刻 auth？」</p>
+    </div>
+
+    <div class="detail" id="d-ag-reviewer">
+      <h2>@reviewer</h2>
+      <div class="node-type">Agent · L2 · opus · Read-only</div>
+      <p>Code review + 安全稽核。E87 從 <code>@qa</code> 拆出 — 兩者分工，<code>@qa</code> 跑測試、<code>@reviewer</code> 讀 code。</p>
+      <h3>Write-back</h3>
+      <p><code>docs/context/review-findings.md</code></p>
+      <h3>E162 Phase 41 升級（計畫中）</h3>
+      <p>變 iterative convergence loop — 跑 ≤4 輪直到 0 findings 或偵測卡住。</p>
+    </div>
+
+    <div class="detail" id="d-ag-qa">
+      <h2>@qa</h2>
+      <div class="node-type">Agent · L2 · sonnet</div>
+      <p>測試執行、80% 覆蓋率守門、Test Quality Audit。</p>
+      <h3>Write-back</h3>
+      <p><code>docs/context/test-status.md</code> + <code>qa-patterns.md</code></p>
+      <h3>Phases 負責</h3>
+      <p>Phase 2（tests + coverage）· Phase 3（test quality audit）· 計畫中的 Phase 2.5 / 2.6（contract + migration）。</p>
+    </div>
+
+    <div class="detail" id="d-ag-evaluator">
+      <h2>@evaluator</h2>
+      <div class="node-type">Agent · L2 · sonnet · Read-only</div>
+      <p>E147 新增 — Phase 4 獨立驗收評估。不信任 <code>@qa</code> 或 <code>@reviewer</code>，重新判斷 epic 是否符合 acceptance criteria。</p>
+      <h3>Write-back</h3>
+      <p><code>docs/context/evaluation-log.md</code>（append-only）</p>
+      <h3>Trigger</h3>
+      <p><code>/athena:qa</code>（Phase 4，預設執行）· <code>/athena:qa --eval-only</code>（快速查）</p>
+    </div>
+
+    <div class="detail" id="d-ag-debugger">
+      <h2>@debugger</h2>
+      <div class="node-type">Agent · L2 · sonnet</div>
+      <p>錯誤分析、failure pattern matching。E88 auto-retry 能力 — 測試失敗不用人喊，<code>@qa</code> 自動 delegate 給它。</p>
+      <h3>Write-back</h3>
+      <p><code>docs/context/debug-log.md</code>（可標 <code>[GENERALIZABLE]</code>）</p>
+      <h3>Feedback loop</h3>
+      <p>Phase 40 E158 會把 <code>[GENERALIZABLE]</code> tag 自動觸發 <code>@memory-curator</code> dry-run，產 promotion proposal。</p>
+    </div>
+
+    <div class="detail" id="d-ag-deployer">
+      <h2>@deployer</h2>
+      <div class="node-type">Agent · L2 · sonnet</div>
+      <p>Zeabur 部署專家。執行 7-gate 協議、寫 migration、處理 rollback。</p>
+      <h3>Write-back</h3>
+      <p><code>docs/context/deploy-log.md</code></p>
+      <h3>支援平台</h3>
+      <p>Zeabur（主）· Cloud Run（E121–E124 雙向 deploy guide）</p>
+    </div>
+
+    <div class="detail" id="d-ag-memory">
+      <h2>@memory-curator</h2>
+      <div class="node-type">Agent · L2 · opus</div>
+      <p>Tier 0 全球記憶管理。從 <code>docs/context/</code> 抽 <code>[GENERALIZABLE]</code> lesson → 升級到 <code>~/.claude/template-memory/</code>。</p>
+      <h3>Write-back</h3>
+      <p><code>~/.claude/template-memory/</code>（Tier 0 全球）</p>
+      <h3>Triggered by</h3>
+      <p><code>/athena:promote --apply &lt;proposal&gt;</code>（E158 auto-proposes dry-runs）</p>
+    </div>
+
+    <div class="detail" id="d-ag-orchestrator">
+      <h2>@orchestrator</h2>
+      <div class="node-type">Agent · L2 · opus</div>
+      <p>Batch pipeline 大腦 — 讀 dependency 圖、分 wave、spawn worktree-isolated workers。</p>
+      <h3>Write-back</h3>
+      <p><code>docs/context/orchestration-log.md</code></p>
+      <h3>Triggered by</h3>
+      <p><code>/athena:batch</code>（任何模式）</p>
+    </div>
+
+    <div class="detail" id="d-hub-skill">
+      <h2>Skill · Layer 3</h2>
+      <div class="node-type">Auto-inject 領域知識</div>
+      <p>Agent 工作時自動載入、不用手動 <code>@mention</code>。靠 YAML <code>description</code> 告訴 Claude「什麼場景該引用我」。</p>
+      <h3>三 Tier 記憶</h3>
+      <ul>
+        <li><strong>Tier 0 全球</strong>（~/.claude/template-memory/）— 跨專案 wisdom</li>
+        <li><strong>Tier 1 專案</strong>（docs/context/）— 本專案狀態，session 結束 checkpoint</li>
+        <li><strong>Tier 2 Session</strong> — 對話 buffer</li>
+      </ul>
+    </div>
+
+    <div class="detail" id="d-sk-athena">
+      <h2>athena:* skills</h2>
+      <div class="node-type">Skill · L3</div>
+      <p>每個 athena command 都有對應 skill 檔 — command 是觸發器、skill 是執行邏輯 + 領域知識。</p>
+      <h3>清單</h3>
+      <p>implement / qa / qa-enforcement-pattern / loop / plan / cycle / deploy / ...（20 個）</p>
+    </div>
+
+    <div class="detail" id="d-sk-superpowers">
+      <h2>superpowers:*</h2>
+      <div class="node-type">Skill · L3 · 開發紀律套組</div>
+      <p>跨專案通用的「怎麼做事」紀律 skill。</p>
+      <h3>重點套組</h3>
+      <ul>
+        <li>brainstorming — 創作前的探索流程</li>
+        <li>test-driven-development — TDD 紅綠重構</li>
+        <li>systematic-debugging — Bug / test fail 的系統化路徑</li>
+        <li>verification-before-completion — 完成前驗證（不是聲稱 passed 就是真 passed）</li>
+        <li>writing-plans — 多步任務前的書面 plan</li>
+      </ul>
+    </div>
+
+    <div class="detail" id="d-sk-claude-api">
+      <h2>claude-api</h2>
+      <div class="node-type">Skill · L3</div>
+      <p>Anthropic SDK 整合模式 — prompt caching、thinking、tool use、batch、files、citations、memory。</p>
+      <h3>觸發</h3>
+      <p>當檔案 import <code>anthropic</code> / <code>@anthropic-ai/sdk</code>，或使用者問 Claude API 相關問題時自動載入。</p>
+    </div>
+
+    <div class="detail" id="d-sk-tier0">
+      <h2>Tier 0 memory (Global Lesson Library)</h2>
+      <div class="node-type">Skill · L3 · Global · 15 files</div>
+      <p>路徑：<code>~/.claude/template-memory/</code> — 所有 forked project 共用的全球 wisdom 庫。<strong>@strategist / @best-practice 做判斷前先讀這裡</strong>。</p>
+
+      <h3>13 個 Lesson Pattern</h3>
+      <ul style="font-family: var(--mono); font-size: 11px; line-height: 1.55;">
+        <li><code>NEW_PROJECT_PRIMER.md</code> — Fork 後必讀</li>
+        <li><code>anti-patterns.md</code> — 反模式清單</li>
+        <li><code>architecture-lessons.md</code> — 架構教訓</li>
+        <li><code>architecture-patterns.md</code> — 可複製架構模式</li>
+        <li><code>design-handoff-pattern.md</code> — 設計→程式碼（餵 @designer）</li>
+        <li><code>dx-patterns.md</code> — DX（make go / doctor / tutorial）</li>
+        <li><code>failure-patterns.md</code> — 失敗模式（餵 @debugger）</li>
+        <li><code>integration-gotchas.md</code> — 跨層整合踩雷</li>
+        <li><code>mockup-contract.md</code> — Mockup → spec 契約</li>
+        <li><code>performance-insights.md</code> — 效能觀察</li>
+        <li><code>security-learnings.md</code> — 安全教訓</li>
+        <li><code>testing-patterns.md</code> — 測試金字塔 + TDD</li>
+        <li><code>workflow-patterns.md</code> — Ship/PR/Cycle/Batch 節奏</li>
+      </ul>
+
+      <h3>+ 2 維護檔</h3>
+      <ul style="font-family: var(--mono); font-size: 11px; line-height: 1.55;">
+        <li><code>architecture-lessons-archive-2026.md</code> — 年度封存</li>
+        <li><code>README.md</code> — 目錄說明</li>
+      </ul>
+
+      <h3>Tier 1 → Tier 0 升級路徑</h3>
+      <p>Tier 1 agent 寫 <code>[GENERALIZABLE]</code> → E158 hook 偵測 ≥3 tag（計畫）→ 產 proposal → 人類 <code>/athena:promote --apply</code> → @memory-curator 寫入。</p>
+
+      <h3>為何只能走 @memory-curator</h3>
+      <p>直接 Edit / Write 進 Tier 0 會被拒 — 全球記憶必須經過 curator review + 人類批准（proposal flow）。</p>
+    </div>
+
+    <div class="detail" id="d-hub-pipe">
+      <h2>Pipeline · Layer 4</h2>
+      <div class="node-type">6 條 pipeline（5 live + 1 計畫）</div>
+      <p>把 agent 接力打包成單一 command。不自動 commit / 不自動 merge（除非 autopilot 顯式允許）。</p>
+      <h3>Pipeline 清單</h3>
+      <ul>
+        <li><strong>Epic</strong> — spec→impl→qa→commit→merge（主力）</li>
+        <li><strong>QA</strong> — review + test + eval (Phase 1→4)</li>
+        <li><strong>Loop</strong> — 單步推進，人類在步之間 checkpoint</li>
+        <li><strong>Batch</strong> — 平行 wave（max 4 concurrent）</li>
+        <li><strong>Deploy</strong> — 7-gate Zeabur（@deployer）</li>
+        <li style="opacity:0.6;"><strong>Design</strong> — 計畫中（Phase 41 E163 / @designer）</li>
+      </ul>
+      <h3>Agent Cowork Matrix</h3>
+      <p style="font-size: 12px; color: var(--muted);">✅ 主要 · ◻ support (auto-delegated / read-only)</p>
+      <table style="width: 100%; border-collapse: collapse; font-size: 11px; font-family: var(--mono);">
+        <thead>
+          <tr style="border-bottom: 1px solid var(--border); color: var(--muted);">
+            <th style="text-align: left; padding: 4px 2px;">Agent</th>
+            <th>Epic</th><th>QA</th><th>Loop</th><th>Batch</th><th>Deploy</th><th>Design</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td style="padding: 2px;">@spec-writer</td><td align="center">✅</td><td></td><td align="center">◻</td><td align="center">◻</td><td></td><td></td></tr>
+          <tr><td style="padding: 2px;">@reviewer</td><td align="center">✅</td><td align="center">✅</td><td align="center">◻</td><td align="center">◻</td><td></td><td></td></tr>
+          <tr><td style="padding: 2px;">@qa</td><td align="center">✅</td><td align="center">✅</td><td align="center">◻</td><td align="center">◻</td><td></td><td></td></tr>
+          <tr><td style="padding: 2px;">@evaluator</td><td align="center">✅</td><td align="center">✅</td><td align="center">◻</td><td align="center">◻</td><td></td><td></td></tr>
+          <tr><td style="padding: 2px;">@debugger</td><td align="center">◻</td><td align="center">◻</td><td align="center">◻</td><td align="center">◻</td><td></td><td></td></tr>
+          <tr><td style="padding: 2px;">@deployer</td><td></td><td></td><td></td><td></td><td align="center">✅</td><td></td></tr>
+          <tr><td style="padding: 2px;">@orchestrator</td><td></td><td></td><td></td><td align="center">✅</td><td></td><td></td></tr>
+          <tr style="opacity: 0.6;"><td style="padding: 2px;">@designer*</td><td></td><td></td><td></td><td></td><td></td><td align="center">✅</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size: 11px; color: var(--dim); margin-top: 8px;">* 計畫中 · Phase 41 E163 landed 後。<br>其他 2 mini-pipeline：Plan（→@strategist）+ Promote（→@memory-curator + 人類 gate）。</p>
+    </div>
+
+    <div class="detail" id="d-pipe-epic">
+      <h2>Epic Pipeline</h2>
+      <div class="node-type">Pipeline · L4 · 主力流程</div>
+      <p><code>spec → implement → qa → commit → merge</code></p>
+      <h3>強制接力</h3>
+      <p>Stop verifier Rule #18（E155）監控 <code>epic-progress.md</code> — 若 <code>impl=✅ ∧ qa=⬜</code> 拒絕 Stop。防「跳過 QA」shortcut。</p>
+      <h3>進入點</h3>
+      <ul>
+        <li><code>/athena:loop</code> 推進一步</li>
+        <li><code>/athena:ship</code> 快速串完（review→fix→commit→PR）</li>
+        <li><code>/athena:pr</code> 完整（merge main→build→test→lint→PR）</li>
+      </ul>
+    </div>
+
+    <div class="detail" id="d-pipe-qa">
+      <h2>QA Pipeline</h2>
+      <div class="node-type">Pipeline · L4 · 品質守門</div>
+      <p>3 agent 分工：<code>@reviewer</code> → <code>@qa</code> → <code>@evaluator</code>。E147 把 <code>@evaluator</code> 加進來作 Phase 4。</p>
+      <h3>Phases</h3>
+      <ol>
+        <li>Static checks (ruff / mypy / eslint)</li>
+        <li>Tests + coverage ≥80%</li>
+        <li>Test Quality Audit（mock depth、behavior ratio、parametrize rate）</li>
+        <li>@evaluator 獨立驗收 vs acceptance criteria</li>
+      </ol>
+      <h3>E162 Phase 41 升級（計畫中）</h3>
+      <p>Reviewer 變 iterative loop — 跑 ≤4 輪到收斂。</p>
+    </div>
+
+    <div class="detail" id="d-pipe-loop">
+      <h2>Loop Pipeline</h2>
+      <div class="node-type">Pipeline · L4 · 單步推進</div>
+      <p><code>/athena:loop</code> 讀 <code>docs/context/epic-progress.md</code>，找下一個 ⬜ step，推進 **一步**。</p>
+      <h3>5 steps</h3>
+      <ol>
+        <li><code>spec</code> → spawn @spec-writer</li>
+        <li><code>implement</code> → TDD harness (auto @debugger on fail)</li>
+        <li><code>qa</code> → QA Pipeline (4-phase)</li>
+        <li><code>commit</code> → git commit (Stop verifier 全檢)</li>
+        <li><code>merge</code> → git push + gh pr create</li>
+      </ol>
+      <h3>為何一步就好</h3>
+      <p>人類在步與步之間有 checkpoint。失敗時不會污染後續步驟。亦是 E164 autopilot 的基礎單位。</p>
+      <h3>Flags</h3>
+      <ul>
+        <li>無參數：推進一步</li>
+        <li><code>status</code>：只讀、不推進</li>
+      </ul>
+    </div>
+
+    <div class="detail" id="d-pipe-batch">
+      <h2>Batch Pipeline</h2>
+      <div class="node-type">Pipeline · L4 · 平行波次</div>
+      <p>Max 4 concurrent agents。每個在獨立 git worktree 跑 epic pipeline。</p>
+      <h3>Flow</h3>
+      <ol>
+        <li><code>@orchestrator</code> 讀 dependency 圖</li>
+        <li>分 wave（wave = 無 dependency 鎖的 epic 群）</li>
+        <li>Spawn 4 worker agent 併發（<code>scripts/hooks/worktree-setup.sh</code>）</li>
+        <li>Wave 完成 → 整合測試 gate（E91）</li>
+        <li>下一 wave</li>
+      </ol>
+      <h3>典型</h3>
+      <p>Phase 40 (6 epic, 全 parallel) = 1 個 wave 完成 · Phase 41 (3 epic) = 2 waves (E162+E163 → E164)</p>
+    </div>
+
+    <div class="detail" id="d-pipe-deploy">
+      <h2>Deploy Pipeline</h2>
+      <div class="node-type">Pipeline · L4 · 7-gate 部署</div>
+      <p><code>/athena:deploy [env]</code> 走 7 gate，任一失敗即 abort。驅動者：<code>@deployer</code>。</p>
+      <h3>7 Gates</h3>
+      <ol>
+        <li>CI 綠（tests + coverage + lint + e2e）</li>
+        <li>No uncommitted changes</li>
+        <li>On main branch（或 preview flag）</li>
+        <li>Migration dry-run OK</li>
+        <li>Pre-deploy guard pass（<code>scripts/hooks/pre-deploy-guard.sh</code>）</li>
+        <li>Env vars present（<code>VITE_API_URL</code> build-time baked）</li>
+        <li>Rollback plan recorded（<code>deploy-log.md</code>）</li>
+      </ol>
+      <h3>Phase 40 E159 會加</h3>
+      <ul>
+        <li>Gate 8 · <code>GET /admin/sli</code> baseline check</li>
+        <li>Gate 7 defense-in-depth · E156 contract conformance 重跑</li>
+      </ul>
+      <h3>部署目標</h3>
+      <p>Zeabur（主）· Cloud Run（E121–E124 雙向 deploy guide）。Rollback 10 分鐘內透過 <code>sre rollback</code>（E159 CLI）。</p>
+    </div>
+
+    <div class="detail" id="d-pipe-design">
+      <h2>Design Pipeline *(計畫 · Phase 41 E163)*</h2>
+      <div class="node-type">Pipeline · L4 · 設計→程式碼</div>
+      <p><code>/athena:design &lt;slug&gt; "&lt;description&gt;"</code> 將描述或截圖轉成 production-ready React component。新增第 11 個 agent <code>@designer</code>。</p>
+      <h3>Produces</h3>
+      <ul>
+        <li><code>client/src/pages/&lt;slug&gt;/Page.tsx</code></li>
+        <li><code>client/src/pages/&lt;slug&gt;/Page.css</code></li>
+        <li><code>client/src/pages/&lt;slug&gt;/Page.test.tsx</code></li>
+        <li>App.tsx route 註冊 + ROUTE_MAP entry</li>
+        <li><code>docs/context/design-review/&lt;slug&gt;.md</code>（a11y + 斷點 + token inventory）</li>
+      </ul>
+      <h3>Reads</h3>
+      <ul>
+        <li><code>docs/design/design-system.css</code>（47 tokens）</li>
+        <li><code>client/src/styles/common/*.css</code>（primitives）</li>
+        <li><code>docs/blueprints/*.html</code>（optional wireframe）</li>
+      </ul>
+      <h3>Auto-enforces</h3>
+      <p>Stop verifier Rule #13（orphan route）· #14（CSS co-location）· #17（CSS var drift）。</p>
+      <h3>與 E165 theme palette 互補</h3>
+      <p>E163 產頁面、E165 擴 palette。Phase 42 共同把「design → code → theme」鏈路打通。</p>
+    </div>
+
+    <div class="detail" id="d-hub-hook">
+      <h2>Hook · 橫切</h2>
+      <div class="node-type">4 類 hook · 獨立於 5 層</div>
+      <p>Claude Code 執行 tool 前 / 後、或 session 開始 / 結束的攔截點。設定全在 <code>.claude/settings.json</code> + agent frontmatter。</p>
+      <h3>統計</h3>
+      <p><strong>19 個 hook 腳本</strong>（<code>scripts/hooks/*.sh</code>）</p>
+      <p><strong>18 條 Stop verifier 規則</strong></p>
+      <h3>Audit trail</h3>
+      <p>所有 agent 事件寫 <code>.claude/audit.jsonl</code>，可用 <code>jq</code> 查詢。<code>/athena:metrics</code> 讀這份算 agent 可靠度。</p>
+    </div>
+
+    <div class="detail" id="d-hk-stop">
+      <h2>Stop Verifier</h2>
+      <div class="node-type">Hook · Stop 事件 · 18 rules</div>
+      <p>完成前守門 — 違規直接拒絕 session 結束。</p>
+      <h3>18 規則</h3>
+      <ol>
+        <li>localStorage ban</li>
+        <li>fireEvent ban</li>
+        <li>staleTime hardcoding</li>
+        <li>MSW handler location</li>
+        <li>folder names (backend/ / frontend/)</li>
+        <li>OpenAPI drift</li>
+        <li>console.log residue</li>
+        <li>large file warning</li>
+        <li>internal mock assertions</li>
+        <li>parametrize nudge</li>
+        <li>mock depth limit</li>
+        <li>test file size</li>
+        <li>orphan route</li>
+        <li>CSS co-location</li>
+        <li>MSW factory</li>
+        <li>schema bridge</li>
+        <li>CSS var drift</li>
+        <li><strong>QA gate enforcement (E155)</strong></li>
+      </ol>
+      <h3>Phase 40 計畫加</h3>
+      <ul>
+        <li>Rule #19 migration signoff (E157)</li>
+        <li>Rule #20 openapi.yaml contract evidence (E156)</li>
+      </ul>
+    </div>
+
+    <div class="detail" id="d-hk-pretool">
+      <h2>PreToolUse</h2>
+      <div class="node-type">Hook · Tool 執行前</div>
+      <p>危險指令攔截。Exit code 語意：<code>0</code> 允許 · <code>1</code> 擋 · <code>2</code> 需人工確認。</p>
+      <h3>典型</h3>
+      <ul>
+        <li><code>DROP TABLE</code> / <code>TRUNCATE</code></li>
+        <li>無 WHERE 的 <code>DELETE FROM</code> / <code>UPDATE</code></li>
+        <li><code>rm -rf</code> 廣範圍刪除</li>
+        <li>Dirty deploy（uncommitted changes）</li>
+      </ul>
+    </div>
+
+    <div class="detail" id="d-hk-posttool">
+      <h2>PostToolUse</h2>
+      <div class="node-type">Hook · Tool 執行後</div>
+      <p>Edit / Write / Bash 成功後自動跑。</p>
+      <h3>典型 hook</h3>
+      <ul>
+        <li><code>ruff format</code> / <code>prettier</code>（Edit 後）</li>
+        <li>bugfix-log 追加（fix: commit 時，E148）</li>
+        <li>Coverage gate（Bash 跑測試後）</li>
+        <li>Auto-promote check（E158 計畫 — 偵測 <code>[GENERALIZABLE]</code> 達門檻產 proposal）</li>
+      </ul>
+    </div>
+
+    <div class="detail" id="d-hk-session">
+      <h2>SessionStart / SubagentStop</h2>
+      <div class="node-type">Hook · Session 生命週期</div>
+      <h3>SessionStart</h3>
+      <p>Session 開啟時注入 active epic context（~30 行）— 讓 Claude 立即知道 current state，無需 / athena:load。</p>
+      <h3>SubagentStop</h3>
+      <p>Subagent 結束時為 write-back 加 timestamp（所有 <code>docs/context/*.md</code> 更新都有時間戳）。</p>
+      <h3>Webhook</h3>
+      <p>任務完成 ping <code>$AI_CODING_WEBHOOK_URL</code>（Slack/Discord/n8n）。</p>
+    </div>
+
+    <div class="detail" id="d-hub-human">
+      <h2>人審 · Layer 5</h2>
+      <div class="node-type">永遠留給人的最後一哩</div>
+      <p><strong>AI 做研究跟草稿，人做判斷跟承擔。</strong> 不管 pipeline 多自動，以下三個 gate 永遠留給人。</p>
+      <h3>三 Gate</h3>
+      <ol>
+        <li><strong>/athena:plan 批准</strong> — @strategist 提的 epic 人類點頭才進 EPIC_INDEX</li>
+        <li><strong>PR merge</strong> — CI 綠、coverage 過、Stop verifier 清，人類按合併</li>
+        <li><strong>/athena:promote --apply</strong> — 從 proposal 升級到 Tier 0 全球記憶</li>
+      </ol>
+      <h3>E164 autopilot（Phase 41 計畫）</h3>
+      <p>Confidence ≥ 0.85 時自動推進 spec→implement→qa→commit→staging-deploy。Merge 和 prod-deploy 預設保持 pause。</p>
+    </div>
+
+    <div class="detail" id="d-hm-plan">
+      <h2>/athena:plan approval</h2>
+      <div class="node-type">Human Gate · L5</div>
+      <p><code>@strategist</code> 掃完 codebase 產出 Phase PRD + epic 提案。<strong>人類看完提案才按同意</strong>，才進 batch / loop。</p>
+      <h3>為何不自動</h3>
+      <ul>
+        <li>範疇判斷：哪個 epic 該進、哪個該延、哪個該拆</li>
+        <li>優先序：business value 是 LLM 無法 independently 判斷的</li>
+        <li>資源分配：哪 phase 先跑、哪 phase 等</li>
+      </ul>
+    </div>
+
+    <div class="detail" id="d-hm-pr">
+      <h2>PR merge</h2>
+      <div class="node-type">Human Gate · L5</div>
+      <p>即使 CI 綠、coverage 過、Stop verifier 清，<strong>merge 仍是人類的選擇</strong>。</p>
+      <h3>人類要讀的</h3>
+      <ul>
+        <li>Diff — 特別是 SQL injection 邊界、型別錯位、schema 改動</li>
+        <li>Migration — 對應 E157 @dba signoff（若有 red flag）</li>
+        <li>Risk assessment — 部署時段、rollback 方案</li>
+      </ul>
+      <h3>E164 autopilot（計畫）</h3>
+      <p>Merge 預設保持 human gate。<code>AUTOPILOT_ALLOW_MERGE=1</code> 才自動。</p>
+    </div>
+
+    <div class="detail" id="d-hm-promote">
+      <h2>/athena:promote --apply</h2>
+      <div class="node-type">Human Gate · L5 · Tier 0 升級</div>
+      <p>從 <code>docs/context/promotion-proposals/&lt;ts&gt;.md</code>（E158 auto-generated）→ <code>~/.claude/template-memory/</code>。</p>
+      <h3>為何不自動</h3>
+      <p>全球記憶影響 <strong>所有未來 fork 的 project</strong>。每條 lesson 都要人類判「這真的 generalizable 嗎？」「寫法夠清楚嗎？」</p>
+      <h3>Flow</h3>
+      <ol>
+        <li>@debugger 寫 debug-log.md 帶 <code>[GENERALIZABLE]</code></li>
+        <li>PostToolUse hook 數到 ≥3 tag → 產 proposal</li>
+        <li>人類 review proposal</li>
+        <li><code>/athena:promote --apply &lt;file&gt;</code> → @memory-curator 升級 Tier 0</li>
+      </ol>
+    </div>
+
+    <p class="hint" id="hint" style="display: none;">點空白處回首頁</p>
+  </aside>
+</main>
+
+<script>
+  // Relation graph — which nodes to highlight when one is selected
+  const relations = {
+    // Pipeline → agents it uses (primary + support)
+    'pipe-epic':    ['ag-spec-writer', 'ag-qa', 'ag-reviewer', 'ag-evaluator', 'ag-debugger'],
+    'pipe-qa':      ['ag-reviewer', 'ag-qa', 'ag-evaluator', 'ag-debugger'],
+    'pipe-loop':    ['ag-spec-writer', 'ag-qa', 'ag-reviewer', 'ag-evaluator', 'ag-debugger'],
+    'pipe-batch':   ['ag-orchestrator'],
+    'pipe-deploy':  ['ag-deployer'],
+    'pipe-design':  [], // @designer not yet in mindmap (planned E163)
+    // Command → agents/pipelines
+    'cmd-qa':       ['ag-reviewer', 'ag-qa', 'ag-evaluator', 'pipe-qa'],
+    'cmd-batch':    ['ag-orchestrator', 'pipe-batch'],
+    'cmd-plan':     ['ag-strategist'],
+    'cmd-deploy':   ['ag-deployer', 'pipe-deploy'],
+    'cmd-spec':     ['ag-spec-writer'],
+    'cmd-loop':     ['pipe-loop', 'pipe-epic'],
+    'cmd-implement': ['ag-debugger'],
+    // Agent → write-back, skills used
+    'ag-debugger':      ['hm-promote', 'sk-tier0', 'pipe-qa'],
+    'ag-memory':        ['hm-promote', 'sk-tier0'],
+    'ag-strategist':    ['cmd-plan', 'hm-plan'],
+    'ag-reviewer':      ['pipe-qa', 'cmd-qa', 'pipe-epic'],
+    'ag-qa':            ['pipe-qa', 'cmd-qa', 'pipe-epic'],
+    'ag-evaluator':     ['pipe-qa', 'cmd-qa', 'pipe-epic'],
+    'ag-orchestrator':  ['pipe-batch', 'cmd-batch'],
+    'ag-deployer':      ['cmd-deploy', 'pipe-deploy'],
+    'ag-spec-writer':   ['pipe-epic', 'pipe-loop', 'cmd-spec'],
+    // Skill → agents that load it
+    'sk-tier0':     ['ag-memory', 'ag-debugger'],
+    // Human → source commands
+    'hm-plan':      ['cmd-plan', 'ag-strategist'],
+    'hm-promote':   ['ag-debugger', 'ag-memory', 'sk-tier0'],
+    // Hook
+    'hk-stop':      ['pipe-epic', 'pipe-loop'],
+  };
+  const hubs = ['hub-cmd', 'hub-agent', 'hub-skill', 'hub-pipe', 'hub-hook', 'hub-human'];
+
+  const nodes = document.querySelectorAll('.node');
+  const links = document.querySelectorAll('.link');
+  const details = document.querySelectorAll('.detail');
+  const empty = document.getElementById('empty');
+  const hint = document.getElementById('hint');
+
+  function show(id) {
+    details.forEach(d => d.classList.remove('active'));
+    const target = document.getElementById('d-' + id);
+    if (!target) { clearSelection(); return; }
+    target.classList.add('active');
+    empty.style.display = 'none';
+    hint.style.display = 'block';
+
+    links.forEach(l => {
+      const from = l.dataset.from, to = l.dataset.to, rel = l.dataset.rel;
+      let related = from === id || to === id;
+      // Dashed relation links tied to pipelines + human-promote flow
+      if (id === 'pipe-epic' && rel === 'epic-uses-spec') related = true;
+      if (id === 'pipe-qa'   && (rel === 'qa-uses-reviewer' || rel === 'qa-uses-qa' || rel === 'qa-uses-evaluator')) related = true;
+      if (id === 'pipe-batch' && rel === 'batch-uses-orch') related = true;
+      if (id === 'cmd-plan'  && rel === 'plan-uses-strat') related = true;
+      if ((id === 'ag-debugger' || id === 'hm-promote') && rel === 'debugger-tag-promote') related = true;
+      if (id === 'hk-stop'   && rel === 'stop-reads-epic') related = true;
+      l.classList.toggle('highlighted', related);
+    });
+
+    const keepSet = new Set([id, 'core', ...hubs]);
+    if (relations[id]) relations[id].forEach(n => keepSet.add(n));
+    nodes.forEach(n => n.classList.toggle('dim', !keepSet.has(n.dataset.id)));
+  }
+
+  function clearSelection() {
+    details.forEach(d => d.classList.remove('active'));
+    empty.style.display = 'block';
+    hint.style.display = 'none';
+    links.forEach(l => l.classList.remove('highlighted'));
+    nodes.forEach(n => n.classList.remove('dim'));
+  }
+
+  nodes.forEach(n => {
+    n.addEventListener('click', (e) => {
+      e.stopPropagation();
+      show(n.dataset.id);
+    });
+  });
+
+  document.getElementById('map-wrap').addEventListener('click', (e) => {
+    if (!e.target.closest('.node')) clearSelection();
+  });
+
+  // Show core by default
+  show('core');
+</script>
+
+</body>
+</html>

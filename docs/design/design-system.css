@@ -1,0 +1,57 @@
+/*
+ * Canonical Design Tokens — Amber/Archivo System
+ * Reference for both client/ and dev-docs/ apps.
+ *
+ * Fonts:
+ *   Display: Archivo Black
+ *   Body:    Archivo (300, 400, 500)
+ *   Code:    IBM Plex Mono (400, 500)
+ *
+ * Google Fonts import:
+ *   https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@300;400;500&family=IBM+Plex+Mono:wght@400;500&display=swap
+ */
+
+:root {
+  /* Backgrounds */
+  --bg:       #07070f;
+  --bg2:      #0e0e1a;
+  --bg3:      #141422;
+
+  /* Accent (amber) */
+  --amber:    #f0a500;
+  --amber2:   #ffc233;
+  --amber-dim:#f0a50022;
+
+  /* Text */
+  --white:    #f0f0f8;
+  --gray:     #6b6b88;
+  --gray2:    #3a3a52;
+
+  /* Status */
+  --green:    #00d48a;
+  --red:      #ff4f4f;
+
+  /* Borders */
+  --border:   #1e1e30;
+
+  /* Font stacks */
+  --font-display: 'Archivo Black', sans-serif;
+  --font-body:    'Archivo', sans-serif;
+  --font-mono:    'IBM Plex Mono', monospace;
+}
+
+/* Light theme overrides */
+.light {
+  --bg:       #ffffff;
+  --bg2:      #f7f7fb;
+  --bg3:      #ededf3;
+  --amber:    #d49200;
+  --amber2:   #b07800;
+  --amber-dim: rgba(212,146,0,0.08);
+  --white:    #1a1a2e;
+  --gray:     #3d3d5c;
+  --gray2:    #606080;
+  --green:    #0f8a5a;
+  --red:      #d42040;
+  --border:   #d4d4e0;
+}

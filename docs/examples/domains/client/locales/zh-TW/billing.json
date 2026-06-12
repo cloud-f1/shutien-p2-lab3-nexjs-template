@@ -1,0 +1,20 @@
+{
+  "pricing.title": "選擇您的方案",
+  "pricing.subtitle": "免費開始。當團隊需要更多功能時再升級。",
+  "pricing.loading": "正在載入方案...",
+  "pricing.error": "無法載入方案資訊，請稍後再試。",
+  "pricing.mostPopular": "最受歡迎",
+  "pricing.free": "免費",
+  "pricing.getStarted": "立即開始",
+  "pricing.subscribe": "訂閱",
+  "settings.title": "帳單",
+  "settings.loading": "正在載入帳單資訊...",
+  "settings.error": "無法載入帳單資訊，請稍後再試。",
+  "settings.nextBilling": "下次扣款日期",
+  "settings.cancellation": "取消",
+  "settings.cancelsAtEnd": "將在目前計費週期結束時取消",
+  "settings.planFeatures": "方案功能",
+  "settings.upgradePlan": "升級方案",
+  "settings.manageSubscription": "管理訂閱",
+  "settings.openingPortal": "正在開啟管理頁面..."
+}

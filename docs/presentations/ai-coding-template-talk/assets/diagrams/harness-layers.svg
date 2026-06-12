@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" fill="none">
+  <style>
+    .layer { rx: 10; stroke-width: 2; }
+    .l1 { fill: #1a0e0e; stroke: #ff4f4f; }
+    .l2 { fill: #0e0e1a; stroke: #3b82f6; }
+    .l3 { fill: #0e1a0e; stroke: #00d48a; }
+    .layer-title { font-family: system-ui, sans-serif; font-size: 20px; font-weight: 800; text-anchor: start; }
+    .layer-desc  { font-family: system-ui, sans-serif; font-size: 13px; fill: #6b6b88; }
+    .layer-num   { font-family: system-ui, sans-serif; font-size: 40px; font-weight: 900; text-anchor: middle; opacity: 0.2; }
+    .layer-detail { font-family: monospace; font-size: 12px; fill: #f0f0f8; }
+    .connector { stroke: #f0a500; stroke-width: 1.5; stroke-dasharray: 4 3; fill: none; }
+  </style>
+
+  <!-- Layer 1: hooks/ -->
+  <rect class="layer l1" x="40" y="20" width="720" height="100"/>
+  <text class="layer-num" x="80" y="88" fill="#ff4f4f">1</text>
+  <text class="layer-title" x="120" y="55" fill="#ff4f4f">hooks/ — 生命週期掛鉤</text>
+  <text class="layer-detail" x="120" y="78">Stop Verifier 17 rules ‧ PreToolUse guard ‧ PostToolUse auto-format ‧ Webhook notify</text>
+  <text class="layer-desc" x="120" y="100">commit 前擋住品質問題 — 是 harness 的「牙齒」</text>
+
+  <!-- Connector -->
+  <path class="connector" d="M 400 120 L 400 150"/>
+
+  <!-- Layer 2: skills/ -->
+  <rect class="layer l2" x="40" y="150" width="720" height="100"/>
+  <text class="layer-num" x="80" y="218" fill="#3b82f6">2</text>
+  <text class="layer-title" x="120" y="185" fill="#3b82f6">skills/ — Context Injection</text>
+  <text class="layer-detail" x="120" y="208">8 auto-loaded injectors ‧ Skill tool 按需載入 ‧ 不污染全局 context</text>
+  <text class="layer-desc" x="120" y="230">LLM 版 "lazy import" — 只在需要時注入知識</text>
+
+  <!-- Connector -->
+  <path class="connector" d="M 400 250 L 400 280"/>
+
+  <!-- Layer 3: audit.jsonl -->
+  <rect class="layer l3" x="40" y="280" width="720" height="100"/>
+  <text class="layer-num" x="80" y="348" fill="#00d48a">3</text>
+  <text class="layer-title" x="120" y="315" fill="#00d48a">audit.jsonl — 可追溯歷史</text>
+  <text class="layer-detail" x="120" y="338">每個 agent 呼叫寫一行 JSON ‧ jq 可查 ‧ /athena:metrics 彙整</text>
+  <text class="layer-desc" x="120" y="360">出事時回放整條 decision path — 是 harness 的「記憶」</text>
+</svg>

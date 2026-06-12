@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 300" fill="none">
+  <style>
+    .track { stroke: #1e1e30; stroke-width: 4; }
+    .track-done { stroke: #f0a500; stroke-width: 4; }
+    .milestone { stroke-width: 2; }
+    .done { fill: #f0a500; stroke: #ffc233; }
+    .next { fill: #0e0e1a; stroke: #f0a500; }
+    .future { fill: #0e0e1a; stroke: #3a3a52; }
+    .ms-title { font-family: system-ui, sans-serif; font-size: 13px; font-weight: 700; fill: #f0f0f8; text-anchor: middle; }
+    .ms-desc  { font-family: system-ui, sans-serif; font-size: 10px; fill: #6b6b88; text-anchor: middle; }
+    .ms-tag   { font-family: monospace; font-size: 9px; font-weight: 700; text-anchor: middle; }
+  </style>
+
+  <!-- Track line -->
+  <line class="track" x1="80" y1="150" x2="820" y2="150"/>
+  <line class="track-done" x1="80" y1="150" x2="320" y2="150"/>
+
+  <!-- M1: Done — Current evaluator -->
+  <g transform="translate(120,150)">
+    <circle class="milestone done" r="20"/>
+    <text class="ms-tag" y="5" fill="#07070f">NOW</text>
+    <text class="ms-title" y="-35">@evaluator</text>
+    <text class="ms-desc" y="-50">單一 epic 驗收</text>
+    <text class="ms-desc" y="42">E147 ✓</text>
+  </g>
+
+  <!-- M2: Done — Current metrics -->
+  <g transform="translate(280,150)">
+    <circle class="milestone done" r="20"/>
+    <text class="ms-tag" y="5" fill="#07070f">NOW</text>
+    <text class="ms-title" y="-35">/athena:metrics</text>
+    <text class="ms-desc" y="-50">agent 可靠度量測</text>
+    <text class="ms-desc" y="42">E146 ✓</text>
+  </g>
+
+  <!-- M3: Next — Cross-project evaluator -->
+  <g transform="translate(460,150)">
+    <circle class="milestone next" r="22"/>
+    <text class="ms-tag" y="5" fill="#f0a500">NEXT</text>
+    <text class="ms-title" y="-35">跨專案驗收</text>
+    <text class="ms-desc" y="-50">promote 前迴歸測試</text>
+    <text class="ms-desc" y="42" fill="#f0a500">@evaluator v2</text>
+  </g>
+
+  <!-- M4: Future — Stack-agnostic -->
+  <g transform="translate(620,150)">
+    <circle class="milestone future" r="20"/>
+    <text class="ms-tag" y="5" fill="#3a3a52">FUTURE</text>
+    <text class="ms-title" y="-35" fill="#6b6b88">Stack-agnostic</text>
+    <text class="ms-desc" y="-50">harness adapter layer</text>
+    <text class="ms-desc" y="42">Django/Vue/Go</text>
+  </g>
+
+  <!-- M5: Future — Auto-promote -->
+  <g transform="translate(780,150)">
+    <circle class="milestone future" r="20"/>
+    <text class="ms-tag" y="5" fill="#3a3a52">FUTURE</text>
+    <text class="ms-title" y="-35" fill="#6b6b88">Auto-promote</text>
+    <text class="ms-desc" y="-50">自動 Tier 0 提升</text>
+    <text class="ms-desc" y="42">threshold-based</text>
+  </g>
+</svg>

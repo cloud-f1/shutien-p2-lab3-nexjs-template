@@ -1,0 +1,40 @@
+{
+  "project": {
+    "name": "ai-coding-template",
+    "display_name": "AI-Coding-Template",
+    "github_repo": "cloud-f1/ai-coding-template"
+  },
+  "gcr": {
+    "registry": "asia-east1-docker.pkg.dev/common-411213",
+    "server_image": "ai-coding-template-server",
+    "client_image": "ai-coding-template-client"
+  },
+  "zeabur": {
+    "template_id": "N8Y5Q5",
+    "template_url": "https://zeabur.com/templates/N8Y5Q5"
+  },
+  "environments": {
+    "dev": {
+      "repo": "dev-app",
+      "tag": "dev",
+      "client_domain": "dev-coding-template.zeabur.app",
+      "api_domain": "dev-coding-template-api.zeabur.app",
+      "vite_api_url": "https://dev-coding-template-api.zeabur.app"
+    },
+    "prd": {
+      "repo": "prd-app",
+      "tag": "prd",
+      "client_domain": "coding-template.zeabur.app",
+      "api_domain": "coding-template-api.zeabur.app",
+      "vite_api_url": "https://coding-template-api.zeabur.app"
+    }
+  },
+  "ports": {
+    "server": 8080,
+    "client": 3000
+  },
+  "db": {
+    "name": "coding_template",
+    "user": "saas_user"
+  }
+}

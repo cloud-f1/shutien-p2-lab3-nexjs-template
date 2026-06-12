@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 500" fill="none">
+  <style>
+    .agent-box { stroke-width: 2; rx: 10; }
+    .write  { fill: #1a0e0e; stroke: #ff4f4f; }
+    .review { fill: #0e0e1a; stroke: #3b82f6; }
+    .ops    { fill: #0e1a0e; stroke: #00d48a; }
+    .agent-name { font-family: monospace; font-size: 13px; font-weight: 700; text-anchor: middle; }
+    .agent-role { font-family: system-ui, sans-serif; font-size: 10px; text-anchor: middle; fill: #6b6b88; }
+    .flow-arrow { stroke: #f0a500; stroke-width: 2.5; fill: none; marker-end: url(#arrowhead); }
+    .flow-label { fill: #f0a500; font-family: monospace; font-size: 11px; text-anchor: middle; font-weight: 600; }
+    .phase-bg { fill: rgba(240,165,0,0.06); stroke: rgba(240,165,0,0.15); stroke-width: 1; rx: 12; }
+    .phase-label { fill: #f0a500; font-family: system-ui, sans-serif; font-size: 14px; font-weight: 800; text-anchor: middle; }
+    .time-label { fill: #3a3a52; font-family: monospace; font-size: 10px; text-anchor: middle; }
+  </style>
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon fill="#f0a500" points="0 0, 10 3.5, 0 7"/>
+    </marker>
+  </defs>
+
+  <!-- Phase backgrounds -->
+  <rect class="phase-bg" x="20" y="60" width="200" height="380"/>
+  <text class="phase-label" x="120" y="45">設計</text>
+
+  <rect class="phase-bg" x="260" y="60" width="200" height="380"/>
+  <text class="phase-label" x="360" y="45">實作</text>
+
+  <rect class="phase-bg" x="500" y="60" width="200" height="380"/>
+  <text class="phase-label" x="600" y="45">審查</text>
+
+  <rect class="phase-bg" x="740" y="60" width="200" height="380"/>
+  <text class="phase-label" x="840" y="45">修復</text>
+
+  <rect class="phase-bg" x="960" y="60" width="120" height="380"/>
+  <text class="phase-label" x="1020" y="45">部署</text>
+
+  <!-- Agent boxes — Design phase -->
+  <g transform="translate(120,140)">
+    <rect class="agent-box write" x="-65" y="-28" width="130" height="56"/>
+    <text class="agent-name" fill="#ff4f4f" y="-4">@spec-writer</text>
+    <text class="agent-role" y="14">draft spec + TDD list</text>
+  </g>
+  <g transform="translate(120,260)">
+    <rect class="agent-box write" x="-65" y="-28" width="130" height="56"/>
+    <text class="agent-name" fill="#a78bfa" y="-4">@strategist</text>
+    <text class="agent-role" y="14">plan epics + deps</text>
+  </g>
+
+  <!-- Implement phase -->
+  <g transform="translate(360,200)">
+    <rect class="agent-box write" x="-65" y="-28" width="130" height="56"/>
+    <text class="agent-name" fill="#ff4f4f" y="-4">@implement</text>
+    <text class="agent-role" y="14">TDD red→green</text>
+  </g>
+
+  <!-- Review phase -->
+  <g transform="translate(600,140)">
+    <rect class="agent-box review" x="-65" y="-28" width="130" height="56"/>
+    <text class="agent-name" fill="#3b82f6" y="-4">@reviewer</text>
+    <text class="agent-role" y="14">code review + security</text>
+  </g>
+  <g transform="translate(600,260)">
+    <rect class="agent-box review" x="-65" y="-28" width="130" height="56"/>
+    <text class="agent-name" fill="#00d48a" y="-4">@qa</text>
+    <text class="agent-role" y="14">tests + coverage gate</text>
+  </g>
+  <g transform="translate(600,370)">
+    <rect class="agent-box review" x="-65" y="-28" width="130" height="56"/>
+    <text class="agent-name" fill="#3b82f6" y="-4">@evaluator</text>
+    <text class="agent-role" y="14">acceptance check</text>
+  </g>
+
+  <!-- Fix phase -->
+  <g transform="translate(840,200)">
+    <rect class="agent-box write" x="-65" y="-28" width="130" height="56"/>
+    <text class="agent-name" fill="#ff4f4f" y="-4">@debugger</text>
+    <text class="agent-role" y="14">address comments</text>
+  </g>
+
+  <!-- Deploy phase -->
+  <g transform="translate(1020,200)">
+    <rect class="agent-box ops" x="-50" y="-28" width="100" height="56"/>
+    <text class="agent-name" fill="#00d48a" y="-4">@deployer</text>
+    <text class="agent-role" y="14">7-gate</text>
+  </g>
+
+  <!-- Flow arrows -->
+  <path class="flow-arrow" d="M 185 140 C 230 140, 250 200, 295 200"/>
+  <path class="flow-arrow" d="M 185 260 C 230 260, 250 200, 295 200"/>
+  <path class="flow-arrow" d="M 425 200 C 470 200, 490 140, 535 140"/>
+  <path class="flow-arrow" d="M 425 200 C 470 200, 490 260, 535 260"/>
+  <path class="flow-arrow" d="M 425 200 C 470 200, 490 370, 535 370"/>
+
+  <!-- Review → Fix feedback loop -->
+  <path class="flow-arrow" d="M 665 140 C 710 140, 730 200, 775 200"/>
+  <path class="flow-arrow" d="M 665 260 C 710 260, 730 200, 775 200"/>
+
+  <!-- Fix → Deploy -->
+  <path class="flow-arrow" d="M 905 200 L 960 200"/>
+
+  <!-- Feedback loop (fix → re-review) -->
+  <path d="M 840 232 C 840 320, 720 320, 600 292" stroke="#f0a500" stroke-width="1.5" fill="none" stroke-dasharray="5 3" marker-end="url(#arrowhead)" opacity="0.5"/>
+  <text class="flow-label" x="720" y="340" opacity="0.6">re-review loop</text>
+
+  <!-- Bottom: memory-curator + orchestrator (always-on) -->
+  <g transform="translate(360,420)">
+    <rect class="agent-box ops" x="-80" y="-22" width="160" height="44" style="stroke-dasharray: 4 3;"/>
+    <text class="agent-name" fill="#00d48a" y="4">@orchestrator</text>
+  </g>
+  <g transform="translate(600,420)">
+    <rect class="agent-box review" x="-80" y="-22" width="160" height="44" style="stroke-dasharray: 4 3;"/>
+    <text class="agent-name" fill="#3b82f6" y="4">@memory-curator</text>
+  </g>
+  <text class="time-label" x="480" y="468">⤷ always watching ‧ 整個 pipeline 期間都在線</text>
+</svg>

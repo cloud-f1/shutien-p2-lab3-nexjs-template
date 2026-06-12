@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 550" fill="none">
+  <style>
+    .node { fill: #0e0e1a; stroke: #f0a500; stroke-width: 2; }
+    .center { fill: #f0a500; }
+    .label { fill: #f0f0f8; font-family: system-ui, sans-serif; font-size: 17px; font-weight: 600; text-anchor: middle; }
+    .sublabel { fill: #6b6b88; font-family: monospace; font-size: 11px; text-anchor: middle; }
+    .center-label { fill: #07070f; font-family: system-ui, sans-serif; font-size: 18px; font-weight: 800; text-anchor: middle; }
+    .center-sub { fill: #07070f; font-family: monospace; font-size: 11px; text-anchor: middle; opacity: 0.7; }
+    .line { stroke: #f0a500; stroke-width: 2; stroke-dasharray: 6 4; opacity: 0.5; }
+    .glow { filter: drop-shadow(0 0 12px rgba(240,165,0,0.3)); }
+  </style>
+  <!-- Radial lines -->
+  <line class="line" x1="450" y1="275" x2="150" y2="110"/>
+  <line class="line" x1="450" y1="275" x2="750" y2="110"/>
+  <line class="line" x1="450" y1="275" x2="150" y2="440"/>
+  <line class="line" x1="450" y1="275" x2="750" y2="440"/>
+  <line class="line" x1="450" y1="275" x2="450" y2="60"/>
+  <!-- Center -->
+  <g class="glow" transform="translate(450,275)">
+    <circle class="center" r="80"/>
+    <text class="center-label" y="-8">openapi.yaml</text>
+    <text class="center-sub" y="16">single source of truth</text>
+  </g>
+  <!-- server/ -->
+  <g transform="translate(150,110)">
+    <rect class="node" x="-80" y="-35" width="160" height="70" rx="10"/>
+    <text class="label" y="-4">server/</text>
+    <text class="sublabel" y="16">FastAPI + PostgreSQL</text>
+  </g>
+  <!-- client/ -->
+  <g transform="translate(750,110)">
+    <rect class="node" x="-80" y="-35" width="160" height="70" rx="10"/>
+    <text class="label" y="-4">client/</text>
+    <text class="sublabel" y="16">React + TypeScript</text>
+  </g>
+  <!-- agents/ -->
+  <g transform="translate(150,440)">
+    <rect class="node" x="-80" y="-35" width="160" height="70" rx="10"/>
+    <text class="label" y="-4">agents/</text>
+    <text class="sublabel" y="16">9 AI agents</text>
+  </g>
+  <!-- hooks/ -->
+  <g transform="translate(750,440)">
+    <rect class="node" x="-80" y="-35" width="160" height="70" rx="10"/>
+    <text class="label" y="-4">hooks/</text>
+    <text class="sublabel" y="16">17 stop-verifier rules</text>
+  </g>
+  <!-- skills/ -->
+  <g transform="translate(450,60)">
+    <rect class="node" x="-80" y="-35" width="160" height="70" rx="10"/>
+    <text class="label" y="-4">skills/</text>
+    <text class="sublabel" y="16">context injectors</text>
+  </g>
+</svg>

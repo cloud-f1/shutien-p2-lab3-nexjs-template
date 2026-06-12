@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 450" fill="none">
+  <style>
+    .box { rx: 10; stroke-width: 2; }
+    .spec   { fill: #1a1a0e; stroke: #f0a500; }
+    .test   { fill: #0e1a0e; stroke: #00d48a; }
+    .code   { fill: #0e0e1a; stroke: #3b82f6; }
+    .title  { font-family: system-ui, sans-serif; font-size: 18px; font-weight: 800; text-anchor: middle; }
+    .sub    { font-family: system-ui, sans-serif; font-size: 12px; fill: #6b6b88; text-anchor: middle; }
+    .detail { font-family: monospace; font-size: 11px; fill: #f0f0f8; text-anchor: middle; }
+    .step-num { font-family: system-ui, sans-serif; font-size: 12px; font-weight: 800; text-anchor: middle; }
+    .arrow { stroke: #f0a500; stroke-width: 2.5; fill: none; marker-end: url(#ah); }
+    .loop-arrow { stroke: #00d48a; stroke-width: 2; stroke-dasharray: 6 4; fill: none; marker-end: url(#ahg); }
+    .phase-label { font-family: system-ui, sans-serif; font-size: 13px; fill: #6b6b88; font-weight: 600; text-anchor: middle; }
+  </style>
+  <defs>
+    <marker id="ah" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon fill="#f0a500" points="0 0, 10 3.5, 0 7"/>
+    </marker>
+    <marker id="ahg" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon fill="#00d48a" points="0 0, 10 3.5, 0 7"/>
+    </marker>
+  </defs>
+
+  <!-- SDD phase (top) -->
+  <text class="phase-label" x="450" y="35">SDD — 先寫 Spec（契約）</text>
+  <g transform="translate(450,100)">
+    <rect class="box spec" x="-140" y="-45" width="280" height="90"/>
+    <text class="title" y="-15" fill="#f0a500">openapi.yaml</text>
+    <text class="detail" y="8">GET /users/{id} → UserResponse</text>
+    <text class="sub" y="28">唯一真理來源 ‧ server + client 共用</text>
+  </g>
+
+  <!-- Arrow down to TDD -->
+  <line class="arrow" x1="450" y1="145" x2="450" y2="200"/>
+
+  <!-- TDD phase — 3 boxes in cycle -->
+  <text class="phase-label" x="450" y="225">TDD — 再寫測試 → 再寫 code → 重構</text>
+
+  <!-- RED -->
+  <g transform="translate(180,310)">
+    <rect class="box test" x="-80" y="-45" width="160" height="90" style="stroke:#ff4f4f; fill:#1a0e0e;"/>
+    <circle cx="0" cy="-65" r="15" fill="#ff4f4f"/>
+    <text class="step-num" y="-60" fill="#07070f">1</text>
+    <text class="title" y="-10" fill="#ff4f4f">RED</text>
+    <text class="detail" y="12">寫 failing test</text>
+    <text class="sub" y="30">「我要它做 X」</text>
+  </g>
+
+  <!-- GREEN -->
+  <g transform="translate(450,310)">
+    <rect class="box test" x="-80" y="-45" width="160" height="90"/>
+    <circle cx="0" cy="-65" r="15" fill="#00d48a"/>
+    <text class="step-num" y="-60" fill="#07070f">2</text>
+    <text class="title" y="-10" fill="#00d48a">GREEN</text>
+    <text class="detail" y="12">寫最少 code</text>
+    <text class="sub" y="30">「讓它通過測試」</text>
+  </g>
+
+  <!-- REFACTOR -->
+  <g transform="translate(720,310)">
+    <rect class="box code" x="-80" y="-45" width="160" height="90"/>
+    <circle cx="0" cy="-65" r="15" fill="#3b82f6"/>
+    <text class="step-num" y="-60" fill="#07070f">3</text>
+    <text class="title" y="-10" fill="#3b82f6">REFACTOR</text>
+    <text class="detail" y="12">改乾淨</text>
+    <text class="sub" y="30">「保持綠燈」</text>
+  </g>
+
+  <!-- Cycle arrows -->
+  <line class="arrow" x1="260" y1="310" x2="365" y2="310"/>
+  <line class="arrow" x1="530" y1="310" x2="635" y2="310"/>
+  <path class="loop-arrow" d="M 720 355 C 720 420, 180 420, 180 355"/>
+  <text font-family="monospace" font-size="11" fill="#00d48a" x="450" y="420" text-anchor="middle">repeat for next behavior</text>
+
+  <!-- Right-side caption -->
+  <text font-family="system-ui, sans-serif" font-size="11" fill="#6b6b88" x="450" y="180" text-anchor="middle">
+    Spec 先畫出「要做什麼」— Test 再證明「有做到」— Code 只是實作細節
+  </text>
+</svg>

@@ -1,0 +1,152 @@
+# Domain Generator — Template Configuration
+# This file defines the template variables and field type mappings
+# used by /athena:domain to scaffold a complete domain.
+
+# ── Template Variables ──
+# These placeholders are replaced in all .tmpl files:
+#
+#   {{NAME}}           — raw input (e.g. blog_post)
+#   {{SNAKE}}          — snake_case singular (e.g. blog_post)
+#   {{SNAKE_PLURAL}}   — snake_case plural (e.g. blog_posts)
+#   {{PASCAL}}         — PascalCase singular (e.g. BlogPost)
+#   {{PASCAL_PLURAL}}  — PascalCase plural (e.g. BlogPosts)
+#   {{CAMEL}}          — camelCase singular (e.g. blogPost)
+#   {{CAMEL_PLURAL}}   — camelCase plural (e.g. blogPosts)
+#   {{KEBAB_PLURAL}}   — kebab-case plural (e.g. blog-posts)
+#   {{UPPER_SNAKE}}    — UPPER_SNAKE_CASE (e.g. BLOG_POST)
+
+# ── Pluralization Rules ──
+# Simple English pluralization (no irregular forms):
+#   - ends with s, x, z, sh, ch → append "es"
+#   - ends with y (consonant before) → drop y, append "ies"
+#   - otherwise → append "s"
+
+# ── Field Type Mapping ──
+field_types:
+  string:
+    python: "str"
+    sqlalchemy: "String(200)"
+    zod: "z.string()"
+    openapi_type: "string"
+    openapi_format: null
+    nullable: false
+
+  text:
+    python: "str | None"
+    sqlalchemy: "Text"
+    zod: "z.string()"
+    openapi_type: "string"
+    openapi_format: null
+    nullable: true
+
+  int:
+    python: "int"
+    sqlalchemy: "Integer"
+    zod: "z.number().int()"
+    openapi_type: "integer"
+    openapi_format: null
+    nullable: false
+
+  float:
+    python: "float"
+    sqlalchemy: "Float"
+    zod: "z.number()"
+    openapi_type: "number"
+    openapi_format: null
+    nullable: false
+
+  bool:
+    python: "bool"
+    sqlalchemy: "Boolean"
+    zod: "z.boolean()"
+    openapi_type: "boolean"
+    openapi_format: null
+    nullable: false
+
+  date:
+    python: "datetime"
+    sqlalchemy: "DateTime"
+    zod: "z.string()"
+    openapi_type: "string"
+    openapi_format: "date-time"
+    nullable: false
+
+  decimal:
+    python: "Decimal"
+    sqlalchemy: "Numeric(12,2)"
+    zod: "z.number()"
+    openapi_type: "number"
+    openapi_format: null
+    nullable: false
+
+# ── Default Fields ──
+# Used when --fields is omitted
+default_fields:
+  - name: name
+    type: string
+    required: true
+    max_length: 200
+  - name: description
+    type: text
+    required: false
+    max_length: 2000
+
+# ── Auto-included Fields (not in --fields) ──
+# These are always added by the templates:
+#   - id: GUID primary key (UUIDMixin)
+#   - user_id: FK to User (GUID, CASCADE delete)
+#   - created_at: datetime (TimestampMixin)
+#   - updated_at: datetime (TimestampMixin)
+
+# ── Output File Map ──
+output_files:
+  # OpenAPI (generated FIRST — SDD)
+  - template: openapi/schemas.yaml.tmpl
+    output: "docs/openapi/schemas/{{SNAKE}}.yaml"
+  - template: openapi/paths.yaml.tmpl
+    output: "docs/openapi/paths/{{SNAKE_PLURAL}}.yaml"
+
+  # Server domain package
+  - template: server/__init__.py.tmpl
+    output: "server/app/domains/{{SNAKE_PLURAL}}/__init__.py"
+  - template: server/models.py.tmpl
+    output: "server/app/domains/{{SNAKE_PLURAL}}/models.py"
+  - template: server/schemas.py.tmpl
+    output: "server/app/domains/{{SNAKE_PLURAL}}/schemas.py"
+  - template: server/endpoints.py.tmpl
+    output: "server/app/domains/{{SNAKE_PLURAL}}/endpoints.py"
+
+  # Backward-compat shims
+  - template: server/model_shim.py.tmpl
+    output: "server/app/models/{{SNAKE}}.py"
+  - template: server/schema_shim.py.tmpl
+    output: "server/app/schemas/{{SNAKE}}.py"
+
+  # Server tests
+  - template: server/test_integration.py.tmpl
+    output: "server/tests/integration/test_{{SNAKE_PLURAL}}.py"
+
+  # Client schemas + service + hooks
+  - template: client/schema.ts.tmpl
+    output: "client/src/schemas/{{SNAKE}}.ts"
+  - template: client/service.ts.tmpl
+    output: "client/src/api/services/{{SNAKE_PLURAL}}.ts"
+  - template: client/hooks.ts.tmpl
+    output: "client/src/hooks/use{{PASCAL_PLURAL}}.ts"
+
+  # Client page
+  - template: client/page.tsx.tmpl
+    output: "client/src/pages/{{KEBAB_PLURAL}}/{{PASCAL_PLURAL}}Page.tsx"
+  - template: client/page.test.tsx.tmpl
+    output: "client/src/pages/{{KEBAB_PLURAL}}/{{PASCAL_PLURAL}}Page.test.tsx"
+  - template: client/page.css.tmpl
+    output: "client/src/pages/{{KEBAB_PLURAL}}/{{PASCAL_PLURAL}}.css"
+
+  # Client MSW handlers
+  - template: client/handlers.ts.tmpl
+    output: "client/src/tests/handlers/{{SNAKE_PLURAL}}.ts"
+
+  # Domain agent (optional, --agent flag)
+  - template: agent.md.tmpl
+    output: ".claude/agents/{{SNAKE}}.md"
+    optional: true

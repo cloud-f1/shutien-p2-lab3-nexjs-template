@@ -1,0 +1,201 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 640" fill="none" role="img" aria-labelledby="stop-verifier-title stop-verifier-desc">
+  <title id="stop-verifier-title">Stop Verifier Gate — 20 rules split into blocking and advisory</title>
+  <desc id="stop-verifier-desc">A gate diagram showing 20 stop-verifier rules. The left column lists 11 blocking rules (exit 2) drawn with a red border; the right column lists 9 advisory rules (warning only) drawn with a muted border. A callout on Rule #18 (QA Gate Enforcement) shows the link from the verifier into epic-progress.md — when impl is done but qa is still pending the agent cannot Stop.</desc>
+
+  <!-- Header -->
+  <text x="490" y="36" text-anchor="middle" style="fill: var(--text-primary); font-family: var(--font-display, system-ui, sans-serif); font-size: 22px; font-weight: 800;">Stop Verifier — 20 條防線</text>
+  <text x="490" y="58" text-anchor="middle" style="fill: var(--text-secondary); font-family: monospace; font-size: 12px;">scripts/hooks/stop-verifier.sh ‧ exit 2 = block, warning = advisory</text>
+
+  <!-- ===== Column headers ===== -->
+  <g transform="translate(40,90)">
+    <rect x="0" y="0" width="440" height="34" rx="6" style="fill: var(--surface-2); stroke: var(--danger); stroke-width: 2;"/>
+    <text x="220" y="22" text-anchor="middle" style="fill: var(--danger); font-family: monospace; font-size: 13px; font-weight: 800;">Blocking — refuse Stop ‧ 11 rules</text>
+  </g>
+  <g transform="translate(500,90)">
+    <rect x="0" y="0" width="440" height="34" rx="6" style="fill: var(--surface-2); stroke: var(--text-muted); stroke-width: 2; stroke-dasharray: 4 3;"/>
+    <text x="220" y="22" text-anchor="middle" style="fill: var(--text-secondary); font-family: monospace; font-size: 13px; font-weight: 800;">Advisory — warn only ‧ 9 rules</text>
+  </g>
+
+  <!-- ===== Helper styles via groups (rule cards) ===== -->
+  <!-- BLOCKING column: rules 1, 2, 3, 4, 5, 6, 7, 13, 18, 19, 20 -->
+  <g style="font-family: monospace; font-size: 11px;">
+    <!-- row 1 -->
+    <g transform="translate(40,140)">
+      <rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--danger); stroke-width: 1.5;"/>
+      <text x="10" y="18" style="fill: var(--danger); font-weight: 700;">#1</text>
+      <text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">localStorage</text>
+      <text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">client/ ban</text>
+    </g>
+    <g transform="translate(190,140)">
+      <rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--danger); stroke-width: 1.5;"/>
+      <text x="10" y="18" style="fill: var(--danger); font-weight: 700;">#2</text>
+      <text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">fireEvent</text>
+      <text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">use userEvent</text>
+    </g>
+    <g transform="translate(340,140)">
+      <rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--danger); stroke-width: 1.5;"/>
+      <text x="10" y="18" style="fill: var(--danger); font-weight: 700;">#3</text>
+      <text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">staleTime hardcode</text>
+      <text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">use CACHE_TIERS</text>
+    </g>
+
+    <!-- row 2 -->
+    <g transform="translate(40,206)">
+      <rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--danger); stroke-width: 1.5;"/>
+      <text x="10" y="18" style="fill: var(--danger); font-weight: 700;">#4</text>
+      <text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">MSW handler loc</text>
+      <text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">tests/handlers/</text>
+    </g>
+    <g transform="translate(190,206)">
+      <rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--danger); stroke-width: 1.5;"/>
+      <text x="10" y="18" style="fill: var(--danger); font-weight: 700;">#5</text>
+      <text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">folder names</text>
+      <text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">no backend/frontend</text>
+    </g>
+    <g transform="translate(340,206)">
+      <rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--danger); stroke-width: 1.5;"/>
+      <text x="10" y="18" style="fill: var(--danger); font-weight: 700;">#6</text>
+      <text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">OpenAPI drift</text>
+      <text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">regen types</text>
+    </g>
+
+    <!-- row 3 -->
+    <g transform="translate(40,272)">
+      <rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--danger); stroke-width: 1.5;"/>
+      <text x="10" y="18" style="fill: var(--danger); font-weight: 700;">#7</text>
+      <text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">console.log</text>
+      <text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">no residue</text>
+    </g>
+    <g transform="translate(190,272)">
+      <rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--danger); stroke-width: 1.5;"/>
+      <text x="10" y="18" style="fill: var(--danger); font-weight: 700;">#13</text>
+      <text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">orphan route</text>
+      <text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">ROUTE_MAP ↔ App</text>
+    </g>
+    <g transform="translate(340,272)">
+      <rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--accent); stroke-width: 2.5;"/>
+      <text x="10" y="18" style="fill: var(--accent); font-weight: 700;">#18 ★</text>
+      <text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">QA Gate Enforce</text>
+      <text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">epic-progress.md</text>
+    </g>
+
+    <!-- row 4 -->
+    <g transform="translate(40,338)">
+      <rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--danger); stroke-width: 1.5;"/>
+      <text x="10" y="18" style="fill: var(--danger); font-weight: 700;">#19</text>
+      <text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">migration SQL</text>
+      <text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">review artifact</text>
+    </g>
+    <g transform="translate(190,338)">
+      <rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--danger); stroke-width: 1.5;"/>
+      <text x="10" y="18" style="fill: var(--danger); font-weight: 700;">#20</text>
+      <text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">openapi contract</text>
+      <text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">qa_contract evt</text>
+    </g>
+  </g>
+
+  <!-- ADVISORY column: rules 8, 9, 10, 11, 12, 14, 15, 16, 17 -->
+  <g style="font-family: monospace; font-size: 11px;">
+    <g transform="translate(500,140)">
+      <rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--text-muted); stroke-width: 1.5; stroke-dasharray: 4 3;"/>
+      <text x="10" y="18" style="fill: var(--text-secondary); font-weight: 700;">#8</text>
+      <text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">large file warn</text>
+      <text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">&gt; 500 lines</text>
+    </g>
+    <g transform="translate(650,140)">
+      <rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--text-muted); stroke-width: 1.5; stroke-dasharray: 4 3;"/>
+      <text x="10" y="18" style="fill: var(--text-secondary); font-weight: 700;">#9</text>
+      <text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">internal mocks</text>
+      <text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">test behavior</text>
+    </g>
+    <g transform="translate(800,140)">
+      <rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--text-muted); stroke-width: 1.5; stroke-dasharray: 4 3;"/>
+      <text x="10" y="18" style="fill: var(--text-secondary); font-weight: 700;">#10</text>
+      <text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">parametrize nudge</text>
+      <text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">3+ tests</text>
+    </g>
+
+    <g transform="translate(500,206)">
+      <rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--text-muted); stroke-width: 1.5; stroke-dasharray: 4 3;"/>
+      <text x="10" y="18" style="fill: var(--text-secondary); font-weight: 700;">#11</text>
+      <text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">mock depth</text>
+      <text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">limit: 5</text>
+    </g>
+    <g transform="translate(650,206)">
+      <rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--text-muted); stroke-width: 1.5; stroke-dasharray: 4 3;"/>
+      <text x="10" y="18" style="fill: var(--text-secondary); font-weight: 700;">#12</text>
+      <text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">test file size</text>
+      <text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">&gt; 200 lines</text>
+    </g>
+    <g transform="translate(800,206)">
+      <rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--text-muted); stroke-width: 1.5; stroke-dasharray: 4 3;"/>
+      <text x="10" y="18" style="fill: var(--text-secondary); font-weight: 700;">#14</text>
+      <text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">CSS co-location</text>
+      <text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">unimported .css</text>
+    </g>
+
+    <g transform="translate(500,272)">
+      <rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--text-muted); stroke-width: 1.5; stroke-dasharray: 4 3;"/>
+      <text x="10" y="18" style="fill: var(--text-secondary); font-weight: 700;">#15</text>
+      <text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">MSW factory</text>
+      <text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">no inline json</text>
+    </g>
+    <g transform="translate(650,272)">
+      <rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--text-muted); stroke-width: 1.5; stroke-dasharray: 4 3;"/>
+      <text x="10" y="18" style="fill: var(--text-secondary); font-weight: 700;">#16</text>
+      <text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">schema bridge</text>
+      <text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">satisfies ZodType</text>
+    </g>
+    <g transform="translate(800,272)">
+      <rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--text-muted); stroke-width: 1.5; stroke-dasharray: 4 3;"/>
+      <text x="10" y="18" style="fill: var(--text-secondary); font-weight: 700;">#17</text>
+      <text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">CSS var drift</text>
+      <text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">undefined var()</text>
+    </g>
+  </g>
+
+  <!-- ===== Rule #18 callout — connection to epic-progress.md ===== -->
+  <!-- arrow from #18 box down into the callout -->
+  <path d="M 410 334 L 410 420" style="fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 5 4;"/>
+  <polygon points="406,420 414,420 410,430" style="fill: var(--accent);"/>
+
+  <g transform="translate(60,440)">
+    <rect width="860" height="170" rx="12" style="fill: var(--surface); stroke: var(--accent); stroke-width: 2;"/>
+    <text x="20" y="28" style="fill: var(--accent); font-family: monospace; font-size: 13px; font-weight: 800;">Rule #18 — QA Gate Enforcement (E155)</text>
+    <text x="20" y="50" style="fill: var(--text-secondary); font-family: monospace; font-size: 11px;">on feat/E{n}-* branches, refuse Stop when epic-progress.md shows impl=✅ but qa=⬜/❌</text>
+
+    <!-- mini step matrix illustrating the trigger -->
+    <g transform="translate(20,70)" style="font-family: monospace; font-size: 11px;">
+      <rect x="0" y="0" width="500" height="80" rx="8" style="fill: var(--surface-2); stroke: var(--border); stroke-width: 1;"/>
+      <text x="14" y="20" style="fill: var(--text-secondary);">epic-progress.md</text>
+
+      <text x="120" y="44" text-anchor="middle" style="fill: var(--text-secondary); font-size: 10px;">spec</text>
+      <text x="200" y="44" text-anchor="middle" style="fill: var(--text-secondary); font-size: 10px;">impl</text>
+      <text x="280" y="44" text-anchor="middle" style="fill: var(--text-secondary); font-size: 10px;">qa</text>
+      <text x="360" y="44" text-anchor="middle" style="fill: var(--text-secondary); font-size: 10px;">commit</text>
+      <text x="440" y="44" text-anchor="middle" style="fill: var(--text-secondary); font-size: 10px;">merge</text>
+
+      <text x="14" y="68" style="fill: var(--text-muted); font-size: 10px;">E166</text>
+      <g style="font-family: system-ui, sans-serif; font-size: 16px; text-anchor: middle;">
+        <text x="120" y="70" style="fill: var(--success);">✅</text>
+        <text x="200" y="70" style="fill: var(--success);">✅</text>
+        <text x="280" y="70" style="fill: var(--text-muted);">⬜</text>
+        <text x="360" y="70" style="fill: var(--text-muted);">⬜</text>
+        <text x="440" y="70" style="fill: var(--text-muted);">⬜</text>
+      </g>
+    </g>
+
+    <!-- arrow → block -->
+    <g transform="translate(540,90)">
+      <path d="M 0 18 L 60 18" style="fill: none; stroke: var(--danger); stroke-width: 2;"/>
+      <polygon points="60,14 60,22 70,18" style="fill: var(--danger);"/>
+    </g>
+
+    <g transform="translate(620,70)">
+      <rect width="220" height="80" rx="10" style="fill: var(--surface-2); stroke: var(--danger); stroke-width: 2;"/>
+      <text x="110" y="32" text-anchor="middle" style="fill: var(--danger); font-family: monospace; font-size: 14px; font-weight: 800;">exit 2</text>
+      <text x="110" y="52" text-anchor="middle" style="fill: var(--text-primary); font-family: monospace; font-size: 11px;">refuse Stop</text>
+      <text x="110" y="68" text-anchor="middle" style="fill: var(--text-muted); font-family: monospace; font-size: 10px;">run /athena:qa first</text>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,71 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+*.db
+
+# Node
+node_modules/
+.pnpm-store/
+dist/
+.env
+.env.*
+.env.zeabur
+!.env*.example
+!.env.local
+!.env.production
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test / Coverage
+.coverage
+coverage/
+htmlcov/
+.pytest_cache/
+.ruff_cache/
+.hypothesis/
+
+# Claude Code runtime artifacts
+.claude/audit.log
+.claude/audit.jsonl
+.claude/debug-backups/
+.claude/scheduled_tasks.lock
+.claude/.health-state
+
+# Playwright
+.playwright-mcp/
+client/playwright-report/
+client/test-results/
+
+# Screenshots
+*.png
+!client/public/*.png
+!docs/assets/*.png
+
+# Init sentinel
+.initialized
+
+# ai
+CLAUDE.local.md
+TASK.md
+.task-context.md
+docs/context/session-summary.md
+
+# Database backups
+backups/
+
+# Deploy config
+.deploy-cloudrun.env
+.deploy-platform
+
+# strip-to-core
+.stripped-manifest.json

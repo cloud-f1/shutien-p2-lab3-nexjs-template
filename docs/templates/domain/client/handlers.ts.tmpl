@@ -1,0 +1,55 @@
+import { http, HttpResponse } from "msw";
+import { createCrudHandlers } from "../helpers/createHandlers";
+
+const BASE = "http://localhost:8000";
+
+const {{UPPER_SNAKE}}_FIXTURES = [
+  {
+    id: "11111111-1111-1111-1111-111111111111",
+    {{#FIELDS}}
+    {{field_name}}: {{field_fixture_value_1}},
+    {{/FIELDS}}
+    user_id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
+  },
+  {
+    id: "22222222-2222-2222-2222-222222222222",
+    {{#FIELDS}}
+    {{field_name}}: {{field_fixture_value_2}},
+    {{/FIELDS}}
+    user_id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+    created_at: "2026-01-02T00:00:00Z",
+    updated_at: "2026-01-02T00:00:00Z",
+  },
+];
+
+// Use generic CRUD handlers but override POST to return complete object
+const baseHandlers = createCrudHandlers("/{{KEBAB_PLURAL}}", {{UPPER_SNAKE}}_FIXTURES);
+
+// Replace POST handler with one that returns all required fields
+const createHandler = http.post(`${BASE}/{{KEBAB_PLURAL}}`, async ({ request }) => {
+  const body = (await request.json()) as Record<string, unknown>;
+  return HttpResponse.json(
+    {
+      id: crypto.randomUUID(),
+      {{#FIELDS_NULLABLE}}
+      {{field_name}}: null,
+      {{/FIELDS_NULLABLE}}
+      user_id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      ...body,
+    },
+    { status: 201 },
+  );
+});
+
+export const {{CAMEL}}Handlers = [
+  createHandler,
+  ...baseHandlers.filter((h) => {
+    const info = h.info as { method?: string; path?: string };
+    return !(info.method === "POST" && info.path === `${BASE}/{{KEBAB_PLURAL}}`);
+  }),
+];
+export { {{UPPER_SNAKE}}_FIXTURES };

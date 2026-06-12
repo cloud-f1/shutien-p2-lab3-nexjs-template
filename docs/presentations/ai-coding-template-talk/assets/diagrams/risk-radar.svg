@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 350" fill="none">
+  <style>
+    .risk-box { rx: 10; stroke-width: 2; }
+    .high   { fill: #1a0e0e; stroke: #ff4f4f; }
+    .medium { fill: #1a1a0e; stroke: #f0a500; }
+    .low    { fill: #0e1a0e; stroke: #00d48a; }
+    .risk-title { font-family: system-ui, sans-serif; font-size: 14px; font-weight: 800; text-anchor: middle; }
+    .risk-desc  { font-family: system-ui, sans-serif; font-size: 11px; fill: #f0f0f8; text-anchor: middle; }
+    .risk-sub   { font-family: system-ui, sans-serif; font-size: 10px; fill: #6b6b88; text-anchor: middle; }
+    .severity { font-family: monospace; font-size: 10px; font-weight: 700; text-anchor: middle; }
+    .bar { rx: 3; }
+  </style>
+
+  <!-- Risk 1: Epic 切太小 -->
+  <g transform="translate(130,60)">
+    <rect class="risk-box high" x="-110" y="-40" width="220" height="130"/>
+    <text class="risk-title" y="-18" fill="#ff4f4f">Epic 切太小</text>
+    <text class="risk-desc" y="5">157 epics ‧ 平均 diff ~數百行</text>
+    <text class="risk-desc" y="22">decision overhead > 實作成本</text>
+    <!-- severity bar -->
+    <rect class="bar" x="-60" y="40" width="120" height="8" fill="#1e1e30"/>
+    <rect class="bar" x="-60" y="40" width="96" height="8" fill="#ff4f4f"/>
+    <text class="severity" y="62" fill="#ff4f4f">HIGH</text>
+  </g>
+
+  <!-- Risk 2: Orchestrator 單點 -->
+  <g transform="translate(400,60)">
+    <rect class="risk-box high" x="-110" y="-40" width="220" height="130"/>
+    <text class="risk-title" y="-18" fill="#ff4f4f">@orchestrator 單點</text>
+    <text class="risk-desc" y="5">所有 batch 都經過它</text>
+    <text class="risk-desc" y="22">context 很快爆 → 瓶頸</text>
+    <rect class="bar" x="-60" y="40" width="120" height="8" fill="#1e1e30"/>
+    <rect class="bar" x="-60" y="40" width="84" height="8" fill="#ff4f4f"/>
+    <text class="severity" y="62" fill="#ff4f4f">HIGH</text>
+  </g>
+
+  <!-- Risk 3: Stack 綁定 -->
+  <g transform="translate(670,60)">
+    <rect class="risk-box medium" x="-110" y="-40" width="220" height="130"/>
+    <text class="risk-title" y="-18" fill="#f0a500">Stack 綁太緊</text>
+    <text class="risk-desc" y="5">hooks/ 半數規則是</text>
+    <text class="risk-desc" y="22">FastAPI/React 特定</text>
+    <rect class="bar" x="-60" y="40" width="120" height="8" fill="#1e1e30"/>
+    <rect class="bar" x="-60" y="40" width="72" height="8" fill="#f0a500"/>
+    <text class="severity" y="62" fill="#f0a500">MEDIUM</text>
+  </g>
+
+  <!-- Summary bar -->
+  <text font-family="system-ui, sans-serif" font-size="12px" fill="#6b6b88" x="400" y="200" text-anchor="middle">
+    結構性風險 — 不影響現有功能，但 scale 到更大時會暴露
+  </text>
+
+  <!-- Mitigation hints -->
+  <g transform="translate(130,245)">
+    <rect class="risk-box low" x="-110" y="-25" width="220" height="60"/>
+    <text class="risk-desc" y="-5" fill="#00d48a">解法：每 epic ≤ 1 PR ≤ 400 行</text>
+    <text class="risk-sub" y="15">設 batch size lower bound</text>
+  </g>
+  <g transform="translate(400,245)">
+    <rect class="risk-box low" x="-110" y="-25" width="220" height="60"/>
+    <text class="risk-desc" y="-5" fill="#00d48a">解法：分散 orchestrator 角色</text>
+    <text class="risk-sub" y="15">per-phase coordinator</text>
+  </g>
+  <g transform="translate(670,245)">
+    <rect class="risk-box low" x="-110" y="-25" width="220" height="60"/>
+    <text class="risk-desc" y="-5" fill="#00d48a">解法：harness adapter layer</text>
+    <text class="risk-sub" y="15">核心 vs stack-specific 分離</text>
+  </g>
+</svg>

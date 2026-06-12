@@ -1,0 +1,99 @@
+{
+  "$comment": "E182 — Tag/domain/evergreen defaults for Tier 0 lessons in ~/.claude/template-memory/. Used by scripts/memory/match.sh + inject.sh to rank lessons against the active SessionStart cue (branch name + git diff path prefixes + git status). File-level YAML frontmatter (tags, domains, evergreen) on the lesson file ALWAYS wins; this sidecar only fills the gap for lessons that have not yet been re-promoted by @memory-curator with E182 frontmatter. Manually curated. Resolution order: file frontmatter > this map by basename > empty.",
+  "$schema_version": 1,
+  "defaults": {
+    "anti-patterns.md": {
+      "tags": ["anti-pattern", "epic-pipeline", "evergreen"],
+      "domains": [],
+      "evergreen": true
+    },
+    "architecture-lessons.md": {
+      "tags": ["architecture", "evergreen"],
+      "domains": ["server/", "client/"],
+      "evergreen": true
+    },
+    "architecture-patterns.md": {
+      "tags": ["architecture", "patterns"],
+      "domains": ["server/", "client/"],
+      "evergreen": false
+    },
+    "design-handoff-pattern.md": {
+      "tags": ["design", "ui", "primitives"],
+      "domains": ["client/src/components/ui/", "client/src/pages/", "docs/design/"],
+      "evergreen": false
+    },
+    "dx-patterns.md": {
+      "tags": ["dx", "tooling", "make"],
+      "domains": ["scripts/", "Makefile"],
+      "evergreen": false
+    },
+    "failure-patterns.md": {
+      "tags": ["debugging", "failure"],
+      "domains": ["server/", "client/"],
+      "evergreen": false
+    },
+    "integration-gotchas.md": {
+      "tags": ["integration", "third-party"],
+      "domains": ["server/app/", "client/src/api/"],
+      "evergreen": false
+    },
+    "mockup-contract.md": {
+      "tags": ["design", "ui", "spec"],
+      "domains": ["docs/design/", "client/src/pages/"],
+      "evergreen": false
+    },
+    "performance-insights.md": {
+      "tags": ["performance", "optimization"],
+      "domains": ["server/", "client/"],
+      "evergreen": false
+    },
+    "security-learnings.md": {
+      "tags": ["security", "auth", "evergreen"],
+      "domains": ["server/app/api/", "server/app/core/", "client/src/api/auth", "client/src/pages/auth/"],
+      "evergreen": true
+    },
+    "testing-patterns.md": {
+      "tags": ["testing", "tdd", "coverage"],
+      "domains": ["server/tests/", "client/src/tests/", "client/e2e/"],
+      "evergreen": false
+    },
+    "workflow-patterns.md": {
+      "tags": ["workflow", "epic-pipeline", "ci", "alembic"],
+      "domains": ["docs/epics/", ".claude/", "scripts/hooks/", "server/alembic/"],
+      "evergreen": false
+    }
+  },
+  "branch_tag_cues": {
+    "$comment": "Branch-name regex → tags. Matched against `git branch --show-current` to seed the cue. Used in addition to git-diff path prefixes.",
+    "feat/[Ee][0-9]+-": ["epic-pipeline"],
+    "fix/": ["debugging", "failure"],
+    "chore/": ["workflow"],
+    "docs/": ["docs"],
+    "auth": ["auth", "security"],
+    "design|ui|primitive|theme": ["design", "ui", "primitives"],
+    "test|qa|coverage": ["testing", "tdd"],
+    "alembic|migration": ["alembic", "workflow"],
+    "perf|optim": ["performance"]
+  },
+  "path_tag_cues": {
+    "$comment": "Path-prefix → tags. Matched against `git diff --name-only main`. Path prefixes are matched literally; a changed file `server/app/api/v1/endpoints/auth.py` triggers all cues whose key it begins with.",
+    "server/alembic/": ["alembic", "workflow"],
+    "server/tests/": ["testing", "tdd"],
+    "client/src/tests/": ["testing", "tdd"],
+    "client/e2e/": ["testing", "tdd"],
+    "server/app/api/": ["server", "api"],
+    "server/app/core/": ["server", "security"],
+    "server/app/domains/": ["server", "domain"],
+    "client/src/components/ui/": ["ui", "primitives", "design"],
+    "client/src/pages/auth/": ["auth", "security", "ui"],
+    "client/src/pages/": ["ui", "client"],
+    "client/src/api/": ["client", "api"],
+    "client/src/styles/": ["design", "ui"],
+    "docs/openapi.yaml": ["api", "spec", "workflow"],
+    "docs/epics/": ["epic-pipeline", "workflow"],
+    "docs/design/": ["design", "ui"],
+    ".claude/": ["workflow", "agent"],
+    "scripts/hooks/": ["workflow", "agent"],
+    "Makefile": ["dx", "make"]
+  }
+}

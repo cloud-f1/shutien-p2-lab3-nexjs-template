@@ -1,0 +1,85 @@
+## Post domain — OpenAPI schema definitions
+
+PostCreate:
+  type: object
+  required:
+    - title
+    - body
+  properties:
+    title:
+      type: string
+      maxLength: 200
+    body:
+      type: string
+      maxLength: 10000
+    published:
+      type: boolean
+      default: false
+
+PostRead:
+  type: object
+  required:
+    - id
+    - title
+    - body
+    - published
+    - user_id
+    - created_at
+    - updated_at
+  properties:
+    id:
+      type: string
+      format: uuid
+    title:
+      type: string
+    body:
+      type: string
+    published:
+      type: boolean
+    published_at:
+      type: string
+      format: date-time
+      nullable: true
+    user_id:
+      type: string
+      format: uuid
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+PostUpdate:
+  type: object
+  properties:
+    title:
+      type: string
+      maxLength: 200
+    body:
+      type: string
+      maxLength: 10000
+    published:
+      type: boolean
+
+PaginatedPostResponse:
+  type: object
+  required:
+    - items
+    - total
+    - page
+    - page_size
+    - pages
+  properties:
+    items:
+      type: array
+      items:
+        $ref: "#/components/schemas/PostRead"
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+    pages:
+      type: integer

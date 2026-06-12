@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["verdict", "findings"],
+  "properties": {
+    "verdict": { "enum": ["PASS", "FAIL", "STUCK", "ESCALATE"] },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "severity", "open", "evidence"],
+        "properties": {
+          "id":       { "type": "string" },
+          "severity": { "enum": ["critical","high","medium","low","info"] },
+          "open":     { "type": "boolean" },
+          "evidence": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

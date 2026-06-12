@@ -1,0 +1,25 @@
+{
+  "$comment": "E185 — Half-life defaults per Tier 0 file. The category IS the half-life (no separate rubric). Used by @memory-curator on promotion and by E181 score.sh decay calculation. Resolution order: file frontmatter > this map by filename > 180-day fallback.",
+  "$schema_version": 1,
+  "defaults": {
+    "architecture-lessons.md": 365,
+    "anti-patterns.md": 365,
+    "security-learnings.md": 365,
+    "failure-patterns.md": 30,
+    "integration-gotchas.md": 90,
+    "testing-patterns.md": 180,
+    "performance-insights.md": 180,
+    "NEW_PROJECT_PRIMER.md": 365
+  },
+  "fallback_days": 180,
+  "rationale": {
+    "architecture-lessons.md": "Decisions that proved durable; survive stack changes",
+    "anti-patterns.md": "Things never to do; reasons rarely expire",
+    "security-learnings.md": "Vulnerabilities + their fixes — high cost if forgotten",
+    "failure-patterns.md": "Specific bug + fix — once internalized, can fade",
+    "integration-gotchas.md": "Third-party surprises — relevant until vendor changes API",
+    "testing-patterns.md": "Test approaches — durable but tied to current stack",
+    "performance-insights.md": "Performance learnings — tied to current infrastructure",
+    "NEW_PROJECT_PRIMER.md": "The curated digest — load-bearing, always-on"
+  }
+}

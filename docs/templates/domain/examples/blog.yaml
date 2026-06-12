@@ -1,0 +1,17 @@
+name: post
+fields:
+  - name: title
+    type: string
+    required: true
+    max_length: 200
+  - name: body
+    type: text
+    required: true
+    max_length: 10000
+  - name: published
+    type: bool
+    required: false
+    default: false
+  - name: published_at
+    type: date
+    required: false

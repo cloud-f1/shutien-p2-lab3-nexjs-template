@@ -1,0 +1,22 @@
+name: contact
+fields:
+  - name: name
+    type: string
+    required: true
+    max_length: 200
+  - name: email
+    type: string
+    required: false
+    max_length: 320
+  - name: phone
+    type: string
+    required: false
+    max_length: 20
+  - name: company
+    type: string
+    required: false
+    max_length: 200
+  - name: notes
+    type: text
+    required: false
+    max_length: 2000

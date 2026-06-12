@@ -1,0 +1,218 @@
+# yaml-language-server: $schema=https://schema.zeabur.app/template.json
+apiVersion: zeabur.com/v1
+kind: Template
+metadata:
+  name: AI-Coding-Template
+spec:
+  description: |
+    Full-stack SaaS starter — FastAPI + React + PostgreSQL. Auth, OAuth, dashboard, themes.
+  icon: null
+  variables:
+    - key: PUBLIC_DOMAIN
+      type: DOMAIN
+      name: Client Domain
+      description: The domain for the web app.
+    - key: API_DOMAIN
+      type: DOMAIN
+      name: API Domain
+      description: The domain for the API server.
+  tags:
+    - Tool
+    - SaaS
+    - Template
+  readme: |-
+    # AI-Coding-Template — SaaS Starter
+
+    Full-stack SaaS starter with auth, OAuth, dashboard, and themes.
+
+    ## Services
+
+    - **Server**: FastAPI + PostgreSQL (auto-runs migrations on startup)
+    - **Client**: React SPA served via Nginx
+    - **PostgreSQL**: Database
+
+    ## Post-Deploy
+
+    1. Set `SECRET_KEY` and `REFRESH_SECRET_KEY` to random 64-char hex strings
+    2. Set `ALLOWED_ORIGINS_STR` to your client domain
+    3. Set `VITE_API_URL` on the client service to your API domain
+
+  services:
+    # ── PostgreSQL ─────────────────────────────────────────────────────
+    - name: postgresql
+      icon: https://raw.githubusercontent.com/zeabur/service-icons/main/marketplace/postgresql.svg
+      template: PREBUILT
+      spec:
+        source:
+          image: postgres:16-alpine
+        ports:
+          - id: database
+            port: 5432
+            type: TCP
+        volumes:
+          - id: data
+            dir: /var/lib/postgresql/data
+        env:
+          PGDATA:
+            default: /var/lib/postgresql/data/pgdata
+          POSTGRES_DB:
+            default: coding_template
+          POSTGRES_USER:
+            default: saas_user
+          POSTGRES_PASSWORD:
+            default: ${PASSWORD}
+            expose: true
+          POSTGRES_USERNAME:
+            default: ${POSTGRES_USER}
+            expose: true
+            readonly: true
+          POSTGRES_DATABASE:
+            default: ${POSTGRES_DB}
+            expose: true
+            readonly: true
+          POSTGRES_HOST:
+            default: ${CONTAINER_HOSTNAME}
+            expose: true
+            readonly: true
+          POSTGRES_PORT:
+            default: ${DATABASE_PORT}
+            expose: true
+            readonly: true
+          POSTGRES_CONNECTION_STRING:
+            default: postgresql://${POSTGRES_USERNAME}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DATABASE}
+            expose: true
+            readonly: true
+        configs:
+          - path: /etc/postgresql/postgresql.conf
+            template: |
+              listen_addresses = '*'
+              max_connections = 100
+              shared_buffers = 128MB
+              dynamic_shared_memory_type = posix
+              max_wal_size = 1GB
+              min_wal_size = 80MB
+              log_timezone = 'Etc/UTC'
+              datestyle = 'iso, mdy'
+              timezone = 'Etc/UTC'
+              lc_messages = 'en_US.utf8'
+              lc_monetary = 'en_US.utf8'
+              lc_numeric = 'en_US.utf8'
+              lc_time = 'en_US.utf8'
+              default_text_search_config = 'pg_catalog.english'
+        healthCheck:
+          type: TCP
+          port: database
+        instructions:
+          - type: TEXT
+            title: Connection String
+            content: postgresql://${POSTGRES_USERNAME}:${POSTGRES_PASSWORD}@${PORT_FORWARDED_HOSTNAME}:${DATABASE_PORT_FORWARDED_PORT}/${POSTGRES_DATABASE}
+          - type: TEXT
+            title: PostgreSQL username
+            content: ${POSTGRES_USERNAME}
+            category: Credentials
+          - type: PASSWORD
+            title: PostgreSQL password
+            content: ${POSTGRES_PASSWORD}
+            category: Credentials
+
+    # ── Server (FastAPI) ───────────────────────────────────────────────
+    - name: server
+      icon: https://service-icons.zeabur.com/git/python/fastapi.svg
+      dependencies:
+        - postgresql
+      template: PREBUILT
+      spec:
+        source:
+          image: asia-east1-docker.pkg.dev/common-411213/dev-app/ai-coding-template-server:dev
+          imagePullCredentials:
+            username: _json_key
+            password: ${GCR_JSON_KEY}
+        ports:
+          - id: web
+            port: 8080
+            type: HTTP
+        env:
+          PORT:
+            default: "8080"
+            expose: true
+          DATABASE_URL:
+            default: postgresql+asyncpg://${POSTGRES_USERNAME}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DATABASE}
+          SECRET_KEY:
+            default: ${PASSWORD}
+          REFRESH_SECRET_KEY:
+            default: ${PASSWORD}_refresh
+          ALGORITHM:
+            default: HS256
+          ACCESS_TOKEN_EXPIRE_MINUTES:
+            default: "15"
+          REFRESH_TOKEN_EXPIRE_DAYS:
+            default: "30"
+          ENVIRONMENT:
+            default: production
+            expose: true
+          DEBUG:
+            default: "false"
+          LOG_FORMAT:
+            default: json
+          ALLOWED_ORIGINS_STR:
+            default: https://dev-coding-template.zeabur.app
+          RATE_LIMIT_AUTH:
+            default: 5/minute
+          RATE_LIMIT_GENERAL:
+            default: 200/minute
+          EMAIL_PROVIDER:
+            default: console
+          EMAIL_FROM:
+            default: noreply@coding-template.app
+          STORAGE_BACKEND:
+            default: local
+          SENTRY_DSN:
+            default: ""
+          # OAuth — set these in Zeabur dashboard
+          GOOGLE_CLIENT_ID:
+            default: ""
+          GOOGLE_CLIENT_SECRET:
+            default: ""
+          GITHUB_CLIENT_ID:
+            default: ""
+          GITHUB_CLIENT_SECRET:
+            default: ""
+          # DB pool
+          DB_POOL_SIZE:
+            default: "20"
+          DB_MAX_OVERFLOW:
+            default: "30"
+        healthCheck:
+          type: HTTP
+          port: web
+          http:
+            path: /health
+      domainKey: API_DOMAIN
+
+    # ── Client (React + Nginx) ─────────────────────────────────────────
+    - name: client
+      icon: https://raw.githubusercontent.com/zeabur/service-icons/refs/heads/main/git/nodejs/vite.svg
+      dependencies:
+        - server
+      template: PREBUILT
+      spec:
+        source:
+          image: asia-east1-docker.pkg.dev/common-411213/dev-app/ai-coding-template-client:dev
+          imagePullCredentials:
+            username: _json_key
+            password: ${GCR_JSON_KEY}
+        ports:
+          - id: web
+            port: 3000
+            type: HTTP
+        env:
+          PORT:
+            default: "3000"
+          VITE_API_URL:
+            default: https://${API_DOMAIN}
+        healthCheck:
+          type: HTTP
+          port: web
+          http:
+            path: /
+      domainKey: PUBLIC_DOMAIN

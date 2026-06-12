@@ -1,0 +1,14 @@
+{
+  "error.auth.invalid_credentials": "電子郵件或密碼錯誤，請重新嘗試。",
+  "error.auth.user_already_exists": "此電子郵件已被註冊。",
+  "error.auth.invalid_refresh_token": "您的工作階段已過期，請重新登入。",
+  "error.auth.reset_bad_token": "此重設連結無效或已過期，請重新申請。",
+  "error.auth.verify_bad_token": "此驗證連結無效或已過期，請重新申請。",
+  "error.teams.slug_exists": "已有團隊使用此 URL 代稱。",
+  "error.teams.member_exists": "此使用者已是團隊成員。",
+  "error.billing.already_active": "此團隊已有有效的訂閱方案。",
+  "error.billing.no_customer": "找不到帳單帳號，請聯絡客服。",
+  "error.billing.invalid_signature": "無效的帳單 webhook 簽章。",
+  "error.places.already_in_portfolio": "此地點已在投資組合中。",
+  "error.generic": "發生未預期的錯誤，請重新嘗試。"
+}

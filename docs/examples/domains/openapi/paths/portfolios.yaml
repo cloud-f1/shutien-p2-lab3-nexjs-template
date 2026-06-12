@@ -1,0 +1,271 @@
+collection:
+  post:
+    tags: [portfolios]
+    summary: Create a portfolio
+    operationId: createPortfolio
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/portfolio.yaml#/PortfolioCreate'
+    responses:
+      '201':
+        description: Portfolio created
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/portfolio.yaml#/PortfolioRead'
+      '401':
+        $ref: '../schemas/common.yaml#/responses/Unauthorized'
+      '422':
+        $ref: '../schemas/common.yaml#/responses/ValidationError'
+  get:
+    tags: [portfolios]
+    summary: List current user's portfolios (paginated)
+    operationId: listPortfolios
+    parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+          minimum: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          default: 20
+          minimum: 1
+          maximum: 100
+    responses:
+      '200':
+        description: Paginated list of portfolios
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/portfolio.yaml#/PaginatedPortfolioResponse'
+      '401':
+        $ref: '../schemas/common.yaml#/responses/Unauthorized'
+
+item:
+  get:
+    tags: [portfolios]
+    summary: Get a portfolio by ID (includes summary stats)
+    operationId: getPortfolio
+    parameters:
+      - name: portfolio_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '200':
+        description: Portfolio details with summary
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/portfolio.yaml#/PortfolioDetail'
+      '401':
+        $ref: '../schemas/common.yaml#/responses/Unauthorized'
+      '404':
+        description: Portfolio not found
+  patch:
+    tags: [portfolios]
+    summary: Update a portfolio
+    operationId: updatePortfolio
+    parameters:
+      - name: portfolio_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/portfolio.yaml#/PortfolioUpdate'
+    responses:
+      '200':
+        description: Portfolio updated
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/portfolio.yaml#/PortfolioRead'
+      '401':
+        $ref: '../schemas/common.yaml#/responses/Unauthorized'
+      '404':
+        description: Portfolio not found
+      '422':
+        $ref: '../schemas/common.yaml#/responses/ValidationError'
+  delete:
+    tags: [portfolios]
+    summary: Delete a portfolio
+    operationId: deletePortfolio
+    parameters:
+      - name: portfolio_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '204':
+        description: Portfolio deleted
+      '401':
+        $ref: '../schemas/common.yaml#/responses/Unauthorized'
+      '404':
+        description: Portfolio not found
+
+places:
+  post:
+    tags: [portfolios]
+    summary: Add a place to a portfolio
+    operationId: addPlaceToPortfolio
+    parameters:
+      - name: portfolio_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/portfolio.yaml#/PortfolioPlaceCreate'
+    responses:
+      '201':
+        description: Place added to portfolio
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/portfolio.yaml#/PortfolioPlaceRead'
+      '401':
+        $ref: '../schemas/common.yaml#/responses/Unauthorized'
+      '404':
+        description: Portfolio or place not found
+      '409':
+        description: Place already in portfolio
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/ErrorDetail'
+            example:
+              detail: PLACE_ALREADY_IN_PORTFOLIO
+      '422':
+        $ref: '../schemas/common.yaml#/responses/ValidationError'
+  get:
+    tags: [portfolios]
+    summary: List places in a portfolio
+    operationId: listPortfolioPlaces
+    parameters:
+      - name: portfolio_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '200':
+        description: Places in portfolio with investment data
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '../schemas/portfolio.yaml#/PortfolioPlaceRead'
+      '401':
+        $ref: '../schemas/common.yaml#/responses/Unauthorized'
+      '404':
+        description: Portfolio not found
+
+place-item:
+  patch:
+    tags: [portfolios]
+    summary: Update place investment data in portfolio
+    operationId: updatePortfolioPlace
+    parameters:
+      - name: portfolio_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: place_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/portfolio.yaml#/PortfolioPlaceUpdate'
+    responses:
+      '200':
+        description: Portfolio place updated
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/portfolio.yaml#/PortfolioPlaceRead'
+      '401':
+        $ref: '../schemas/common.yaml#/responses/Unauthorized'
+      '404':
+        description: Portfolio or place membership not found
+      '422':
+        $ref: '../schemas/common.yaml#/responses/ValidationError'
+  delete:
+    tags: [portfolios]
+    summary: Remove a place from a portfolio
+    operationId: removePortfolioPlace
+    parameters:
+      - name: portfolio_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: place_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '204':
+        description: Place removed from portfolio
+      '401':
+        $ref: '../schemas/common.yaml#/responses/Unauthorized'
+      '404':
+        description: Portfolio or place membership not found
+
+analytics:
+  get:
+    tags: [portfolios]
+    summary: Portfolio analytics (value, allocation, performance)
+    operationId: getPortfolioAnalytics
+    parameters:
+      - name: portfolio_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '200':
+        description: Portfolio analytics
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/portfolio.yaml#/PortfolioAnalytics'
+      '401':
+        $ref: '../schemas/common.yaml#/responses/Unauthorized'
+      '404':
+        description: Portfolio not found

@@ -1,0 +1,44 @@
+import { useServiceQuery, useServiceMutation } from "./useService";
+import { CACHE_TIERS } from "../cacheConfig";
+import { {{CAMEL_PLURAL}}Service } from "../api/services/{{SNAKE_PLURAL}}";
+import type { PaginationParams } from "../schemas/common";
+import type { {{PASCAL}}Create, {{PASCAL}}Update } from "../schemas/{{SNAKE}}";
+
+export function use{{PASCAL_PLURAL}}List(params?: PaginationParams) {
+  return useServiceQuery(
+    ["{{KEBAB_PLURAL}}", params],
+    () => {{CAMEL_PLURAL}}Service.list(params),
+    CACHE_TIERS.STANDARD,
+  );
+}
+
+export function use{{PASCAL}}Detail(id: string) {
+  return useServiceQuery(
+    ["{{KEBAB_PLURAL}}", id],
+    () => {{CAMEL_PLURAL}}Service.getById(id),
+    CACHE_TIERS.STANDARD,
+    { enabled: !!id },
+  );
+}
+
+export function use{{PASCAL}}Create() {
+  return useServiceMutation(
+    (data: {{PASCAL}}Create) => {{CAMEL_PLURAL}}Service.create(data as Record<string, unknown>),
+    { invalidateKeys: [["{{KEBAB_PLURAL}}"]] },
+  );
+}
+
+export function use{{PASCAL}}Update() {
+  return useServiceMutation(
+    ({ id, data }: { id: string; data: {{PASCAL}}Update }) =>
+      {{CAMEL_PLURAL}}Service.update(id, data as Record<string, unknown>),
+    { invalidateKeys: [["{{KEBAB_PLURAL}}"]] },
+  );
+}
+
+export function use{{PASCAL}}Delete() {
+  return useServiceMutation(
+    (id: string) => {{CAMEL_PLURAL}}Service.remove(id),
+    { invalidateKeys: [["{{KEBAB_PLURAL}}"]] },
+  );
+}

@@ -1,0 +1,60 @@
+# git-cliff configuration
+# https://git-cliff.org/docs/configuration
+
+[changelog]
+header = """# Changelog
+
+All notable changes to AI-Coding-Template, organized by version.\n
+"""
+body = """
+{%- macro remote_url() -%}
+  https://github.com/cloud-f1/ai-coding-template
+{%- endmacro -%}
+
+{% if version -%}
+  ## {{ version | trim_start_matches(pat="v") }}
+  {%- if commit_id %} — {{ timestamp | date(format="%Y-%m-%d") }}{% endif %}
+{% else -%}
+  ## Unreleased
+{% endif -%}
+
+{% for group, commits in commits | group_by(attribute="group") %}
+  ### {{ group | striptags | trim | upper_first }}
+  {% for commit in commits %}
+    - {{ commit.message | split(pat="\n") | first | trim }}\
+      {% if commit.scope %} **({{ commit.scope }})** {% endif %}\
+      ([{{ commit.id | truncate(length=7, end="") }}]({{ self::remote_url() }}/commit/{{ commit.id }}))
+  {%- endfor %}
+{% endfor %}\n
+"""
+trim = true
+footer = """
+---
+
+## Roadmap
+
+| Track | Domain | Status |
+|---|---|---|
+| **Track 1** | Auth & Identity Core | In Progress |
+| **Track 2** | Place Intelligence + PostGIS | Planned |
+| **Track 3** | Investment Portfolio | Planned |
+"""
+
+[git]
+conventional_commits = true
+filter_unconventional = false
+split_commits = false
+commit_parsers = [
+  { message = "^feat", group = "Features" },
+  { message = "^fix", group = "Bug Fixes" },
+  { message = "^refactor", group = "Refactor" },
+  { message = "^docs", group = "Documentation" },
+  { message = "^chore", group = "Chore" },
+  { message = "^merge", group = "Merges", skip = true },
+  { message = "^Merge", group = "Merges", skip = true },
+  { message = "^update", group = "Other", skip = true },
+  { body = ".*", group = "Other" },
+]
+filter_commits = false
+tag_pattern = "v[0-9].*"
+sort_commits = "newest"

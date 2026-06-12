@@ -1,0 +1,76 @@
+/* AI Coding Template Talk — color tokens (dark theme from client/src/styles/themes.css) */
+:root {
+  --primary: #f0a500;
+  --primary-dark: #d49200;
+  --accent: #ffc233;
+  --success: #00d48a;
+  --danger: #ff4f4f;
+  --info: #3b82f6;
+  --bg: #07070f;
+  --surface: #0e0e1a;
+  --surface-2: #141422;
+  --border: #1e1e30;
+  --text-primary: #f0f0f8;
+  --text-secondary: #6b6b88;
+  --text-muted: #3a3a52;
+  --font-display: 'Archivo', system-ui, -apple-system, sans-serif;
+  --font-body: 'Plus Jakarta Sans', 'Noto Sans TC', 'PingFang TC', system-ui, sans-serif;
+  --font-serif: 'Noto Serif TC', 'PingFang TC', 'Songti TC', serif;
+  --font-mono: 'IBM Plex Mono', Menlo, monospace;
+}
+
+.reveal {
+  font-family: var(--font-body);
+  font-size: 36px;
+  color: var(--text-primary);
+  background: var(--bg);
+}
+.reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+  font-family: var(--font-display);
+  color: var(--text-primary);
+  text-transform: none;
+  letter-spacing: -0.02em;
+}
+.reveal h1 { font-size: 2.5em; margin-bottom: 0.2em; }
+.reveal h2 { font-size: 1.5em; margin-bottom: 0.5em; }
+.reveal h3 { font-size: 1.1em; color: var(--primary); margin-bottom: 0.3em; }
+.reveal strong { color: var(--primary); }
+.reveal p { line-height: 1.5; }
+.reveal code {
+  font-family: var(--font-mono);
+  color: var(--accent);
+  background: var(--surface);
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+.reveal a { color: var(--primary); }
+.reveal section > h2::after {
+  content: '';
+  display: block;
+  width: 3em;
+  height: 3px;
+  background: var(--primary);
+  margin-top: 0.3em;
+  margin-bottom: 0.6em;
+}
+body.reveal-viewport { background: var(--bg); }
+
+kbd {
+  font-family: var(--font-mono);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 0.1em 0.4em;
+  border-radius: 3px;
+  font-size: 0.85em;
+  color: var(--text-secondary);
+}
+
+/* Override reveal.js defaults that fight our theme */
+.reveal .slide-number {
+  color: var(--text-muted);
+  background: transparent;
+  font-family: var(--font-mono);
+}
+.reveal .controls { color: var(--primary); }
+.reveal .progress { color: var(--primary); }

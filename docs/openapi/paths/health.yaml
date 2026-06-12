@@ -1,0 +1,13 @@
+check:
+  get:
+    tags: [health]
+    summary: Liveness + readiness probe
+    operationId: healthCheck
+    security: []
+    responses:
+      '200':
+        description: Service healthy
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/health.yaml#/HealthResponse'

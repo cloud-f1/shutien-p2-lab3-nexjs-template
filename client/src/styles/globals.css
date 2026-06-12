@@ -1,0 +1,150 @@
+/* ────────── IMPORTS ────────── */
+@import './fonts.css';
+@import './themes.css';
+@import './common/buttons.css';
+@import './common/forms.css';
+@import './common/cards.css';
+
+/* ────────── TAILWIND ──────────
+   Bridged to the 6-theme CSS-variable contract via tailwind.config.ts.
+   `preflight` is disabled there so we coexist with the legacy reset
+   already defined below. Use Tailwind utilities for new shared
+   primitives (PageContainer, Breadcrumb, DataTable, ...); keep the
+   legacy `.btn`, `.form-*`, `.c-*` classes for back-compat.
+   See docs/design/design.md for the full architecture. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ────────── RESET ────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+/* E212 — global anchor color reset. Without this, any <a> that does not
+   set its own color falls through to the UA `:link` blue (#0000ee), which
+   fails WCAG AA contrast on every dark surface and several light ones.
+   Anchors now inherit the token-driven text color of their container;
+   components/primitives opt into accent color explicitly (e.g. Prose
+   `[&_a]:text-primary`, NavBar link slots). Color only — decoration is left
+   to each component so existing underline affordances are preserved. */
+a { color: inherit; }
+
+/* ────────── REDUCED MOTION (WCAG 2.3.3 — E212) ──────────
+   Honor `prefers-reduced-motion: reduce` globally: collapse every
+   transition + animation to a near-zero duration and disable smooth
+   scrolling. Vestibular-sensitive users (and the a11y interaction sweep)
+   rely on motion actually stopping, not just being short. */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+body {
+  background: var(--bg);
+  color: var(--white);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ────────── NOISE TEXTURE OVERLAY ────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.4;
+}
+
+/* ────────── GRID BACKGROUND ────────── */
+.grid-bg {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 100%);
+  pointer-events: none;
+}
+
+/* ────────── NAV LOGO ────────── */
+.nav-logo {
+  font-family: var(--font-display);
+  font-size: 15px;
+  letter-spacing: 0.05em;
+  color: var(--white);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nav-logo-mark {
+  width: 26px; height: 26px;
+  background: var(--amber);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+
+/* ────────── FOOTER ────────── */
+.footer-brand {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--gray2);
+}
+.footer-brand span { color: var(--amber); }
+
+.footer-links {
+  display: flex;
+  gap: 24px;
+  list-style: none;
+}
+.footer-links a {
+  color: var(--gray2);
+  text-decoration: none;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  transition: color 0.2s;
+}
+.footer-links a:hover { color: var(--gray); }
+
+/* ────────── SKIP NAVIGATION ────────── */
+.skip-nav {
+  position: absolute;
+  top: -100%;
+  left: 16px;
+  z-index: 9999;
+  padding: 12px 24px;
+  background: var(--primary);
+  color: var(--bg);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 0 0 8px 8px;
+  text-decoration: none;
+  transition: top 0.15s;
+}
+.skip-nav:focus {
+  top: 0;
+}
+
+/* ────────── SCREEN READER ONLY ────────── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

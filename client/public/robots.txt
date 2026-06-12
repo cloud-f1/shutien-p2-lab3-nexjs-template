@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /verify-email
+Disallow: /reset-password
+
+Sitemap: https://claude-agent-template.zeabur.app/sitemap.xml

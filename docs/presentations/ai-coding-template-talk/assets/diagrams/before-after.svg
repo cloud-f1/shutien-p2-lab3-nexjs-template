@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 400" fill="none">
+  <style>
+    .box { rx: 10; stroke-width: 2; }
+    .before { fill: #1a0e0e; stroke: #ff4f4f; }
+    .after  { fill: #0e1a0e; stroke: #00d48a; }
+    .title  { font-family: system-ui, sans-serif; font-size: 22px; font-weight: 800; text-anchor: middle; }
+    .item   { font-family: system-ui, sans-serif; font-size: 14px; fill: #f0f0f8; }
+    .icon   { font-size: 16px; }
+    .vs     { fill: #f0a500; font-family: system-ui, sans-serif; font-size: 28px; font-weight: 900; text-anchor: middle; }
+    .dim    { fill: #6b6b88; }
+  </style>
+
+  <!-- Before column -->
+  <rect class="box before" x="40" y="60" width="400" height="300"/>
+  <text class="title" x="240" y="42" fill="#ff4f4f">沒有 Harness</text>
+
+  <text class="item" x="75" y="105"><tspan class="icon">❌</tspan> 每次開 chat 重新 paste context</text>
+  <text class="item" x="75" y="140"><tspan class="icon">❌</tspan> Mock 跟 production schema 不一致</text>
+  <text class="item" x="75" y="175"><tspan class="icon">❌</tspan> 「先 commit 回頭再寫測試」</text>
+  <text class="item" x="75" y="210"><tspan class="icon">❌</tspan> 每人 prompt 不同，產出不穩</text>
+  <text class="item" x="75" y="245"><tspan class="icon">❌</tspan> PR 審查看不出 agent 做了什麼</text>
+  <text class="item" x="75" y="280"><tspan class="icon">❌</tspan> Token 用完就斷，context 重來</text>
+
+  <text class="item dim" x="75" y="330">→ 一個人 + ChatGPT 雜談模式</text>
+
+  <!-- VS -->
+  <text class="vs" x="500" y="220">VS</text>
+
+  <!-- After column -->
+  <rect class="box after" x="560" y="60" width="400" height="300"/>
+  <text class="title" x="760" y="42" fill="#00d48a">有 Harness</text>
+
+  <text class="item" x="595" y="105"><tspan class="icon">✅</tspan> Memory Tier 0/1 持久記憶</text>
+  <text class="item" x="595" y="140"><tspan class="icon">✅</tspan> Contract test 對齊 openapi.yaml</text>
+  <text class="item" x="595" y="175"><tspan class="icon">✅</tspan> Stop Verifier 17 條擋未測 commit</text>
+  <text class="item" x="595" y="210"><tspan class="icon">✅</tspan> 9 agent 各有固定角色 (role lock)</text>
+  <text class="item" x="595" y="245"><tspan class="icon">✅</tspan> audit.jsonl 每步可回放</text>
+  <text class="item" x="595" y="280"><tspan class="icon">✅</tspan> Skill tool 按需載入 context</text>
+
+  <text class="item" x="595" y="330" fill="#00d48a" style="font-weight: 700;">→ 9 個 agent 組成的開發團隊</text>
+</svg>

@@ -1,0 +1,65 @@
+# Production simulation — docker compose -f docker-compose.prod.yml up --build
+# Dev mode: use docker-compose.yml (default, with hot-reload)
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-saas_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-saas_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-saas_dev}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-saas_user} -d ${POSTGRES_DB:-saas_dev}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  server:
+    build: ./server
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-saas_user}:${POSTGRES_PASSWORD:-saas_pass}@db:5432/${POSTGRES_DB:-saas_dev}
+      SECRET_KEY: ${SECRET_KEY:-CHANGE_ME_TO_A_RANDOM_64_CHAR_HEX_STRING}
+      REFRESH_SECRET_KEY: ${REFRESH_SECRET_KEY:-CHANGE_ME_REFRESH_SECRET}
+      ACCESS_TOKEN_EXPIRE_MINUTES: "${ACCESS_TOKEN_EXPIRE_MINUTES:-15}"
+      REFRESH_TOKEN_EXPIRE_DAYS: "${REFRESH_TOKEN_EXPIRE_DAYS:-30}"
+      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
+      GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET:-}"
+      EMAIL_PROVIDER: "${EMAIL_PROVIDER:-console}"
+      EMAIL_FROM: "${EMAIL_FROM:-noreply@example.com}"
+      LOG_FORMAT: json
+      DEBUG: "false"
+      ENVIRONMENT: production
+      ALLOWED_ORIGINS_STR: "${ALLOWED_ORIGINS_STR:-http://localhost:3000}"
+      RATE_LIMIT_AUTH: 5/minute
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  client:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+      args:
+        VITE_API_URL: "${VITE_API_URL:-__VITE_API_URL_PLACEHOLDER__}"
+    ports:
+      - "${CLIENT_PORT:-3000}:3000"
+    depends_on:
+      server:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:

@@ -1,0 +1,39 @@
+{
+  "name": "ai-coding-template",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "dev:client": "pnpm --filter ai-coding-template-client dev",
+    "dev:docs": "pnpm --filter @dev-docs dev",
+    "build": "pnpm -r build",
+    "build:web": "./scripts/build-web.sh",
+    "test": "pnpm -r test:run",
+    "test:client": "pnpm --filter ai-coding-template-client test:run",
+    "test:docs": "pnpm --filter @dev-docs test",
+    "test:scripts": "vitest run scripts/",
+    "new-site": "tsx scripts/new-site/index.ts",
+    "lint": "pnpm --filter ai-coding-template-client lint",
+    "format": "pnpm --filter ai-coding-template-client format",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@clack/prompts": "^1.1.0",
+    "@types/semver": "^7.7.1",
+    "@vitest/coverage-v8": "^4.1.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.11",
+    "semver": "^7.7.4",
+    "tsx": "^4.21.0",
+    "vitest": "^4.1.0",
+    "yaml": "^2.8.2"
+  },
+  "lint-staged": {
+    "server/**/*.py": [
+      "uv run --directory server ruff check --fix",
+      "uv run --directory server ruff format"
+    ]
+  }
+}

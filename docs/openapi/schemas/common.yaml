@@ -1,0 +1,28 @@
+ErrorDetail:
+  type: object
+  required: [detail]
+  properties:
+    detail:
+      type: string
+      description: Machine-readable error code
+
+responses:
+  Unauthorized:
+    description: Missing, expired, or invalid access token
+    content:
+      application/json:
+        schema:
+          $ref: '#/ErrorDetail'
+        example:
+          detail: Unauthorized
+  ValidationError:
+    description: Request body validation failed
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            detail:
+              type: array
+              items:
+                type: object

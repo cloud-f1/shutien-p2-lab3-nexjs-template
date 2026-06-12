@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 420" fill="none">
+  <style>
+    .tier { fill: #0e0e1a; stroke-width: 2; }
+    .t0 { stroke: #ffc233; }
+    .t1 { stroke: #f0a500; }
+    .label { fill: #f0f0f8; font-family: system-ui, sans-serif; font-size: 18px; font-weight: 700; }
+    .path-label { fill: #6b6b88; font-family: monospace; font-size: 12px; }
+    .desc { fill: #6b6b88; font-family: system-ui, sans-serif; font-size: 12px; }
+    .promote-arrow { stroke: #f0a500; stroke-width: 2.5; fill: none; marker-end: url(#up); }
+    .read-arrow { stroke: #00d48a; stroke-width: 2; fill: none; marker-end: url(#down); stroke-dasharray: 6 3; }
+    .action-label { font-family: monospace; font-size: 12px; font-weight: 700; }
+    .project-box { fill: #141422; stroke: #1e1e30; stroke-width: 1; rx: 6; }
+    .project-name { fill: #f0f0f8; font-family: system-ui, sans-serif; font-size: 12px; font-weight: 600; text-anchor: middle; }
+  </style>
+  <defs>
+    <marker id="up" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon fill="#f0a500" points="0 0, 8 3, 0 6"/>
+    </marker>
+    <marker id="down" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon fill="#00d48a" points="0 0, 8 3, 0 6"/>
+    </marker>
+  </defs>
+
+  <!-- Tier 0 — top -->
+  <rect class="tier t0" x="180" y="30" width="440" height="90" rx="10"/>
+  <text class="label" x="210" y="65">Tier 0 — Global Wisdom</text>
+  <text class="path-label" x="210" y="85">~/.claude/template-memory/</text>
+  <text class="desc" x="210" y="103">cross-project ‧ survives forever ‧ 8 lesson files</text>
+
+  <!-- Tier 1 projects — bottom row -->
+  <rect class="project-box" x="60" y="280" width="140" height="100"/>
+  <text class="project-name" x="130" y="310">Chronos</text>
+  <text class="path-label" x="75" y="330">docs/context/</text>
+  <text class="desc" x="75" y="348">157 epics</text>
+  <text class="desc" x="75" y="363">@labor-law</text>
+
+  <rect class="project-box" x="240" y="280" width="140" height="100"/>
+  <text class="project-name" x="310" y="310">ShiftFlow</text>
+  <text class="path-label" x="255" y="330">docs/context/</text>
+  <text class="desc" x="255" y="348">Lark integration</text>
+
+  <rect class="project-box" x="420" y="280" width="140" height="100"/>
+  <text class="project-name" x="490" y="310">EventFlow</text>
+  <text class="path-label" x="435" y="330">docs/context/</text>
+  <text class="desc" x="435" y="348">2 weeks to ship</text>
+
+  <rect class="project-box" x="600" y="280" width="140" height="100"/>
+  <text class="project-name" x="670" y="310">AI Finance</text>
+  <text class="path-label" x="615" y="330">docs/context/</text>
+  <text class="desc" x="615" y="348">@compliance</text>
+
+  <!-- Tier 1 bracket label -->
+  <text class="label" x="60" y="260" style="font-size: 14px; fill: #f0a500;">Tier 1 — Project Memory (per project)</text>
+
+  <!-- Promote arrow (Chronos → Tier 0) -->
+  <path class="promote-arrow" d="M 130 280 C 130 200, 300 160, 400 125"/>
+  <text class="action-label" x="180" y="205" fill="#f0a500">/athena:promote ↑</text>
+
+  <!-- Read arrows (Tier 0 → others) -->
+  <path class="read-arrow" d="M 400 125 C 400 180, 310 230, 310 278"/>
+  <path class="read-arrow" d="M 450 125 C 480 180, 490 230, 490 278"/>
+  <path class="read-arrow" d="M 500 125 C 560 180, 670 230, 670 278"/>
+  <text class="action-label" x="550" y="215" fill="#00d48a">SessionStart auto-load ↓</text>
+</svg>

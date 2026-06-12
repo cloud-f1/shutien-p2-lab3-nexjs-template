@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 520" fill="none" role="img" aria-labelledby="epic-pipeline-title epic-pipeline-desc">
+  <title id="epic-pipeline-title">Epic Pipeline Flow — /athena:plan to merge with debugger feedback loop</title>
+  <desc id="epic-pipeline-desc">Linear pipeline of six steps: /athena:plan, spec, implement, qa, commit, merge. Human-gate icons mark /athena:plan approval and PR merge. A dashed loop shows @debugger triggered on failed qa, returning to implement. Bottom rail shows the epic-progress.md step matrix using empty / in-progress / done tokens.</desc>
+
+  <defs>
+    <marker id="pipeline-arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" style="fill: var(--primary);"/>
+    </marker>
+    <marker id="loop-arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" style="fill: var(--danger);"/>
+    </marker>
+  </defs>
+
+  <!-- ===== Step nodes (6 across) ===== -->
+  <!-- positions (x): 80, 220, 380, 540, 680, 840 -->
+  <g transform="translate(80,160)">
+    <rect x="-60" y="-44" width="120" height="88" rx="10" style="fill: var(--surface-2); stroke: var(--accent); stroke-width: 2.5;"/>
+    <text text-anchor="middle" y="-12" style="fill: var(--accent); font-family: monospace; font-size: 12px; font-weight: 700;">/athena:plan</text>
+    <text text-anchor="middle" y="8" style="fill: var(--text-secondary); font-family: system-ui, sans-serif; font-size: 10px;">propose epics</text>
+    <text text-anchor="middle" y="26" style="fill: var(--text-muted); font-family: monospace; font-size: 9px;">@strategist</text>
+  </g>
+
+  <g transform="translate(220,160)">
+    <rect x="-60" y="-44" width="120" height="88" rx="10" style="fill: var(--surface-2); stroke: var(--primary); stroke-width: 2;"/>
+    <text text-anchor="middle" y="-12" style="fill: var(--primary); font-family: monospace; font-size: 12px; font-weight: 700;">spec</text>
+    <text text-anchor="middle" y="8" style="fill: var(--text-secondary); font-family: system-ui, sans-serif; font-size: 10px;">openapi.yaml</text>
+    <text text-anchor="middle" y="26" style="fill: var(--text-muted); font-family: monospace; font-size: 9px;">@spec-writer</text>
+  </g>
+
+  <g transform="translate(380,160)">
+    <rect x="-60" y="-44" width="120" height="88" rx="10" style="fill: var(--surface-2); stroke: var(--primary); stroke-width: 2;"/>
+    <text text-anchor="middle" y="-12" style="fill: var(--primary); font-family: monospace; font-size: 12px; font-weight: 700;">implement</text>
+    <text text-anchor="middle" y="8" style="fill: var(--text-secondary); font-family: system-ui, sans-serif; font-size: 10px;">RED → GREEN</text>
+    <text text-anchor="middle" y="26" style="fill: var(--text-muted); font-family: monospace; font-size: 9px;">tdd cycle</text>
+  </g>
+
+  <g transform="translate(540,160)">
+    <rect x="-60" y="-44" width="120" height="88" rx="10" style="fill: var(--surface-2); stroke: var(--info); stroke-width: 2;"/>
+    <text text-anchor="middle" y="-12" style="fill: var(--info); font-family: monospace; font-size: 12px; font-weight: 700;">qa</text>
+    <text text-anchor="middle" y="8" style="fill: var(--text-secondary); font-family: system-ui, sans-serif; font-size: 10px;">tests + review</text>
+    <text text-anchor="middle" y="26" style="fill: var(--text-muted); font-family: monospace; font-size: 9px;">@qa @reviewer</text>
+  </g>
+
+  <g transform="translate(700,160)">
+    <rect x="-60" y="-44" width="120" height="88" rx="10" style="fill: var(--surface-2); stroke: var(--success); stroke-width: 2;"/>
+    <text text-anchor="middle" y="-12" style="fill: var(--success); font-family: monospace; font-size: 12px; font-weight: 700;">commit</text>
+    <text text-anchor="middle" y="8" style="fill: var(--text-secondary); font-family: system-ui, sans-serif; font-size: 10px;">conventional</text>
+    <text text-anchor="middle" y="26" style="fill: var(--text-muted); font-family: monospace; font-size: 9px;">stop verifier</text>
+  </g>
+
+  <g transform="translate(860,160)">
+    <rect x="-60" y="-44" width="120" height="88" rx="10" style="fill: var(--surface-2); stroke: var(--accent); stroke-width: 2.5;"/>
+    <text text-anchor="middle" y="-12" style="fill: var(--accent); font-family: monospace; font-size: 12px; font-weight: 700;">merge</text>
+    <text text-anchor="middle" y="8" style="fill: var(--text-secondary); font-family: system-ui, sans-serif; font-size: 10px;">PR → main</text>
+    <text text-anchor="middle" y="26" style="fill: var(--text-muted); font-family: monospace; font-size: 9px;">/athena:pr</text>
+  </g>
+
+  <!-- ===== Forward arrows ===== -->
+  <g style="stroke: var(--primary); stroke-width: 2.5; fill: none;">
+    <line x1="140" y1="160" x2="158" y2="160" marker-end="url(#pipeline-arrow)"/>
+    <line x1="280" y1="160" x2="318" y2="160" marker-end="url(#pipeline-arrow)"/>
+    <line x1="440" y1="160" x2="478" y2="160" marker-end="url(#pipeline-arrow)"/>
+    <line x1="600" y1="160" x2="638" y2="160" marker-end="url(#pipeline-arrow)"/>
+    <line x1="760" y1="160" x2="798" y2="160" marker-end="url(#pipeline-arrow)"/>
+  </g>
+
+  <!-- ===== Human-gate markers ===== -->
+  <g transform="translate(80,72)">
+    <circle r="22" style="fill: var(--surface); stroke: var(--accent); stroke-width: 2;"/>
+    <text text-anchor="middle" y="6" style="font-family: system-ui, sans-serif; font-size: 18px;">🙋</text>
+    <text text-anchor="middle" y="-30" style="fill: var(--accent); font-family: monospace; font-size: 10px; font-weight: 700;">human gate</text>
+    <text text-anchor="middle" y="-16" style="fill: var(--text-secondary); font-family: monospace; font-size: 9px;">approve plan</text>
+  </g>
+  <g transform="translate(860,72)">
+    <circle r="22" style="fill: var(--surface); stroke: var(--accent); stroke-width: 2;"/>
+    <text text-anchor="middle" y="6" style="font-family: system-ui, sans-serif; font-size: 18px;">🙋</text>
+    <text text-anchor="middle" y="-30" style="fill: var(--accent); font-family: monospace; font-size: 10px; font-weight: 700;">human gate</text>
+    <text text-anchor="middle" y="-16" style="fill: var(--text-secondary); font-family: monospace; font-size: 9px;">PR review</text>
+  </g>
+  <line x1="80"  y1="94"  x2="80"  y2="116" style="stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3;"/>
+  <line x1="860" y1="94"  x2="860" y2="116" style="stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3;"/>
+
+  <!-- ===== @debugger feedback loop (qa fail → implement) ===== -->
+  <path d="M 540 204 C 540 290, 380 290, 380 220" style="fill: none; stroke: var(--danger); stroke-width: 2; stroke-dasharray: 6 4;" marker-end="url(#loop-arrow)"/>
+  <g transform="translate(460,300)">
+    <rect x="-72" y="-18" width="144" height="36" rx="8" style="fill: var(--surface-2); stroke: var(--danger); stroke-width: 1.5;"/>
+    <text text-anchor="middle" y="-2" style="fill: var(--danger); font-family: monospace; font-size: 11px; font-weight: 700;">@debugger</text>
+    <text text-anchor="middle" y="12" style="fill: var(--text-secondary); font-family: monospace; font-size: 9px;">on test fail → loop</text>
+  </g>
+
+  <!-- ===== Bottom rail: epic-progress.md step matrix ===== -->
+  <g transform="translate(60,380)">
+    <rect x="0" y="0" width="860" height="110" rx="10" style="fill: var(--surface); stroke: var(--border); stroke-width: 1.5;"/>
+    <text x="16" y="22" style="fill: var(--text-secondary); font-family: monospace; font-size: 11px; font-weight: 700;">epic-progress.md ‧ step matrix</text>
+
+    <!-- column headers (matching the 6 steps above) -->
+    <g style="font-family: monospace; font-size: 11px;">
+      <text x="80"  y="48" text-anchor="middle" style="fill: var(--text-secondary);">plan</text>
+      <text x="220" y="48" text-anchor="middle" style="fill: var(--text-secondary);">spec</text>
+      <text x="380" y="48" text-anchor="middle" style="fill: var(--text-secondary);">impl</text>
+      <text x="540" y="48" text-anchor="middle" style="fill: var(--text-secondary);">qa</text>
+      <text x="700" y="48" text-anchor="middle" style="fill: var(--text-secondary);">commit</text>
+      <text x="860" y="48" text-anchor="middle" style="fill: var(--text-secondary);">merge</text>
+    </g>
+
+    <!-- row 1: E165 — fully done -->
+    <text x="16" y="76" style="fill: var(--text-muted); font-family: monospace; font-size: 11px;">E165</text>
+    <g style="font-family: system-ui, sans-serif; font-size: 17px; text-anchor: middle;">
+      <text x="80"  y="80" style="fill: var(--success);">✅</text>
+      <text x="220" y="80" style="fill: var(--success);">✅</text>
+      <text x="380" y="80" style="fill: var(--success);">✅</text>
+      <text x="540" y="80" style="fill: var(--success);">✅</text>
+      <text x="700" y="80" style="fill: var(--success);">✅</text>
+      <text x="860" y="80" style="fill: var(--success);">✅</text>
+    </g>
+
+    <!-- row 2: E166 — currently mid-flight -->
+    <text x="16" y="100" style="fill: var(--text-muted); font-family: monospace; font-size: 11px;">E166</text>
+    <g style="font-family: system-ui, sans-serif; font-size: 17px; text-anchor: middle;">
+      <text x="80"  y="104" style="fill: var(--success);">✅</text>
+      <text x="220" y="104" style="fill: var(--success);">✅</text>
+      <text x="380" y="104" style="fill: var(--accent);">🔄</text>
+      <text x="540" y="104" style="fill: var(--text-muted);">⬜</text>
+      <text x="700" y="104" style="fill: var(--text-muted);">⬜</text>
+      <text x="860" y="104" style="fill: var(--text-muted);">⬜</text>
+    </g>
+  </g>
+
+  <!-- Legend -->
+  <g transform="translate(60,500)" style="font-family: monospace; font-size: 10px;">
+    <text x="0"   y="0" style="fill: var(--text-muted);">⬜ pending</text>
+    <text x="100" y="0" style="fill: var(--accent);">🔄 in progress</text>
+    <text x="220" y="0" style="fill: var(--success);">✅ done</text>
+    <text x="320" y="0" style="fill: var(--danger);">— — — debugger loop</text>
+    <text x="500" y="0" style="fill: var(--accent);">🙋 human gate</text>
+  </g>
+</svg>

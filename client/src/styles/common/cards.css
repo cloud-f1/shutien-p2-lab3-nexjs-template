@@ -1,0 +1,12 @@
+/* ────────── SHARED CARD PRIMITIVES (deleted in E178) ──────────
+   The legacy `.c-card`, `.c-card-glow`, `.c-stat*`, `.c-badge*`,
+   `.c-panel*` rules were removed once `<Card>` (components/ui/Card.tsx)
+   shipped — they had zero remaining TSX references at deletion time.
+
+   Visual styling for cards now rides on:
+     - the Preset axis  (components/ui/preset.ts → `card` slot)
+     - the Theme axis   (styles/themes.css CSS vars)
+
+   This file is intentionally kept (still imported from globals.css) so
+   the import graph stays stable; future PRs can prune the import + file.
+   ─────────────────────────────────────────────── */

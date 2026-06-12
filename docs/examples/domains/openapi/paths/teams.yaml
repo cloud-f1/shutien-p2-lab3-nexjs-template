@@ -1,0 +1,257 @@
+collection:
+  post:
+    tags: [teams]
+    summary: Create a team (caller becomes owner)
+    operationId: createTeam
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/team.yaml#/TeamCreate'
+    responses:
+      '201':
+        description: Team created
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/team.yaml#/TeamRead'
+      '401':
+        $ref: '../schemas/common.yaml#/responses/Unauthorized'
+      '409':
+        description: Team slug already exists
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/ErrorDetail'
+            example:
+              detail: TEAM_SLUG_EXISTS
+      '422':
+        $ref: '../schemas/common.yaml#/responses/ValidationError'
+  get:
+    tags: [teams]
+    summary: List teams the current user belongs to
+    operationId: listTeams
+    responses:
+      '200':
+        description: Teams the user is a member of
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '../schemas/team.yaml#/TeamReadWithRole'
+      '401':
+        $ref: '../schemas/common.yaml#/responses/Unauthorized'
+
+item:
+  get:
+    tags: [teams]
+    summary: Get a team by ID
+    operationId: getTeam
+    parameters:
+      - name: team_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '200':
+        description: Team details
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/team.yaml#/TeamRead'
+      '401':
+        $ref: '../schemas/common.yaml#/responses/Unauthorized'
+      '403':
+        description: Not a member of this team
+      '404':
+        description: Team not found
+  patch:
+    tags: [teams]
+    summary: Update a team (admin or owner only)
+    operationId: updateTeam
+    parameters:
+      - name: team_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/team.yaml#/TeamUpdate'
+    responses:
+      '200':
+        description: Team updated
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/team.yaml#/TeamRead'
+      '401':
+        $ref: '../schemas/common.yaml#/responses/Unauthorized'
+      '403':
+        description: Insufficient role (requires admin or owner)
+      '404':
+        description: Team not found
+      '422':
+        $ref: '../schemas/common.yaml#/responses/ValidationError'
+  delete:
+    tags: [teams]
+    summary: Delete a team (owner only)
+    operationId: deleteTeam
+    parameters:
+      - name: team_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '204':
+        description: Team deleted
+      '401':
+        $ref: '../schemas/common.yaml#/responses/Unauthorized'
+      '403':
+        description: Only the team owner can delete
+      '404':
+        description: Team not found
+
+members:
+  get:
+    tags: [teams]
+    summary: List team members
+    operationId: listTeamMembers
+    parameters:
+      - name: team_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '200':
+        description: Team members with roles
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '../schemas/team.yaml#/TeamMemberRead'
+      '401':
+        $ref: '../schemas/common.yaml#/responses/Unauthorized'
+      '403':
+        description: Not a member of this team
+      '404':
+        description: Team not found
+  post:
+    tags: [teams]
+    summary: Add a member to the team (admin or owner only)
+    operationId: addTeamMember
+    parameters:
+      - name: team_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/team.yaml#/TeamMemberCreate'
+    responses:
+      '201':
+        description: Member added
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/team.yaml#/TeamMemberRead'
+      '401':
+        $ref: '../schemas/common.yaml#/responses/Unauthorized'
+      '403':
+        description: Insufficient role (requires admin or owner)
+      '404':
+        description: Team or user not found
+      '409':
+        description: User is already a member
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/ErrorDetail'
+            example:
+              detail: MEMBER_ALREADY_EXISTS
+      '422':
+        $ref: '../schemas/common.yaml#/responses/ValidationError'
+
+member-item:
+  patch:
+    tags: [teams]
+    summary: Change a member's role (admin or owner only)
+    operationId: updateTeamMember
+    parameters:
+      - name: team_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/team.yaml#/TeamMemberUpdate'
+    responses:
+      '200':
+        description: Role updated
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/team.yaml#/TeamMemberRead'
+      '401':
+        $ref: '../schemas/common.yaml#/responses/Unauthorized'
+      '403':
+        description: Insufficient role or cannot change owner
+      '404':
+        description: Team or member not found
+      '422':
+        $ref: '../schemas/common.yaml#/responses/ValidationError'
+  delete:
+    tags: [teams]
+    summary: Remove a member from the team (admin or owner only)
+    operationId: removeTeamMember
+    parameters:
+      - name: team_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '204':
+        description: Member removed
+      '401':
+        $ref: '../schemas/common.yaml#/responses/Unauthorized'
+      '403':
+        description: Cannot remove the owner or insufficient role
+      '404':
+        description: Team or member not found

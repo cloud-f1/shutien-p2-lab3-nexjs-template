@@ -1,0 +1,22 @@
+{
+  "epic": "E300",
+  "slug": "weekly-digest-emails",
+  "name": "Weekly Digest Emails for Project Owners",
+  "priority": "P1",
+  "size": "M",
+  "sp": 5,
+  "rationale": "Owners report missing critical updates.",
+  "phases": [
+    {"id": 1, "name": "Schema + scheduler", "tasks": ["sqlmodel for DigestRun", "APScheduler job"]},
+    {"id": 2, "name": "Template + send", "tasks": ["Jinja template", "SendGrid integration"]},
+    {"id": 3, "name": "Unsubscribe + observability", "tasks": ["unsub token", "Sentry breadcrumbs"]}
+  ],
+  "checkpoints": [
+    {"phase": 1, "verify": "DigestRun model creates row; cron job logs entry"},
+    {"phase": 2, "verify": "Send hits MailHog in dev; HTML lints clean"},
+    {"phase": 3, "verify": "Unsubscribe link round-trips; Sentry receives breadcrumb"}
+  ],
+  "test_strategy": "Server: factory-boy DigestRun factory + 3 parametrized happy/edge/error cases. Client: e2e Playwright for unsubscribe page. Coverage gate: 80%+ in `server/app/domains/digest/`.",
+  "dependencies": ["E22 domain registry"],
+  "risks": ["SendGrid quota in dev"]
+}

@@ -1,0 +1,181 @@
+/* ────────── TASK PAGE ──────────
+   Layout and composition only — uses common/ primitives.
+   ─────────────────────────────────── */
+
+/* ── Page layout ── */
+.tasks-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.tasks-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+/* ── Table ── */
+.tasks-table-wrap {
+  overflow-x: auto;
+}
+
+.tasks-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.tasks-table th {
+  text-align: left;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border);
+}
+
+.tasks-table td {
+  padding: 12px 14px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.tasks-table tbody tr {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.tasks-table tbody tr:hover {
+  background: var(--surface-2);
+}
+
+/* ── Todo-specific: overdue row highlight ── */
+.tasks-overdue {
+  background: rgba(var(--danger-rgb, 239, 68, 68), 0.08);
+}
+
+.tasks-overdue:hover {
+  background: rgba(var(--danger-rgb, 239, 68, 68), 0.14);
+}
+
+/* ── Todo-specific: priority badges ── */
+.tasks-priority {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.tasks-priority-0 {
+  background: var(--surface-2);
+  color: var(--text-secondary);
+}
+
+.tasks-priority-1 {
+  background: rgba(var(--warning-rgb, 234, 179, 8), 0.15);
+  color: var(--warning, #eab308);
+}
+
+.tasks-priority-2 {
+  background: rgba(var(--danger-rgb, 239, 68, 68), 0.15);
+  color: var(--danger, #ef4444);
+}
+
+/* ── Empty state ── */
+.tasks-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  gap: 12px;
+}
+
+.tasks-empty-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.tasks-empty-text {
+  font-size: 14px;
+  color: var(--text-secondary);
+  max-width: 360px;
+}
+
+/* ── Pagination ── */
+.tasks-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.tasks-pagination-info {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* ── Modal overlay ── */
+.tasks-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+}
+
+.tasks-modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.tasks-modal-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 20px;
+}
+
+.tasks-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+/* ── Loading / error states ── */
+.tasks-loading,
+.tasks-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.tasks-error {
+  color: var(--danger);
+}

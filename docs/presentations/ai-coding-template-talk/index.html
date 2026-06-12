@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Coding Template — 讓 9 個 Agent 幫你寫 SaaS</title>
+  <link rel="stylesheet" href="vendor/reveal.js@5.x/dist/reveal.css">
+  <link rel="stylesheet" href="vendor/reveal.js@5.x/dist/theme/black.css" id="theme">
+  <link rel="stylesheet" href="styles/theme.css">
+  <link rel="stylesheet" href="styles/slide-layout.css">
+  <link rel="stylesheet" href="styles/terminal.css">
+</head>
+<body>
+<div class="reveal"><div class="slides">
+
+  <!-- ============ 00 Cover ============ -->
+  <section class="slide-hero">
+    <h1>AI Coding Template</h1>
+    <div class="divider"></div>
+    <p class="subtitle">讓 9 個 agent 幫你寫 SaaS</p>
+    <p style="font-size: 0.5em; color: var(--text-muted); margin-top: 1.5em;">
+      2026 ‧ Mixed-audience talk ‧ ~30 min
+    </p>
+    <aside class="notes">開場話術：30 秒自我介紹 + 為什麼做這個。</aside>
+  </section>
+
+  <!-- ============ 01 TOC ============ -->
+  <section>
+    <h2>今天講什麼</h2>
+    <ol style="font-size: 0.75em; line-height: 1.8; margin-top: 0.5em; text-align: left; max-width: 20em; margin-left: auto; margin-right: auto;">
+      <li>架構（Intro）</li>
+      <li>好處 vs 代價</li>
+      <li>Persona — 誰會從這套受益</li>
+      <li>Learning System — 讓 LLM 不失憶</li>
+      <li><strong>Agent Team + Harness Engineer</strong></li>
+      <li>為什麼 coding 需要它</li>
+      <li>5 個 production 專案延伸</li>
+      <li>Claude 的觀察與建議</li>
+    </ol>
+    <p style="font-size: 0.45em; color: var(--text-muted); margin-top: 1.5em;">
+      <kbd>esc</kbd> 縮圖 ‧ <kbd>s</kbd> speaker notes ‧ <kbd>?</kbd> 快捷鍵 ‧ <kbd>r</kbd> 重播 demo
+    </p>
+    <aside class="notes">這是 30 分鐘的 talk，留最後 5 分鐘 Q&amp;A。</aside>
+  </section>
+
+  <!-- ============ 02-04 §1 Architecture ============ -->
+  <section data-markdown="slides/01-architecture.md"
+           data-separator="^\n---\n$"
+           data-separator-notes="^Note:"></section>
+
+  <!-- ============ §1.5 Epic Pipeline (inline SVG, E166) ============ -->
+  <section id="epic-pipeline-slide">
+    <h2 style="text-align: center;">Epic Pipeline — <code>plan</code> → <code>merge</code></h2>
+    <figure style="margin: 0.4em auto; max-width: 1000px;">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 520" fill="none" role="img" aria-labelledby="epic-pipeline-title epic-pipeline-desc" style="max-height: 60vh; width: 100%; display: block;">
+        <title id="epic-pipeline-title">Epic Pipeline Flow — /athena:plan to merge with debugger feedback loop</title>
+        <desc id="epic-pipeline-desc">Linear pipeline of six steps: /athena:plan, spec, implement, qa, commit, merge. Human-gate icons mark /athena:plan approval and PR merge. A dashed loop shows @debugger triggered on failed qa, returning to implement. Bottom rail shows the epic-progress.md step matrix using empty / in-progress / done tokens.</desc>
+        <defs>
+          <marker id="ep-arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+            <polygon points="0 0, 10 4, 0 8" style="fill: var(--primary);"/>
+          </marker>
+          <marker id="ep-loop-arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+            <polygon points="0 0, 10 4, 0 8" style="fill: var(--danger);"/>
+          </marker>
+        </defs>
+        <g transform="translate(80,160)">
+          <rect x="-60" y="-44" width="120" height="88" rx="10" style="fill: var(--surface-2); stroke: var(--accent); stroke-width: 2.5;"/>
+          <text text-anchor="middle" y="-12" style="fill: var(--accent); font-family: monospace; font-size: 12px; font-weight: 700;">/athena:plan</text>
+          <text text-anchor="middle" y="8" style="fill: var(--text-secondary); font-family: system-ui, sans-serif; font-size: 10px;">propose epics</text>
+          <text text-anchor="middle" y="26" style="fill: var(--text-muted); font-family: monospace; font-size: 9px;">@strategist</text>
+        </g>
+        <g transform="translate(220,160)">
+          <rect x="-60" y="-44" width="120" height="88" rx="10" style="fill: var(--surface-2); stroke: var(--primary); stroke-width: 2;"/>
+          <text text-anchor="middle" y="-12" style="fill: var(--primary); font-family: monospace; font-size: 12px; font-weight: 700;">spec</text>
+          <text text-anchor="middle" y="8" style="fill: var(--text-secondary); font-family: system-ui, sans-serif; font-size: 10px;">openapi.yaml</text>
+          <text text-anchor="middle" y="26" style="fill: var(--text-muted); font-family: monospace; font-size: 9px;">@spec-writer</text>
+        </g>
+        <g transform="translate(380,160)">
+          <rect x="-60" y="-44" width="120" height="88" rx="10" style="fill: var(--surface-2); stroke: var(--primary); stroke-width: 2;"/>
+          <text text-anchor="middle" y="-12" style="fill: var(--primary); font-family: monospace; font-size: 12px; font-weight: 700;">implement</text>
+          <text text-anchor="middle" y="8" style="fill: var(--text-secondary); font-family: system-ui, sans-serif; font-size: 10px;">RED → GREEN</text>
+          <text text-anchor="middle" y="26" style="fill: var(--text-muted); font-family: monospace; font-size: 9px;">tdd cycle</text>
+        </g>
+        <g transform="translate(540,160)">
+          <rect x="-60" y="-44" width="120" height="88" rx="10" style="fill: var(--surface-2); stroke: var(--info); stroke-width: 2;"/>
+          <text text-anchor="middle" y="-12" style="fill: var(--info); font-family: monospace; font-size: 12px; font-weight: 700;">qa</text>
+          <text text-anchor="middle" y="8" style="fill: var(--text-secondary); font-family: system-ui, sans-serif; font-size: 10px;">tests + review</text>
+          <text text-anchor="middle" y="26" style="fill: var(--text-muted); font-family: monospace; font-size: 9px;">@qa @reviewer</text>
+        </g>
+        <g transform="translate(700,160)">
+          <rect x="-60" y="-44" width="120" height="88" rx="10" style="fill: var(--surface-2); stroke: var(--success); stroke-width: 2;"/>
+          <text text-anchor="middle" y="-12" style="fill: var(--success); font-family: monospace; font-size: 12px; font-weight: 700;">commit</text>
+          <text text-anchor="middle" y="8" style="fill: var(--text-secondary); font-family: system-ui, sans-serif; font-size: 10px;">conventional</text>
+          <text text-anchor="middle" y="26" style="fill: var(--text-muted); font-family: monospace; font-size: 9px;">stop verifier</text>
+        </g>
+        <g transform="translate(860,160)">
+          <rect x="-60" y="-44" width="120" height="88" rx="10" style="fill: var(--surface-2); stroke: var(--accent); stroke-width: 2.5;"/>
+          <text text-anchor="middle" y="-12" style="fill: var(--accent); font-family: monospace; font-size: 12px; font-weight: 700;">merge</text>
+          <text text-anchor="middle" y="8" style="fill: var(--text-secondary); font-family: system-ui, sans-serif; font-size: 10px;">PR → main</text>
+          <text text-anchor="middle" y="26" style="fill: var(--text-muted); font-family: monospace; font-size: 9px;">/athena:pr</text>
+        </g>
+        <g style="stroke: var(--primary); stroke-width: 2.5; fill: none;">
+          <line x1="140" y1="160" x2="158" y2="160" marker-end="url(#ep-arrow)"/>
+          <line x1="280" y1="160" x2="318" y2="160" marker-end="url(#ep-arrow)"/>
+          <line x1="440" y1="160" x2="478" y2="160" marker-end="url(#ep-arrow)"/>
+          <line x1="600" y1="160" x2="638" y2="160" marker-end="url(#ep-arrow)"/>
+          <line x1="760" y1="160" x2="798" y2="160" marker-end="url(#ep-arrow)"/>
+        </g>
+        <g transform="translate(80,72)">
+          <circle r="22" style="fill: var(--surface); stroke: var(--accent); stroke-width: 2;"/>
+          <text text-anchor="middle" y="6" style="font-family: system-ui, sans-serif; font-size: 18px;">🙋</text>
+          <text text-anchor="middle" y="-30" style="fill: var(--accent); font-family: monospace; font-size: 10px; font-weight: 700;">human gate</text>
+          <text text-anchor="middle" y="-16" style="fill: var(--text-secondary); font-family: monospace; font-size: 9px;">approve plan</text>
+        </g>
+        <g transform="translate(860,72)">
+          <circle r="22" style="fill: var(--surface); stroke: var(--accent); stroke-width: 2;"/>
+          <text text-anchor="middle" y="6" style="font-family: system-ui, sans-serif; font-size: 18px;">🙋</text>
+          <text text-anchor="middle" y="-30" style="fill: var(--accent); font-family: monospace; font-size: 10px; font-weight: 700;">human gate</text>
+          <text text-anchor="middle" y="-16" style="fill: var(--text-secondary); font-family: monospace; font-size: 9px;">PR review</text>
+        </g>
+        <line x1="80"  y1="94"  x2="80"  y2="116" style="stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3;"/>
+        <line x1="860" y1="94"  x2="860" y2="116" style="stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3;"/>
+        <path d="M 540 204 C 540 290, 380 290, 380 220" style="fill: none; stroke: var(--danger); stroke-width: 2; stroke-dasharray: 6 4;" marker-end="url(#ep-loop-arrow)"/>
+        <g transform="translate(460,300)">
+          <rect x="-72" y="-18" width="144" height="36" rx="8" style="fill: var(--surface-2); stroke: var(--danger); stroke-width: 1.5;"/>
+          <text text-anchor="middle" y="-2" style="fill: var(--danger); font-family: monospace; font-size: 11px; font-weight: 700;">@debugger</text>
+          <text text-anchor="middle" y="12" style="fill: var(--text-secondary); font-family: monospace; font-size: 9px;">on test fail → loop</text>
+        </g>
+        <g transform="translate(60,380)">
+          <rect x="0" y="0" width="860" height="110" rx="10" style="fill: var(--surface); stroke: var(--border); stroke-width: 1.5;"/>
+          <text x="16" y="22" style="fill: var(--text-secondary); font-family: monospace; font-size: 11px; font-weight: 700;">epic-progress.md ‧ step matrix</text>
+          <g style="font-family: monospace; font-size: 11px;">
+            <text x="80"  y="48" text-anchor="middle" style="fill: var(--text-secondary);">plan</text>
+            <text x="220" y="48" text-anchor="middle" style="fill: var(--text-secondary);">spec</text>
+            <text x="380" y="48" text-anchor="middle" style="fill: var(--text-secondary);">impl</text>
+            <text x="540" y="48" text-anchor="middle" style="fill: var(--text-secondary);">qa</text>
+            <text x="700" y="48" text-anchor="middle" style="fill: var(--text-secondary);">commit</text>
+            <text x="860" y="48" text-anchor="middle" style="fill: var(--text-secondary);">merge</text>
+          </g>
+          <text x="16" y="76" style="fill: var(--text-muted); font-family: monospace; font-size: 11px;">E165</text>
+          <g style="font-family: system-ui, sans-serif; font-size: 17px; text-anchor: middle;">
+            <text x="80"  y="80" style="fill: var(--success);">✅</text>
+            <text x="220" y="80" style="fill: var(--success);">✅</text>
+            <text x="380" y="80" style="fill: var(--success);">✅</text>
+            <text x="540" y="80" style="fill: var(--success);">✅</text>
+            <text x="700" y="80" style="fill: var(--success);">✅</text>
+            <text x="860" y="80" style="fill: var(--success);">✅</text>
+          </g>
+          <text x="16" y="100" style="fill: var(--text-muted); font-family: monospace; font-size: 11px;">E166</text>
+          <g style="font-family: system-ui, sans-serif; font-size: 17px; text-anchor: middle;">
+            <text x="80"  y="104" style="fill: var(--success);">✅</text>
+            <text x="220" y="104" style="fill: var(--success);">✅</text>
+            <text x="380" y="104" style="fill: var(--accent);">🔄</text>
+            <text x="540" y="104" style="fill: var(--text-muted);">⬜</text>
+            <text x="700" y="104" style="fill: var(--text-muted);">⬜</text>
+            <text x="860" y="104" style="fill: var(--text-muted);">⬜</text>
+          </g>
+        </g>
+        <g transform="translate(60,500)" style="font-family: monospace; font-size: 10px;">
+          <text x="0"   y="0" style="fill: var(--text-muted);">⬜ pending</text>
+          <text x="100" y="0" style="fill: var(--accent);">🔄 in progress</text>
+          <text x="220" y="0" style="fill: var(--success);">✅ done</text>
+          <text x="320" y="0" style="fill: var(--danger);">— — — debugger loop</text>
+          <text x="500" y="0" style="fill: var(--accent);">🙋 human gate</text>
+        </g>
+      </svg>
+      <figcaption style="font-size: 0.5em; color: var(--text-secondary); text-align: center; margin-top: 0.5em;">
+        六步驟，每步都有 owner agent ‧ 兩個 human gate（plan approval + PR merge）‧ 失敗時 <code>@debugger</code> 自動接手回到 implement
+      </figcaption>
+    </figure>
+    <aside class="notes">這頁強調兩件事：(1) 人類只在兩個點介入 — 開頭核准 plan、結尾 review PR；(2) 失敗不是死路 — debugger loop 自動把控制權交回 implement。底下的 step matrix 是 epic-progress.md 的視覺化，Rule #18 就是看這張表來判斷能不能 Stop。</aside>
+  </section>
+
+  <!-- ============ §1b SDD + TDD methodology ============ -->
+  <section data-markdown="slides/01b-tdd-sdd.md"
+           data-separator="^\n---\n$"
+           data-separator-notes="^Note:"></section>
+
+  <!-- ============ 05-07 §2 Pros & Cons ============ -->
+  <section data-markdown="slides/02-pros-cons.md"
+           data-separator="^\n---\n$"
+           data-separator-notes="^Note:"></section>
+
+  <!-- ============ 08-10 §3 Persona ============ -->
+  <section data-markdown="slides/03-persona.md"
+           data-separator="^\n---\n$"
+           data-separator-notes="^Note:"></section>
+
+  <!-- ============ 11-13 §4 Learning text ============ -->
+  <section data-markdown="slides/04-learning.md"
+           data-separator="^\n---\n$"
+           data-separator-notes="^Note:"></section>
+
+  <!-- ============ §4.5 Stop Verifier Gate (inline SVG, E166) ============ -->
+  <section id="stop-verifier-gate-slide">
+    <h2 style="text-align: center;">Stop Verifier — 20 條防線</h2>
+    <figure style="margin: 0.3em auto; max-width: 1000px;">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 640" fill="none" role="img" aria-labelledby="sv-title sv-desc" style="max-height: 68vh; width: 100%; display: block;">
+        <title id="sv-title">Stop Verifier Gate — 20 rules split into blocking and advisory</title>
+        <desc id="sv-desc">A gate diagram showing 20 stop-verifier rules. The left column lists 11 blocking rules (exit 2) drawn with a red border; the right column lists 9 advisory rules (warning only) drawn with a muted border. A callout on Rule #18 (QA Gate Enforcement) shows the link from the verifier into epic-progress.md — when impl is done but qa is still pending the agent cannot Stop.</desc>
+        <text x="490" y="36" text-anchor="middle" style="fill: var(--text-primary); font-family: var(--font-display, system-ui, sans-serif); font-size: 22px; font-weight: 800;">Stop Verifier — 20 條防線</text>
+        <text x="490" y="58" text-anchor="middle" style="fill: var(--text-secondary); font-family: monospace; font-size: 12px;">scripts/hooks/stop-verifier.sh ‧ exit 2 = block, warning = advisory</text>
+        <g transform="translate(40,90)">
+          <rect x="0" y="0" width="440" height="34" rx="6" style="fill: var(--surface-2); stroke: var(--danger); stroke-width: 2;"/>
+          <text x="220" y="22" text-anchor="middle" style="fill: var(--danger); font-family: monospace; font-size: 13px; font-weight: 800;">Blocking — refuse Stop ‧ 11 rules</text>
+        </g>
+        <g transform="translate(500,90)">
+          <rect x="0" y="0" width="440" height="34" rx="6" style="fill: var(--surface-2); stroke: var(--text-muted); stroke-width: 2; stroke-dasharray: 4 3;"/>
+          <text x="220" y="22" text-anchor="middle" style="fill: var(--text-secondary); font-family: monospace; font-size: 13px; font-weight: 800;">Advisory — warn only ‧ 9 rules</text>
+        </g>
+        <g style="font-family: monospace; font-size: 11px;">
+          <g transform="translate(40,140)"><rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--danger); stroke-width: 1.5;"/><text x="10" y="18" style="fill: var(--danger); font-weight: 700;">#1</text><text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">localStorage</text><text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">client/ ban</text></g>
+          <g transform="translate(190,140)"><rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--danger); stroke-width: 1.5;"/><text x="10" y="18" style="fill: var(--danger); font-weight: 700;">#2</text><text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">fireEvent</text><text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">use userEvent</text></g>
+          <g transform="translate(340,140)"><rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--danger); stroke-width: 1.5;"/><text x="10" y="18" style="fill: var(--danger); font-weight: 700;">#3</text><text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">staleTime hardcode</text><text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">use CACHE_TIERS</text></g>
+          <g transform="translate(40,206)"><rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--danger); stroke-width: 1.5;"/><text x="10" y="18" style="fill: var(--danger); font-weight: 700;">#4</text><text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">MSW handler loc</text><text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">tests/handlers/</text></g>
+          <g transform="translate(190,206)"><rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--danger); stroke-width: 1.5;"/><text x="10" y="18" style="fill: var(--danger); font-weight: 700;">#5</text><text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">folder names</text><text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">no backend/frontend</text></g>
+          <g transform="translate(340,206)"><rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--danger); stroke-width: 1.5;"/><text x="10" y="18" style="fill: var(--danger); font-weight: 700;">#6</text><text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">OpenAPI drift</text><text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">regen types</text></g>
+          <g transform="translate(40,272)"><rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--danger); stroke-width: 1.5;"/><text x="10" y="18" style="fill: var(--danger); font-weight: 700;">#7</text><text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">console.log</text><text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">no residue</text></g>
+          <g transform="translate(190,272)"><rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--danger); stroke-width: 1.5;"/><text x="10" y="18" style="fill: var(--danger); font-weight: 700;">#13</text><text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">orphan route</text><text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">ROUTE_MAP ↔ App</text></g>
+          <g transform="translate(340,272)"><rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--accent); stroke-width: 2.5;"/><text x="10" y="18" style="fill: var(--accent); font-weight: 700;">#18 ★</text><text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">QA Gate Enforce</text><text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">epic-progress.md</text></g>
+          <g transform="translate(40,338)"><rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--danger); stroke-width: 1.5;"/><text x="10" y="18" style="fill: var(--danger); font-weight: 700;">#19</text><text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">migration SQL</text><text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">review artifact</text></g>
+          <g transform="translate(190,338)"><rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--danger); stroke-width: 1.5;"/><text x="10" y="18" style="fill: var(--danger); font-weight: 700;">#20</text><text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">openapi contract</text><text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">qa_contract evt</text></g>
+        </g>
+        <g style="font-family: monospace; font-size: 11px;">
+          <g transform="translate(500,140)"><rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--text-muted); stroke-width: 1.5; stroke-dasharray: 4 3;"/><text x="10" y="18" style="fill: var(--text-secondary); font-weight: 700;">#8</text><text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">large file warn</text><text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">&gt; 500 lines</text></g>
+          <g transform="translate(650,140)"><rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--text-muted); stroke-width: 1.5; stroke-dasharray: 4 3;"/><text x="10" y="18" style="fill: var(--text-secondary); font-weight: 700;">#9</text><text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">internal mocks</text><text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">test behavior</text></g>
+          <g transform="translate(800,140)"><rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--text-muted); stroke-width: 1.5; stroke-dasharray: 4 3;"/><text x="10" y="18" style="fill: var(--text-secondary); font-weight: 700;">#10</text><text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">parametrize nudge</text><text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">3+ tests</text></g>
+          <g transform="translate(500,206)"><rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--text-muted); stroke-width: 1.5; stroke-dasharray: 4 3;"/><text x="10" y="18" style="fill: var(--text-secondary); font-weight: 700;">#11</text><text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">mock depth</text><text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">limit: 5</text></g>
+          <g transform="translate(650,206)"><rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--text-muted); stroke-width: 1.5; stroke-dasharray: 4 3;"/><text x="10" y="18" style="fill: var(--text-secondary); font-weight: 700;">#12</text><text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">test file size</text><text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">&gt; 200 lines</text></g>
+          <g transform="translate(800,206)"><rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--text-muted); stroke-width: 1.5; stroke-dasharray: 4 3;"/><text x="10" y="18" style="fill: var(--text-secondary); font-weight: 700;">#14</text><text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">CSS co-location</text><text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">unimported .css</text></g>
+          <g transform="translate(500,272)"><rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--text-muted); stroke-width: 1.5; stroke-dasharray: 4 3;"/><text x="10" y="18" style="fill: var(--text-secondary); font-weight: 700;">#15</text><text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">MSW factory</text><text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">no inline json</text></g>
+          <g transform="translate(650,272)"><rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--text-muted); stroke-width: 1.5; stroke-dasharray: 4 3;"/><text x="10" y="18" style="fill: var(--text-secondary); font-weight: 700;">#16</text><text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">schema bridge</text><text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">satisfies ZodType</text></g>
+          <g transform="translate(800,272)"><rect width="140" height="56" rx="6" style="fill: var(--surface); stroke: var(--text-muted); stroke-width: 1.5; stroke-dasharray: 4 3;"/><text x="10" y="18" style="fill: var(--text-secondary); font-weight: 700;">#17</text><text x="10" y="34" style="fill: var(--text-primary); font-size: 10px;">CSS var drift</text><text x="10" y="48" style="fill: var(--text-muted); font-size: 9px;">undefined var()</text></g>
+        </g>
+        <path d="M 410 334 L 410 420" style="fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 5 4;"/>
+        <polygon points="406,420 414,420 410,430" style="fill: var(--accent);"/>
+        <g transform="translate(60,440)">
+          <rect width="860" height="170" rx="12" style="fill: var(--surface); stroke: var(--accent); stroke-width: 2;"/>
+          <text x="20" y="28" style="fill: var(--accent); font-family: monospace; font-size: 13px; font-weight: 800;">Rule #18 — QA Gate Enforcement (E155)</text>
+          <text x="20" y="50" style="fill: var(--text-secondary); font-family: monospace; font-size: 11px;">on feat/E{n}-* branches, refuse Stop when epic-progress.md shows impl=✅ but qa=⬜/❌</text>
+          <g transform="translate(20,70)" style="font-family: monospace; font-size: 11px;">
+            <rect x="0" y="0" width="500" height="80" rx="8" style="fill: var(--surface-2); stroke: var(--border); stroke-width: 1;"/>
+            <text x="14" y="20" style="fill: var(--text-secondary);">epic-progress.md</text>
+            <text x="120" y="44" text-anchor="middle" style="fill: var(--text-secondary); font-size: 10px;">spec</text>
+            <text x="200" y="44" text-anchor="middle" style="fill: var(--text-secondary); font-size: 10px;">impl</text>
+            <text x="280" y="44" text-anchor="middle" style="fill: var(--text-secondary); font-size: 10px;">qa</text>
+            <text x="360" y="44" text-anchor="middle" style="fill: var(--text-secondary); font-size: 10px;">commit</text>
+            <text x="440" y="44" text-anchor="middle" style="fill: var(--text-secondary); font-size: 10px;">merge</text>
+            <text x="14" y="68" style="fill: var(--text-muted); font-size: 10px;">E166</text>
+            <g style="font-family: system-ui, sans-serif; font-size: 16px; text-anchor: middle;">
+              <text x="120" y="70" style="fill: var(--success);">✅</text>
+              <text x="200" y="70" style="fill: var(--success);">✅</text>
+              <text x="280" y="70" style="fill: var(--text-muted);">⬜</text>
+              <text x="360" y="70" style="fill: var(--text-muted);">⬜</text>
+              <text x="440" y="70" style="fill: var(--text-muted);">⬜</text>
+            </g>
+          </g>
+          <g transform="translate(540,90)">
+            <path d="M 0 18 L 60 18" style="fill: none; stroke: var(--danger); stroke-width: 2;"/>
+            <polygon points="60,14 60,22 70,18" style="fill: var(--danger);"/>
+          </g>
+          <g transform="translate(620,70)">
+            <rect width="220" height="80" rx="10" style="fill: var(--surface-2); stroke: var(--danger); stroke-width: 2;"/>
+            <text x="110" y="32" text-anchor="middle" style="fill: var(--danger); font-family: monospace; font-size: 14px; font-weight: 800;">exit 2</text>
+            <text x="110" y="52" text-anchor="middle" style="fill: var(--text-primary); font-family: monospace; font-size: 11px;">refuse Stop</text>
+            <text x="110" y="68" text-anchor="middle" style="fill: var(--text-muted); font-family: monospace; font-size: 10px;">run /athena:qa first</text>
+          </g>
+        </g>
+      </svg>
+      <figcaption style="font-size: 0.45em; color: var(--text-secondary); text-align: center; margin-top: 0.4em;">
+        20 條 rule ‧ 11 條 blocking + 9 條 advisory ‧ Rule #18 把 <code>epic-progress.md</code> 的 QA 欄位接到 Stop hook
+      </figcaption>
+    </figure>
+    <aside class="notes">這頁是「為什麼 Learning Loop 有牙齒」的具體展示。20 條 rule 不用唸，重點是右下角 callout — Rule #18 把 epic-progress.md 的 qa 欄位接到 Stop hook，這就把「跳過測試」這件事變成機械上不可能。</aside>
+  </section>
+
+  <!-- ============ 14 Memory demo (inline) ============ -->
+  <section class="slide-terminal" id="memory-demo-slide">
+    <h2 style="text-align: center;">Demo — Memory 寫回流</h2>
+    <svg viewBox="0 0 900 300" style="max-width: 900px; margin: 1em auto; display: block;">
+      <style>
+        .node-box { fill: #0e0e1a; stroke: #f0a500; stroke-width: 2; }
+        .node-label { fill: #f0f0f8; font-family: monospace; font-size: 14px; text-anchor: middle; }
+        .node-path { fill: #6b6b88; font-family: monospace; font-size: 10px; text-anchor: middle; }
+        .arrow { stroke: #6b6b88; stroke-width: 2; fill: none; stroke-dasharray: 4 4; }
+        .ball { fill: #f0a500; opacity: 0; filter: drop-shadow(0 0 8px #f0a500); }
+        .ball.active { opacity: 1; }
+        .tooltip { fill: #f0f0f8; font-family: monospace; font-size: 13px; text-anchor: middle; opacity: 0; transition: opacity 0.4s; }
+        .tooltip.shown { opacity: 1; }
+      </style>
+      <g transform="translate(100,120)">
+        <rect class="node-box" width="200" height="80" rx="8"/>
+        <text class="node-label" x="100" y="32">Chronos</text>
+        <text class="node-path" x="100" y="52">docs/context/best-practice.md</text>
+        <text class="node-path" x="100" y="66" style="fill:#f0a500;">Tier 1</text>
+      </g>
+      <g transform="translate(350,120)">
+        <rect class="node-box" width="200" height="80" rx="8" style="stroke:#ffc233;"/>
+        <text class="node-label" x="100" y="32">template-memory</text>
+        <text class="node-path" x="100" y="52">~/.claude/template-memory/</text>
+        <text class="node-path" x="100" y="66" style="fill:#ffc233;">Tier 0</text>
+      </g>
+      <g transform="translate(600,120)">
+        <rect class="node-box" width="200" height="80" rx="8"/>
+        <text class="node-label" x="100" y="32">EventFlow</text>
+        <text class="node-path" x="100" y="52">new-session load</text>
+        <text class="node-path" x="100" y="66" style="fill:#f0a500;">Tier 1 read</text>
+      </g>
+      <path class="arrow" d="M 300 160 L 350 160"/>
+      <path class="arrow" d="M 550 160 L 600 160"/>
+      <circle id="memory-ball" class="ball" r="10" cx="200" cy="160"/>
+      <text class="tooltip" id="memory-tooltip" x="450" y="250"></text>
+    </svg>
+    <p style="text-align: center; font-size: 0.45em; color: var(--text-muted);">
+      按 <kbd>r</kbd> 重播
+    </p>
+    <aside class="notes">讓動畫跑完再解釋每個 node。動畫約 4.5 秒。</aside>
+  </section>
+
+  <!-- ============ 15-18 §5 Agent team (vertical nested) ============ -->
+  <section>
+    <!-- 14b Agent team roster (inline SVG, E166) -->
+    <section id="agent-team-slide">
+      <h2 style="text-align: center;">Agent Team — 11 個 agent，4 個 cluster</h2>
+      <figure style="margin: 0.3em auto; max-width: 1000px;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 640" fill="none" role="img" aria-labelledby="at-title at-desc" style="max-height: 66vh; width: 100%; display: block;">
+          <title id="at-title">Agent Team — 11 agents in 4 clusters around @orchestrator</title>
+          <desc id="at-desc">A central @orchestrator node (opus) is surrounded by four clusters of agents: Specification (spec-writer, best-practice, strategist), Quality (reviewer, qa, evaluator, debugger), Lifecycle (deployer, memory-curator), and Design (designer). Each node carries a model badge — opus or sonnet. Dotted arrows show write-back ownership of files under docs/context/.</desc>
+          <defs>
+            <marker id="at-arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+              <polygon points="0 0, 10 4, 0 8" style="fill: var(--text-muted);"/>
+            </marker>
+          </defs>
+          <rect x="40"  y="80"  width="380" height="220" rx="14" style="fill: var(--surface); stroke: var(--border); stroke-width: 1.5;"/>
+          <text x="60" y="108" style="fill: var(--primary); font-family: monospace; font-size: 14px; font-weight: 700;">Specification</text>
+          <rect x="480" y="80"  width="380" height="220" rx="14" style="fill: var(--surface); stroke: var(--border); stroke-width: 1.5;"/>
+          <text x="500" y="108" style="fill: var(--info); font-family: monospace; font-size: 14px; font-weight: 700;">Quality</text>
+          <rect x="40"  y="340" width="380" height="220" rx="14" style="fill: var(--surface); stroke: var(--border); stroke-width: 1.5;"/>
+          <text x="60" y="368" style="fill: var(--success); font-family: monospace; font-size: 14px; font-weight: 700;">Lifecycle</text>
+          <rect x="480" y="340" width="380" height="220" rx="14" style="fill: var(--surface); stroke: var(--border); stroke-width: 1.5;"/>
+          <text x="500" y="368" style="fill: var(--accent); font-family: monospace; font-size: 14px; font-weight: 700;">Design</text>
+          <g transform="translate(450,320)">
+            <circle r="68" style="fill: var(--primary); stroke: var(--accent); stroke-width: 3;"/>
+            <text text-anchor="middle" y="-6" style="fill: var(--bg); font-family: monospace; font-size: 16px; font-weight: 800;">@orchestrator</text>
+            <text text-anchor="middle" y="14" style="fill: var(--bg); font-family: monospace; font-size: 11px; opacity: 0.75;">opus</text>
+            <text text-anchor="middle" y="32" style="fill: var(--bg); font-family: system-ui, sans-serif; font-size: 9px; opacity: 0.6;">always-on</text>
+          </g>
+          <g style="stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 3 4; opacity: 0.4;">
+            <line x1="450" y1="320" x2="160" y2="160"/>
+            <line x1="450" y1="320" x2="290" y2="160"/>
+            <line x1="450" y1="320" x2="160" y2="250"/>
+            <line x1="450" y1="320" x2="600" y2="150"/>
+            <line x1="450" y1="320" x2="730" y2="150"/>
+            <line x1="450" y1="320" x2="600" y2="240"/>
+            <line x1="450" y1="320" x2="730" y2="240"/>
+            <line x1="450" y1="320" x2="160" y2="430"/>
+            <line x1="450" y1="320" x2="290" y2="430"/>
+            <line x1="450" y1="320" x2="660" y2="450"/>
+          </g>
+          <g transform="translate(160,160)"><rect x="-70" y="-26" width="140" height="52" rx="8" style="fill: var(--surface-2); stroke: var(--primary); stroke-width: 2;"/><text text-anchor="middle" y="-4" style="fill: var(--text-primary); font-family: monospace; font-size: 12px; font-weight: 700;">@spec-writer</text><text text-anchor="middle" y="14" style="fill: var(--accent); font-family: monospace; font-size: 9px;">opus</text></g>
+          <g transform="translate(290,160)"><rect x="-70" y="-26" width="140" height="52" rx="8" style="fill: var(--surface-2); stroke: var(--primary); stroke-width: 2;"/><text text-anchor="middle" y="-4" style="fill: var(--text-primary); font-family: monospace; font-size: 12px; font-weight: 700;">@best-practice</text><text text-anchor="middle" y="14" style="fill: var(--accent); font-family: monospace; font-size: 9px;">opus</text></g>
+          <g transform="translate(160,250)"><rect x="-70" y="-26" width="140" height="52" rx="8" style="fill: var(--surface-2); stroke: var(--primary); stroke-width: 2;"/><text text-anchor="middle" y="-4" style="fill: var(--text-primary); font-family: monospace; font-size: 12px; font-weight: 700;">@strategist</text><text text-anchor="middle" y="14" style="fill: var(--accent); font-family: monospace; font-size: 9px;">opus</text></g>
+          <g transform="translate(600,150)"><rect x="-70" y="-26" width="140" height="52" rx="8" style="fill: var(--surface-2); stroke: var(--info); stroke-width: 2;"/><text text-anchor="middle" y="-4" style="fill: var(--text-primary); font-family: monospace; font-size: 12px; font-weight: 700;">@reviewer</text><text text-anchor="middle" y="14" style="fill: var(--text-secondary); font-family: monospace; font-size: 9px;">sonnet</text></g>
+          <g transform="translate(730,150)"><rect x="-50" y="-26" width="100" height="52" rx="8" style="fill: var(--surface-2); stroke: var(--info); stroke-width: 2;"/><text text-anchor="middle" y="-4" style="fill: var(--text-primary); font-family: monospace; font-size: 12px; font-weight: 700;">@qa</text><text text-anchor="middle" y="14" style="fill: var(--text-secondary); font-family: monospace; font-size: 9px;">sonnet</text></g>
+          <g transform="translate(600,240)"><rect x="-70" y="-26" width="140" height="52" rx="8" style="fill: var(--surface-2); stroke: var(--info); stroke-width: 2;"/><text text-anchor="middle" y="-4" style="fill: var(--text-primary); font-family: monospace; font-size: 12px; font-weight: 700;">@evaluator</text><text text-anchor="middle" y="14" style="fill: var(--text-secondary); font-family: monospace; font-size: 9px;">sonnet</text></g>
+          <g transform="translate(730,240)"><rect x="-60" y="-26" width="120" height="52" rx="8" style="fill: var(--surface-2); stroke: var(--info); stroke-width: 2;"/><text text-anchor="middle" y="-4" style="fill: var(--text-primary); font-family: monospace; font-size: 12px; font-weight: 700;">@debugger</text><text text-anchor="middle" y="14" style="fill: var(--text-secondary); font-family: monospace; font-size: 9px;">sonnet</text></g>
+          <g transform="translate(160,430)"><rect x="-70" y="-26" width="140" height="52" rx="8" style="fill: var(--surface-2); stroke: var(--success); stroke-width: 2;"/><text text-anchor="middle" y="-4" style="fill: var(--text-primary); font-family: monospace; font-size: 12px; font-weight: 700;">@deployer</text><text text-anchor="middle" y="14" style="fill: var(--text-secondary); font-family: monospace; font-size: 9px;">sonnet</text></g>
+          <g transform="translate(310,430)"><rect x="-80" y="-26" width="160" height="52" rx="8" style="fill: var(--surface-2); stroke: var(--success); stroke-width: 2;"/><text text-anchor="middle" y="-4" style="fill: var(--text-primary); font-family: monospace; font-size: 12px; font-weight: 700;">@memory-curator</text><text text-anchor="middle" y="14" style="fill: var(--text-secondary); font-family: monospace; font-size: 9px;">sonnet</text></g>
+          <g transform="translate(670,450)"><rect x="-70" y="-26" width="140" height="52" rx="8" style="fill: var(--surface-2); stroke: var(--accent); stroke-width: 2;"/><text text-anchor="middle" y="-4" style="fill: var(--text-primary); font-family: monospace; font-size: 12px; font-weight: 700;">@designer</text><text text-anchor="middle" y="14" style="fill: var(--text-secondary); font-family: monospace; font-size: 9px;">sonnet</text></g>
+          <text x="670" y="498" text-anchor="middle" style="fill: var(--text-muted); font-family: system-ui, sans-serif; font-size: 10px; font-style: italic;">added in E163 — design-to-code</text>
+          <g transform="translate(40,590)">
+            <rect x="0" y="0" width="820" height="36" rx="8" style="fill: var(--surface-2); stroke: var(--border); stroke-width: 1;"/>
+            <text x="14" y="14" style="fill: var(--text-secondary); font-family: monospace; font-size: 10px;">write-back →</text>
+            <text x="14" y="28" style="fill: var(--text-primary); font-family: monospace; font-size: 10px;">@spec-writer ↦ specs/* ‧ @reviewer ↦ review-log.md ‧ @qa ↦ qa-log.md ‧ @debugger ↦ bugfix-log.md ‧ @memory-curator ↦ ~/.claude/template-memory/ ‧ @orchestrator ↦ epic-progress.md</text>
+          </g>
+        </svg>
+        <figcaption style="font-size: 0.45em; color: var(--text-secondary); text-align: center; margin-top: 0.4em;">
+          中央 <code>@orchestrator</code> 連到 4 cluster ‧ <span style="color: var(--accent);">opus</span> = 4 個策略 agent，<span style="color: var(--text-secondary);">sonnet</span> = 7 個執行 agent ‧ <code>@designer</code> 是 E163 加入的第 11 個
+        </figcaption>
+      </figure>
+      <aside class="notes">這頁先講「靜態結構」— 11 個 agent 怎麼分群、用哪個 model、寫回哪個檔。下一頁才講動態流程（agent-collaboration）。spec 原本寫 10 個，但 E163 加了 @designer，所以現場真實是 11 個。</aside>
+    </section>
+
+    <!-- 15 Agent collaboration flow — THE KEY SLIDE -->
+    <section>
+      <h2>一個 Epic 的團隊協作流</h2>
+      <img src="assets/diagrams/agent-collaboration.svg" alt="Agent Collaboration" style="max-height: 72vh; margin: 0 auto; display: block;">
+      <p style="font-size: 0.45em; color: var(--text-secondary); text-align: center; margin-top: 0.3em;">
+        <span style="color:#ff4f4f;">■</span> 寫碼 ‧
+        <span style="color:#3b82f6;">■</span> 審查 ‧
+        <span style="color:#00d48a;">■</span> 運維 ‧
+        虛線 = always-on agent
+      </p>
+      <aside class="notes">
+        這張圖是整場 talk 的重點。不要描述每個 agent — 讓聽眾看圖，只說：「5 個階段，9 個 agent，有 feedback loop。注意底下兩個 always-on agent — orchestrator 盯進度，memory-curator 盯學習。」
+      </aside>
+    </section>
+
+    <!-- 16 Harness 3 layers — diagram not text -->
+    <section>
+      <h2>Harness = 把 agent 變成可信賴的同事</h2>
+      <img src="assets/diagrams/harness-layers.svg" alt="Harness Layers" style="max-height: 70vh; margin: 0.5em auto; display: block;">
+      <aside class="notes">三層骨架一起才算 harness。缺一個都不夠可信。hooks = 牙齒，skills = 知識，audit = 記憶。</aside>
+    </section>
+
+    <!-- 17 /athena command tree -->
+    <section>
+      <h2><code>/athena</code> 指令空間</h2>
+      <pre style="font-size: 0.48em; text-align: left; background: var(--surface); padding: 1em; border-radius: 6px; font-family: var(--font-mono); line-height: 1.6; max-width: 800px; margin: 0.8em auto;">
+<span style="color: var(--primary);">/athena/</span>
+├── <strong>loop</strong>        ← epic 自動推進
+├── <strong>batch</strong>       ← 並行 wave 執行
+├── <strong>cycle</strong>       ← plan → approve → execute → reflect
+├── spec / implement / qa / ship / pr / deploy
+├── save / load / plan / learn / promote
+├── dba / audit / dashboard / domain
+├── metrics      <span style="color: var(--success);">← E146 新增</span>
+└── qa-report    <span style="color: var(--success);">← E153 新增</span>
+      </pre>
+      <p style="font-size: 0.45em; color: var(--text-secondary);">
+        19 個 command，命名紀律乾淨。
+      </p>
+      <aside class="notes">不要唸每個 command，只點出 loop / batch / cycle / metrics 四個。</aside>
+    </section>
+
+    <!-- 18 Metrics + Evaluator -->
+    <section>
+      <h2>Metrics + Evaluator</h2>
+      <div class="slide-grid cols-2" style="padding-top: 0.5em;">
+        <div class="card">
+          <h3><code>/athena:metrics</code> (E146)</h3>
+          <p>從 <code>.claude/audit.jsonl</code> 彙整每個 agent 的執行次數、成功率、平均時長、retry 數。<br><br><strong>可靠度是可量測的，不是感覺。</strong></p>
+        </div>
+        <div class="card">
+          <h3><code>@evaluator</code> (E147)</h3>
+          <p>獨立驗收 agent — 不寫碼、不審碼，只驗「spec 要求的 acceptance criteria 有沒有達成」。<br><br>避免「寫的人也是驗的人」的 conflict of interest。</p>
+        </div>
+      </div>
+      <aside class="notes">metrics + evaluator 是最新的 E146/E147。量測 + 獨立驗收是可信賴 agent 的最後一哩。</aside>
+    </section>
+  </section>
+
+  <!-- ============ 19 Loop demo ============ -->
+  <section class="slide-terminal" id="loop-demo-slide">
+    <h2 style="text-align: center;">Demo — /athena:loop 30 秒回放</h2>
+    <div class="terminal" id="loop-terminal">
+      <span class="line" data-ms="0"><span class="prompt">$</span> /athena:loop</span>
+      <span class="line" data-ms="800"><span class="agent-orchestrator">[orchestrator]</span> reading EPIC_INDEX.md...</span>
+      <span class="line" data-ms="1400"><span class="agent-orchestrator">[orchestrator]</span> next: <strong>E148</strong> (bugfix audit hook)</span>
+      <span class="line" data-ms="2400"><span class="agent-spec-writer">[spec-writer]</span> drafting spec...</span>
+      <span class="line" data-ms="4200"><span class="agent-spec-writer">[spec-writer]</span> <span class="ok">✓</span> spec written (11 acceptance criteria)</span>
+      <span class="line" data-ms="5000"><span class="agent-qa">[qa]</span> running 11 integration tests...</span>
+      <span class="line" data-ms="7800"><span class="agent-qa">[qa]</span> <span class="ok">✓</span> 11/11 passed ‧ coverage 87%</span>
+      <span class="line" data-ms="8800"><span class="agent-reviewer">[reviewer]</span> reading diff, 3 comments raised</span>
+      <span class="line" data-ms="11000"><span class="agent-debugger">[debugger]</span> addressing comments</span>
+      <span class="line" data-ms="13000"><span class="agent-qa">[qa]</span> re-running tests...</span>
+      <span class="line" data-ms="15500"><span class="agent-qa">[qa]</span> <span class="ok">✓</span> 11/11 still passing</span>
+      <span class="line" data-ms="16500"><span class="agent-deployer">[deployer]</span> pre-deploy gates: 7/7 <span class="ok">✓</span></span>
+      <span class="line" data-ms="17800"><span class="agent-orchestrator">[orchestrator]</span> <strong class="ok">E148 marked complete</strong></span>
+      <span class="line" data-ms="18800"><span class="agent-orchestrator">[orchestrator]</span> <span class="prompt">$</span> next: E149<span class="cursor"></span></span>
+    </div>
+    <div class="progress-bar" id="loop-progress">E148 <span class="fill">░░░░░░░░░░</span> <span class="pct">0%</span></div>
+    <p style="text-align: center; font-size: 0.4em; color: var(--text-muted); margin-top: 0.5em;">
+      按 <kbd>space</kbd> 暫停 ‧ 按 <kbd>r</kbd> 重播
+    </p>
+    <aside class="notes">重點：這是腳本化回放，不是真實執行 — 但每一行都對應真實的 audit.jsonl log。</aside>
+  </section>
+
+  <!-- ============ 20-22 §6 Why ============ -->
+  <section data-markdown="slides/06-why.md"
+           data-separator="^\n---\n$"
+           data-separator-notes="^Note:"></section>
+
+  <!-- ============ 23-32 §7 Projects ============ -->
+  <section data-markdown="slides/07-projects.md"
+           data-separator="^\n---\n$"
+           data-separator-notes="^Note:"></section>
+
+  <!-- ============ 33-35 §8 Observations ============ -->
+  <section data-markdown="slides/08-observations.md"
+           data-separator="^\n---\n$"
+           data-separator-notes="^Note:"></section>
+
+  <!-- ============ 36 Closing ============ -->
+  <section class="slide-hero">
+    <h1>Questions?</h1>
+    <div class="divider"></div>
+    <p class="subtitle" style="font-family: var(--font-mono); color: var(--primary);">
+      github.com/cloud-f1/ai-coding-template
+    </p>
+    <p style="font-size: 0.55em; color: var(--text-muted); margin-top: 0.8em;">
+      <code>/athena:load</code> to start
+    </p>
+    <aside class="notes">感謝。Q&amp;A 時間。</aside>
+  </section>
+
+  <!-- ============ Appendix (backup for Q&A, reachable via 'b') ============ -->
+  <section id="appendix">
+    <section>
+      <h2>Appendix — audit.jsonl 範例</h2>
+      <pre style="font-size: 0.32em; text-align: left; font-family: var(--font-mono); background: var(--surface); padding: 1em; border-radius: 6px; line-height: 1.5; max-width: 900px; margin: 0.8em auto;">
+{"ts":"2026-04-11T10:23:14Z","agent":"spec-writer","epic":"E148","event":"start","ctx_tokens":4521}
+{"ts":"2026-04-11T10:23:48Z","agent":"spec-writer","epic":"E148","event":"tool_use","tool":"Write"}
+{"ts":"2026-04-11T10:24:02Z","agent":"spec-writer","epic":"E148","event":"complete","duration_s":48,"retries":0}
+{"ts":"2026-04-11T10:24:15Z","agent":"qa","epic":"E148","event":"start","ctx_tokens":3890}
+{"ts":"2026-04-11T10:26:41Z","agent":"qa","epic":"E148","event":"test_run","passed":11,"failed":0,"coverage":0.87}
+{"ts":"2026-04-11T10:26:55Z","agent":"qa","epic":"E148","event":"complete","duration_s":160,"retries":0}
+      </pre>
+      <p style="font-size: 0.4em; color: var(--text-secondary);">
+        每一行是 JSON ‧ <code>jq</code> 可查 ‧ 出事時能完整 reproduce decision path。
+      </p>
+    </section>
+    <section>
+      <h2>Appendix — hooks/ 檔案樹</h2>
+      <pre style="font-size: 0.45em; text-align: left; font-family: var(--font-mono); background: var(--surface); padding: 1em; border-radius: 6px; line-height: 1.5; max-width: 800px; margin: 0.8em auto;">
+scripts/hooks/
+├── CLAUDE.md
+├── stop-verifier.sh        ← 17 rules
+├── rules/
+│   ├── 01-localstorage-ban.sh
+│   ├── 02-fireevent-ban.sh
+│   ├── 03-staletime-hardcode.sh
+│   ├── 04-msw-location.sh
+│   ├── ...
+│   └── 17-css-var-drift.sh
+├── pretool-guard.sh
+├── posttool-format.sh
+└── webhook.sh
+      </pre>
+    </section>
+  </section>
+
+</div></div>
+<script src="vendor/reveal.js@5.x/dist/reveal.js"></script>
+<script src="vendor/reveal.js@5.x/plugin/markdown/markdown.js"></script>
+<script src="vendor/reveal.js@5.x/plugin/notes/notes.js"></script>
+<script type="module" src="scripts/main.js"></script>
+</body>
+</html>

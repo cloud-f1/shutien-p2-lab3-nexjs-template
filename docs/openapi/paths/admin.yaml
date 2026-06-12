@@ -1,0 +1,37 @@
+health:
+  get:
+    tags: [admin]
+    summary: Detailed system health (superuser only)
+    operationId: adminHealthCheck
+    responses:
+      '200':
+        description: Detailed health status
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/admin.yaml#/AdminHealthResponse'
+      '401':
+        $ref: '../schemas/common.yaml#/responses/Unauthorized'
+      '403':
+        description: Not a superuser
+
+sli:
+  get:
+    tags: [admin]
+    summary: Rolling Service-Level Indicators (superuser only)
+    operationId: adminSli
+    description: >
+      Returns in-process aggregated SLIs for the trailing 5-minute window:
+      request success rate, p50/p95 latency overall and per top-N endpoint,
+      and DB connection pool stats. Cross-replica truth lives in Sentry/Zeabur.
+    responses:
+      '200':
+        description: SLI snapshot
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/admin.yaml#/SliResponse'
+      '401':
+        $ref: '../schemas/common.yaml#/responses/Unauthorized'
+      '403':
+        description: Not a superuser

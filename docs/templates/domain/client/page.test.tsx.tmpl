@@ -1,0 +1,96 @@
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, it, expect, beforeEach } from "vitest";
+import { http, HttpResponse } from "msw";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router-dom";
+import { server } from "../../tests/setup";
+import { {{CAMEL}}Handlers, {{UPPER_SNAKE}}_FIXTURES } from "../../tests/handlers/{{SNAKE_PLURAL}}";
+import {{PASCAL_PLURAL}}Page from "./{{PASCAL_PLURAL}}Page";
+
+const BASE = "http://localhost:8000";
+
+function render{{PASCAL_PLURAL}}() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <{{PASCAL_PLURAL}}Page />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
+describe("{{PASCAL_PLURAL}}Page", () => {
+  beforeEach(() => {
+    server.use(...{{CAMEL}}Handlers);
+  });
+
+  it("renders {{SNAKE_PLURAL}} list with data from fixtures", async () => {
+    render{{PASCAL_PLURAL}}();
+
+    expect(await screen.findByText("{{PASCAL_PLURAL}} (2)")).toBeInTheDocument();
+  });
+
+  it("shows empty state when API returns empty list", async () => {
+    server.use(
+      http.get(`${BASE}/{{KEBAB_PLURAL}}`, () =>
+        HttpResponse.json({
+          items: [],
+          total: 0,
+          page: 1,
+          page_size: 20,
+          pages: 0,
+        }),
+      ),
+    );
+
+    render{{PASCAL_PLURAL}}();
+
+    expect(await screen.findByText("No {{SNAKE_PLURAL}} yet")).toBeInTheDocument();
+  });
+
+  it("shows loading state while fetching", () => {
+    server.use(
+      http.get(`${BASE}/{{KEBAB_PLURAL}}`, async () => {
+        await new Promise((r) => setTimeout(r, 100));
+        return HttpResponse.json({
+          items: {{UPPER_SNAKE}}_FIXTURES,
+          total: 2,
+          page: 1,
+          page_size: 20,
+          pages: 1,
+        });
+      }),
+    );
+
+    render{{PASCAL_PLURAL}}();
+    expect(screen.getByText("Loading {{SNAKE_PLURAL}}...")).toBeInTheDocument();
+  });
+
+  it("shows error state on API failure", async () => {
+    server.use(
+      http.get(`${BASE}/{{KEBAB_PLURAL}}`, () =>
+        HttpResponse.json({ detail: "Server Error" }, { status: 500 }),
+      ),
+    );
+
+    render{{PASCAL_PLURAL}}();
+
+    expect(
+      await screen.findByText("Failed to load {{SNAKE_PLURAL}}. Please try again."),
+    ).toBeInTheDocument();
+  });
+
+  it("opens create form when Add button is clicked", async () => {
+    const user = userEvent.setup();
+    render{{PASCAL_PLURAL}}();
+
+    const addBtn = await screen.findByText("+ Add {{PASCAL}}");
+    await user.click(addBtn);
+
+    expect(screen.getByText("Add {{PASCAL}}")).toBeInTheDocument();
+  });
+});

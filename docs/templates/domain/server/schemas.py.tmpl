@@ -1,0 +1,30 @@
+"""{{PASCAL}} schemas for API request/response validation."""
+
+import uuid
+from datetime import datetime
+
+from pydantic import BaseModel, Field
+
+
+class {{PASCAL}}Create(BaseModel):
+    {{#FIELDS}}
+    {{field_name}}: {{python_type}} = Field({{field_constraints}})
+    {{/FIELDS}}
+
+
+class {{PASCAL}}Read(BaseModel):
+    id: uuid.UUID
+    {{#FIELDS}}
+    {{field_name}}: {{python_type}}
+    {{/FIELDS}}
+    user_id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class {{PASCAL}}Update(BaseModel):
+    {{#FIELDS}}
+    {{field_name}}: {{python_type_optional}} = Field({{field_constraints_optional}})
+    {{/FIELDS}}

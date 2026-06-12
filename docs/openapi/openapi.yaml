@@ -1,0 +1,120 @@
+openapi: 3.1.0
+info:
+  title: AI-Coding-Template API
+  description: "{{PROJECT_DESCRIPTION}} — Auth & Identity Core (fastapi-users)"
+  version: 1.0.0
+  contact:
+    name: AI-Coding-Template Team
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+  - url: https://api.example.com
+    description: Production
+
+tags:
+  - name: auth
+    description: Authentication (JWT via fastapi-users)
+  - name: users
+    description: User profile management
+  - name: health
+    description: System health checks
+  - name: admin
+    description: Admin-only endpoints (superuser required)
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/register:
+    $ref: 'paths/auth.yaml#/register'
+  /auth/jwt/login:
+    $ref: 'paths/auth.yaml#/login'
+  /auth/jwt/logout:
+    $ref: 'paths/auth.yaml#/logout'
+  /auth/refresh:
+    $ref: 'paths/auth.yaml#/refresh'
+  /auth/sessions:
+    $ref: 'paths/auth.yaml#/sessions'
+  /auth/sessions/{session_id}:
+    $ref: 'paths/auth.yaml#/session-by-id'
+  /auth/logout-all:
+    $ref: 'paths/auth.yaml#/logout-all'
+  /auth/forgot-password:
+    $ref: 'paths/auth.yaml#/forgot-password'
+  /auth/reset-password:
+    $ref: 'paths/auth.yaml#/reset-password'
+  /auth/request-verify-token:
+    $ref: 'paths/auth.yaml#/request-verify-token'
+  /auth/verify:
+    $ref: 'paths/auth.yaml#/verify'
+  /auth/google/authorize:
+    $ref: 'paths/social.yaml#/google-authorize'
+  /auth/google/callback:
+    $ref: 'paths/social.yaml#/google-callback'
+  /auth/github/authorize:
+    $ref: 'paths/social.yaml#/github-authorize'
+  /auth/github/callback:
+    $ref: 'paths/social.yaml#/github-callback'
+  /users/me:
+    $ref: 'paths/users.yaml#/me'
+  /users/{id}:
+    $ref: 'paths/users.yaml#/by-id'
+  /users/me/sessions:
+    $ref: 'paths/sessions.yaml#/list'
+  /users/me/sessions/{session_id}:
+    $ref: 'paths/sessions.yaml#/revoke'
+  /health:
+    $ref: 'paths/health.yaml#/check'
+  /admin/health:
+    $ref: 'paths/admin.yaml#/health'
+  /admin/sli:
+    $ref: 'paths/admin.yaml#/sli'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT access token. Obtain via /auth/jwt/login.
+
+  responses:
+    Unauthorized:
+      $ref: 'schemas/common.yaml#/responses/Unauthorized'
+    ValidationError:
+      $ref: 'schemas/common.yaml#/responses/ValidationError'
+
+  schemas:
+    UserRead:
+      $ref: 'schemas/auth.yaml#/UserRead'
+    UserCreate:
+      $ref: 'schemas/auth.yaml#/UserCreate'
+    UserUpdate:
+      $ref: 'schemas/auth.yaml#/UserUpdate'
+    BearerResponse:
+      $ref: 'schemas/auth.yaml#/BearerResponse'
+    AuthResponse:
+      $ref: 'schemas/auth.yaml#/AuthResponse'
+    UserSessionRead:
+      $ref: 'schemas/auth.yaml#/UserSessionRead'
+    RefreshTokenRequest:
+      $ref: 'schemas/auth.yaml#/RefreshTokenRequest'
+    ForgotPasswordRequest:
+      $ref: 'schemas/auth.yaml#/ForgotPasswordRequest'
+    ResetPasswordRequest:
+      $ref: 'schemas/auth.yaml#/ResetPasswordRequest'
+    ErrorDetail:
+      $ref: 'schemas/common.yaml#/ErrorDetail'
+    SessionRead:
+      $ref: 'schemas/session.yaml#/SessionRead'
+    HealthResponse:
+      $ref: 'schemas/health.yaml#/HealthResponse'
+    AdminHealthResponse:
+      $ref: 'schemas/admin.yaml#/AdminHealthResponse'
+    SliResponse:
+      $ref: 'schemas/admin.yaml#/SliResponse'
+    EndpointSli:
+      $ref: 'schemas/admin.yaml#/EndpointSli'
+    DbPoolStats:
+      $ref: 'schemas/admin.yaml#/DbPoolStats'

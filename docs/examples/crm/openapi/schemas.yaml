@@ -1,0 +1,105 @@
+## Contact domain — OpenAPI schema definitions
+
+ContactCreate:
+  type: object
+  required:
+    - name
+  properties:
+    name:
+      type: string
+      maxLength: 200
+    email:
+      type: string
+      format: email
+      maxLength: 320
+    phone:
+      type: string
+      maxLength: 20
+    company:
+      type: string
+      maxLength: 200
+    notes:
+      type: string
+      maxLength: 2000
+
+ContactRead:
+  type: object
+  required:
+    - id
+    - name
+    - user_id
+    - created_at
+    - updated_at
+  properties:
+    id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    email:
+      type: string
+      nullable: true
+    phone:
+      type: string
+      nullable: true
+    company:
+      type: string
+      nullable: true
+    notes:
+      type: string
+      nullable: true
+    notes_preview:
+      type: string
+      nullable: true
+      description: "Truncated notes (max 200 chars) for list view"
+    user_id:
+      type: string
+      format: uuid
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+ContactUpdate:
+  type: object
+  properties:
+    name:
+      type: string
+      maxLength: 200
+    email:
+      type: string
+      format: email
+      maxLength: 320
+    phone:
+      type: string
+      maxLength: 20
+    company:
+      type: string
+      maxLength: 200
+    notes:
+      type: string
+      maxLength: 2000
+
+PaginatedContactResponse:
+  type: object
+  required:
+    - items
+    - total
+    - page
+    - page_size
+    - pages
+  properties:
+    items:
+      type: array
+      items:
+        $ref: "#/components/schemas/ContactRead"
+    total:
+      type: integer
+    page:
+      type: integer
+    page_size:
+      type: integer
+    pages:
+      type: integer

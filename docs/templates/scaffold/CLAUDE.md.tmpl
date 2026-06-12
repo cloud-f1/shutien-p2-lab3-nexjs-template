@@ -1,0 +1,74 @@
+# {{PROJECT_DISPLAY}} — Claude Code Session Identity
+
+> **Auto-loaded every session.** Keep under 100 lines.
+> Full architecture → `TECHSTACK.md` | Last state → `docs/context/session-summary.md`
+
+---
+
+## What This Project Is
+
+{{PROJECT_DESCRIPTION}}
+Epic-driven development — see `docs/epics/EPIC_INDEX.md` for all progress.
+
+## File Layout
+
+```
+server/              FastAPI + PostgreSQL (Python 3.12)
+client/              React 18 + TypeScript + Vite
+docs/
+  openapi.yaml       API contract — SINGLE SOURCE OF TRUTH for all types
+  epics/             EPIC_INDEX.md — single source of dev progress
+  specs/             Feature specs (@spec-writer output) — see specs/CLAUDE.md
+  context/           Agent write-back memory — see context/CLAUDE.md
+scripts/hooks/       Lifecycle hooks — see hooks/CLAUDE.md
+.claude/agents/      Agent definitions (YAML frontmatter + instructions)
+.claude/commands/athena/  Slash commands (athena namespace)
+.claude/skills/          Auto-loaded context injectors
+```
+
+## Architecture Rules — NEVER DEVIATE
+
+- `openapi.yaml` edited **FIRST** — never write server/client code before the spec
+- `server/`: stateless JWT auth — no custom auth code
+- `client/`: access token in `tokenCache.ts` (in-memory) — never localStorage
+- React Query: tiers from `cacheConfig.ts` — never hardcode staleTime inline
+- Folder names: `server/` and `client/` — never `backend/` or `frontend/`
+
+## Testing Rules
+
+- `asyncio_mode = auto` in `pyproject.toml` — no `@pytest.mark.asyncio` needed
+- Client tests: `userEvent` not `fireEvent`, MSW handlers in `src/tests/handlers/`
+- Coverage gate: **>=80%** both suites — blocks deploy if below
+
+## Deployment
+
+- Platform: Zeabur — server + client as separate services, each with `zbpack.json`
+- Migrations on startup: `alembic upgrade head && uvicorn ...`
+- `VITE_API_URL` baked at **build time** — set in Zeabur before client build
+
+## Active Epic
+
+See `docs/epics/EPIC_INDEX.md` for current phase and next action.
+Run `/athena:loop` to advance, or `/athena:loop status` to check state.
+
+## Agent Team
+
+```
+@spec-writer      — /athena:spec: new feature or endpoint design
+@qa               — /athena:qa: security review + test suite + 80% gate
+@best-practice    — architecture questions, trade-off decisions
+@debugger         — errors, failing tests (auto-delegated)
+@deployer         — /athena:deploy: deploy protocol, Zeabur
+@memory-curator   — /athena:promote: extract wisdom to Tier 0
+```
+
+## Memory System
+
+```
+Tier 0 (global):  ~/.claude/template-memory/   cross-project wisdom
+Tier 1 (project): docs/context/                this project's state
+
+"Update your document" → agent writes to its designated doc
+/athena:save           → all agents checkpoint simultaneously
+/athena:promote        → @memory-curator extracts lessons → Tier 0
+```

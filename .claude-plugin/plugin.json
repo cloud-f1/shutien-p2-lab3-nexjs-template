@@ -1,0 +1,12 @@
+{
+  "name": "ai-coding-template-pipeline",
+  "version": "1.1.0",
+  "description": "Full AI dev pipeline — spec, implement, review, test, deploy, monitor, document memory",
+  "hooks": {
+    "SessionStart": [{ "hooks": [{ "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/scripts/hooks/session-start.sh" }] }],
+    "SubagentStop":  [{ "hooks": [{ "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/scripts/hooks/subagent-stop-writeback.sh" }] }],
+    "PostToolUse":   [{ "matcher": "Write|Edit", "hooks": [{ "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/scripts/hooks/post-edit-lint.sh" }] }],
+    "PreToolUse":    [{ "matcher": "Bash", "hooks": [{ "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/scripts/hooks/pre-bash-guard.sh" }] }],
+    "Stop":          [{ "hooks": [{ "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/scripts/hooks/stop-notify.sh" }] }]
+  }
+}

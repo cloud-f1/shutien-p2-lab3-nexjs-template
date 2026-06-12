@@ -1,0 +1,1122 @@
+openapi: 3.1.0
+info:
+  title: AI-Coding-Template API
+  description: "{{PROJECT_DESCRIPTION}} — Auth & Identity Core (fastapi-users)"
+  version: 1.0.0
+  contact:
+    name: AI-Coding-Template Team
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+  - url: https://api.example.com
+    description: Production
+
+tags:
+  - name: auth
+    description: Authentication (JWT via fastapi-users)
+  - name: users
+    description: User profile management
+  - name: health
+    description: System health checks
+  - name: admin
+    description: Admin-only endpoints (superuser required)
+  - name: test-helpers
+    description: >
+      Triple-guarded test helper endpoints for E2E seeding.
+      Gate 1: ENABLE_TEST_HELPERS=true, Gate 2: ENVIRONMENT!=production, Gate 3: JWT auth.
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/register:
+    post:
+      tags: [auth]
+      summary: Create account (returns unified AuthResponse — user + tokens)
+      operationId: authRegister
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+      responses:
+        '201':
+          description: Account created — returns user + token pair (E161 unified shape)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              example:
+                error:
+                  type: invalid_request_error
+                  code: REGISTER_USER_ALREADY_EXISTS
+                  message: REGISTER_USER_ALREADY_EXISTS
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/jwt/login:
+    post:
+      tags: [auth]
+      summary: Login (OAuth2 password flow)
+      operationId: authLogin
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                  description: Email address
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful — returns user + token pair (E161 unified shape)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              example:
+                error:
+                  type: invalid_request_error
+                  code: LOGIN_BAD_CREDENTIALS
+                  message: LOGIN_BAD_CREDENTIALS
+
+  /auth/jwt/logout:
+    post:
+      tags: [auth]
+      summary: Logout (stateless — client discards token)
+      operationId: authLogout
+      responses:
+        '204':
+          description: Logged out
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/refresh:
+    post:
+      tags: [auth]
+      summary: Refresh access token using refresh token
+      operationId: authRefresh
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: New token pair (E161 unified shape — user + tokens)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid, expired, or revoked refresh token (reuse → entire family revoked)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                invalid:
+                  value:
+                    error:
+                      type: authentication_error
+                      code: INVALID_REFRESH_TOKEN
+                      message: INVALID_REFRESH_TOKEN
+                reuse:
+                  value:
+                    error:
+                      type: authentication_error
+                      code: SESSION_REVOKED
+                      message: session_revoked
+
+  /auth/sessions:
+    get:
+      tags: [auth]
+      summary: List active sessions for current user (E161)
+      operationId: authListSessions
+      responses:
+        '200':
+          description: Active (non-revoked) sessions for the authenticated user
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserSessionRead'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/sessions/{session_id}:
+    delete:
+      tags: [auth]
+      summary: Revoke a specific session (E161)
+      operationId: authRevokeSession
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Session revoked
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Session not found or not owned by current user
+
+  /auth/logout-all:
+    post:
+      tags: [auth]
+      summary: Revoke all sessions for the current user (E161 sign-out-everywhere)
+      operationId: authLogoutAll
+      responses:
+        '204':
+          description: All sessions revoked in a single transaction
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/forgot-password:
+    post:
+      tags: [auth]
+      summary: Request password reset (always returns 202)
+      operationId: authForgotPassword
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+      responses:
+        '202':
+          description: Accepted (never reveals email existence)
+
+  /auth/reset-password:
+    post:
+      tags: [auth]
+      summary: Reset password with token
+      operationId: authResetPassword
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '200':
+          description: Password reset successful
+        '400':
+          description: Bad token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              example:
+                error:
+                  type: invalid_request_error
+                  code: RESET_PASSWORD_BAD_TOKEN
+                  message: RESET_PASSWORD_BAD_TOKEN
+
+  /auth/request-verify-token:
+    post:
+      tags: [auth]
+      summary: Request email verification token
+      operationId: authRequestVerifyToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '202':
+          description: Accepted
+
+  /auth/verify:
+    post:
+      tags: [auth]
+      summary: Verify email with token
+      operationId: authVerify
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+      responses:
+        '200':
+          description: Email verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRead'
+        '400':
+          description: Bad token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              example:
+                error:
+                  type: invalid_request_error
+                  code: VERIFY_USER_BAD_TOKEN
+                  message: VERIFY_USER_BAD_TOKEN
+
+  /auth/google/authorize:
+    get:
+      tags: [auth]
+      summary: Google OAuth2 redirect
+      operationId: authGoogleAuthorize
+      security: []
+      responses:
+        '200':
+          description: Returns authorization URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authorization_url:
+                    type: string
+                    format: uri
+
+  /auth/google/callback:
+    get:
+      tags: [auth]
+      summary: Google OAuth2 callback
+      operationId: authGoogleCallback
+      security: []
+      parameters:
+        - name: code
+          in: query
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OAuth login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BearerResponse'
+
+  /auth/github/authorize:
+    get:
+      tags: [auth]
+      summary: GitHub OAuth2 redirect
+      operationId: authGitHubAuthorize
+      security: []
+      responses:
+        '200':
+          description: Returns authorization URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authorization_url:
+                    type: string
+                    format: uri
+
+  /auth/github/callback:
+    get:
+      tags: [auth]
+      summary: GitHub OAuth2 callback
+      operationId: authGitHubCallback
+      security: []
+      parameters:
+        - name: code
+          in: query
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OAuth login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BearerResponse'
+
+  /users/me:
+    get:
+      tags: [users]
+      summary: Get current user profile
+      operationId: getUserProfile
+      responses:
+        '200':
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRead'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags: [users]
+      summary: Update current user profile
+      operationId: updateUserProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRead'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [users]
+      summary: Delete current user account (GDPR Art. 17)
+      operationId: deleteCurrentUser
+      description: >
+        Permanently deletes the authenticated user's account and all associated
+        data. This action is irreversible (hard-delete for GDPR compliance).
+      responses:
+        '204':
+          description: Account deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /users/{id}:
+    get:
+      tags: [users]
+      summary: Get user by ID (superuser only)
+      operationId: getUserById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRead'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Not a superuser
+        '404':
+          description: User not found
+    patch:
+      tags: [users]
+      summary: Update user by ID (superuser only)
+      operationId: updateUserById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+      responses:
+        '200':
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRead'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Not a superuser
+        '404':
+          description: User not found
+    delete:
+      tags: [users]
+      summary: Delete user by ID (superuser only)
+      operationId: deleteUserById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: User deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Not a superuser
+        '404':
+          description: User not found
+
+  /users/me/sessions:
+    get:
+      tags: [users]
+      summary: List active sessions for current user
+      operationId: listSessions
+      responses:
+        '200':
+          description: Active sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SessionRead'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /users/me/sessions/{session_id}:
+    delete:
+      tags: [users]
+      summary: Revoke a specific session (single-device logout)
+      operationId: revokeSession
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Session revoked
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Session not found
+
+  /health:
+    get:
+      tags: [health]
+      summary: Liveness + readiness probe
+      operationId: healthCheck
+      security: []
+      responses:
+        '200':
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /admin/health:
+    get:
+      tags: [admin]
+      summary: Detailed system health (superuser only)
+      operationId: adminHealthCheck
+      responses:
+        '200':
+          description: Detailed health status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminHealthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Not a superuser
+
+  /admin/sli:
+    get:
+      tags: [admin]
+      summary: Rolling Service-Level Indicators (superuser only)
+      operationId: adminSli
+      description: >
+        Returns in-process aggregated SLIs for the trailing 5-minute window:
+        request success rate, p50/p95 latency overall and per top-N endpoint,
+        and DB connection pool stats. Cross-replica truth lives in Sentry/Zeabur.
+      responses:
+        '200':
+          description: SLI snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SliResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Not a superuser
+
+  /api/v1/test-helpers/seed:
+    post:
+      tags: [test-helpers]
+      summary: Seed a test user (triple-guarded — non-production only)
+      operationId: testHelpersSeed
+      description: >
+        Creates or returns an existing user with the given email and role.
+        Idempotent — same email always returns the same user.
+        Protected by 3 gates: ENABLE_TEST_HELPERS env var, non-production
+        environment check, and JWT authentication.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestSeedRequest'
+      responses:
+        '200':
+          description: User seeded (existing user returned)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestSeedResponse'
+        '201':
+          description: User seeded (new user created)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestSeedResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Blocked — environment is production
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              example:
+                error:
+                  type: forbidden_error
+                  code: TEST_HELPERS_BLOCKED
+                  message: Test helpers are disabled in production
+        '404':
+          description: Test helpers not enabled (ENABLE_TEST_HELPERS != true)
+
+  /api/v1/test-helpers/reset:
+    post:
+      tags: [test-helpers]
+      summary: Reset a seeded test user (triple-guarded)
+      operationId: testHelpersReset
+      description: >
+        Deletes a previously seeded test user by email.
+        Same triple-guard protection as /seed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '204':
+          description: User deleted (or did not exist)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Blocked — environment is production
+        '404':
+          description: Test helpers not enabled
+
+components:
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: >
+        Unique client-generated key (e.g. UUID) to ensure idempotent processing.
+        If a request with the same key was already processed, the cached response
+        is replayed. Concurrent duplicate requests receive 409 Conflict.
+      schema:
+        type: string
+        example: "550e8400-e29b-41d4-a716-446655440000"
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT access token. Obtain via /auth/jwt/login.
+
+  responses:
+    Unauthorized:
+      description: Missing, expired, or invalid access token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          example:
+            error:
+              type: authentication_error
+              code: UNAUTHORIZED
+              message: Unauthorized
+    ValidationError:
+      description: Request body validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          example:
+            error:
+              type: validation_error
+              code: missing
+              param: body.field_name
+              message: Field required
+
+  schemas:
+    UserRead:
+      type: object
+      required: [id, email, is_active, is_verified, is_superuser]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        display_name:
+          type: ['string', 'null']
+        avatar_url:
+          type: ['string', 'null']
+          format: uri
+        is_active:
+          type: boolean
+        is_verified:
+          type: boolean
+        is_superuser:
+          type: boolean
+        social_providers:
+          type: array
+          items:
+            type: string
+            enum: [google, apple]
+          default: []
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    UserCreate:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        display_name:
+          type: string
+          maxLength: 100
+        is_active:
+          type: boolean
+          default: true
+        is_verified:
+          type: boolean
+          default: false
+        is_superuser:
+          type: boolean
+          default: false
+
+    UserUpdate:
+      type: object
+      properties:
+        password:
+          type: string
+        email:
+          type: string
+          format: email
+        display_name:
+          type: ['string', 'null']
+          maxLength: 100
+        avatar_url:
+          type: ['string', 'null']
+          format: uri
+        is_active:
+          type: boolean
+        is_verified:
+          type: boolean
+        is_superuser:
+          type: boolean
+
+    BearerResponse:
+      type: object
+      required: [access_token, refresh_token, token_type]
+      properties:
+        access_token:
+          type: string
+          description: JWT access token (15 min TTL)
+        refresh_token:
+          type: string
+          description: JWT refresh token (30 day TTL, rotate on use)
+        token_type:
+          type: string
+          enum: [bearer]
+
+    AuthResponse:
+      type: object
+      required: [user, access_token, refresh_token, token_type, expires_in]
+      description: >
+        Unified auth payload (E161) returned by /auth/register, /auth/jwt/login,
+        and /auth/refresh. Replaces the legacy adapter that composed user + tokens
+        on the client.
+      properties:
+        user:
+          $ref: '#/components/schemas/UserRead'
+        access_token:
+          type: string
+          description: JWT access token
+        refresh_token:
+          type: string
+          description: JWT refresh token (rotates on use)
+        token_type:
+          type: string
+          enum: [bearer]
+        expires_in:
+          type: integer
+          description: Access token TTL in seconds
+          example: 900
+
+    UserSessionRead:
+      type: object
+      required: [id, created_at, last_used_at]
+      description: Active session row from the user_sessions store (E161).
+      properties:
+        id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        last_used_at:
+          type: string
+          format: date-time
+        ip:
+          type: ['string', 'null']
+          description: IP address observed at session creation / last refresh
+        user_agent:
+          type: ['string', 'null']
+          description: User-Agent header observed at session creation
+
+    RefreshTokenRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+
+    ForgotPasswordRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+
+    ResetPasswordRequest:
+      type: object
+      required: [token, password]
+      properties:
+        token:
+          type: string
+        password:
+          type: string
+
+    ErrorDetail:
+      type: object
+      required: [detail]
+      properties:
+        detail:
+          type: string
+          description: Machine-readable error code
+        message_key:
+          type: ['string', 'null']
+          description: >
+            i18n translation key for client-side localized error display.
+            Format: "error.{domain}.{code}" (e.g., "error.auth.invalid_credentials").
+            Null when no translation key is available (legacy endpoints).
+          example: error.auth.invalid_credentials
+
+    ErrorEnvelopeDetail:
+      type: object
+      required: [type, code, message]
+      description: Stripe-style error detail (E132)
+      properties:
+        type:
+          type: string
+          description: Error category (authentication_error, validation_error, etc.)
+          example: authentication_error
+        code:
+          type: string
+          description: Machine-readable error code
+          example: INVALID_CREDENTIALS
+        message:
+          type: string
+          description: Human-readable error message
+          example: Login failed
+        param:
+          type: ['string', 'null']
+          description: The parameter that caused the error (validation errors)
+          example: body.email
+        details:
+          type: array
+          description: Per-field validation errors (only for 422)
+          items:
+            type: object
+            properties:
+              param:
+                type: string
+              message:
+                type: string
+
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      description: Standardized error envelope wrapping all error responses (E132)
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorEnvelopeDetail'
+
+    SessionRead:
+      type: object
+      required: [id, device_info, created_at, expires_at, is_current]
+      properties:
+        id:
+          type: string
+          format: uuid
+        device_info:
+          type: string
+          description: User-Agent or device identifier
+        ip_address:
+          type: ['string', 'null']
+          description: IP address at session creation
+        created_at:
+          type: string
+          format: date-time
+        last_used_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        is_current:
+          type: boolean
+          description: Whether this session matches the current request
+
+    AdminHealthResponse:
+      type: object
+      required: [db, email, oauth, app]
+      properties:
+        db:
+          type: object
+          required: [status, latency_ms]
+          properties:
+            status:
+              type: string
+              enum: [connected, disconnected]
+            latency_ms:
+              type: number
+              description: Database ping latency in milliseconds
+        email:
+          type: object
+          required: [provider, configured]
+          properties:
+            provider:
+              type: string
+              description: Email provider name
+            configured:
+              type: boolean
+              description: Whether the email provider is properly configured
+        oauth:
+          type: object
+          required: [providers]
+          properties:
+            providers:
+              type: array
+              items:
+                type: string
+              description: List of configured OAuth provider names
+        app:
+          type: object
+          required: [version, uptime_seconds, environment]
+          properties:
+            version:
+              type: string
+              example: 1.0.0
+            uptime_seconds:
+              type: number
+              description: Process uptime in seconds
+            environment:
+              type: string
+              example: development
+
+    EndpointSli:
+      type: object
+      required: [path, count, success_rate, p50_ms, p95_ms]
+      properties:
+        path:
+          type: string
+          description: Normalised endpoint path (id segments collapsed to {id})
+        count:
+          type: integer
+        success_rate:
+          type: number
+          minimum: 0
+          maximum: 1
+        p50_ms:
+          type: number
+        p95_ms:
+          type: number
+
+    DbPoolStats:
+      type: object
+      required: [size, checked_in, checked_out, overflow]
+      properties:
+        size:
+          type: integer
+          description: Pool capacity (-1 if unsupported, e.g. SQLite)
+        checked_in:
+          type: integer
+        checked_out:
+          type: integer
+          description: Active connections
+        overflow:
+          type: integer
+
+    SliResponse:
+      type: object
+      required:
+        - window_seconds
+        - sample_count
+        - success_rate_5m
+        - p50_ms
+        - p95_ms
+        - top_endpoints
+        - db_pool
+        - release
+        - environment
+      properties:
+        window_seconds:
+          type: integer
+          description: Trailing window in seconds (default 300)
+        sample_count:
+          type: integer
+        success_rate_5m:
+          type: number
+          minimum: 0
+          maximum: 1
+        p50_ms:
+          type: number
+        p95_ms:
+          type: number
+        top_endpoints:
+          type: array
+          items:
+            $ref: '#/components/schemas/EndpointSli'
+        db_pool:
+          $ref: '#/components/schemas/DbPoolStats'
+        release:
+          type: string
+          description: GIT_SHA at deploy time (or "unknown")
+        environment:
+          type: string
+
+    TestSeedRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          description: Email for the seeded user
+        password:
+          type: string
+          minLength: 8
+          description: Password for the seeded user
+        is_superuser:
+          type: boolean
+          default: false
+          description: Whether to create the user as a superuser
+
+    TestSeedResponse:
+      type: object
+      required: [id, email, is_superuser, created]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        is_superuser:
+          type: boolean
+        created:
+          type: boolean
+          description: True if user was newly created, false if already existed
+
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, healthy, degraded]
+        version:
+          type: string
+          example: 0.1.0
+        database:
+          type: string
+          enum: [connected, disconnected]
