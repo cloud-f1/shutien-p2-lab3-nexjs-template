@@ -10,7 +10,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$(cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && cd .. && pwd)\" && ./scripts/hooks/session-start.sh",
+            "command": "cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && ./scripts/hooks/session-start.sh",
             "timeout": 10
           }
         ]
@@ -21,7 +21,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$(cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && cd .. && pwd)\" && ./scripts/hooks/user-prompt-submit.sh",
+            "command": "cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && ./scripts/hooks/user-prompt-submit.sh",
             "timeout": 5
           }
         ]
@@ -33,7 +33,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$(cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && cd .. && pwd)\" && ./scripts/hooks/pre-bash-guard.sh"
+            "command": "cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && ./scripts/hooks/pre-bash-guard.sh"
           }
         ]
       }
@@ -44,7 +44,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$(cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && cd .. && pwd)\" && ./scripts/hooks/post-edit-lint.sh",
+            "command": "cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && ./scripts/hooks/post-edit-lint.sh",
             "timeout": 30
           }
         ]
@@ -54,7 +54,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$(cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && cd .. && pwd)\" && bash scripts/hooks/auto-promote-check.sh",
+            "command": "cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && bash scripts/hooks/auto-promote-check.sh",
             "timeout": 10
           }
         ]
@@ -64,7 +64,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$(cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && cd .. && pwd)\" && ./scripts/hooks/post-bash-log.sh"
+            "command": "cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && ./scripts/hooks/post-bash-log.sh"
           }
         ]
       },
@@ -73,7 +73,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$(cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && cd .. && pwd)\" && ./scripts/hooks/pr-created.sh"
+            "command": "cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && ./scripts/hooks/pr-created.sh"
           }
         ]
       },
@@ -82,7 +82,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$(cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && cd .. && pwd)\" && ./scripts/hooks/post-bash-failure-inject.sh"
+            "command": "cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && ./scripts/hooks/post-bash-failure-inject.sh"
           }
         ]
       },
@@ -91,7 +91,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$(cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && cd .. && pwd)\" && ./scripts/hooks/post-commit-bugfix-log.sh"
+            "command": "cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && ./scripts/hooks/post-commit-bugfix-log.sh"
           }
         ]
       },
@@ -100,7 +100,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$(cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && cd .. && pwd)\" && ./scripts/hooks/context-health-monitor.sh",
+            "command": "cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && ./scripts/hooks/context-health-monitor.sh",
             "timeout": 5
           }
         ]
@@ -111,22 +111,22 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$(cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && cd .. && pwd)\" && ./scripts/hooks/stop-verifier.sh",
+            "command": "cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && ./scripts/hooks/stop-verifier.sh",
             "timeout": 10
           },
           {
             "type": "command",
-            "command": "cd \"$(cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && cd .. && pwd)\" && bash scripts/archive-context.sh --auto",
+            "command": "cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && bash scripts/archive-context.sh --auto",
             "timeout": 10
           },
           {
             "type": "command",
-            "command": "cd \"$(cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && cd .. && pwd)\" && bash scripts/state/check-drift.sh || true",
+            "command": "cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && bash scripts/state/check-drift.sh || true",
             "timeout": 10
           },
           {
             "type": "command",
-            "command": "cd \"$(cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && cd .. && pwd)\" && ./scripts/hooks/stop-notify.sh"
+            "command": "cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && ./scripts/hooks/stop-notify.sh"
           }
         ]
       }
@@ -136,7 +136,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$(cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && cd .. && pwd)\" && ./scripts/hooks/subagent-stop-writeback.sh",
+            "command": "cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && ./scripts/hooks/subagent-stop-writeback.sh",
             "timeout": 30
           }
         ]
@@ -147,7 +147,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$(cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && cd .. && pwd)\" && ./scripts/hooks/task-completed.sh"
+            "command": "cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && ./scripts/hooks/task-completed.sh"
           }
         ]
       }
@@ -157,7 +157,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$(cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && cd .. && pwd)\" && ./scripts/hooks/worktree-setup.sh"
+            "command": "cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && ./scripts/hooks/worktree-setup.sh"
           }
         ]
       }

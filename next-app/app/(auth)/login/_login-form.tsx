@@ -9,14 +9,19 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldSeparator,
+} from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
 
 interface LoginFormProps {
@@ -46,62 +51,84 @@ export function LoginForm({ verified, urlError }: LoginFormProps) {
   }
 
   return (
-    <Card className="w-full">
+    <Card>
       <CardHeader className="text-center">
         <CardTitle className="text-2xl">Welcome back</CardTitle>
         <CardDescription>Sign in to your account</CardDescription>
       </CardHeader>
-
-      <CardContent className="space-y-4">
+      <CardContent>
         {verified && (
-          <p className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
+          <p className="mb-4 rounded-md bg-green-50 px-3 py-2 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
             ✅ Email verified! You can now sign in.
           </p>
         )}
         {(state?.error ?? urlError) && (
-          <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <p className="mb-4 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {state?.error ?? urlError}
           </p>
         )}
 
-        <form onSubmit={handleSubmit(onValid)} noValidate className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="you@example.com" autoComplete="email" {...register("email")} />
-            {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" placeholder="••••••••" autoComplete="current-password" {...register("password")} />
-            {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
-          </div>
-
-          <Button type="submit" className="w-full" disabled={isPending}>
-            {isPending ? "Signing in…" : "Sign In"}
-          </Button>
+        <form onSubmit={handleSubmit(onValid)} noValidate>
+          <FieldGroup>
+            <Field data-invalid={errors.email ? true : undefined}>
+              <FieldLabel htmlFor="email">Email</FieldLabel>
+              <Input
+                id="email"
+                type="email"
+                placeholder="m@example.com"
+                autoComplete="email"
+                aria-invalid={errors.email ? true : undefined}
+                {...register("email")}
+              />
+              <FieldError errors={errors.email ? [errors.email] : undefined} />
+            </Field>
+            <Field data-invalid={errors.password ? true : undefined}>
+              <div className="flex items-center">
+                <FieldLabel htmlFor="password">Password</FieldLabel>
+                <a
+                  href="#"
+                  className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
+                >
+                  Forgot your password?
+                </a>
+              </div>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                autoComplete="current-password"
+                aria-invalid={errors.password ? true : undefined}
+                {...register("password")}
+              />
+              <FieldError
+                errors={errors.password ? [errors.password] : undefined}
+              />
+            </Field>
+            <Field>
+              <Button type="submit" disabled={isPending}>
+                {isPending ? "Signing in…" : "Sign In"}
+              </Button>
+            </Field>
+          </FieldGroup>
         </form>
 
-        <div className="relative flex items-center gap-3 py-1">
-          <Separator className="flex-1" />
-          <span className="text-xs text-muted-foreground">or continue with</span>
-          <Separator className="flex-1" />
-        </div>
+        <FieldSeparator className="my-6">Or continue with</FieldSeparator>
 
         <form action={signInWithGoogle}>
-          <Button type="submit" variant="outline" className="w-full" disabled={isPending}>
-            <GoogleIcon />
-            Continue with Google
-          </Button>
+          <FieldGroup>
+            <Field>
+              <Button type="submit" variant="outline" disabled={isPending}>
+                <GoogleIcon />
+                Continue with Google
+              </Button>
+              <FieldDescription className="text-center">
+                Don&apos;t have an account?{" "}
+                <Link href="/register">Sign up</Link>
+              </FieldDescription>
+            </Field>
+          </FieldGroup>
         </form>
       </CardContent>
-
-      <CardFooter className="justify-center text-sm text-muted-foreground">
-        Don&apos;t have an account?&nbsp;
-        <Link href="/register" className="font-medium text-foreground underline-offset-4 hover:underline">
-          Sign up
-        </Link>
-      </CardFooter>
     </Card>
   )
 }

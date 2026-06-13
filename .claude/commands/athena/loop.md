@@ -10,7 +10,8 @@ You are the Epic Loop controller. Your job is to advance the project **one step 
 ## Protocol
 
 1. **READ STATE**: Read `docs/context/epic-progress.md` to determine the current step
-2. **DETERMINE NEXT**: Find the first epic with an incomplete step (in phase order, respecting dependencies)
+2. **DETERMINE NEXT**: Find the first epic with an incomplete step (in phase order, respecting dependencies).
+   **Reconcile from the actual state matrix, not a presumed linear history.** For the chosen epic, the next step is the **first `⬜` cell** scanning `spec → implement → qa → commit → merge` left-to-right. Steps already at ✅ are *done* — never re-run them, even if an earlier step is ⬜ (out-of-order / retro-spec case; see "Out-of-Order Work" below).
 3. **LOOKUP DETAILS**: Only if needed for subagent prompt — read `docs/epics/EPIC_INDEX.md` to get epic description
 4. **EXECUTE STEP**: Run exactly **ONE step of ONE epic** via subagent delegation:
    - **spec**: Spawn subagent → `/athena:spec "E{n}"`
@@ -20,14 +21,29 @@ You are the Epic Loop controller. Your job is to advance the project **one step 
      ```bash
      bash scripts/hooks/audit-emit-pipeline.sh commit epic=$EPIC sha=$(git rev-parse --short HEAD) || true
      ```
-   - **merge**: Inline — push, create PR, enable auto-merge, update docs (no local checkout needed)
-     1. `git push -u origin HEAD`
-     2. `gh pr create --title "..." --body "..."` (or find existing PR)
-     3. `gh pr merge --squash --delete-branch --auto` — queues merge on GitHub; does NOT checkout main locally
-     4. Update epic-progress.md + EPIC_INDEX.md with merge ✅
-     5. Do NOT `git checkout main` or `git pull` — the next loop invocation starts fresh
-     6. If `--auto` fails (not enabled on repo), fall back to `gh pr merge --squash --delete-branch` but still skip local checkout — just report "merged on remote, run `git pull` to sync"
-     7. After GitHub confirms the PR was created/merged, emit the audit event:
+   - **merge**: Inline — pre-merge gate, push, create PR, enable auto-merge, update docs (no local checkout needed)
+     1. **PRE-MERGE GATE (MANDATORY — runs BEFORE `git push`)**: Run the repo-hygiene + quality gate and **ABORT the merge if it exits non-zero**.
+        ```bash
+        # Add --e2e when the epic touches auth, Server Actions, the DB, or routes.
+        # (heuristic: epic spec mentions login/session/auth, "use server"/actions/,
+        #  prisma/drizzle/migration/schema, or app/ route/route handler changes)
+        if scripts/pre-merge-check.sh ${E2E_FLAG:-}; then
+          echo "pre-merge-check passed — proceeding to push"
+        else
+          echo "❌ pre-merge-check FAILED — aborting merge for $EPIC"
+          # Record the failure in state and STOP (do NOT push). See Safety Guard #6.
+          exit 1
+        fi
+        ```
+        - Set `E2E_FLAG=--e2e` for epics touching **auth / Server Actions / DB / routes**; leave it empty otherwise.
+        - On non-zero exit: update epic-progress.md with `❌ merge blocked: pre-merge-check failed` and STOP. Do **NOT** `git push`, create a PR, or queue auto-merge. The half-migrated-tree class of bug (uncommitted mass deletions, nested `.git`) is exactly what this gate catches.
+     2. `git push -u origin HEAD`
+     3. `gh pr create --title "..." --body "..."` (or find existing PR)
+     4. `gh pr merge --squash --delete-branch --auto` — queues merge on GitHub; does NOT checkout main locally
+     5. Update epic-progress.md + EPIC_INDEX.md with merge ✅
+     6. Do NOT `git checkout main` or `git pull` — the next loop invocation starts fresh
+     7. If `--auto` fails (not enabled on repo), fall back to `gh pr merge --squash --delete-branch` but still skip local checkout — just report "merged on remote, run `git pull` to sync"
+     8. After GitHub confirms the PR was created/merged, emit the audit event:
         ```bash
         bash scripts/hooks/audit-emit-pipeline.sh merge epic=$EPIC pr=$PR_NUMBER || true
         ```
@@ -97,6 +113,26 @@ If dependencies aren't met, skip to the next eligible epic in the same phase, or
 Read the **Phase Parallelism** section in `docs/context/epic-progress.md`.
 Prefer the listed order when multiple epics are eligible.
 
+## Out-of-Order Work (Retro-Spec)
+
+The pipeline is normally linear (`spec → implement → qa → commit → merge`), but work sometimes lands out of order — **Phase 53 was implemented before it was spec'd** during the Vite/FastAPI → Next.js migration. The loop must handle a state matrix where a *later* step is ✅ while an *earlier* step is still ⬜.
+
+**Rules:**
+
+1. **State matrix is the source of truth, not step order.** Trust the ✅/⬜ cells in `docs/context/epic-progress.md`, not an assumption that earlier steps always complete first.
+2. **Never re-run a ✅ step.** If `implement=✅` already, do not re-implement — even when `spec=⬜`. Re-running a completed step risks clobbering finished work.
+3. **Retro-spec = fill the gap, don't redo the future.** When an earlier step is ⬜ but a later one is ✅ (e.g. `spec=⬜, implement=✅`), run the *earlier* step as a **retro-spec**: write the spec to **document what was actually built** (reverse-engineer from the implementation), rather than designing greenfield. Then mark it ✅ and let the next invocation pick up the next ⬜ cell.
+4. **Selection algorithm (unchanged for the linear case):** next step = first ⬜ scanning `spec → implement → qa → commit → merge`. This naturally yields retro-spec when an early cell is the only gap.
+5. **QA/commit/merge still gate normally.** A retro-spec does not exempt the epic from QA (≥80% coverage) or the pre-merge gate. After back-filling spec, the loop proceeds through any remaining ⬜ steps in order.
+
+**Example (Phase 53):**
+
+| Epic | spec | implement | qa | commit | merge |
+|------|------|-----------|----|----|----|
+| E53  | ⬜   | ✅        | ⬜ | ⬜ | ⬜ |
+
+Next step = `spec` (first ⬜), executed as a **retro-spec** documenting the already-built migration. The loop does NOT re-run `implement`. After spec ✅, subsequent invocations run `qa → commit → merge`.
+
 ## State Update Rules
 
 After completing a step, update **both** files:
@@ -122,6 +158,9 @@ After completing a step, update **both** files:
 5. **Mandatory pipeline order**: For each epic, steps MUST execute in order `spec → implement → qa → commit → merge`.
    If `impl=✅` but `qa=⬜`, the next step is `qa` — NOT `commit`. Never go from implement → commit without qa.
    This prevents silently committing untested code when the state file or step-selection logic is buggy.
+   **Exception — retro-spec (out-of-order work):** an epic may have been *implemented before it was spec'd* (Phase 53 was done this way). The pipeline-order rule reconciles against the **actual state matrix**, not a presumed linear history: pick the first `⬜` step in `spec → implement → qa → commit → merge` order and run *that* one. If a later step is already ✅ while an earlier one is ⬜ (e.g. `implement=✅` but `spec=⬜`), the loop fills in the earlier step (a "retro-spec" that documents what was built) and must **never re-run an already-✅ step**. See "Out-of-Order Work (Retro-Spec)" below.
+
+6. **Pre-merge gate is blocking**: The `merge` step runs `scripts/pre-merge-check.sh` (with `--e2e` for auth/Server-Action/DB/route epics) BEFORE `git push`. On non-zero exit, write `❌ merge blocked: pre-merge-check failed` to epic-progress.md and STOP. Do NOT push or open a PR on a failed gate.
 
 ## Arguments
 

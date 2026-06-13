@@ -1,1 +1,26 @@
-pnpm lint-staged
+#!/usr/bin/env sh
+# Next.js single-repo pre-commit gate.
+#
+# History: this used to run `pnpm lint-staged`, but after the Vite/FastAPI →
+# Next.js migration there is no root package.json and no lint-staged config,
+# so the hook always failed and every commit needed `--no-verify`. The app now
+# lives entirely in next-app/, so run the lightweight lint there.
+#
+# Lightest reliable check: ESLint on the Next.js app. If next-app/ or pnpm is
+# unavailable in this environment, no-op rather than blocking the commit.
+
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
+APP="$REPO_ROOT/next-app"
+
+if [ ! -d "$APP" ]; then
+  echo "husky/pre-commit: next-app/ not found — skipping lint."
+  exit 0
+fi
+
+if ! command -v pnpm >/dev/null 2>&1; then
+  echo "husky/pre-commit: pnpm not found — skipping lint."
+  exit 0
+fi
+
+cd "$APP" || exit 0
+pnpm -s lint

@@ -12,9 +12,11 @@ test.describe("Dashboard smoke", () => {
   })
 
   test("sidebar is rendered", async ({ page }) => {
-    // Sidebar nav should contain at least a Dashboard link
-    await expect(page.locator("nav")).toBeVisible()
-    await expect(page.locator("nav a[href='/dashboard'], nav a[href*='dashboard']").first()).toBeVisible()
+    // The shadcn Sidebar primitive renders a <div data-slot="sidebar">, not a
+    // <nav> element. Assert on the sidebar slot + a known nav link inside it.
+    const sidebar = page.locator('[data-slot="sidebar"]').first()
+    await expect(sidebar).toBeVisible()
+    await expect(sidebar.locator("a[href='/dashboard']").first()).toBeVisible()
   })
 
   test("admin user sees admin nav link", async ({ page }) => {

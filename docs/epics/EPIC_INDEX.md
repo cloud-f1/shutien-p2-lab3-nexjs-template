@@ -66,7 +66,7 @@
 | Phase 51 | E211, E212, E213, E214, E215 | ✅ Complete (Stabilize + Phase 2 Foundation — all 5 shipped PRs #195-197/#200-201: athena-saas-profile registry foundation + fork secrets/OWASP + WCAG guides + VRT Phase B 336-matrix + cross-theme a11y matrix; auth `social_providers` server bug fixed en route, #199) |
 | Phase 52 | E216 | ✅ Complete (Native Workflow Orchestration — `/athena:flow` interactive native-Workflow epic dispatcher merged via PR#205; completes the E198–E201 line with a budget-enforced, live-tree, no-`claude -p` path; athena-core sync pending) |
 | Phase 53 | E217, E218, E219, E220, E221 | ✅ QA'd, committed on branch MH/feat/E217-E221-nextjs-migration (Next.js Migration — shared Zod validations + RBAC + account settings + admin panel + e2e smoke; 2 critical pre-existing bugs fixed) |
-| Phase 54 | E222, E223, E224, E225, E226 | 🔄 In Progress (shadcn-blocks UI + Docker + Athena hardening — login-01/signup-01/sidebar-01/dashboard-01 + dockerized local run + loop/hooks hardening + P4) |
+| Phase 54 | E222, E223, E224, E225, E226 | ✅ Done on branch (shadcn-blocks UI + Docker + Athena hardening — login-01/signup-01/sidebar-01/dashboard-01 wired with real auth; dockerized local run verified by screenshot; loop/hooks hardened + P4 retro-spec). 19/19 e2e, build, Docker all green |
 <!-- PHASE_STATUS_END -->
 
 <!-- EPIC_MATRIX_START -->
@@ -303,11 +303,11 @@ Phase 46+ epics: enriched template — epic files include Implementation Phases,
 | E219 | ✅ | ✅ | ✅ | — | — | Phase 53 — Account settings. QA (sonnet agent): found+fixed 🟠 `cn()` violations + missing `revalidatePath` in `changePassword` + added try/catch around async transitions |
 | E220 | ✅ | ✅ | ✅ | — | — | Phase 53 — Admin dashboard. QA (sonnet agent): found+fixed 🟠 `setUserRole` missing runtime role-allowlist (Server Actions are public POST) + removed unused `ne` import |
 | E221 | ✅ | ✅ | ✅ | — | — | Phase 53 — Next.js e2e (19 tests, all green). QA (sonnet agent): fixed selector mismatch (shadcn `CardTitle` is `<div>`), added 2nd non-admin seed user, made non-admin redirect a real test. **e2e caught 2 critical pre-existing bugs: Credentials+DB-session login breakage (→JWT) and dashboard `$count` crash on zero items** |
-| E222 | — | — | — | — | — | Phase 54 — Athena hardening: wire `pre-merge-check.sh` into loop merge gate + e2e gate; single-repo-aware hooks; remove stale `.husky/` (referenced deleted client/server); **fix P4** (loop state-model for out-of-order spec/implement/qa) |
-| E223 | — | — | — | — | — | Phase 54 — Auth UI: adopt shadcn `login-01` + `signup-01` look; KEEP existing RHF+Zod+Server-Action+verify-email+Google wiring (Hybrid confirmed) |
-| E224 | — | — | — | — | — | Phase 54 — `sidebar-01`: real shadcn Sidebar primitive in (dashboard) layout; port RBAC nav (conditional admin), user menu, sign-out |
-| E225 | — | — | — | — | — | Phase 54 — `dashboard-01`: stat cards + area chart + data table. **Hybrid data**: cards + table wired to real DB (item count / users / items), chart on representative data |
-| E226 | — | — | — | — | — | Phase 54 — Dockerize next-app: `output:standalone` + Dockerfile + docker-compose (app + postgres + auto-seed); `docker compose up` serves the new UI locally, verified |
+| E222 | ✅ | ✅ | ✅ | — | — | Phase 54 — Athena hardening: pre-merge gate wired into loop merge step; all 17 hooks fixed for single repo (removed obsolete `&& cd ..`); `.husky/pre-commit` fixed (commits work without `--no-verify`); **P4** retro-spec documented in loop.md + docs/epics/CLAUDE.md |
+| E223 | ✅ | ✅ | ✅ | — | — | Phase 54 — Auth UI: login-01/signup-01 look adopted, all RHF+Zod+Server-Action+verify-email+Google wiring kept; auth e2e green |
+| E224 | ✅ | ✅ | ✅ | — | — | Phase 54 — sidebar-01: shadcn Sidebar primitive in (dashboard) layout; RBAC nav (admin link conditional), nav-user footer + working sign-out. Fixed missing TooltipProvider (was crashing all dashboard pages) |
+| E225 | ✅ | ✅ | ✅ | — | — | Phase 54 — dashboard-01: SectionCards + chart + DataTable. Hybrid data verified by screenshot (cards/table real, chart demo) |
+| E226 | ✅ | ✅ | ✅ | — | — | Phase 54 — Dockerized: output:standalone + Dockerfile + docker-compose (postgres + migrate/seed + web). `docker compose up --build` serves UI at :3000, verified via screenshot. Fixed pre-existing migration SQL bug (0001 ALTER COLUMN missing USING) |
 <!-- EPIC_MATRIX_END -->
 
 ## Dependency Rules

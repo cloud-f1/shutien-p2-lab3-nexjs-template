@@ -1,15 +1,37 @@
-import { auth } from "@/lib/auth"
-import { redirect } from "next/navigation"
-import { Sidebar } from "@/components/sidebar"
+import { AppSidebar } from "@/components/app-sidebar"
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
+import { TooltipProvider } from "@/components/ui/tooltip"
+import { requireAuth } from "@/lib/permissions"
 
-export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth()
-  if (!session) redirect("/login")
+export default async function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  const session = await requireAuth()
+  const { name, email, image, role } = session.user
 
   return (
-    <div className="flex min-h-svh">
-      <Sidebar user={session.user} />
-      <main className="flex-1 overflow-auto">{children}</main>
-    </div>
+    <TooltipProvider>
+      <SidebarProvider
+        style={
+          {
+            "--sidebar-width": "calc(var(--spacing) * 72)",
+            "--header-height": "calc(var(--spacing) * 12)",
+          } as React.CSSProperties
+        }
+      >
+        <AppSidebar
+          variant="inset"
+          user={{
+            name: name ?? "User",
+            email: email ?? "",
+            image: image ?? null,
+            role,
+          }}
+        />
+        <SidebarInset>{children}</SidebarInset>
+      </SidebarProvider>
+    </TooltipProvider>
   )
 }

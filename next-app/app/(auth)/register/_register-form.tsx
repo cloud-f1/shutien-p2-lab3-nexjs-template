@@ -9,14 +9,19 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldSeparator,
+} from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
 
 export function RegisterForm() {
@@ -41,69 +46,86 @@ export function RegisterForm() {
   }
 
   return (
-    <Card className="w-full">
+    <Card>
       <CardHeader className="text-center">
         <CardTitle className="text-2xl">Create an account</CardTitle>
         <CardDescription>Enter your details to get started</CardDescription>
       </CardHeader>
-
-      <CardContent className="space-y-4">
+      <CardContent>
         {state?.error && (
-          <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <p className="mb-4 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {state.error}
           </p>
         )}
 
-        <form onSubmit={handleSubmit(onValid)} noValidate className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="name">Name</Label>
-            <Input id="name" placeholder="Your name" autoComplete="name" {...register("name")} />
-            {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="you@example.com" autoComplete="email" {...register("email")} />
-            {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="Min 8 chars, 1 uppercase, 1 number"
-              autoComplete="new-password"
-              {...register("password")}
-            />
-            {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
-          </div>
-
-          <Button type="submit" className="w-full" disabled={isPending}>
-            {isPending ? "Creating account…" : "Create Account"}
-          </Button>
+        <form onSubmit={handleSubmit(onValid)} noValidate>
+          <FieldGroup>
+            <Field data-invalid={errors.name ? true : undefined}>
+              <FieldLabel htmlFor="name">Full Name</FieldLabel>
+              <Input
+                id="name"
+                type="text"
+                placeholder="John Doe"
+                autoComplete="name"
+                aria-invalid={errors.name ? true : undefined}
+                {...register("name")}
+              />
+              <FieldError errors={errors.name ? [errors.name] : undefined} />
+            </Field>
+            <Field data-invalid={errors.email ? true : undefined}>
+              <FieldLabel htmlFor="email">Email</FieldLabel>
+              <Input
+                id="email"
+                type="email"
+                placeholder="m@example.com"
+                autoComplete="email"
+                aria-invalid={errors.email ? true : undefined}
+                {...register("email")}
+              />
+              <FieldError errors={errors.email ? [errors.email] : undefined} />
+            </Field>
+            <Field data-invalid={errors.password ? true : undefined}>
+              <FieldLabel htmlFor="password">Password</FieldLabel>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                autoComplete="new-password"
+                aria-invalid={errors.password ? true : undefined}
+                {...register("password")}
+              />
+              {errors.password ? (
+                <FieldError errors={[errors.password]} />
+              ) : (
+                <FieldDescription>
+                  Must be at least 8 characters, with 1 uppercase and 1 number.
+                </FieldDescription>
+              )}
+            </Field>
+            <Field>
+              <Button type="submit" disabled={isPending}>
+                {isPending ? "Creating account…" : "Create Account"}
+              </Button>
+            </Field>
+          </FieldGroup>
         </form>
 
-        <div className="relative flex items-center gap-3 py-1">
-          <Separator className="flex-1" />
-          <span className="text-xs text-muted-foreground">or continue with</span>
-          <Separator className="flex-1" />
-        </div>
+        <FieldSeparator className="my-6">Or continue with</FieldSeparator>
 
         <form action={signInWithGoogle}>
-          <Button type="submit" variant="outline" className="w-full" disabled={isPending}>
-            <GoogleIcon />
-            Continue with Google
-          </Button>
+          <FieldGroup>
+            <Field>
+              <Button type="submit" variant="outline" disabled={isPending}>
+                <GoogleIcon />
+                Sign up with Google
+              </Button>
+              <FieldDescription className="text-center">
+                Already have an account? <Link href="/login">Sign in</Link>
+              </FieldDescription>
+            </Field>
+          </FieldGroup>
         </form>
       </CardContent>
-
-      <CardFooter className="justify-center text-sm text-muted-foreground">
-        Already have an account?&nbsp;
-        <Link href="/login" className="font-medium text-foreground underline-offset-4 hover:underline">
-          Sign in
-        </Link>
-      </CardFooter>
     </Card>
   )
 }

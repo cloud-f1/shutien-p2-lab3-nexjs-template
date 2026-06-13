@@ -1,1 +1,1 @@
-ALTER TABLE "accounts" ALTER COLUMN "expires_at" SET DATA TYPE integer;
+ALTER TABLE "accounts" ALTER COLUMN "expires_at" SET DATA TYPE integer USING extract(epoch from "expires_at")::integer;

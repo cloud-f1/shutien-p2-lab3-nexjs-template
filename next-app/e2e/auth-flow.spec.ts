@@ -38,13 +38,16 @@ test.describe("Auth flow", () => {
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 })
   })
 
-  test("dashboard shows admin badge for admin user", async ({ page }) => {
+  test("admin user has admin access in the new sidebar UI", async ({ page }) => {
     await page.goto("/login")
     await page.fill('input[name="email"]', SEED_ADMIN.email)
     await page.fill('input[name="password"]', SEED_ADMIN.password)
     await page.click('button[type="submit"]')
     await page.waitForURL(/\/dashboard/)
-    await expect(page.locator("text=admin").first()).toBeVisible()
+    // The sidebar-01 layout no longer renders a standalone "admin" role badge.
+    // An admin's privileged status is surfaced via the Admin nav link, which
+    // is only rendered for users whose role is "admin" (see AppSidebar).
+    await expect(page.locator("a[href='/dashboard/admin']")).toBeVisible()
   })
 
   test("sign out returns to login", async ({ page }) => {
@@ -54,7 +57,13 @@ test.describe("Auth flow", () => {
     await page.click('button[type="submit"]')
     await page.waitForURL(/\/dashboard/)
 
-    await page.click("text=Sign out")
-    await expect(page).toHaveURL(/\/login/, { timeout: 5000 })
+    // Sign-out now lives inside the nav-user dropdown (components/nav-user.tsx):
+    // open the dropdown via the footer trigger, then click the "Log out" item,
+    // which submits a <form action={handleSignOut}>.
+    await page
+      .locator('[data-slot="sidebar-footer"] button[data-slot="dropdown-menu-trigger"]')
+      .click()
+    await page.getByRole("menuitem", { name: /log out/i }).click()
+    await expect(page).toHaveURL(/\/login/, { timeout: 10000 })
   })
 })

@@ -1,59 +1,67 @@
-# Dev services for next-app
+# Local full-stack run for the Next.js app + Postgres.
 #
-# Start DB only:        docker compose up -d
-# Start DB + mailpit:   docker compose --profile mailpit up -d
-# Start test DB:        docker compose --profile test up -d
+#   docker compose up --build -d
 #
-# Mailpit email UI:     http://localhost:8025
-# Connection string:    postgresql://saas_user:saas_pass@localhost:5432/saas_dev
+# Services:
+#   postgres  — Postgres 16 (host port 5433 → avoid clash with saas_dev_postgres on 5432)
+#   migrate   — one-shot: runs drizzle migrations + seed, then exits
+#   web       — the Next.js standalone server on http://localhost:3000
+#
+# Logins seeded:  admin@example.com / Admin123!   and   user@example.com / User123!
 
 services:
-  db:
+  postgres:
     image: postgres:16-alpine
-    container_name: saas_dev_postgres
+    container_name: nextapp_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: saas_user
-      POSTGRES_PASSWORD: saas_pass
-      POSTGRES_DB: saas_dev
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app_password
+      POSTGRES_DB: app_db
     ports:
-      - "${DB_PORT:-5432}:5432"
+      # Host 5433 (5432 is taken by the dev container). Internal stays 5432.
+      - "5433:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - nextapp_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U saas_user -d saas_dev"]
+      test: ["CMD-SHELL", "pg_isready -U app -d app_db"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
 
-  mailpit:
-    image: axllent/mailpit:latest
-    container_name: saas_mailpit
-    restart: unless-stopped
-    ports:
-      - "${MAILPIT_SMTP_PORT:-1025}:1025"   # SMTP — point SMTP_HOST=localhost SMTP_PORT=1025
-      - "${MAILPIT_UI_PORT:-8025}:8025"      # Web UI
-    profiles:
-      - mailpit
-
-  test-db:
-    image: postgres:16-alpine
-    container_name: saas_test_postgres
+  migrate:
+    build:
+      context: ./next-app
+      target: builder
+    container_name: nextapp_migrate
+    working_dir: /app
+    command: sh -c "pnpm db:migrate && pnpm db:seed"
     environment:
-      POSTGRES_DB: test_db
-      POSTGRES_USER: test
-      POSTGRES_PASSWORD: test
+      DATABASE_URL: postgresql://app:app_password@postgres:5432/app_db
+      NODE_ENV: development
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  web:
+    build:
+      context: ./next-app
+      target: runner
+    container_name: nextapp_web
     ports:
-      - "5433:5432"
-    tmpfs:
-      - /var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U test -d test_db"]
-      interval: 2s
-      timeout: 3s
-      retries: 5
-    profiles:
-      - test
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://app:app_password@postgres:5432/app_db
+      AUTH_SECRET: local-docker-dev-secret
+      AUTH_TRUST_HOST: "true"
+      NEXTAUTH_URL: http://localhost:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
 
 volumes:
-  pgdata:
+  nextapp_pgdata:
