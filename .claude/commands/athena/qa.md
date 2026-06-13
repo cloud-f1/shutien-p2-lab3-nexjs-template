@@ -46,22 +46,23 @@ fi
 
 ## Phase 2.5 — Contract Conformance (--contract-only flag, E156)
 
-Quick drift check during development — runs ONLY the schemathesis sweep,
-skipping @reviewer, coverage, quality audit, and acceptance evaluation.
-Useful during `/athena:implement` when you've just touched `docs/openapi.yaml`
-or a route handler and want fast feedback.
-
-```bash
-cd server && uv run pytest tests/contract/test_schemathesis_conformance.py -v --tb=short
-```
+> **Stack note (Phase 53 migration):** The Python `server/` and its schemathesis contract
+> suite have been removed. `cd server && uv run pytest ...` is a dead command.
+> The `--contract-only` flag is now a no-op for this stack.
+>
+> **Next.js equivalent** — quick route conformance check: run a targeted Playwright test
+> against the affected endpoint/route. This gives faster feedback than a full e2e suite
+> without requiring the old Python toolchain:
+> ```bash
+> cd next-app && npx playwright test -g "<route or feature name>" --workers=2
+> ```
 
 On pass: emits `{"event": "qa_contract", "result": "pass", "contract_ops_checked": N}`
-to `.claude/audit.jsonl` — this satisfies Stop-verifier Rule #20 on branches
-where `docs/openapi.yaml` changed.
+to `.claude/audit.jsonl`.
 
 On fail: emits `result: "fail"` + `contract_failures: M`. Writes the diff
 summary to `docs/context/qa-patterns.md` under the "Contract Drift" section.
-STOP — fix the spec or handler, then re-run.
+STOP — fix the route or handler, then re-run.
 
 ## Phase 0 — Test Plan (--plan flag only)
 1. Identify the feature scope from $ARGUMENTS or current epic
@@ -172,11 +173,79 @@ After: agent writes to docs/context/test-status.md
 
 After the coverage gate result is determined (pass or fail), emit the audit event.
 Parse `$EPIC` from the current branch (`git branch --show-current | sed -nE 's|.*[Ee]([0-9]+)-.*|E\1|p'`),
-the coverage percentage from pytest/vitest output, and set verdict to `pass` or `fail`:
+the coverage percentage from vitest output, and set verdict to `pass` or `fail`:
 
 ```bash
 bash scripts/hooks/audit-emit-pipeline.sh qa_result epic=$EPIC coverage=$COV verdict=$VERDICT || true
 ```
+
+---
+
+## Speed & Reliability Practices (Required — QA context)
+
+These rules were extracted from the Phase 53 retrospective. They are **required** for any QA agent running in this framework.
+
+### 1. Green baseline before accepting the epic
+
+Before running any QA for a new phase, confirm the base branch is clean:
+```bash
+cd next-app
+git stash                      # if any uncommitted changes
+pnpm build && pnpm test:coverage
+```
+If the base is already red, stop and file a baseline fix. Stacking QA on a red baseline means every gate will fail for ambiguous reasons.
+
+### 2. Real critical-path smoke is non-negotiable
+
+For epics touching auth, Server Actions, DB, or routes — run the actual login→dashboard flow before declaring QA pass:
+```bash
+# Confirm dev server is up (reuse existing if possible):
+pnpm test:e2e -- --grep "login"
+```
+Status-code probes return 200 even when the login flow crashes. Only a test that asserts page content after login counts as a valid smoke.
+
+### 3. Log-first on failures — read before re-running
+
+When a test fails, read the error before doing anything else:
+```bash
+# Server log (if dev server is backgrounded):
+tail -50 /tmp/next-dev.log
+
+# Build log:
+pnpm build 2>&1 | tail -40
+
+# Playwright trace (on e2e failure):
+# Open next-app/playwright-report/index.html or:
+cat next-app/test-results/*/error.txt 2>/dev/null
+```
+Re-running without reading the log is a 2–4 min wasted cycle. The log almost always identifies the exact line.
+
+### 4. Targeted warm-server testing
+
+Keep the dev server warm across QA runs:
+```bash
+# Run a named test against the warm server (fast):
+npx playwright test -g "login and reach dashboard" --workers=2
+
+# Run a specific spec file only:
+npx playwright test e2e/auth-flow.spec.ts --workers=2
+```
+`playwright.config` has `reuseExistingServer: true` — Playwright attaches automatically if port 3000 is already listening. A targeted run takes ~5–10s vs 2–4min for a full cold re-run. Reserve full-suite runs for the pre-merge gate only.
+
+### 5. Parallel review, then execute
+
+Fan out `@reviewer` agents per epic in parallel (they are read-only and independent), then run a single final "execute the real flow" pass:
+```bash
+# After all reviewer passes complete, execute the real flow:
+pnpm test:e2e
+```
+This avoids the single-reviewer-per-epic miss that let Phase 53's login breakage slip through.
+
+### 6. Pre-merge gate reference
+
+`scripts/pre-merge-check.sh [--e2e]` is the final gate. It runs typecheck + lint + unit + (optionally) e2e in one shot. Always run it before declaring QA complete for the merge step. It exits non-zero on any failure.
+
+---
 
 ## Phase 3 — Test Quality Report (included in @qa output)
 
@@ -248,8 +317,11 @@ If `--eval-only`:
   → Invoke @evaluator with the current epic ID. Report verdict. STOP.
 
 If `--contract-only`:
-  → Run `cd server && uv run pytest tests/contract/test_schemathesis_conformance.py -v --tb=short`.
-  → Report pass/xfail/fail counts. STOP.
+  → **Not applicable for the current Next.js stack** — the Python `server/` and schemathesis
+    contract suite have been removed (Phase 53 migration). The equivalent quick-feedback path
+    for Next.js is a targeted Playwright run against the affected route:
+    `cd next-app && npx playwright test -g "<route name>" --workers=2`
+  → Report pass/fail. STOP.
 
 If `--plan`:
   → Generate test plan document. STOP.

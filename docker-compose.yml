@@ -1,13 +1,15 @@
-# Local full-stack run for the Next.js app + Postgres.
+# One clean local stack for the Next.js app.
 #
-#   docker compose up --build -d
+#   docker compose up --build -d         # start everything
+#   docker compose down --remove-orphans # stop + clean up old/duplicate containers
 #
 # Services:
-#   postgres  — Postgres 16 (host port 5433 → avoid clash with saas_dev_postgres on 5432)
+#   postgres  — Postgres 16 on host :5432 (SAME creds local `pnpm dev`/e2e use, so there is ONE db)
+#   mailpit   — catches outbound email; SMTP :1025, web UI http://localhost:8025
 #   migrate   — one-shot: runs drizzle migrations + seed, then exits
 #   web       — the Next.js standalone server on http://localhost:3000
 #
-# Logins seeded:  admin@example.com / Admin123!   and   user@example.com / User123!
+# Seeded logins:  admin@example.com / Admin123!  ·  editor@example.com / Editor123!  ·  viewer@example.com / Viewer123!
 
 services:
   postgres:
@@ -15,19 +17,28 @@ services:
     container_name: nextapp_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: app
-      POSTGRES_PASSWORD: app_password
-      POSTGRES_DB: app_db
+      POSTGRES_USER: saas_user
+      POSTGRES_PASSWORD: saas_pass
+      POSTGRES_DB: saas_dev
     ports:
-      # Host 5433 (5432 is taken by the dev container). Internal stays 5432.
-      - "5433:5432"
+      - "5432:5432"
     volumes:
       - nextapp_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U app -d app_db"]
+      test: ["CMD-SHELL", "pg_isready -U saas_user -d saas_dev"]
       interval: 5s
       timeout: 5s
       retries: 10
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: nextapp_mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # web UI
+    environment:
+      MP_MAX_MESSAGES: "500"
 
   migrate:
     build:
@@ -37,7 +48,7 @@ services:
     working_dir: /app
     command: sh -c "pnpm db:migrate && pnpm db:seed"
     environment:
-      DATABASE_URL: postgresql://app:app_password@postgres:5432/app_db
+      DATABASE_URL: postgresql://saas_user:saas_pass@postgres:5432/saas_dev
       NODE_ENV: development
     depends_on:
       postgres:
@@ -52,13 +63,19 @@ services:
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: postgresql://app:app_password@postgres:5432/app_db
+      DATABASE_URL: postgresql://saas_user:saas_pass@postgres:5432/saas_dev
       AUTH_SECRET: local-docker-dev-secret
       AUTH_TRUST_HOST: "true"
       NEXTAUTH_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      EMAIL_FROM: noreply@saas-dev.local
     depends_on:
       postgres:
         condition: service_healthy
+      mailpit:
+        condition: service_started
       migrate:
         condition: service_completed_successfully
     restart: unless-stopped

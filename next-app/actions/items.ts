@@ -1,17 +1,17 @@
 "use server"
 
-import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { itemsTable } from "@/lib/schema"
 import { eq, and } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
+import { requireEditor } from "@/lib/permissions"
 
 type State = { error?: string } | null
 
 export async function createItem(prevState: State, formData: FormData): Promise<State> {
-  const session = await auth()
-  if (!session?.user?.id) throw new Error("Unauthorized")
+  // Viewers are read-only — requireEditor() redirects them away.
+  const session = await requireEditor()
 
   const title = formData.get("title")
   if (!title || typeof title !== "string" || title.trim().length === 0) {
@@ -25,8 +25,7 @@ export async function createItem(prevState: State, formData: FormData): Promise<
 }
 
 export async function deleteItem(id: string) {
-  const session = await auth()
-  if (!session?.user?.id) throw new Error("Unauthorized")
+  const session = await requireEditor()
 
   await db
     .delete(itemsTable)
@@ -36,8 +35,7 @@ export async function deleteItem(id: string) {
 }
 
 export async function updateItem(id: string, prevState: State, formData: FormData): Promise<State> {
-  const session = await auth()
-  if (!session?.user?.id) throw new Error("Unauthorized")
+  const session = await requireEditor()
 
   const title = formData.get("title")
   if (!title || typeof title !== "string" || title.trim().length === 0) {

@@ -4,7 +4,7 @@ import { SectionCards } from "@/components/section-cards"
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
 import { db } from "@/lib/db"
-import { isAdmin, requireAuth } from "@/lib/permissions"
+import { canEdit, isAdmin, requireAuth } from "@/lib/permissions"
 import { itemsTable, usersTable } from "@/lib/schema"
 import { eq, isNotNull } from "drizzle-orm"
 import type { Metadata } from "next"
@@ -16,6 +16,7 @@ export default async function DashboardPage() {
   const session = await requireAuth()
   const userId = session.user.id
   const admin = isAdmin(session.user.role)
+  const editable = canEdit(session.user.role)
 
   // Real data: the current user's items + total count (no waterfall).
   // Admin-only: total users and verified-user count.
@@ -56,9 +57,11 @@ export default async function DashboardPage() {
                   Here is an overview of your account.
                 </p>
               </div>
-              <Button asChild>
-                <Link href="/dashboard/items/create">+ New Item</Link>
-              </Button>
+              {editable && (
+                <Button asChild>
+                  <Link href="/dashboard/items/create">+ New Item</Link>
+                </Button>
+              )}
             </div>
             <SectionCards
               totalItems={totalItems}
@@ -68,7 +71,7 @@ export default async function DashboardPage() {
             <div className="px-4 lg:px-6">
               <ChartAreaInteractive />
             </div>
-            <DataTable data={tableData} />
+            <DataTable data={tableData} canEdit={editable} />
           </div>
         </div>
       </div>

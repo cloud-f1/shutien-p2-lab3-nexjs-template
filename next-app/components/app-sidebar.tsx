@@ -13,7 +13,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { isAdmin } from "@/lib/is-admin"
+import { isAdmin, canEdit } from "@/lib/is-admin"
 import Link from "next/link"
 import {
   LayoutDashboardIcon,
@@ -61,7 +61,7 @@ export function AppSidebar({
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={navMain} />
+        <NavMain items={navMain} canCreate={canEdit(user.role)} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={user} />

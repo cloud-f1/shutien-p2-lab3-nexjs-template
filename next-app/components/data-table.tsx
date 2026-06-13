@@ -111,7 +111,10 @@ function DragHandle({ id }: { id: UniqueIdentifier }) {
   )
 }
 
-const columns: ColumnDef<DataTableItem>[] = [
+// Columns depend on the viewer's permissions: editors/admins get an actions
+// menu with Edit; viewers see neither the actions column nor edit links.
+function getColumns(canEdit: boolean): ColumnDef<DataTableItem>[] {
+  const cols: ColumnDef<DataTableItem>[] = [
   {
     id: "drag",
     header: () => null,
@@ -146,17 +149,22 @@ const columns: ColumnDef<DataTableItem>[] = [
   {
     accessorKey: "title",
     header: "Title",
-    cell: ({ row }) => (
-      <Button
-        asChild
-        variant="link"
-        className="w-fit px-0 text-left text-foreground"
-      >
-        <Link href={`/dashboard/items/${row.original.id}/edit`}>
+    cell: ({ row }) =>
+      canEdit ? (
+        <Button
+          asChild
+          variant="link"
+          className="w-fit px-0 text-left text-foreground"
+        >
+          <Link href={`/dashboard/items/${row.original.id}/edit`}>
+            {row.original.title}
+          </Link>
+        </Button>
+      ) : (
+        <span className="w-fit px-0 text-left text-foreground">
           {row.original.title}
-        </Link>
-      </Button>
-    ),
+        </span>
+      ),
     enableHiding: false,
   },
   {
@@ -189,33 +197,39 @@ const columns: ColumnDef<DataTableItem>[] = [
       </span>
     ),
   },
-  {
-    id: "actions",
-    cell: ({ row }) => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            className="flex size-8 text-muted-foreground data-[state=open]:bg-muted"
-            size="icon"
-          >
-            <EllipsisVerticalIcon />
-            <span className="sr-only">Open menu</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-32">
-          <DropdownMenuItem asChild>
-            <Link href={`/dashboard/items/${row.original.id}/edit`}>Edit</Link>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
-            <Link href="/dashboard/items">View all</Link>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
-  },
-]
+  ]
+
+  if (canEdit) {
+    cols.push({
+      id: "actions",
+      cell: ({ row }) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="flex size-8 text-muted-foreground data-[state=open]:bg-muted"
+              size="icon"
+            >
+              <EllipsisVerticalIcon />
+              <span className="sr-only">Open menu</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-32">
+            <DropdownMenuItem asChild>
+              <Link href={`/dashboard/items/${row.original.id}/edit`}>Edit</Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard/items">View all</Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    })
+  }
+
+  return cols
+}
 
 function DraggableRow({ row }: { row: Row<DataTableItem> }) {
   const { transform, transition, setNodeRef, isDragging } = useSortable({
@@ -244,10 +258,13 @@ function DraggableRow({ row }: { row: Row<DataTableItem> }) {
 
 export function DataTable({
   data: initialData,
+  canEdit = false,
 }: {
   data: DataTableItem[]
+  canEdit?: boolean
 }) {
   const [data, setData] = React.useState(() => initialData)
+  const columns = React.useMemo(() => getColumns(canEdit), [canEdit])
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
@@ -368,12 +385,14 @@ export function DataTable({
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button asChild variant="outline" size="sm">
-            <Link href="/dashboard/items/create">
-              <PlusIcon />
-              <span className="hidden lg:inline">New Item</span>
-            </Link>
-          </Button>
+          {canEdit && (
+            <Button asChild variant="outline" size="sm">
+              <Link href="/dashboard/items/create">
+                <PlusIcon />
+                <span className="hidden lg:inline">New Item</span>
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
       <TabsContent

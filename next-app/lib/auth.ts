@@ -4,6 +4,7 @@ import Credentials from "next-auth/providers/credentials"
 import { DrizzleAdapter } from "@auth/drizzle-adapter"
 import { db } from "./db"
 import { accountsTable, sessionsTable, usersTable, verificationTokensTable } from "./schema"
+import type { Role } from "./schema"
 import { getUserByEmail } from "./queries"
 import { comparePassword } from "./password"
 import { authConfig } from "../auth.config"
@@ -57,14 +58,14 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       // `user` is only present on sign-in — persist id + role into the token.
       if (user) {
         token.id = user.id
-        token.role = (user as { role?: "user" | "admin" }).role ?? "user"
+        token.role = (user as { role?: Role }).role ?? "viewer"
       }
       return token
     },
     session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string
-        session.user.role = (token.role as "user" | "admin") ?? "user"
+        session.user.role = (token.role as Role) ?? "viewer"
       }
       return session
     },

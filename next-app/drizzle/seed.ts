@@ -6,7 +6,8 @@ async function seed() {
   console.log("🌱 Seeding database...")
 
   const adminHash = await bcrypt.hash("Admin123!", 12)
-  const userHash = await bcrypt.hash("User123!", 12)
+  const editorHash = await bcrypt.hash("Editor123!", 12)
+  const viewerHash = await bcrypt.hash("Viewer123!", 12)
 
   await db
     .insert(usersTable)
@@ -19,22 +20,31 @@ async function seed() {
         role: "admin",
       },
       {
-        // Non-admin user — required for e2e admin-panel tests:
-        // gives a non-self row (so the role <Select> combobox renders)
-        // and a real subject for the non-admin redirect guard test.
-        name: "Test User",
-        email: "user@example.com",
-        passwordHash: userHash,
+        // Editor — can create/edit/delete items but cannot reach the admin panel.
+        name: "Test Editor",
+        email: "editor@example.com",
+        passwordHash: editorHash,
         emailVerified: new Date(),
-        role: "user",
+        role: "editor",
+      },
+      {
+        // Viewer — read-only. Required for e2e RBAC tests: gives a non-admin row
+        // (so the admin role <Select> combobox renders for a non-self user) and
+        // a real subject for the non-admin redirect guard test.
+        name: "Test Viewer",
+        email: "viewer@example.com",
+        passwordHash: viewerHash,
+        emailVerified: new Date(),
+        role: "viewer",
       },
     ])
     .onConflictDoNothing()
 
   console.log("")
   console.log("✅ Seed complete!")
-  console.log("   Admin → admin@example.com / Admin123!")
-  console.log("   User  → user@example.com / User123!")
+  console.log("   Admin  → admin@example.com / Admin123!")
+  console.log("   Editor → editor@example.com / Editor123!")
+  console.log("   Viewer → viewer@example.com / Viewer123!")
   console.log("")
 }
 

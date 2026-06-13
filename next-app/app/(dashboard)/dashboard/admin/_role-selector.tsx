@@ -36,8 +36,9 @@ export function RoleSelector({ userId, currentRole, isSelf }: RoleSelectorProps)
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="user">user</SelectItem>
         <SelectItem value="admin">admin</SelectItem>
+        <SelectItem value="editor">editor</SelectItem>
+        <SelectItem value="viewer">viewer</SelectItem>
       </SelectContent>
     </Select>
   )

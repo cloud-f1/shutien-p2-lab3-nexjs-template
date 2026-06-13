@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache"
 import { requireAdmin } from "@/lib/permissions"
 import type { Role } from "@/lib/schema"
 
-const VALID_ROLES: Role[] = ["user", "admin"]
+const VALID_ROLES: Role[] = ["admin", "editor", "viewer"]
 
 export async function setUserRole(userId: string, role: Role) {
   const session = await requireAdmin()

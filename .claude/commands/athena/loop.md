@@ -162,6 +162,87 @@ After completing a step, update **both** files:
 
 6. **Pre-merge gate is blocking**: The `merge` step runs `scripts/pre-merge-check.sh` (with `--e2e` for auth/Server-Action/DB/route epics) BEFORE `git push`. On non-zero exit, write `❌ merge blocked: pre-merge-check failed` to epic-progress.md and STOP. Do NOT push or open a PR on a failed gate.
 
+---
+
+## Speed & Reliability Practices (Required)
+
+These rules were extracted from the Phase 53 retrospective. Each one addresses a real failure mode that caused multi-cycle debug loops. They are **required steps**, not suggestions.
+
+### 1. Green baseline before feature work
+
+**Rule**: At the start of any new phase, before dispatching implement agents, confirm the baseline is green:
+```bash
+cd next-app
+pnpm build && pnpm test:coverage
+# For phases touching auth/DB/routes — also run:
+pnpm test:e2e
+```
+A regression then shows in 1 cycle (immediately after the epic that broke it). Without a green baseline, every layer has a latent bug found only by building on top of it — bugs surface 5–10 epics late, at maximum debugging cost.
+
+**Signal**: If `pnpm build` fails before any epic work, do NOT proceed. File a baseline-fix epic and resolve it first.
+
+### 2. Smoke the real critical path, not just status codes
+
+**Rule**: Before stacking features on top of auth, verify real login works — a human (or Playwright test) must actually land on the dashboard:
+```bash
+# Real smoke: the test must log in and assert dashboard content, not just check HTTP 200
+pnpm test:e2e -- --grep "login"
+```
+A status-code probe returns 200 even when login is completely broken (the page redirects to an error page that returns 200). This failure mode was the root cause of Phase 53's invisible login breakage. The smoke test in `scripts/pre-merge-check.sh --e2e` exercises the real flow.
+
+### 3. Log-first debugging — read before guessing
+
+**Rule**: On any test/build failure, read the server log BEFORE re-running or guessing at a fix:
+```bash
+# Dev server log (if running in background):
+cat /tmp/*-dev.log 2>/dev/null | tail -50
+
+# Build log:
+pnpm build 2>&1 | tail -30
+
+# E2E failure trace (Playwright writes to playwright-report/):
+cat next-app/playwright-report/index.html | head -100
+# or: open next-app/playwright-report/index.html
+```
+Re-running without reading the log just burns a 1–4 min cycle and lands back at the same error. Reading the log takes 10 seconds and usually reveals the exact line and module.
+
+### 4. Warm-server targeted testing — avoid cold full-suite re-runs
+
+**Rule**: Keep one dev server running. Run targeted tests against it; avoid cold full-suite restarts.
+```bash
+# Keep the server warm (start once, leave running):
+cd next-app && pnpm dev > /tmp/next-dev.log 2>&1 &
+
+# Run a single test by name (fast — no cold boot, no unrelated tests):
+npx playwright test -g "login and reach dashboard" --workers=2
+
+# Run a specific test file:
+npx playwright test e2e/auth-flow.spec.ts --workers=2
+```
+`playwright.config` already has `reuseExistingServer: true` and a 120s boot timeout — Playwright will attach to the already-running server automatically. A targeted 1-test run takes ~5s. A cold full-suite re-run takes 2–4min.
+
+**Signal for full-suite**: Only run the full `pnpm test:e2e` when all targeted tests pass and you're at the pre-merge gate. The pre-merge gate (`scripts/pre-merge-check.sh --e2e`) is the right place for that.
+
+### 5. Parallel review wave — fan out, then verify
+
+**Rule**: QA for a wave fans out independent reviewers per epic dimension, then runs a mandatory "execute the real flow" step:
+- Dispatch `@reviewer` agents for code review in parallel across epics (they are read-only and independent)
+- After all reviews complete, dispatch one verifier that actually runs `pnpm test:e2e` against the combined change set
+- A review that only reads code is not sufficient for auth/Server Action/DB/route epics — see the "must actually run it" rule in `/athena:qa`
+
+### 6. Pre-merge gate is mandatory — reference
+
+`scripts/pre-merge-check.sh [--e2e]` must exit 0 before any merge. This is already wired into Safety Guard #6 above and the merge step protocol. The gate runs:
+- repo hygiene (no nested `.git`, no mass uncommitted deletions)
+- `pnpm typecheck`
+- `pnpm lint`
+- `pnpm test` (unit, Vitest)
+- `pnpm test:e2e` (only with `--e2e` flag)
+
+Add `--e2e` whenever the epic touches auth, Server Actions, DB queries, or route handlers.
+
+---
+
 ## Arguments
 
 $ARGUMENTS — optional:

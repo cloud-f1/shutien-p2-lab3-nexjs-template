@@ -66,7 +66,8 @@
 | Phase 51 | E211, E212, E213, E214, E215 | ✅ Complete (Stabilize + Phase 2 Foundation — all 5 shipped PRs #195-197/#200-201: athena-saas-profile registry foundation + fork secrets/OWASP + WCAG guides + VRT Phase B 336-matrix + cross-theme a11y matrix; auth `social_providers` server bug fixed en route, #199) |
 | Phase 52 | E216 | ✅ Complete (Native Workflow Orchestration — `/athena:flow` interactive native-Workflow epic dispatcher merged via PR#205; completes the E198–E201 line with a budget-enforced, live-tree, no-`claude -p` path; athena-core sync pending) |
 | Phase 53 | E217, E218, E219, E220, E221 | ✅ QA'd, committed on branch MH/feat/E217-E221-nextjs-migration (Next.js Migration — shared Zod validations + RBAC + account settings + admin panel + e2e smoke; 2 critical pre-existing bugs fixed) |
-| Phase 54 | E222, E223, E224, E225, E226 | ✅ Done on branch (shadcn-blocks UI + Docker + Athena hardening — login-01/signup-01/sidebar-01/dashboard-01 wired with real auth; dockerized local run verified by screenshot; loop/hooks hardened + P4 retro-spec). 19/19 e2e, build, Docker all green |
+| Phase 54 | E222, E223, E224, E225, E226 | ✅ Merged to main (PR #2) — shadcn-blocks UI + Docker + Athena hardening |
+| Phase 55 | E227, E228 | ✅ Done on branch (3-tier RBAC admin/editor/viewer + demo seed verified in Docker; athena loop speedup via worktree-parallel + codified practices; docker-compose consolidated to one stack + mailpit). 30 unit + 25 e2e green |
 <!-- PHASE_STATUS_END -->
 
 <!-- EPIC_MATRIX_START -->
@@ -308,6 +309,8 @@ Phase 46+ epics: enriched template — epic files include Implementation Phases,
 | E224 | ✅ | ✅ | ✅ | — | — | Phase 54 — sidebar-01: shadcn Sidebar primitive in (dashboard) layout; RBAC nav (admin link conditional), nav-user footer + working sign-out. Fixed missing TooltipProvider (was crashing all dashboard pages) |
 | E225 | ✅ | ✅ | ✅ | — | — | Phase 54 — dashboard-01: SectionCards + chart + DataTable. Hybrid data verified by screenshot (cards/table real, chart demo) |
 | E226 | ✅ | ✅ | ✅ | — | — | Phase 54 — Dockerized: output:standalone + Dockerfile + docker-compose (postgres + migrate/seed + web). `docker compose up --build` serves UI at :3000, verified via screenshot. Fixed pre-existing migration SQL bug (0001 ALTER COLUMN missing USING) |
+| E227 | ✅ | ✅ | ✅ | — | — | Phase 55 — 3-tier RBAC: role enum → admin/editor/viewer (migration 0003 maps user→viewer, verified on dev+fresh DB); requireEditor/canEdit gate item CRUD; viewers read-only (server + UI, screenshot-verified); demo seed admin@/editor@/viewer@example.com. 30 unit + 25 e2e |
+| E228 | ✅ | ✅ | ✅ | — | — | Phase 55 — Athena loop speedup: worktree-parallel default in batch.md; "Speed & Reliability" practices in loop.md/qa.md; stale Python gate refs purged; docs/context/loop-speedup-retro.md |
 <!-- EPIC_MATRIX_END -->
 
 ## Dependency Rules
@@ -522,6 +525,10 @@ E223: no deps                    # auth UI blocks (login-01 / signup-01)
 E224: no deps                    # sidebar-01
 E225: E224                       # dashboard-01 uses the new sidebar
 E226: E223, E224, E225           # dockerize the finished UI
+
+# Phase 55 — 3-tier RBAC + athena loop speedup
+E227: no deps                    # roles admin/editor/viewer + demo seed
+E228: no deps                    # athena loop speedup (worktree parallel) — framework, disjoint from E227
 ```
 
 ## Phase Parallelism

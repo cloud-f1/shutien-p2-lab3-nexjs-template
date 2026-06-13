@@ -66,6 +66,89 @@ The batch command is a **thin orchestrator**. It reads state, computes waves via
 
 **IMPORTANT**: Only spec/implement/qa steps are dispatched to parallel agents. Commit and merge steps run **inline sequentially** after the parallel wave completes.
 
+---
+
+## Worktree-Parallel Execution (the DEFAULT for waves)
+
+### Why worktree isolation?
+
+When N epics in a wave each dispatch an `implement` agent, those agents MUST NOT share the same working tree — otherwise they will clobber each other's files (the "Phase 45 Wave 1 incident"). The solution: each `implement` agent gets its own git worktree via `isolation: "worktree"`. Spec and QA agents are read-mostly and do not need worktree isolation; they run in the main tree.
+
+### When to use worktrees vs same-tree dispatch
+
+| Scenario | Mode | Reasoning |
+|---|---|---|
+| **N independent epics** with potentially overlapping files (default) | `isolation: "worktree"` per implement agent | Agents write to disjoint branches; no clobbering possible |
+| **N independent epics** with provably disjoint scopes (e.g. one touches only `app/dashboard/`, another only `app/settings/`) | Same-tree parallel (omit `isolation`) | Cheaper — no worktree overhead; only safe when file scopes are confirmed non-overlapping by reading the specs first |
+| **Single epic** | No worktree needed | One agent, no contention |
+| **Sequential wave** (fallback after probe failure) | Same-tree, `--max-concurrent 1` | Step 3.5 auto-detects broken worktree isolation and degrades here |
+
+**Default rule**: Always use `isolation: "worktree"` for implement agents in a parallel wave. Only omit it when you have explicitly read both epic specs and confirmed zero file overlap.
+
+### Concrete example: dispatching N epics as parallel worktree agents
+
+Suppose Wave 2 has three independent epics: E83 (dashboard widget), E84 (settings page), E85 (API key management).
+
+**Step 1 — verify scopes are independent** (or just use worktrees regardless):
+```bash
+# Quick scope check: do any specs mention the same files?
+grep -h "next-app/app/\|components/" docs/epics/e83-*.md docs/epics/e84-*.md docs/epics/e85-*.md | sort | uniq -d
+# If output is empty → scopes are disjoint; worktrees still recommended for safety
+```
+
+**Step 2 — dispatch all three in parallel, each in its own worktree**:
+```
+# Dispatched concurrently (single message, three Agent tool calls):
+
+Agent(E83, isolation="worktree"):
+  prompt: "Epic E83 (dashboard widget). Step: implement.
+           Read CLAUDE.md. Read docs/epics/e83-dashboard-widget.md.
+           Implement on branch MH/feat/E83-dashboard-widget.
+           Return AgentReport JSON."
+
+Agent(E84, isolation="worktree"):
+  prompt: "Epic E84 (settings page). Step: implement.
+           Read CLAUDE.md. Read docs/epics/e84-settings-page.md.
+           Implement on branch MH/feat/E84-settings-page.
+           Return AgentReport JSON."
+
+Agent(E85, isolation="worktree"):
+  prompt: "Epic E85 (API key management). Step: implement.
+           Read CLAUDE.md. Read docs/epics/e85-api-key-management.md.
+           Implement on branch MH/feat/E85-api-key-management.
+           Return AgentReport JSON."
+```
+
+Each agent runs in a separate git worktree on a separate branch. They write files independently with no shared state.
+
+**Step 3 — collect results and merge back**:
+
+After all three agents complete (or timeout at 30 min):
+1. Run Step 4a-detect (cross-contamination check — confirm each agent reported a different `worktreePath`)
+2. For each agent that returned `status: "success"`:
+   - Dispatch a QA agent for that epic (NOT in a worktree — QA reads the branch via git)
+   - On QA pass: inline commit (the branch already exists in the worktree; `git push` from there)
+3. For each agent that returned `status: "failure"` or `status: "blocked"`: mark ❌, skip commit
+4. After all commits: run the integration test gate (Step 4c) to verify no cross-epic regressions
+
+**Step 4 — merge-back/verify sequence** (inline, not parallel):
+```bash
+# For each successfully QA'd epic branch:
+git push -u origin MH/feat/E83-dashboard-widget
+gh pr create --title "feat(E83): dashboard widget" ...
+gh pr merge --squash --delete-branch --auto
+
+# After all PRs merge:
+git fetch origin && git reset --hard origin/main
+
+# Integration test (Step 4c):
+cd next-app && pnpm typecheck && pnpm lint && pnpm test:coverage && pnpm test:e2e
+```
+
+The merge-back is **always sequential** — merging PRs in parallel on GitHub causes merge conflicts. Merge one PR, wait for it to land on `main`, then merge the next.
+
+---
+
 ### Mandatory Pipeline Order (NEVER SKIP)
 
 The pipeline for each epic is: `spec → implement → qa → commit → merge`
@@ -367,7 +450,11 @@ Agent(
        Run /athena:qa for this epic.
        Read CLAUDE.md for project rules.
        Read docs/epics/e{n}-{slug}.md for the spec.
-       Execute: code review (git diff) + test suites (pytest ≥80%, vitest ≥80%, tsc).
+       Execute: code review (git diff) + test suites (all from next-app/):
+         pnpm typecheck       — TypeScript gate
+         pnpm lint            — ESLint gate
+         pnpm test:coverage   — Vitest unit tests (≥80% coverage gate)
+         pnpm test:e2e        — Playwright e2e REQUIRED for auth/Server Action/DB/route epics
        Write results to docs/context/review-log.md and docs/context/test-status.md.
        Report: pass/fail + coverage numbers.
      "
@@ -482,26 +569,29 @@ After all agents in a wave complete and branches are merged to main, run the int
    git checkout main && git pull origin main
    ```
 
-2. **Run full server test suite**:
+2. **Run full test suite** (Next.js stack — all commands from `next-app/`):
    ```bash
-   cd server && uv run pytest --cov --cov-report=term-missing -q
+   cd next-app
+   pnpm typecheck                 # TypeScript gate
+   pnpm lint                      # ESLint gate
+   pnpm test:coverage             # Vitest unit tests with coverage
+   pnpm test:e2e                  # Playwright e2e (requires dev server; playwright.config has reuseExistingServer)
    ```
-   Capture exit code and coverage percentage from output.
+   Capture exit code and coverage percentage from each command's output.
 
-3. **Run full client test suite**:
-   ```bash
-   cd client && pnpm test:run --coverage
+   > **Stack note**: This repo is Next.js-only (`next-app/`). The old Python `server/` and
+   > React SPA `client/` have been removed. `uv run pytest` and `cd client && pnpm test:run`
+   > are dead commands — use the gates above instead. One-shot:
+   > `scripts/pre-merge-check.sh [--e2e]` runs all four gates + repo hygiene.
+
+3. **Verify coverage gate** (>= 80% Vitest unit coverage):
+   - Parse coverage from vitest output (look for `All files ... XX%`)
+   - If below 80%: treat as failure
+   - E2E pass/fail is also a hard gate (any Playwright failure = integration test failure)
+
+4. **On PASS**: Log integration test result and proceed to next wave:
    ```
-   Capture exit code and coverage percentage from output.
-
-4. **Verify coverage gate** (>= 80% for both):
-   - Parse server coverage from pytest output (look for `TOTAL ... XX%`)
-   - Parse client coverage from vitest output (look for `All files ... XX%`)
-   - If either suite is below 80%: treat as failure
-
-5. **On PASS**: Log integration test result and proceed to next wave:
-   ```
-   ✅ Integration test PASSED after Wave {N} merge. server: {X}% | client: {Y}%
+   ✅ Integration test PASSED after Wave {N} merge. coverage: {X}%
    ```
 
 6. **On FAIL**: Halt the pipeline and perform regression detection:
@@ -511,14 +601,14 @@ After all agents in a wave complete and branches are merged to main, run the int
    d. Log to `docs/context/orchestration-log.md`:
       ```
       Integration test FAILED after Wave {N} merge. Suspects: E{x}, E{y}
-      Server: {exit_code}, coverage {X}% | Client: {exit_code}, coverage {Y}%
+      Vitest coverage: {X}% | E2E: {exit_code} | typecheck: {exit_code} | lint: {exit_code}
       ```
    e. **STOP** the batch — do NOT proceed to the next wave
    f. Report failure details in the final batch report
 
 7. **Coverage trend tracking**: After each integration test (pass or fail), append coverage data to the orchestration-log entry using this format:
    ```markdown
-   | Integration | Wave {N} | ✅ PASS / ❌ FAIL | server: {X}% ({+/-delta}), client: {Y}% ({+/-delta}) |
+   | Integration | Wave {N} | ✅ PASS / ❌ FAIL | vitest: {X}% ({+/-delta}), e2e: pass/fail |
    ```
    Delta is computed by comparing with the previous integration test entry in the log. If no previous entry exists, omit the delta.
 
@@ -562,8 +652,9 @@ Retries: {retry_count} attempted, {retry_success_count} recovered
 {end if}
 {if integration_test}
 Integration Test (Wave {N}):
-  Server: {status} — coverage {X}% ({+/-delta} from previous)
-  Client: {status} — coverage {Y}% ({+/-delta} from previous)
+  Vitest: {status} — coverage {X}% ({+/-delta} from previous)
+  E2E (Playwright): {status}
+  typecheck/lint: {status}
 {end if}
 {if failures}
 Re-run failed epics with: /athena:batch --retry-failed --phase {N}

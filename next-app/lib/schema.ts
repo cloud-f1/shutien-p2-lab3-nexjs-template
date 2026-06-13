@@ -1,7 +1,7 @@
 import { integer, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
 
-export const roleEnum = pgEnum("role", ["user", "admin"])
-export type Role = "user" | "admin"
+export const roleEnum = pgEnum("role", ["admin", "editor", "viewer"])
+export type Role = "admin" | "editor" | "viewer"
 
 // Auth.js v5 required tables (Drizzle adapter)
 export const usersTable = pgTable("users", {
@@ -11,7 +11,7 @@ export const usersTable = pgTable("users", {
   emailVerified: timestamp("email_verified", { mode: "date" }),
   image: text("image"),
   passwordHash: text("password_hash"), // null for OAuth-only users
-  role: roleEnum("role").notNull().default("user"),
+  role: roleEnum("role").notNull().default("viewer"),
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
 })

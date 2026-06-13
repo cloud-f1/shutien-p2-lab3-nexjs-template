@@ -13,7 +13,12 @@ export const SEED_ADMIN = {
   password: "Admin123!",
 }
 
-export const SEED_USER = {
-  email: "user@example.com",
-  password: "User123!",
+export const SEED_EDITOR = {
+  email: "editor@example.com",
+  password: "Editor123!",
+}
+
+export const SEED_VIEWER = {
+  email: "viewer@example.com",
+  password: "Viewer123!",
 }
