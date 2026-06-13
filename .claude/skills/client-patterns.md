@@ -1,12 +1,14 @@
 ---
 name: client-patterns
 description: >
-  Client-side development patterns for this React + TypeScript project. Use this skill
-  whenever working in client/, writing React components, hooks, API calls, Zustand stores,
-  Zod schemas, or Vitest/MSW tests. Also use when adding routes, styling with CSS custom
-  properties, or debugging frontend issues. Covers the token cache, service factory,
-  React Query cache tiers, and the auth client patterns.
+  DEPRECATED — describes the old Vite + React SPA `client/` stack (Zustand, React Query, MSW, axios),
+  which was REMOVED in the Next.js migration. Do NOT use for current work. The frontend is now
+  Next.js App Router + Server Components + shadcn in `next-app/` — use `nextjs-saas-patterns` (and
+  the `next-best-practices` / `vercel-*` skills) instead. Kept only as historical reference.
 ---
+
+> **⚠️ DEPRECATED (Next.js migration).** The Vite SPA `client/` this skill documents was deleted.
+> For current frontend work use **`nextjs-saas-patterns`** + **`next-best-practices`**. Historical only.
 
 # Client Patterns — AI-Coding-Template
 

@@ -1,12 +1,15 @@
 ---
 name: server-patterns
 description: >
-  Server-side development patterns for this FastAPI + SQLAlchemy project. Use this skill
-  whenever working in server/, writing Python endpoints, models, schemas, services, tests,
-  or Alembic migrations. Also use when adding dependencies, configuring middleware, or
-  debugging server-side issues. Covers auth (fastapi-users), database patterns, testing
-  fixtures, and the dependency injection chain.
+  DEPRECATED — describes the old FastAPI + SQLAlchemy `server/` stack, which was REMOVED in the
+  Next.js migration. Do NOT use for current work. The backend is now Next.js Server Actions +
+  Route Handlers + Drizzle in `next-app/` — use the `nextjs-saas-patterns` skill instead. Kept only
+  as historical reference for the pre-migration git history.
 ---
+
+> **⚠️ DEPRECATED (Next.js migration).** The FastAPI `server/` this skill documents was deleted.
+> For current backend work use **`nextjs-saas-patterns`** (Server Actions / Route Handlers / Drizzle).
+> Everything below is historical only.
 
 # Server Patterns — AI-Coding-Template
 
