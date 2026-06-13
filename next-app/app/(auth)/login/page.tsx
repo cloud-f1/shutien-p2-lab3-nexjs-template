@@ -4,8 +4,8 @@ import { LoginForm } from "./_login-form"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Sign In",
-  description: "Sign in to your account",
+  title: "登入",
+  description: "登入您的帳戶",
 }
 
 type Props = {

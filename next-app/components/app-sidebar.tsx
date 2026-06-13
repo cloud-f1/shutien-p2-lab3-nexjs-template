@@ -35,11 +35,11 @@ export function AppSidebar({
   ...props
 }: { user: AppSidebarUser } & React.ComponentProps<typeof Sidebar>) {
   const navMain = [
-    { title: "Dashboard", url: "/dashboard", icon: <LayoutDashboardIcon /> },
-    { title: "Items", url: "/dashboard/items", icon: <ListIcon /> },
-    { title: "Settings", url: "/dashboard/settings", icon: <Settings2Icon /> },
+    { title: "儀表板", url: "/dashboard", icon: <LayoutDashboardIcon /> },
+    { title: "項目", url: "/dashboard/items", icon: <ListIcon /> },
+    { title: "設定", url: "/dashboard/settings", icon: <Settings2Icon /> },
     ...(isAdmin(user.role)
-      ? [{ title: "Admin", url: "/dashboard/admin", icon: <ShieldIcon /> }]
+      ? [{ title: "管理", url: "/dashboard/admin", icon: <ShieldIcon /> }]
       : []),
   ]
 

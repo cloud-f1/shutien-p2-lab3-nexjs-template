@@ -106,7 +106,7 @@ function DragHandle({ id }: { id: UniqueIdentifier }) {
       className="size-7 text-muted-foreground hover:bg-transparent"
     >
       <GripVerticalIcon className="size-3 text-muted-foreground" />
-      <span className="sr-only">Drag to reorder</span>
+      <span className="sr-only">拖曳以重新排序</span>
     </Button>
   )
 }
@@ -130,7 +130,7 @@ function getColumns(canEdit: boolean): ColumnDef<DataTableItem>[] {
             (table.getIsSomePageRowsSelected() && "indeterminate")
           }
           onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
+          aria-label="全選"
         />
       </div>
     ),
@@ -139,7 +139,7 @@ function getColumns(canEdit: boolean): ColumnDef<DataTableItem>[] {
         <Checkbox
           checked={row.getIsSelected()}
           onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
+          aria-label="選取此列"
         />
       </div>
     ),
@@ -148,7 +148,7 @@ function getColumns(canEdit: boolean): ColumnDef<DataTableItem>[] {
   },
   {
     accessorKey: "title",
-    header: "Title",
+    header: "標題",
     cell: ({ row }) =>
       canEdit ? (
         <Button
@@ -169,10 +169,10 @@ function getColumns(canEdit: boolean): ColumnDef<DataTableItem>[] {
   },
   {
     accessorKey: "status",
-    header: "Status",
+    header: "狀態",
     cell: ({ row }) => (
       <Badge variant="outline" className="px-1.5 text-muted-foreground">
-        {row.original.status === "Done" ? (
+        {row.original.status === "完成" ? (
           <CircleCheckIcon className="fill-green-500 dark:fill-green-400" />
         ) : (
           <LoaderIcon />
@@ -183,14 +183,14 @@ function getColumns(canEdit: boolean): ColumnDef<DataTableItem>[] {
   },
   {
     accessorKey: "createdAt",
-    header: "Created",
+    header: "建立時間",
     cell: ({ row }) => (
       <div className="text-muted-foreground">{row.original.createdAt}</div>
     ),
   },
   {
     accessorKey: "id",
-    header: "ID",
+    header: "編號",
     cell: ({ row }) => (
       <span className="font-mono text-xs text-muted-foreground">
         {row.original.id.slice(0, 8)}
@@ -211,16 +211,16 @@ function getColumns(canEdit: boolean): ColumnDef<DataTableItem>[] {
               size="icon"
             >
               <EllipsisVerticalIcon />
-              <span className="sr-only">Open menu</span>
+              <span className="sr-only">開啟選單</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-32">
             <DropdownMenuItem asChild>
-              <Link href={`/dashboard/items/${row.original.id}/edit`}>Edit</Link>
+              <Link href={`/dashboard/items/${row.original.id}/edit`}>編輯</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link href="/dashboard/items">View all</Link>
+              <Link href="/dashboard/items">檢視全部</Link>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -331,7 +331,7 @@ export function DataTable({
     >
       <div className="flex items-center justify-between px-4 lg:px-6">
         <Label htmlFor="view-selector" className="sr-only">
-          View
+          檢視
         </Label>
         <Select defaultValue="outline">
           <SelectTrigger
@@ -339,17 +339,17 @@ export function DataTable({
             size="sm"
             id="view-selector"
           >
-            <SelectValue placeholder="Select a view" />
+            <SelectValue placeholder="選擇檢視" />
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
-              <SelectItem value="outline">Items</SelectItem>
+              <SelectItem value="outline">項目</SelectItem>
             </SelectGroup>
           </SelectContent>
         </Select>
         <TabsList className="hidden **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:bg-muted-foreground/30 **:data-[slot=badge]:px-1 @4xl/main:flex">
           <TabsTrigger value="outline">
-            Items <Badge variant="secondary">{data.length}</Badge>
+            項目 <Badge variant="secondary">{data.length}</Badge>
           </TabsTrigger>
         </TabsList>
         <div className="flex items-center gap-2">
@@ -357,7 +357,7 @@ export function DataTable({
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
                 <Columns3Icon data-icon="inline-start" />
-                Columns
+                欄位
                 <ChevronDownIcon data-icon="inline-end" />
               </Button>
             </DropdownMenuTrigger>
@@ -389,7 +389,7 @@ export function DataTable({
             <Button asChild variant="outline" size="sm">
               <Link href="/dashboard/items/create">
                 <PlusIcon />
-                <span className="hidden lg:inline">New Item</span>
+                <span className="hidden lg:inline">新增項目</span>
               </Link>
             </Button>
           )}
@@ -442,7 +442,7 @@ export function DataTable({
                       colSpan={columns.length}
                       className="h-24 text-center"
                     >
-                      No items yet.
+                      尚無項目。
                     </TableCell>
                   </TableRow>
                 )}
@@ -452,13 +452,13 @@ export function DataTable({
         </div>
         <div className="flex items-center justify-between px-4">
           <div className="hidden flex-1 text-sm text-muted-foreground lg:flex">
-            {table.getFilteredSelectedRowModel().rows.length} of{" "}
-            {table.getFilteredRowModel().rows.length} row(s) selected.
+            已選取 {table.getFilteredRowModel().rows.length} 列中的{" "}
+            {table.getFilteredSelectedRowModel().rows.length} 列。
           </div>
           <div className="flex w-full items-center gap-8 lg:w-fit">
             <div className="hidden items-center gap-2 lg:flex">
               <Label htmlFor="rows-per-page" className="text-sm font-medium">
-                Rows per page
+                每頁列數
               </Label>
               <Select
                 value={`${table.getState().pagination.pageSize}`}
@@ -483,8 +483,8 @@ export function DataTable({
               </Select>
             </div>
             <div className="flex w-fit items-center justify-center text-sm font-medium">
-              Page {table.getState().pagination.pageIndex + 1} of{" "}
-              {table.getPageCount()}
+              第 {table.getState().pagination.pageIndex + 1} 頁，共{" "}
+              {table.getPageCount()} 頁
             </div>
             <div className="ml-auto flex items-center gap-2 lg:ml-0">
               <Button
@@ -493,7 +493,7 @@ export function DataTable({
                 onClick={() => table.setPageIndex(0)}
                 disabled={!table.getCanPreviousPage()}
               >
-                <span className="sr-only">Go to first page</span>
+                <span className="sr-only">前往第一頁</span>
                 <ChevronsLeftIcon />
               </Button>
               <Button
@@ -503,7 +503,7 @@ export function DataTable({
                 onClick={() => table.previousPage()}
                 disabled={!table.getCanPreviousPage()}
               >
-                <span className="sr-only">Go to previous page</span>
+                <span className="sr-only">前往上一頁</span>
                 <ChevronLeftIcon />
               </Button>
               <Button
@@ -513,7 +513,7 @@ export function DataTable({
                 onClick={() => table.nextPage()}
                 disabled={!table.getCanNextPage()}
               >
-                <span className="sr-only">Go to next page</span>
+                <span className="sr-only">前往下一頁</span>
                 <ChevronRightIcon />
               </Button>
               <Button
@@ -523,7 +523,7 @@ export function DataTable({
                 onClick={() => table.setPageIndex(table.getPageCount() - 1)}
                 disabled={!table.getCanNextPage()}
               >
-                <span className="sr-only">Go to last page</span>
+                <span className="sr-only">前往最後一頁</span>
                 <ChevronsRightIcon />
               </Button>
             </div>

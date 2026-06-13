@@ -40,7 +40,7 @@ export async function registerUser(prevState: FormState, formData: FormData): Pr
 
   const existing = await getUserByEmail(email)
   if (existing) {
-    return { error: "An account with this email already exists." }
+    return { error: "此電子郵件已被註冊。" }
   }
 
   const passwordHash = await hashPassword(password)
@@ -79,14 +79,14 @@ export async function loginAction(prevState: FormState, formData: FormData): Pro
   // Pre-check: unverified credentials users get a helpful error before Auth.js runs
   const user = await getUserByEmail(email)
   if (user?.passwordHash && !user.emailVerified) {
-    return { error: "Please verify your email before signing in. Check your inbox." }
+    return { error: "請先驗證您的電子郵件再登入，請檢查您的收件匣。" }
   }
 
   try {
     await signIn("credentials", { email, password, redirectTo: "/dashboard" })
   } catch (error) {
     unstable_rethrow(error) // re-throw redirect() so the redirect actually fires
-    return { error: "Invalid email or password." }
+    return { error: "電子郵件或密碼錯誤。" }
   }
 
   return null
@@ -100,14 +100,14 @@ export async function verifyEmailToken(
   const record = await getVerificationToken(token)
 
   if (!record) {
-    return { success: false, error: "Invalid or expired verification link." }
+    return { success: false, error: "驗證連結無效或已過期。" }
   }
 
   if (record.expiresAt < new Date()) {
     await db
       .delete(emailVerificationTokensTable)
       .where(eq(emailVerificationTokensTable.id, record.id))
-    return { success: false, error: "This link has expired. Please register again." }
+    return { success: false, error: "此連結已過期，請重新註冊。" }
   }
 
   await db
@@ -129,7 +129,7 @@ export async function resendVerificationEmail(
 
   // Don't reveal whether the email exists
   if (!user?.passwordHash) return { success: true }
-  if (user.emailVerified) return { error: "This email is already verified." }
+  if (user.emailVerified) return { error: "此電子郵件已驗證。" }
 
   await db
     .delete(emailVerificationTokensTable)

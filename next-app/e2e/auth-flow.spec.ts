@@ -11,12 +11,12 @@ test.describe("Auth flow", () => {
     await page.goto("/login")
     // shadcn CardTitle renders as <div data-slot="card-title">, not a heading —
     // assert on the visible text instead of an h1/h2 selector.
-    await expect(page.getByText(/welcome back/i)).toBeVisible()
+    await expect(page.getByText("歡迎回來")).toBeVisible()
   })
 
   test("register page loads", async ({ page }) => {
     await page.goto("/register")
-    await expect(page.getByText(/create an account/i)).toBeVisible()
+    await expect(page.getByText("建立帳戶").first()).toBeVisible()
   })
 
   test("register form validates email format client-side", async ({ page }) => {
@@ -26,7 +26,7 @@ test.describe("Auth flow", () => {
     await page.fill('input[name="password"]', "Test123!")
     await page.click('button[type="submit"]')
     // RHF should show an inline error without navigating
-    await expect(page.locator("text=/invalid email/i")).toBeVisible()
+    await expect(page.getByText("電子郵件格式不正確")).toBeVisible()
     await expect(page).toHaveURL(/\/register/)
   })
 
@@ -63,7 +63,7 @@ test.describe("Auth flow", () => {
     await page
       .locator('[data-slot="sidebar-footer"] button[data-slot="dropdown-menu-trigger"]')
       .click()
-    await page.getByRole("menuitem", { name: /log out/i }).click()
+    await page.getByRole("menuitem", { name: "登出" }).click()
     await expect(page).toHaveURL(/\/login/, { timeout: 10000 })
   })
 })

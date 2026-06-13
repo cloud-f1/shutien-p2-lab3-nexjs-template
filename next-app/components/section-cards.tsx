@@ -30,7 +30,7 @@ export function SectionCards({
       {/* Real: current user's item count */}
       <Card className="@container/card">
         <CardHeader>
-          <CardDescription>Your Items</CardDescription>
+          <CardDescription>您的項目</CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
             {totalItems.toLocaleString()}
           </CardTitle>
@@ -43,10 +43,10 @@ export function SectionCards({
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
           <div className="line-clamp-1 flex gap-2 font-medium">
-            Items you own <TrendingUpIcon className="size-4" />
+            您擁有的項目 <TrendingUpIcon className="size-4" />
           </div>
           <div className="text-muted-foreground">
-            Total items in your account
+            您帳戶中的項目總數
           </div>
         </CardFooter>
       </Card>
@@ -55,7 +55,7 @@ export function SectionCards({
       <Card className="@container/card">
         <CardHeader>
           <CardDescription>
-            {isAdminView ? "Total Users" : "Active Accounts"}
+            {isAdminView ? "使用者總數" : "活躍帳戶"}
           </CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
             {isAdminView ? totalUsers!.toLocaleString() : "45,678"}
@@ -69,13 +69,13 @@ export function SectionCards({
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
           <div className="line-clamp-1 flex gap-2 font-medium">
-            {isAdminView ? "Registered users" : "Strong user retention"}{" "}
+            {isAdminView ? "已註冊使用者" : "使用者留存率高"}{" "}
             <TrendingUpIcon className="size-4" />
           </div>
           <div className="text-muted-foreground">
             {isAdminView
-              ? "All accounts in the system"
-              : "Engagement exceeds targets"}
+              ? "系統中的所有帳戶"
+              : "參與度超出目標"}
           </div>
         </CardFooter>
       </Card>
@@ -84,7 +84,7 @@ export function SectionCards({
       <Card className="@container/card">
         <CardHeader>
           <CardDescription>
-            {isAdminView ? "Verified Users" : "New Customers"}
+            {isAdminView ? "已驗證使用者" : "新客戶"}
           </CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
             {isAdminView ? (verifiedUsers ?? 0).toLocaleString() : "1,234"}
@@ -98,13 +98,13 @@ export function SectionCards({
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
           <div className="line-clamp-1 flex gap-2 font-medium">
-            {isAdminView ? "Email-verified accounts" : "Steady acquisition"}{" "}
+            {isAdminView ? "已驗證電子郵件的帳戶" : "穩定獲客"}{" "}
             <TrendingUpIcon className="size-4" />
           </div>
           <div className="text-muted-foreground">
             {isAdminView
-              ? "Users who confirmed their email"
-              : "Acquisition on track"}
+              ? "已確認電子郵件的使用者"
+              : "獲客進度正常"}
           </div>
         </CardFooter>
       </Card>
@@ -112,7 +112,7 @@ export function SectionCards({
       {/* Representative growth metric (visual only). */}
       <Card className="@container/card">
         <CardHeader>
-          <CardDescription>Growth Rate</CardDescription>
+          <CardDescription>成長率</CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
             4.5%
           </CardTitle>
@@ -125,9 +125,9 @@ export function SectionCards({
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
           <div className="line-clamp-1 flex gap-2 font-medium">
-            Steady performance increase <TrendingUpIcon className="size-4" />
+            績效穩定成長 <TrendingUpIcon className="size-4" />
           </div>
-          <div className="text-muted-foreground">Meets growth projections</div>
+          <div className="text-muted-foreground">符合成長預期</div>
         </CardFooter>
       </Card>
     </div>

@@ -42,11 +42,11 @@ export async function changePassword(prevState: FormState, formData: FormData): 
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, session.user.id))
   if (!user?.passwordHash) {
-    return { error: "Password change is not available for OAuth accounts." }
+    return { error: "OAuth 帳戶無法變更密碼。" }
   }
 
   const isValid = await comparePassword(currentPassword, user.passwordHash)
-  if (!isValid) return { error: "Current password is incorrect." }
+  if (!isValid) return { error: "目前密碼錯誤。" }
 
   const newHash = await hashPassword(newPassword)
   await db

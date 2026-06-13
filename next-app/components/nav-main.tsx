@@ -33,12 +33,12 @@ export function NavMain({
             <SidebarMenuItem className="flex items-center gap-2">
               <SidebarMenuButton
                 asChild
-                tooltip="New Item"
+                tooltip="新增項目"
                 className="min-w-8 bg-primary text-primary-foreground duration-200 ease-linear hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
               >
                 <Link href="/dashboard/items/create">
                   <CirclePlusIcon />
-                  <span>New Item</span>
+                  <span>新增項目</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

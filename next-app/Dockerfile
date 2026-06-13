@@ -40,6 +40,12 @@ ENV DATABASE_URL=postgresql://build:build@localhost:5432/build
 ENV AUTH_SECRET=build-time-placeholder-secret
 ENV AUTH_TRUST_HOST=true
 
+# Demo quick-login buttons (admin/editor/viewer) are baked in only when this is
+# "true". Default true for local images; pass --build-arg NEXT_PUBLIC_ENABLE_DEMO_LOGIN=false
+# (or omit in a real prod pipeline) so the credential literals tree-shake out of the bundle.
+ARG NEXT_PUBLIC_ENABLE_DEMO_LOGIN=true
+ENV NEXT_PUBLIC_ENABLE_DEMO_LOGIN=$NEXT_PUBLIC_ENABLE_DEMO_LOGIN
+
 RUN pnpm build
 
 # ─── runner ────────────────────────────────────────────────────────────────────

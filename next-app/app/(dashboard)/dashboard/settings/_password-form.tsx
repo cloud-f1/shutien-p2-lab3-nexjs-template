@@ -36,11 +36,11 @@ export function PasswordForm() {
         if (result?.error) {
           setServerMessage({ type: "error", text: result.error })
         } else {
-          setServerMessage({ type: "success", text: "Password changed successfully." })
+          setServerMessage({ type: "success", text: "密碼已成功變更。" })
           reset()
         }
       } catch {
-        setServerMessage({ type: "error", text: "Something went wrong. Please try again." })
+        setServerMessage({ type: "error", text: "發生錯誤，請再試一次。" })
       }
     })
   }
@@ -48,19 +48,19 @@ export function PasswordForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="space-y-1.5">
-        <Label htmlFor="currentPassword">Current password</Label>
+        <Label htmlFor="currentPassword">目前密碼</Label>
         <Input id="currentPassword" type="password" autoComplete="current-password" {...register("currentPassword")} />
         {errors.currentPassword && <p className="text-xs text-destructive">{errors.currentPassword.message}</p>}
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="newPassword">New password</Label>
+        <Label htmlFor="newPassword">新密碼</Label>
         <Input id="newPassword" type="password" autoComplete="new-password" {...register("newPassword")} />
         {errors.newPassword && <p className="text-xs text-destructive">{errors.newPassword.message}</p>}
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="confirmPassword">Confirm new password</Label>
+        <Label htmlFor="confirmPassword">確認新密碼</Label>
         <Input id="confirmPassword" type="password" autoComplete="new-password" {...register("confirmPassword")} />
         {errors.confirmPassword && <p className="text-xs text-destructive">{errors.confirmPassword.message}</p>}
       </div>
@@ -72,7 +72,7 @@ export function PasswordForm() {
       )}
 
       <Button type="submit" disabled={isPending}>
-        {isPending ? "Updating…" : "Change password"}
+        {isPending ? "更新中…" : "變更密碼"}
       </Button>
     </form>
   )

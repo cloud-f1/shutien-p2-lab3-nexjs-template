@@ -17,11 +17,17 @@ interface RoleSelectorProps {
   isSelf: boolean
 }
 
+const ROLE_LABELS: Record<Role, string> = {
+  admin: "管理員",
+  editor: "編輯者",
+  viewer: "檢視者",
+}
+
 export function RoleSelector({ userId, currentRole, isSelf }: RoleSelectorProps) {
   const [isPending, startTransition] = useTransition()
 
   if (isSelf) {
-    return <span className="text-sm text-muted-foreground capitalize">{currentRole}</span>
+    return <span className="text-sm text-muted-foreground">{ROLE_LABELS[currentRole]}</span>
   }
 
   return (
@@ -36,9 +42,9 @@ export function RoleSelector({ userId, currentRole, isSelf }: RoleSelectorProps)
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="admin">admin</SelectItem>
-        <SelectItem value="editor">editor</SelectItem>
-        <SelectItem value="viewer">viewer</SelectItem>
+        <SelectItem value="admin">管理員</SelectItem>
+        <SelectItem value="editor">編輯者</SelectItem>
+        <SelectItem value="viewer">檢視者</SelectItem>
       </SelectContent>
     </Select>
   )

@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/table"
 import type { Metadata } from "next"
 
-export const metadata: Metadata = { title: "Admin — Users" }
+export const metadata: Metadata = { title: "管理 — 使用者" }
 
 export default async function AdminPage() {
   const session = await requireAdmin()
@@ -22,18 +22,18 @@ export default async function AdminPage() {
   return (
     <div className="mx-auto max-w-5xl p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">User Management</h1>
-        <p className="text-sm text-muted-foreground mt-1">{users.length} total users</p>
+        <h1 className="text-2xl font-semibold">使用者管理</h1>
+        <p className="text-sm text-muted-foreground mt-1">共 {users.length} 位使用者</p>
       </div>
 
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Role</TableHead>
-            <TableHead>Verified</TableHead>
-            <TableHead>Joined</TableHead>
+            <TableHead>姓名</TableHead>
+            <TableHead>電子郵件</TableHead>
+            <TableHead>角色</TableHead>
+            <TableHead>已驗證</TableHead>
+            <TableHead>加入時間</TableHead>
             <TableHead className="w-20" />
           </TableRow>
         </TableHeader>
@@ -51,9 +51,9 @@ export default async function AdminPage() {
               </TableCell>
               <TableCell>
                 {user.emailVerified ? (
-                  <Badge variant="outline" className="text-green-600 border-green-600">Yes</Badge>
+                  <Badge variant="outline" className="text-green-600 border-green-600">是</Badge>
                 ) : (
-                  <Badge variant="outline" className="text-muted-foreground">No</Badge>
+                  <Badge variant="outline" className="text-muted-foreground">否</Badge>
                 )}
               </TableCell>
               <TableCell className="text-muted-foreground text-sm">

@@ -29,13 +29,11 @@ interface LoginFormProps {
   urlError?: string
 }
 
-// Demo seed accounts (drizzle/seed.ts). One-click sign-in for the template demo.
-// Remove this block (and the "Quick demo login" UI below) for a real production app.
-const DEMO_ACCOUNTS = [
-  { label: "Admin", email: "admin@example.com", password: "Admin123!" },
-  { label: "Editor", email: "editor@example.com", password: "Editor123!" },
-  { label: "Viewer", email: "viewer@example.com", password: "Viewer123!" },
-] as const
+// Gate demo-login so the hardcoded credentials are tree-shaken out of production
+// bundles when the flag is unset.
+const SHOW_DEMO_LOGIN =
+  process.env.NEXT_PUBLIC_ENABLE_DEMO_LOGIN === "true" ||
+  process.env.NODE_ENV !== "production"
 
 export function LoginForm({ verified, urlError }: LoginFormProps) {
   const [state, formAction, isPending] = useActionState(loginAction, null)
@@ -69,13 +67,13 @@ export function LoginForm({ verified, urlError }: LoginFormProps) {
   return (
     <Card>
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl">Welcome back</CardTitle>
-        <CardDescription>Sign in to your account</CardDescription>
+        <CardTitle className="text-2xl">歡迎回來</CardTitle>
+        <CardDescription>登入您的帳戶</CardDescription>
       </CardHeader>
       <CardContent>
         {verified && (
           <p className="mb-4 rounded-md bg-green-50 px-3 py-2 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
-            ✅ Email verified! You can now sign in.
+            ✅ 電子郵件已驗證！您現在可以登入。
           </p>
         )}
         {(state?.error ?? urlError) && (
@@ -87,7 +85,7 @@ export function LoginForm({ verified, urlError }: LoginFormProps) {
         <form onSubmit={handleSubmit(onValid)} noValidate>
           <FieldGroup>
             <Field data-invalid={errors.email ? true : undefined}>
-              <FieldLabel htmlFor="email">Email</FieldLabel>
+              <FieldLabel htmlFor="email">電子郵件</FieldLabel>
               <Input
                 id="email"
                 type="email"
@@ -100,12 +98,12 @@ export function LoginForm({ verified, urlError }: LoginFormProps) {
             </Field>
             <Field data-invalid={errors.password ? true : undefined}>
               <div className="flex items-center">
-                <FieldLabel htmlFor="password">Password</FieldLabel>
+                <FieldLabel htmlFor="password">密碼</FieldLabel>
                 <a
                   href="#"
                   className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
                 >
-                  Forgot your password?
+                  忘記密碼？
                 </a>
               </div>
               <Input
@@ -122,40 +120,57 @@ export function LoginForm({ verified, urlError }: LoginFormProps) {
             </Field>
             <Field>
               <Button type="submit" disabled={isPending}>
-                {isPending ? "Signing in…" : "Sign In"}
+                {isPending ? "登入中…" : "登入"}
               </Button>
             </Field>
           </FieldGroup>
         </form>
 
-        <FieldSeparator className="my-6">Quick demo login</FieldSeparator>
-        <div className="grid grid-cols-3 gap-2">
-          {DEMO_ACCOUNTS.map((account) => (
-            <Button
-              key={account.label}
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={isPending}
-              onClick={() => quickLogin(account.email, account.password)}
-            >
-              {account.label}
-            </Button>
-          ))}
-        </div>
+        {SHOW_DEMO_LOGIN &&
+          (() => {
+            // Demo seed accounts (drizzle/seed.ts). One-click sign-in for the
+            // template demo. Referenced only inside this gated branch so the
+            // password literals tree-shake out of production builds when the
+            // flag is unset.
+            const DEMO_ACCOUNTS = [
+              { label: "Admin", email: "admin@example.com", password: "Admin123!" },
+              { label: "Editor", email: "editor@example.com", password: "Editor123!" },
+              { label: "Viewer", email: "viewer@example.com", password: "Viewer123!" },
+            ] as const
 
-        <FieldSeparator className="my-6">Or continue with</FieldSeparator>
+            return (
+              <>
+                <FieldSeparator className="my-6">快速示範登入</FieldSeparator>
+                <div className="grid grid-cols-3 gap-2">
+                  {DEMO_ACCOUNTS.map((account) => (
+                    <Button
+                      key={account.label}
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      disabled={isPending}
+                      onClick={() => quickLogin(account.email, account.password)}
+                    >
+                      {account.label}
+                    </Button>
+                  ))}
+                </div>
+              </>
+            )
+          })()}
+
+        <FieldSeparator className="my-6">或使用以下方式繼續</FieldSeparator>
 
         <form action={signInWithGoogle}>
           <FieldGroup>
             <Field>
               <Button type="submit" variant="outline" disabled={isPending}>
                 <GoogleIcon />
-                Continue with Google
+                使用 Google 繼續
               </Button>
               <FieldDescription className="text-center">
-                Don&apos;t have an account?{" "}
-                <Link href="/register">Sign up</Link>
+                還沒有帳戶？{" "}
+                <Link href="/register">註冊</Link>
               </FieldDescription>
             </Field>
           </FieldGroup>

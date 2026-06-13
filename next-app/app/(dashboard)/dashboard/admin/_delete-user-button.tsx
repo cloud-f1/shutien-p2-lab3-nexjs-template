@@ -19,11 +19,11 @@ export function DeleteUserButton({ userId, email }: DeleteUserButtonProps) {
       className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 px-2 text-xs"
       disabled={isPending}
       onClick={() => {
-        if (!confirm(`Delete ${email}? This cannot be undone.`)) return
+        if (!confirm(`確定要刪除 ${email}？此操作無法復原。`)) return
         startTransition(() => { void deleteUser(userId) })
       }}
     >
-      {isPending ? "…" : "Delete"}
+      {isPending ? "…" : "刪除"}
     </Button>
   )
 }

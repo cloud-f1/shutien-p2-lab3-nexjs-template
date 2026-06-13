@@ -59,6 +59,10 @@ services:
     build:
       context: ./next-app
       target: runner
+      args:
+        # Local demo: show the admin/editor/viewer quick-login buttons. Set "false"
+        # for a real production build so the demo credentials never enter the bundle.
+        NEXT_PUBLIC_ENABLE_DEMO_LOGIN: "true"
     container_name: nextapp_web
     ports:
       - "3000:3000"

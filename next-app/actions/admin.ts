@@ -15,12 +15,12 @@ export async function setUserRole(userId: string, role: Role) {
   // Runtime allowlist: TS types are erased, and Server Actions are public
   // POST endpoints — a crafted request could pass an arbitrary string.
   if (!VALID_ROLES.includes(role)) {
-    return { error: "Invalid role." }
+    return { error: "無效的角色。" }
   }
 
   // Prevent admin from demoting themselves
   if (userId === session.user.id) {
-    return { error: "You cannot change your own role." }
+    return { error: "您無法變更自己的角色。" }
   }
 
   await db.update(usersTable).set({ role, updatedAt: new Date() }).where(eq(usersTable.id, userId))
@@ -33,7 +33,7 @@ export async function deleteUser(userId: string) {
   const session = await requireAdmin()
 
   if (userId === session.user.id) {
-    return { error: "You cannot delete your own account." }
+    return { error: "您無法刪除自己的帳戶。" }
   }
 
   await db.delete(usersTable).where(eq(usersTable.id, userId))

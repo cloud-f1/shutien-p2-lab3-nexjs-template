@@ -48,8 +48,8 @@ export function RegisterForm() {
   return (
     <Card>
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl">Create an account</CardTitle>
-        <CardDescription>Enter your details to get started</CardDescription>
+        <CardTitle className="text-2xl">建立帳戶</CardTitle>
+        <CardDescription>在下方輸入您的資訊以建立帳戶</CardDescription>
       </CardHeader>
       <CardContent>
         {state?.error && (
@@ -61,7 +61,7 @@ export function RegisterForm() {
         <form onSubmit={handleSubmit(onValid)} noValidate>
           <FieldGroup>
             <Field data-invalid={errors.name ? true : undefined}>
-              <FieldLabel htmlFor="name">Full Name</FieldLabel>
+              <FieldLabel htmlFor="name">姓名</FieldLabel>
               <Input
                 id="name"
                 type="text"
@@ -73,7 +73,7 @@ export function RegisterForm() {
               <FieldError errors={errors.name ? [errors.name] : undefined} />
             </Field>
             <Field data-invalid={errors.email ? true : undefined}>
-              <FieldLabel htmlFor="email">Email</FieldLabel>
+              <FieldLabel htmlFor="email">電子郵件</FieldLabel>
               <Input
                 id="email"
                 type="email"
@@ -85,7 +85,7 @@ export function RegisterForm() {
               <FieldError errors={errors.email ? [errors.email] : undefined} />
             </Field>
             <Field data-invalid={errors.password ? true : undefined}>
-              <FieldLabel htmlFor="password">Password</FieldLabel>
+              <FieldLabel htmlFor="password">密碼</FieldLabel>
               <Input
                 id="password"
                 type="password"
@@ -98,29 +98,29 @@ export function RegisterForm() {
                 <FieldError errors={[errors.password]} />
               ) : (
                 <FieldDescription>
-                  Must be at least 8 characters, with 1 uppercase and 1 number.
+                  至少需 8 個字元，並包含 1 個大寫字母與 1 個數字。
                 </FieldDescription>
               )}
             </Field>
             <Field>
               <Button type="submit" disabled={isPending}>
-                {isPending ? "Creating account…" : "Create Account"}
+                {isPending ? "建立帳戶中…" : "建立帳戶"}
               </Button>
             </Field>
           </FieldGroup>
         </form>
 
-        <FieldSeparator className="my-6">Or continue with</FieldSeparator>
+        <FieldSeparator className="my-6">或使用以下方式繼續</FieldSeparator>
 
         <form action={signInWithGoogle}>
           <FieldGroup>
             <Field>
               <Button type="submit" variant="outline" disabled={isPending}>
                 <GoogleIcon />
-                Sign up with Google
+                使用 Google 註冊
               </Button>
               <FieldDescription className="text-center">
-                Already have an account? <Link href="/login">Sign in</Link>
+                已經有帳戶了？ <Link href="/login">登入</Link>
               </FieldDescription>
             </Field>
           </FieldGroup>

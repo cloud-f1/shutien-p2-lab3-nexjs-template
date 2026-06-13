@@ -14,13 +14,13 @@ describe("passwordSchema", () => {
   it("requires an uppercase letter", () => {
     const r = passwordSchema.safeParse("abcd1234")
     expect(r.success).toBe(false)
-    if (!r.success) expect(r.error.errors[0].message).toMatch(/uppercase/i)
+    if (!r.success) expect(r.error.errors[0].message).toMatch(/大寫/)
   })
 
   it("requires a number", () => {
     const r = passwordSchema.safeParse("Abcdefgh")
     expect(r.success).toBe(false)
-    if (!r.success) expect(r.error.errors[0].message).toMatch(/number/i)
+    if (!r.success) expect(r.error.errors[0].message).toMatch(/數字/)
   })
 })
 
@@ -33,7 +33,7 @@ describe("registerSchema", () => {
   it("rejects an invalid email with the shared message", () => {
     const r = registerSchema.safeParse({ name: "Ada", email: "nope", password: "Abcd1234" })
     expect(r.success).toBe(false)
-    if (!r.success) expect(r.error.errors.some((e) => /invalid email/i.test(e.message))).toBe(true)
+    if (!r.success) expect(r.error.errors.some((e) => /電子郵件格式不正確/.test(e.message))).toBe(true)
   })
 
   it("rejects an empty name", () => {

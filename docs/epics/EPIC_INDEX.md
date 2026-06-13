@@ -67,7 +67,8 @@
 | Phase 52 | E216 | ✅ Complete (Native Workflow Orchestration — `/athena:flow` interactive native-Workflow epic dispatcher merged via PR#205; completes the E198–E201 line with a budget-enforced, live-tree, no-`claude -p` path; athena-core sync pending) |
 | Phase 53 | E217, E218, E219, E220, E221 | ✅ QA'd, committed on branch MH/feat/E217-E221-nextjs-migration (Next.js Migration — shared Zod validations + RBAC + account settings + admin panel + e2e smoke; 2 critical pre-existing bugs fixed) |
 | Phase 54 | E222, E223, E224, E225, E226 | ✅ Merged to main (PR #2) — shadcn-blocks UI + Docker + Athena hardening |
-| Phase 55 | E227, E228 | ✅ Done on branch (3-tier RBAC admin/editor/viewer + demo seed verified in Docker; athena loop speedup via worktree-parallel + codified practices; docker-compose consolidated to one stack + mailpit). 30 unit + 25 e2e green |
+| Phase 55 | E227, E228 | ✅ Merged to main (PR #3) — 3-tier RBAC + athena loop speedup + consolidated Docker |
+| Phase 56 | E229, E230 | 🔄 In Progress (apply shadcn preset b1Yn96132 = blue theme merged into repo style; full 繁體中文 i18n of all UI + validation + action messages; demo-login security gate). 30 unit + 25 e2e green, verified in Docker |
 <!-- PHASE_STATUS_END -->
 
 <!-- EPIC_MATRIX_START -->
@@ -311,6 +312,8 @@ Phase 46+ epics: enriched template — epic files include Implementation Phases,
 | E226 | ✅ | ✅ | ✅ | — | — | Phase 54 — Dockerized: output:standalone + Dockerfile + docker-compose (postgres + migrate/seed + web). `docker compose up --build` serves UI at :3000, verified via screenshot. Fixed pre-existing migration SQL bug (0001 ALTER COLUMN missing USING) |
 | E227 | ✅ | ✅ | ✅ | — | — | Phase 55 — 3-tier RBAC: role enum → admin/editor/viewer (migration 0003 maps user→viewer, verified on dev+fresh DB); requireEditor/canEdit gate item CRUD; viewers read-only (server + UI, screenshot-verified); demo seed admin@/editor@/viewer@example.com. 30 unit + 25 e2e |
 | E228 | ✅ | ✅ | ✅ | — | — | Phase 55 — Athena loop speedup: worktree-parallel default in batch.md; "Speed & Reliability" practices in loop.md/qa.md; stale Python gate refs purged; docs/context/loop-speedup-retro.md |
+| E229 | ✅ | ✅ | ✅ | — | — | Phase 56 — applied shadcn preset b1Yn96132 (blue/indigo primary theme) via `shadcn apply --preset`; merged into globals.css/components.json; restored lint-fixed use-mobile.ts the preset reverted |
+| E230 | ✅ | ✅ | ✅ | — | — | Phase 56 — full 繁體中文 i18n: all UI text, Zod messages, Server-Action errors, metadata, html lang=zh-Hant (3 parallel subagents + shared glossary); e2e + unit assertions updated to zh-Hant; demo-login gated behind NEXT_PUBLIC_ENABLE_DEMO_LOGIN (prod-safe, on for local Docker) |
 <!-- EPIC_MATRIX_END -->
 
 ## Dependency Rules

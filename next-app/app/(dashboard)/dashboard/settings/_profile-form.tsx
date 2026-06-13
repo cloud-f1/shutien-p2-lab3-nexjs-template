@@ -38,9 +38,9 @@ export function ProfileForm({ defaultName, defaultImage }: ProfileFormProps) {
       try {
         const result = await updateProfile(null, fd)
         if (result?.error) setServerMessage({ type: "error", text: result.error })
-        else setServerMessage({ type: "success", text: "Profile updated." })
+        else setServerMessage({ type: "success", text: "個人資料已更新。" })
       } catch {
-        setServerMessage({ type: "error", text: "Something went wrong. Please try again." })
+        setServerMessage({ type: "error", text: "發生錯誤，請再試一次。" })
       }
     })
   }
@@ -48,13 +48,13 @@ export function ProfileForm({ defaultName, defaultImage }: ProfileFormProps) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="space-y-1.5">
-        <Label htmlFor="name">Display name</Label>
+        <Label htmlFor="name">顯示名稱</Label>
         <Input id="name" autoComplete="name" {...register("name")} />
         {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="image">Avatar URL</Label>
+        <Label htmlFor="image">頭像網址</Label>
         <Input
           id="image"
           type="url"
@@ -72,7 +72,7 @@ export function ProfileForm({ defaultName, defaultImage }: ProfileFormProps) {
       )}
 
       <Button type="submit" disabled={isPending}>
-        {isPending ? "Saving…" : "Save changes"}
+        {isPending ? "儲存中…" : "儲存變更"}
       </Button>
     </form>
   )

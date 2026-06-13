@@ -10,7 +10,7 @@ import { eq, isNotNull } from "drizzle-orm"
 import type { Metadata } from "next"
 import Link from "next/link"
 
-export const metadata: Metadata = { title: "Dashboard" }
+export const metadata: Metadata = { title: "儀表板" }
 
 export default async function DashboardPage() {
   const session = await requireAuth()
@@ -38,7 +38,7 @@ export default async function DashboardPage() {
   const tableData: DataTableItem[] = items.map((item) => ({
     id: item.id,
     title: item.title,
-    status: "Done",
+    status: "完成",
     createdAt: item.createdAt.toLocaleDateString(),
   }))
 
@@ -51,15 +51,15 @@ export default async function DashboardPage() {
             <div className="flex items-center justify-between px-4 lg:px-6">
               <div>
                 <h1 className="text-xl font-semibold">
-                  Welcome back, {session.user.name ?? "there"}
+                  歡迎回來，{session.user.name ?? "there"}
                 </h1>
                 <p className="text-sm text-muted-foreground">
-                  Here is an overview of your account.
+                  以下是您帳戶的概覽。
                 </p>
               </div>
               {editable && (
                 <Button asChild>
-                  <Link href="/dashboard/items/create">+ New Item</Link>
+                  <Link href="/dashboard/items/create">+ 新增項目</Link>
                 </Button>
               )}
             </div>

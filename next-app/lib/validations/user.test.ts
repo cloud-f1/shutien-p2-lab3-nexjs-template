@@ -34,7 +34,7 @@ describe("changePasswordSchema", () => {
     const r = changePasswordSchema.safeParse({ ...base, confirmPassword: "Different1" })
     expect(r.success).toBe(false)
     if (!r.success) {
-      expect(r.error.errors[0].message).toMatch(/do not match/i)
+      expect(r.error.errors[0].message).toMatch(/密碼不一致/)
       expect(r.error.errors[0].path).toContain("confirmPassword")
     }
   })

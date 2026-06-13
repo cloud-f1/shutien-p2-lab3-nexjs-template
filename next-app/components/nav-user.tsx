@@ -96,7 +96,7 @@ export function NavUser({
               <DropdownMenuItem asChild>
                 <button type="submit" className="w-full">
                   <LogOutIcon />
-                  Log out
+                  登出
                 </button>
               </DropdownMenuItem>
             </form>
