@@ -5,7 +5,7 @@ description: >
   Use when implementing features from specs, writing new tests, doing RED-GREEN-REFACTOR
   cycles, debugging test failures, choosing mocking strategy, reviewing test quality,
   or when someone asks about testing philosophy, architecture testability, or coverage.
-  Covers both server (pytest) and client (Vitest) with 10 codified testing principles.
+  Covers unit tests (Vitest) and e2e (Playwright) with 10 codified testing principles.
 ---
 
 # TDD Workflow & Testing Principles
@@ -18,7 +18,7 @@ description: >
 
 DO NOT write implementation code before the test exists and fails.
 
-**Coverage gate**: Server `pytest --cov=app --cov-fail-under=80` (target 90%) | Client `pnpm test:run -- --coverage` (target 80%)
+**Coverage gate**: Unit `cd next-app && pnpm test -- --coverage` (target 80%) | E2E `cd next-app && pnpm test:e2e` (all scenarios must pass)
 
 ---
 
@@ -38,18 +38,19 @@ assert response.status_code == 201           # ← tests implementation, not beh
 
 ### P2. Triangulation
 
-Use multiple cases to force general logic; prefer `@pytest.mark.parametrize`.
+Use multiple cases to force general logic; prefer `it.each` or `describe.each` in Vitest.
 
-```python
-@pytest.mark.parametrize("email,status", [
-    ("valid@example.com", 201), ("", 422), ("no-at-sign", 422),
-])
-async def test_email_validation(client, email, status):
-    resp = await client.post("/users", json={"email": email, ...})
-    assert resp.status_code == status
+```typescript
+it.each([
+  ["valid@example.com", true],
+  ["", false],
+  ["no-at-sign", false],
+])("validates email %s → %s", (email, valid) => {
+  expect(validateEmail(email)).toBe(valid);
+});
 ```
 
-Client: use `it.each` or separate `it()` blocks with distinct MSW responses.
+For Server Actions / Route Handlers: test with distinct inputs in separate `it()` blocks.
 
 ---
 
@@ -57,29 +58,30 @@ Client: use `it.each` or separate `it()` blocks with distinct MSW responses.
 
 ### P3. Humble Object
 
-Keep framework glue thin; push logic into testable services.
+Keep framework glue thin; push logic into testable pure functions or service modules.
 
-- **DO**: Routes delegate to service classes — test services directly for unit tests
-- **DON'T**: Put business logic inside route handlers
+- **DO**: Server Actions delegate to pure business logic functions — unit-test those functions directly
+- **DON'T**: Put business logic inside Route Handler bodies or Server Actions directly
 
 ### P4. Dependency Injection
 
-Use FastAPI `Depends()` so tests swap real deps for fakes via `app.dependency_overrides`.
+In Next.js, inject dependencies via function arguments (not DI frameworks). Tests pass test doubles directly.
 
-```python
-# conftest.py — this project's 3-tier DI chain
-app.dependency_overrides[get_db] = lambda: test_db_session
-app.dependency_overrides[get_user_db] = lambda: test_user_db
-app.dependency_overrides[get_user_manager] = lambda: test_user_manager
+```typescript
+// service.ts
+export async function createUser(db: DrizzleDb, email: string) { ... }
+
+// service.test.ts
+const mockDb = { insert: vi.fn().mockResolvedValue([{ id: "1" }]) };
+await createUser(mockDb as any, "test@example.com");
 ```
 
 ### P5. Wrappers
 
 Wrap third-party services behind your own interface so they're mockable.
 
-- **DO**: Adapter class (e.g., `PaymentGateway`) — mock the adapter
-- **DON'T**: Call `stripe.Charge.create()` directly in business logic
-- The auth client uses thin typed wrappers over `AuthResponse` (the OpenAPI-generated type) — no adapter or compose layer.
+- **DO**: Adapter module (e.g., `lib/payment.ts`) — mock the module with `vi.mock()`
+- **DON'T**: Call `stripe.charges.create()` directly in Server Actions or Route Handlers
 
 ---
 
@@ -97,12 +99,10 @@ Validate assumptions about external interfaces haven't drifted.
 
 Mock at system boundaries only; never mock your own core logic.
 
-- **DO**: Mock `get_db` (DB boundary), MSW handlers (network boundary)
-- **DON'T**: Mock `UserService.create()` — use real service + test DB
-- **DO**: Return realistic data matching actual contracts
-- **DON'T**: `with patch("app.services.user_service.create")` — mocking internals
-
-Client: MSW handlers in `client/src/tests/handlers/` with realistic payloads. Never mock React Query hooks or Axios internals.
+- **DO**: `vi.mock("@/lib/db")` (DB boundary), Playwright network intercept (e2e boundary)
+- **DON'T**: Mock internal pure functions — test them directly with real inputs
+- **DO**: Return realistic data matching actual Drizzle schema shapes
+- **DON'T**: Mock Server Actions themselves — test the underlying logic functions they call
 
 ---
 
@@ -110,39 +110,39 @@ Client: MSW handlers in `client/src/tests/handlers/` with realistic payloads. Ne
 
 ### P8. Agent Test Guidelines
 
-1. Test public behavior via HTTP endpoints (server) or rendered output (client)
-2. Never `assert_called` on internal methods — assert response/DOM instead
-3. Use `userEvent` (not `fireEvent`) for client interaction tests
-4. Place MSW handlers in `client/src/tests/handlers/` — never inline
-5. No `@pytest.mark.asyncio` — `asyncio_mode = "auto"` handles it
+1. Test public behavior via rendered output (component) or return value (Server Action/service function)
+2. Never `expect(mock).toHaveBeenCalled()` on internal logic — assert DOM or return values instead
+3. Use `userEvent` (not `fireEvent`) for interaction tests
+4. Use Playwright for auth flows and full page interactions — Vitest for unit/component logic
+5. No pytest — all tests are TypeScript: Vitest for unit, Playwright for e2e
 
 ### P9. Parametrize Over Duplication
 
-- **DO**: One parametrized test for status codes across input variants
-- **DON'T**: Five near-identical test functions with one value changed
-- Client: `describe.each` / `it.each` or shared test utilities
+- **DO**: One `it.each` for input variants
+- **DON'T**: Five near-identical `it()` blocks with one value changed
+- Use `describe.each` for grouping related parametrized suites
 
 ### P10. Mock Boundaries, Not Internals
 
 | Layer | Mock Target | Tool |
 |-------|------------|------|
-| Server DB | `get_db` / `get_user_db` / `get_user_manager` | conftest DI overrides |
-| Server external | Third-party API wrappers | `pytest-mock` / `monkeypatch` |
-| Client network | HTTP requests | MSW handlers (`http.get`, `http.post`) |
-| Client time | Timers / dates | `vi.useFakeTimers()` |
+| DB (unit) | `@/lib/db` module | `vi.mock("@/lib/db")` |
+| External API | Third-party SDK modules | `vi.mock("stripe")` etc. |
+| Network (e2e) | HTTP requests | Playwright `page.route()` |
+| Time | Timers / dates | `vi.useFakeTimers()` |
 
-Never mock: React Query internals, Axios interceptors, FastAPI middleware, SQLAlchemy internals.
+Never mock: Next.js router internals, Auth.js session internals, Drizzle query builder internals.
 
 ---
 
 ## What to Test / NOT to Test
 
-**Server**: Happy path, auth (401), validation (422), not found (404), duplicate (409).
-**Client**: Loading, success render, error render, user interactions, empty state.
+**Server logic**: Happy path, auth guard (redirect/401), validation errors, not found, duplicate.
+**Client components**: Loading, success render, error render, user interactions, empty state.
 **Never**: Internal state, private methods, library internals, CSS class names, framework plumbing.
 
 ## Project Test Structure
 
-`server/tests/unit/` (pure logic) | `server/tests/integration/` (full request + test DB)
-`client/src/tests/handlers/` (MSW) | `client/src/pages/__tests__/` (page tests)
-Key fixtures: `client` (AsyncClient), `db` (AsyncSession w/ rollback), `verified_user_token` (JWT).
+`next-app/__tests__/` or co-located `*.test.ts(x)` (Vitest unit/component tests)
+`next-app/e2e/` (Playwright e2e tests)
+Key patterns: `vi.mock("@/lib/db")` for DB, `page.route()` for network intercept in e2e.

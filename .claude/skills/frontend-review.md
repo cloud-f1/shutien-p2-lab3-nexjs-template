@@ -24,45 +24,41 @@ ARIA requirements:
 - Breadcrumbs: `<nav aria-label="Breadcrumb">`
 - Form inputs: always pair with `<label>` or `aria-label`
 
-## React Patterns — Block/Warn
+## React / Next.js Patterns — Block/Warn
 
 **Block:**
-- Auth guards using raw `getAccessToken()` instead of reactive `useAuthStore`
+- Adding `"use client"` to a component that has no browser APIs, event handlers, or hooks — keep it a Server Component
+- Auth guards on the client side (`useSession` redirect logic) instead of `middleware.ts` for route protection
 - Raw HTML injection without sanitization (use safe React nodes and JSX)
 - `fireEvent` in tests instead of `userEvent.setup()`
 
 **Warn:**
-- Side-effect buttons (logout, delete, submit) missing `disabled={mutation.isPending}`
+- Side-effect buttons (logout, delete, submit) missing `disabled` while pending
 - Click-outside handlers missing `e.target instanceof Node` guard before `.contains()`
-- Uncontrolled checkboxes with `readOnly` instead of `defaultChecked`
-- Missing `onSettled` invalidation on mutations (only `onSuccess` is incomplete)
-- Hardcoded `staleTime` instead of importing from `CACHE_TIERS`
-- `useEffect` for data fetching instead of React Query
-- Inline MSW handlers in test files instead of `src/tests/handlers/`
+- `useEffect` for data fetching — fetch in Server Components or Server Actions instead
+- Passing sensitive data as props through many layers — fetch it in the nearest Server Component
+- Not using `revalidatePath()` / `revalidateTag()` after a Server Action mutation → stale RSC cache
 
-## React Query Anti-Patterns — Warn
+## Next.js Specific — Warn
 
-- `onSuccess` without `onSettled` for cache invalidation → stale data on error
-- `enabled: true` when it should depend on auth state or a prerequisite query
-- Missing `queryKey` specificity → cache collisions between different entities
-- Calling `queryClient.setQueryData` without also invalidating → stale cache risk
-- Not using `CACHE_TIERS` constants → inconsistent cache behavior
+- Missing `loading.tsx` for routes with async data fetching → no loading UI
+- Missing `error.tsx` for routes that can throw → unhandled error boundary
+- `NEXT_PUBLIC_*` env vars containing secrets → these are baked into the client bundle
+- Fetching the same data in multiple Server Components without using `cache()` → duplicate DB calls
+- Using `router.push()` for post-mutation navigation in a Server Action — use `redirect()` from `next/navigation`
 
 ## CSS Patterns — Warn / Block
 
-- **Block (Rule #21)**: New files matching `client/src/pages/**/*.css` → compose `components/ui/` primitives instead; stop-verifier will reject
-- **Block (Rule #22)**: New CSS selectors added under `client/src/styles/common/` → new visuals belong in `components/ui/` Preset slots; stop-verifier will reject
-- Design tokens (47 CSS vars, 6 themes) live in `src/styles/themes.css` — flag any `:root` token definitions placed elsewhere as duplicates
-- Hardcoded hex/rgb values instead of CSS custom properties → warn
-- Duplicate token definitions across CSS files → warn
-- New page co-locating its own `.css` file instead of composing `components/ui/` primitives → block (Rule #21)
-- Button reset missing when `<button>` styled as nav items:
-  `background: none; border: none; font-family: inherit; width: 100%; text-align: left;`
+- **Block (Rule #21)**: New co-located `*.css` files alongside page components → use Tailwind utilities; stop-verifier will reject
+- **Block (Rule #22)**: New CSS selectors added to global CSS files → new visuals belong in `components/ui/` Tailwind classes; stop-verifier will reject
+- CSS custom properties (design tokens) live in `next-app/app/globals.css` — flag any `:root` token definitions placed elsewhere as duplicates
+- Hardcoded hex/rgb values instead of CSS custom properties or Tailwind tokens → warn
+- Inline `style=` color overrides instead of `dark:` Tailwind variants → warn (also caught by stop-verifier)
 
 ## Security — Block
 
-- Access token in `localStorage` or cookies → must use in-memory tokenCache
-- API keys or secrets in client code → server-side only
+- `NEXT_PUBLIC_*` env vars containing API keys or secrets → server-only vars have no `NEXT_PUBLIC_` prefix
+- API keys or secrets in Client Components → server-side only (Route Handlers, Server Actions)
 - User input rendered without escaping → XSS risk
 - `target="_blank"` without `rel="noopener noreferrer"` → tabnabbing
 

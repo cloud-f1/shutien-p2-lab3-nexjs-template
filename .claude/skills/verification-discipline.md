@@ -41,16 +41,16 @@ wip:       chore(state):    docs:    chore:    chore(memory):    chore(roadmap):
 scripts/hooks/audit-emit-verification.sh <check-name> <exit-code>
 
 # Examples:
-scripts/hooks/audit-emit-verification.sh pytest 0
 scripts/hooks/audit-emit-verification.sh "pnpm test" 0
+scripts/hooks/audit-emit-verification.sh "pnpm test:e2e" 0
 scripts/hooks/audit-emit-verification.sh "coverage-gate" 0
-scripts/hooks/audit-emit-verification.sh "contract-test" 0
+scripts/hooks/audit-emit-verification.sh "typecheck" 0
 ```
 
 The script emits a JSONL event to `.claude/audit.jsonl`:
 
 ```json
-{"ts":"2026-05-20T10:00:00Z","event":"verification_check","check":"pytest","exit":0,"agent":"qa","epic":"E188"}
+{"ts":"2026-05-20T10:00:00Z","event":"verification_check","check":"pnpm test","exit":0,"agent":"qa","epic":"E188"}
 ```
 
 Rule #23 scans for any `verification_check` event with `exit=0` within the
@@ -62,13 +62,12 @@ window.
 ### @qa
 
 ```bash
-# 1. Run the full test suite
-pytest --cov=app -q
-# 2. Emit if exit 0
-scripts/hooks/audit-emit-verification.sh pytest $?
-# 3. Run client tests
-pnpm --filter client test:run
+# 1. Run the full unit test suite (Vitest)
+cd next-app && pnpm test -- --run
 scripts/hooks/audit-emit-verification.sh "pnpm test" $?
+# 2. Run e2e tests (Playwright)
+cd next-app && pnpm test:e2e
+scripts/hooks/audit-emit-verification.sh "pnpm test:e2e" $?
 ```
 
 ### @reviewer
@@ -82,8 +81,8 @@ scripts/hooks/audit-emit-verification.sh "code-review" 0
 
 ```bash
 # After verifying the fix resolves the issue:
-pytest path/to/relevant/test.py -q
-scripts/hooks/audit-emit-verification.sh pytest $?
+cd next-app && pnpm test -- --run path/to/relevant/test
+scripts/hooks/audit-emit-verification.sh "pnpm test" $?
 ```
 
 ### @deployer

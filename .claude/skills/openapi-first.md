@@ -1,78 +1,80 @@
 ---
 name: openapi-first
 description: >
-  OpenAPI-first (SDD) workflow for this project. Use this skill whenever starting a new
-  feature, adding an endpoint, changing a schema, or modifying docs/openapi.yaml. Also use
-  when someone asks about the API contract, type generation, or the spec-driven development
-  process. The spec is the single source of truth — code follows the spec, never the reverse.
+  Spec-driven (SDD) workflow for this project. Use this skill whenever starting a new
+  feature, adding a Route Handler or Server Action, changing a request/response shape, or
+  discussing the API contract and type strategy. The TypeScript type contract is the single
+  source of truth — code follows the agreed shape, never the reverse. Also use when someone
+  asks about the API contract or spec-driven development process.
 ---
 
-# OpenAPI-First (SDD) — AI-Coding-Template
+# Spec-First (SDD) — AI-Coding-Template (Next.js 16)
 
-The spec at `docs/openapi.yaml` is the **single source of truth** for all API types.
-Edit the spec FIRST, then implement. Never write server or client code before the spec.
+The project uses **Next.js Route Handlers** (for external-facing API endpoints) and
+**Server Actions** (for form/mutation flows). There is no separate OpenAPI YAML in active
+use — types are defined in TypeScript and shared between the Route Handler and any client
+Component that calls it.
+
+**Principle: agree on the type shape FIRST, then implement. Never write a Route Handler
+or Server Action before the input/output types are defined and exported.**
 
 ## Workflow (NEVER SKIP steps)
 
-1. **Edit** `docs/openapi.yaml` — add paths, schemas, parameters
-2. **Lint** `npx @redocly/cli lint docs/openapi.yaml`
-3. **Generate types** `npx openapi-typescript docs/openapi.yaml --output client/src/api/types.ts`
-4. **Write server route** — response shape must match spec exactly
-5. **Write client Zod schema** with `satisfies z.ZodType<ApiType>` for drift detection
-6. **Write client hook** — use generated types + Zod validation
+1. **Define types** in `next-app/lib/types/` (or co-locate with the feature) — `Input`, `Result`, `ErrorShape`
+2. **Write the failing test** (RED) — Vitest unit test for the logic, Playwright e2e for the flow
+3. **Implement the Route Handler** (`next-app/app/api/<domain>/route.ts`) or **Server Action** (`"use server"`) — response shape must match the declared types exactly
+4. **Consume in the Client Component** — import the shared types; no manual type duplication
 
-## Schema Conventions
+## Route Handler Conventions
 
-Naming: PascalCase, domain-prefixed for clarity.
-```yaml
-components:
-  schemas:
-    UserRead:        # GET response
-    UserCreate:      # POST request body
-    UserUpdate:      # PATCH request body
-    BearerResponse:  # Token response
-    ErrorDetail:     # Standard error shape
+```typescript
+// next-app/app/api/resource/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
+import type { ResourceRead, ResourceCreate } from "@/lib/types/resource";
+
+export async function GET(req: NextRequest): Promise<NextResponse<ResourceRead[]>> { ... }
+export async function POST(req: NextRequest): Promise<NextResponse<ResourceRead>> { ... }
 ```
 
-Reuse `$ref` for shared schemas. Define once in `components/schemas/`, reference everywhere.
+- One file per domain resource: `app/api/<domain>/route.ts`
+- Auth guard: `const session = await auth(); if (!session) return NextResponse.json({}, {status: 401})`
+- Public endpoints: skip the session guard
 
-## Path Conventions
+## Server Action Conventions
 
-```yaml
-paths:
-  /resource:
-    get:    { operationId: resourceList,   tags: [resource] }
-    post:   { operationId: resourceCreate, tags: [resource] }
-  /resource/{id}:
-    get:    { operationId: resourceGet,    tags: [resource] }
-    patch:  { operationId: resourceUpdate, tags: [resource] }
-    delete: { operationId: resourceDelete, tags: [resource] }
+```typescript
+// next-app/app/(dashboard)/actions.ts
+"use server";
+import { auth } from "@/auth";
+import type { ActionResult } from "@/lib/types/actions";
+
+export async function updateResource(formData: FormData): Promise<ActionResult> { ... }
 ```
 
-- `operationId`: camelCase, `{domain}{Action}` format
-- `tags`: one tag per domain, matches endpoint file name
-- `security: []` on public endpoints (register, login, forgot-password)
-- Protected endpoints inherit global `security: [bearerAuth: []]`
+## Type Naming Conventions
 
-## Current Structure
+PascalCase, domain-prefixed for clarity:
 
-Inspect `docs/openapi.yaml` for the current endpoint and schema set — counts change as epics land.
+```typescript
+export type UserRead = { id: string; email: string; role: string };
+export type UserCreate = { email: string; password: string };
+export type UserUpdate = Partial<Pick<UserCreate, "email">>;
+export type ActionResult<T = void> = { success: true; data: T } | { success: false; error: string };
+```
 
 ## New Endpoint Checklist
 
-- [ ] Path + method added to openapi.yaml
-- [ ] Request/response schemas defined (reuse existing where possible)
-- [ ] operationId assigned (camelCase)
-- [ ] Tag assigned (matches endpoint file)
-- [ ] Security set (public = `security: []`, protected = inherits global)
-- [ ] Lint passes: `npx @redocly/cli lint docs/openapi.yaml`
-- [ ] Types regenerated: `npx openapi-typescript ...`
-- [ ] Zod schema uses `satisfies z.ZodType<ApiType>`
-- [ ] Tests written (RED first — must fail before implementation)
+- [ ] Types defined and exported from `next-app/lib/types/` before any implementation
+- [ ] Test written (RED first — must fail before implementation)
+- [ ] Route Handler or Server Action return type annotation matches defined types
+- [ ] Auth guard present on protected endpoints
+- [ ] `pnpm typecheck` passes after implementation
+- [ ] Tests green: `pnpm test` + `pnpm test:e2e`
 
 ## Common Mistakes
 
-- Adding a server route without updating the spec first → spec drift
-- Editing `client/src/api/types.ts` manually → gets overwritten on next generate
-- Forgetting `security: []` on public endpoints → clients get 401
-- Using `type: integer` for UUIDs → should be `type: string, format: uuid`
+- Adding a Route Handler without defining the response type first → drift between handler and consumer
+- Defining types inline in the route file instead of exporting from `lib/types/` → no sharing
+- Forgetting the auth guard on a protected route → data exposure
+- Calling a Server Action from a Server Component when the data is needed at render time → use `async` Server Component with direct DB call instead

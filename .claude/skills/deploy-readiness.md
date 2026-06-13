@@ -29,38 +29,33 @@ All gates are blockers unless marked Advisory.
 
 ### Gate 1: Secrets are not placeholders (Critical)
 
-Server requires real secret values — placeholder secrets cause auth failures.
+Next.js requires real secret values — placeholder secrets cause auth failures.
 
 ```bash
-# Verify these are NOT default/placeholder values:
-# SECRET_KEY          — must be random 64-char hex
-# REFRESH_SECRET_KEY  — must be random 64-char hex, different from SECRET_KEY
-# DATABASE_URL        — must point to a real database, not localhost
-# ALLOWED_ORIGINS_STR — must list actual client domain(s)
+# Verify these are NOT default/placeholder values in Zeabur (or your platform):
+# AUTH_SECRET          — must be a random 32+ char secret (Auth.js v5)
+# DATABASE_URL         — must point to a real PostgreSQL database, not localhost
+# NEXTAUTH_URL         — must be the actual deployed app URL (if required by Auth.js)
 ```
-
-Rule: `SECRET_KEY` and `REFRESH_SECRET_KEY` must never be the same value.
 
 ### Gate 2: Migrations are current (Critical)
 
 ```bash
-# Verify no pending migrations exist
-cd server && uv run alembic current
-uv run alembic heads
-# Both should show the same revision
+# Verify Drizzle migrations are applied
+cd next-app && pnpm db:migrate
+# Should output "No pending migrations" or apply cleanly
 ```
 
-If a migration gap exists, run `alembic upgrade head` against the target DB
-before deploying application code.
+Apply any pending migrations against the target DB before deploying application code.
 
 ### Gate 3: Test coverage gate (Critical)
 
 ```bash
-# Server tests — must pass with >=80% coverage
-cd server && uv run python -m pytest tests/ -v --cov=app --cov-fail-under=80
+# Unit tests — must pass
+cd next-app && pnpm test -- --run
 
-# Client tests — must pass with >=80% coverage
-cd client && pnpm test:coverage
+# E2E tests — must pass
+cd next-app && pnpm test:e2e
 ```
 
 Both suites must be green. A red test suite blocks deployment.
@@ -69,28 +64,19 @@ Both suites must be green. A red test suite blocks deployment.
 
 | Var | Where set | Notes |
 |-----|-----------|-------|
-| `DATABASE_URL` | Server | `postgresql+asyncpg://...` format |
-| `SECRET_KEY` | Server | 64-char hex |
-| `REFRESH_SECRET_KEY` | Server | 64-char hex, different from SECRET_KEY |
-| `ALLOWED_ORIGINS_STR` | Server | Comma-separated list of client domains (no trailing slash, no wildcards) |
-| `ENVIRONMENT` | Server | `production` or `staging` |
-| `VITE_API_URL` | Client build | Must point to API domain, not client domain — baked at build time |
-
-Observability vars (required in production):
-- `SENTRY_DSN_SERVER` — server crashes. Missing in production = startup failure.
-- `VITE_SENTRY_DSN` + `VITE_GIT_SHA` — client. Missing = `console.warn` (no crash).
+| `DATABASE_URL` | Zeabur / platform | `postgresql://...` format (postgres-js, not asyncpg) |
+| `AUTH_SECRET` | Zeabur / platform | Random secret for Auth.js v5 |
+| `NEXTAUTH_URL` | Zeabur / platform | Full deployed URL e.g. `https://myapp.zeabur.app` |
+| `NEXT_PUBLIC_*` | Zeabur / platform | Baked at build time — set before triggering build |
 
 ### Gate 5: Build is green (Critical)
 
 ```bash
 # TypeScript compiles cleanly
-cd client && pnpm run typecheck
+cd next-app && pnpm typecheck
 
-# OpenAPI spec is valid
-npx @redocly/cli lint docs/openapi.yaml
-
-# Client production build succeeds
-cd client && pnpm build
+# Next.js production build succeeds
+cd next-app && pnpm build
 # Watch for abnormally large chunks (>500KB warning)
 ```
 
@@ -105,143 +91,91 @@ BRANCH=$(git branch --show-current)
 [[ "$BRANCH" == "main" || "$BRANCH" == "develop" ]] || echo "FAIL: branch is $BRANCH"
 ```
 
-### Gate 7: CORS configuration is aligned (Critical)
-
-CORS origins must match exactly across all config locations. A mismatch causes login failures.
+### Gate 7: Auth flow works end-to-end (Critical)
 
 ```bash
-grep -n "ALLOWED_ORIGINS" \
-  server/app/core/config.py \
-  docker-compose.yml
-# All should list the same client domain(s)
+# After deploy, verify login works against target environment
+APP="https://your-app.zeabur.app"
+curl -sf "$APP/api/auth/session" | jq .
+# Must return session JSON or empty object — not a 500 error
 ```
 
-Rules:
-- Include protocol: `https://your-app.example.com`
-- No trailing slash
-- No wildcards — FastAPI CORS does not support wildcards in `allow_origins`
+Manual check: open the app URL, attempt login with a seed account, verify dashboard loads.
 
 ### Gate 8: Database + demo accounts work (Critical)
 
 ```bash
-# Verify login works against target environment
-API="http://localhost:${SERVER_PORT:-8080}"
-curl -sf -X POST "$API/auth/jwt/login" \
-  -d "username=admin@test.com&password=Admin%23Pass1" \
-  -H "Content-Type: application/x-www-form-urlencoded" | jq .access_token
-# Must return a JWT, not an error
+# Verify seed data is present (run once after first deploy)
+cd next-app && pnpm db:seed
+# Then verify login works (manual or via Playwright)
 ```
 
-Seed accounts: `admin@test.com` / `Admin#Pass1` (superuser), `user@test.com` / `User#Pass1`.
+Seed accounts are defined in `next-app/drizzle/seed.ts` — check that file for credentials.
 
 ### Gate 9: Visual consistency (Critical)
 
 | Page | Route | What to verify |
 |------|-------|----------------|
-| Landing | `/` | Design tokens applied, consistent typography |
-| Sign In | `/signin` | AuthLayout, branding correct |
-| Sign Up | `/signup` | Same as sign in |
-| Dashboard | `/dashboard` | DashboardLayout, sidebar, 8 views |
-| Privacy | `/privacy` | LegalLayout, no dark theme leakage |
-| Terms | `/terms` | LegalLayout, no dark theme leakage |
-| Forgot Password | `/forgot-password` | Consistent with auth pages |
-| Verify Email | `/verify-email` | Loading/success/error states |
+| Landing | `/` | Design tokens applied, consistent typography, dark mode works |
+| Sign In | `/login` | Auth layout, branding correct |
+| Sign Up | `/register` | Same as sign in |
+| Dashboard | `/dashboard` | Sidebar, correct layout, no hydration mismatch |
 
 ```bash
-# Auth pages use AuthLayout
-grep "AuthLayout" client/src/pages/auth/SignInPage.tsx
-# Legal pages use LegalLayout
-grep "LegalLayout" client/src/pages/legal/PrivacyPage.tsx
-# Dashboard uses DashboardLayout
-grep "DashboardLayout" client/src/pages/dashboard/DashboardPage.tsx
+# Check key layout components exist in the right pages
+grep -r "ThemeProvider" next-app/components/ --include="*.tsx" | head -5
 ```
 
 ### Gate 10: Branding assets exist (Critical)
 
 ```bash
-ls -la client/public/favicon.ico client/public/favicon.png
-ls -la client/public/logo.svg client/public/logo-192.png client/public/logo-512.png
-cat client/public/manifest.json | jq '.name, .short_name, .theme_color'
+ls -la next-app/public/favicon.ico next-app/public/favicon.png 2>/dev/null
+ls -la next-app/public/logo.svg 2>/dev/null
 ```
 
 | Item | File | What to check |
 |------|------|---------------|
-| Browser tab icon | `favicon.ico` / `favicon.png` | Shows project logo |
-| PWA icon | `logo-192.png`, `logo-512.png` | Correct branding |
-| SVG logo | `logo.svg` | Used by `LogoMark` component |
-| Manifest name | `manifest.json` | Correct app name |
-| OG image | `index.html` meta tags | `og:image` points to valid asset (must be absolute URL) |
-| Page title | `index.html` | Correct title |
+| Browser tab icon | `public/favicon.ico` / `public/favicon.png` | Shows project logo |
+| SVG logo | `public/logo.svg` | Used by logo component |
+| OG image | `next-app/app/layout.tsx` metadata | `openGraph.images` points to valid asset |
+| Page title | `next-app/app/layout.tsx` metadata | Correct `title` and `description` |
 
-### Gate 11: No stale Docker builds (Critical)
+### Gate 11: No stale Docker builds (Critical, if using Docker)
 
-Docker containers serve compiled assets. Editing CSS/JS without rebuilding serves the old version.
+If deploying via Docker image, verify the image was rebuilt after the latest commit.
 
 ```bash
-# Compare last git commit time vs container creation time
 git log -1 --format=%ci
-docker inspect --format='{{.Created}}' $(docker ps -qf name=client) 2>/dev/null
+docker inspect --format='{{.Created}}' $(docker ps -qf name=app) 2>/dev/null
 # If git commit is newer → rebuild needed
 ```
 
-### Gate 12: Docker local smoke test passes (Critical)
-
-Run before pushing to any registry. Catches CORS mismatches, port conflicts, and auth issues.
+### Gate 12: Local smoke test passes (Critical)
 
 ```bash
-# Use alternate ports — defaults (5432, 8080, 3000) are often occupied by local dev
-DB_PORT=5434 SERVER_PORT=8082 CLIENT_PORT=3001 \
-  docker compose up --build -d
-
-sleep 15
-docker compose ps  # all 3 should show "Up" + "healthy"
-
-# Health check
-curl -sf http://localhost:8082/health | jq .
-# Expect: {"status":"healthy","version":"...","database":"connected"}
-
-# Auth flow
-curl -sf -X POST "http://localhost:8082/auth/jwt/login" \
-  -d "username=admin@test.com&password=Admin#Pass1" \
-  -H "Content-Type: application/x-www-form-urlencoded" | jq .access_token
-
-# Client serves HTML
-curl -sf -o /dev/null -w "HTTP %{http_code}" "http://localhost:3001/"
-# Expect: HTTP 200
-
-# Cleanup
-DB_PORT=5434 SERVER_PORT=8082 CLIENT_PORT=3001 docker compose down
+cd next-app && pnpm build && pnpm start
+# Visit http://localhost:3000 — app should load without errors
+# Check browser console for errors
 ```
 
 ### Gate 13: SEO meta tags (Advisory)
 
 ```bash
-grep -E "title>|og:|description|theme-color" client/index.html
-
-# Seo component is used on pages
-grep -rn "<Seo" client/src/pages/ --include="*.tsx" | head -10
+grep -rn "metadata" next-app/app/layout.tsx
+grep -rn "generateMetadata" next-app/app/ --include="*.tsx" | head -10
 ```
 
 ### Gate 14: Performance baseline (Advisory)
 
 ```bash
-cd client && pnpm build 2>&1 | tail -20
-# Check for chunks >500KB — consider code-splitting if found
+cd next-app && pnpm build 2>&1 | grep -E "chunk|route|Page"
+# Check for routes >500KB — consider dynamic imports if found
 ```
 
 ### Gate 15: Rate limiting verification (Advisory)
 
-```bash
-API="https://your-api-domain.example.com"
-# Auth endpoint should be rate-limited (5/minute by default)
-for i in $(seq 1 6); do
-  curl -s -o /dev/null -w "%{http_code} " -X POST "$API/auth/jwt/login" \
-    -d "username=wrong@example.com&password=wrong" \
-    -H "Content-Type: application/x-www-form-urlencoded"
-done
-echo ""
-# Should see 200s then 429 (rate limited)
-```
+Verify that authentication endpoints have appropriate rate limiting configured
+(via Next.js middleware, platform-level WAF, or Auth.js built-in protections).
 
 ---
 
@@ -251,16 +185,16 @@ echo ""
 |---|-------|------|
 | 1 | Secrets are not placeholders | Critical |
 | 2 | Migrations are current | Critical |
-| 3 | Tests pass (>=80% coverage) | Critical |
+| 3 | Tests pass | Critical |
 | 4 | Required env vars present | Critical |
-| 5 | Build green (TS + OpenAPI + bundle) | Critical |
+| 5 | Build green (TS + Next.js bundle) | Critical |
 | 6 | Working tree clean + correct branch | Critical |
-| 7 | CORS configuration aligned | Critical |
+| 7 | Auth flow works end-to-end | Critical |
 | 8 | Database + demo accounts work | Critical |
 | 9 | Visual consistency across pages | Critical |
 | 10 | Branding assets present | Critical |
-| 11 | No stale Docker builds | Critical |
-| 12 | Docker local smoke test passes | Critical |
+| 11 | No stale Docker builds (if applicable) | Critical |
+| 12 | Local smoke test passes | Critical |
 | 13 | SEO meta tags correct | Advisory |
 | 14 | Bundle size within bounds | Advisory |
 | 15 | Rate limiting active | Advisory |
@@ -338,11 +272,11 @@ curl -sf "https://$API_DOMAIN/health" | jq .
 ```markdown
 ### [timestamp] — [env] deploy
 Commit: [SHA] | Migration: v[NNN]
-Images: [server_image]:[tag] / [client_image]:[tag]
-Gates: server ✓ / client ✓ / openapi ✓ / tsc ✓ / git ✓ / branch ✓
+Image: [app_image]:[tag]
+Gates: tests ✓ / tsc ✓ / build ✓ / git ✓ / branch ✓
 Status: success
 Health: HTTP 200 — [response time]ms
-Domain: [api_domain] / [client_domain]
+Domain: [app_domain]
 Previous working commit: [SHA] (rollback target)
 ```
 
@@ -358,8 +292,7 @@ bash deploy/docker-push.sh prd    # production
 
 # Verify they landed
 REGISTRY=$(jq -r '.gcr.registry' deploy/config.json)
-gcloud artifacts docker tags list "$REGISTRY/dev-app/$(jq -r '.gcr.server_image' deploy/config.json)"
-gcloud artifacts docker tags list "$REGISTRY/dev-app/$(jq -r '.gcr.client_image' deploy/config.json)"
+gcloud artifacts docker tags list "$REGISTRY/dev-app/$(jq -r '.gcr.app_image' deploy/config.json)"
 ```
 
 ### SOP: Status Check
@@ -368,14 +301,13 @@ gcloud artifacts docker tags list "$REGISTRY/dev-app/$(jq -r '.gcr.client_image'
 # 1. Show config
 jq '.' deploy/config.json
 
-# 2. Check GCR images
+# 2. Check GCR images (single Next.js app image)
 REGISTRY=$(jq -r '.gcr.registry' deploy/config.json)
-gcloud artifacts docker tags list "$REGISTRY/dev-app/$(jq -r '.gcr.server_image' deploy/config.json)"
-gcloud artifacts docker tags list "$REGISTRY/dev-app/$(jq -r '.gcr.client_image' deploy/config.json)"
+gcloud artifacts docker tags list "$REGISTRY/dev-app/$(jq -r '.gcr.app_image' deploy/config.json)"
 
 # 3. Health check
-API_DOMAIN=$(jq -r '.environments.dev.api_domain' deploy/config.json)
-curl -sf "https://$API_DOMAIN/health" | jq .
+APP_DOMAIN=$(jq -r '.environments.dev.app_domain' deploy/config.json)
+curl -sf "https://$APP_DOMAIN/api/health" | jq .
 
 # 4. Zeabur status
 npx zeabur service list
@@ -437,22 +369,21 @@ bash deploy/deploy-zeabur.sh --first-time
 
 `.github/workflows/docker-publish.yml` runs on push to `main` or `prd`:
 
-1. Reads `deploy/config.json` for registry, image names, and VITE_API_URL
-2. `dorny/paths-filter` detects which services changed (`server/**` or `client/**`)
-3. Only changed services are built — saves ~3 min per CI run
-4. Authenticates to GCP via `GCP_SERVICE_ACCOUNT` secret
-5. Builds `linux/amd64` images and pushes to GCR
-6. Branch determines environment: `main` → dev, `prd` → prd
+1. Reads `deploy/config.json` for registry, image names, and env vars
+2. Detects which files changed — only rebuilds when `next-app/**` has changes
+3. Authenticates to GCP via `GCP_SERVICE_ACCOUNT` secret
+4. Builds single `linux/amd64` Next.js app image and pushes to GCR
+5. Branch determines environment: `main` → dev, `prd` → prd
 
 ### GCR / Zeabur File Map
 
 | File | Role |
 |------|------|
 | `deploy/config.json` | Single source of truth — all settings |
-| `deploy/docker-push.sh` | Local: build amd64 images & push to GCR |
-| `deploy/deploy-zeabur.sh` | Interactive: 6-gate Zeabur deploy with env vars, domains |
+| `deploy/docker-push.sh` | Local: build amd64 image & push to GCR |
+| `deploy/deploy-zeabur.sh` | Interactive: Zeabur deploy with env vars, domains |
 | `deploy/zeabur-update.sh` | Push template definition changes to Zeabur |
-| `deploy/zeabur-template.yaml` | Zeabur service topology (PG + server + client) |
+| `deploy/zeabur-template.yaml` | Zeabur service topology (PG + Next.js app) |
 | `deploy/README.md` | Human-readable deploy documentation |
 | `.github/workflows/docker-publish.yml` | CI: auto build on push to main/prd |
 | `.github/workflows/ci.yml` | CI: tests + coverage gates |
@@ -460,34 +391,23 @@ bash deploy/deploy-zeabur.sh --first-time
 ### Troubleshooting (GCR / Zeabur)
 
 **Health check fails after deploy:**
-Server runs `alembic upgrade head` before starting uvicorn. If PostgreSQL isn't ready,
-migrations fail. The Dockerfile retries 5 times with 5s delays. If it still fails,
-check DB connectivity and the `DATABASE_URL` env var in Zeabur.
+The Next.js app runs Drizzle migrations on startup (if configured). If PostgreSQL isn't ready,
+the DB connection fails. Check DB connectivity and the `DATABASE_URL` env var in Zeabur.
 
-**405 Method Not Allowed on login:**
-`VITE_API_URL` is pointing to the client domain instead of the API domain. It's baked at
-Docker build time — fix it in `config.json`, rebuild the client image, and redeploy.
+**405 Method Not Allowed on API routes:**
+The `NEXTAUTH_URL` may be misconfigured. Verify it matches the deployed app URL exactly.
+It's baked at build time — fix it in Zeabur env vars, trigger a new build, and redeploy.
 
-**CORS errors in browser:**
-`ALLOWED_ORIGINS_STR` doesn't include the client domain. Set it to the exact client URL
-(e.g., `https://dev-coding-template.zeabur.app`). No wildcards.
+**Auth redirect loop:**
+`NEXTAUTH_URL` or `AUTH_SECRET` is missing or wrong. Check Zeabur env vars and trigger rebuild.
 
 **Orbstack domains (Mac):**
-When using Orbstack for local dev, the client runs at
-`https://client.<project-name>.orb.local`. This URL must appear exactly in
-`ALLOWED_ORIGINS_STR`. Check all locations:
-```bash
-grep -n "ALLOWED_ORIGINS" server/app/core/config.py .env.local server/.env docker-compose.yml
-```
-
-**Stale CORS after project rename:**
-```bash
-grep -rn "old-project-name" docker-compose.yml .env.local server/.env server/app/core/config.py
-```
+When using Orbstack for local dev, the app runs at `https://<project-name>.orb.local`.
+Set `NEXTAUTH_URL` to this URL in your local `.env.local`.
 
 **Port already allocated:**
 ```bash
-DB_PORT=5434 SERVER_PORT=8082 CLIENT_PORT=3001 docker compose up --build -d
+PORT=3001 docker compose up --build -d
 ```
 
 **ARM image crashes on Zeabur:**

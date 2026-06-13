@@ -1,0 +1,18 @@
+[
+  {"query": "run epics E240 through E245, they're mostly independent, in parallel please", "should_trigger": true},
+  {"query": "my playwright e2e suite is slow and flaky — it cold-boots the next dev server on every run and sometimes the port is stuck", "should_trigger": true},
+  {"query": "dispatch these 4 independent features to subagents at once instead of one at a time", "should_trigger": true},
+  {"query": "honestly why is it taking hours to get through five small epics, what are we doing wrong", "should_trigger": true},
+  {"query": "QA said it passed and coverage is fine but the feature is clearly broken when I click around in the browser", "should_trigger": true},
+  {"query": "these subagents all overlap on the same files, should I use git worktrees or run them sequentially", "should_trigger": true},
+  {"query": "all my workflow agents run on opus and it's expensive — can we pick the model based on how hard the task is", "should_trigger": true},
+  {"query": "before we merge this wave to main, what should I check", "should_trigger": true},
+  {"query": "write a single pricing-card React component for the landing page", "should_trigger": false},
+  {"query": "fix this one typescript error in lib/auth.ts about the role type", "should_trigger": false},
+  {"query": "run the test suite once and tell me if it's green", "should_trigger": false},
+  {"query": "which Claude model should I use for the customer-support chatbot I'm building", "should_trigger": false},
+  {"query": "add a loading spinner to the submit button on the login form", "should_trigger": false},
+  {"query": "set up a github actions CI workflow that runs lint and typecheck", "should_trigger": false},
+  {"query": "explain what a git worktree is and how it differs from a branch", "should_trigger": false},
+  {"query": "rename this variable across the codebase", "should_trigger": false}
+]

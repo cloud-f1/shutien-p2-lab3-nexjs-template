@@ -1,0 +1,18 @@
+[
+  {"query": "login works in dev but on the deployed build users just bounce back to /login right after entering their email+password, no error message anywhere", "should_trigger": true},
+  {"query": "add a 'manager' role to the app and only let managers open the reports page", "should_trigger": true},
+  {"query": "I ran npx shadcn add dashboard-01 and now /dashboard 404s / throws, how do I wire it into my (dashboard) route group", "should_trigger": true},
+  {"query": "every dashboard page is throwing 'Tooltip must be used within TooltipProvider' after I added the sidebar block", "should_trigger": true},
+  {"query": "I want to spin up the whole next-app in docker locally — postgres, migrations and seed data, reachable on localhost:3000", "should_trigger": true},
+  {"query": "translate the rest of the settings + admin pages to 繁體中文, a few english strings slipped through", "should_trigger": true},
+  {"query": "after an admin demotes someone to editor they can still hit /dashboard/admin until they sign out again — that seems wrong", "should_trigger": true},
+  {"query": "is it safe that drizzle/seed.ts inserts admin@example.com with a hardcoded password? worried about production", "should_trigger": true},
+  {"query": "add a new size variant to the shadcn Button in components/ui/button.tsx", "should_trigger": false},
+  {"query": "write a FastAPI endpoint that exports all users to CSV", "should_trigger": false},
+  {"query": "set up Stripe subscription billing with a monthly plan", "should_trigger": false},
+  {"query": "deploy the next-app to Vercel and set the production env vars", "should_trigger": false},
+  {"query": "what's the tailwind class for a left-to-right gradient background", "should_trigger": false},
+  {"query": "write a vitest unit test for the formatCurrency helper", "should_trigger": false},
+  {"query": "the marketing homepage bundle is too big, lazy-load the hero animation", "should_trigger": false},
+  {"query": "explain how React 19 useOptimistic works in general", "should_trigger": false}
+]

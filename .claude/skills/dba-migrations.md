@@ -1,14 +1,16 @@
 ---
 name: dba-migrations
 description: >
-  Database schema management for this FastAPI + SQLAlchemy + Alembic project. Use this skill
-  whenever working with database models, migrations, schema changes, or table operations.
-  Triggers: creating/editing models in server/app/models/, generating or reviewing Alembic
-  migrations in server/alembic/versions/, adding tables or columns, changing ForeignKeys,
-  debugging migration errors (DatatypeMismatchError, UndefinedColumnError), running alembic
-  commands, or discussing database schema design. Also use when the user mentions "add a
-  field", "new table", "database change", "migration", "schema diff", or "alembic".
+  DEPRECATED — describes the old FastAPI + SQLAlchemy + Alembic `server/` stack, which was REMOVED
+  in the Next.js migration. Do NOT use for current work. The database layer is now Drizzle ORM with
+  postgres-js in `next-app/` — use the `nextjs-saas-patterns` skill for schema changes, migrations
+  (`pnpm db:generate` / `pnpm db:migrate`), and Drizzle schema patterns. Kept only as historical
+  reference for the pre-migration git history.
 ---
+
+> **⚠️ DEPRECATED (Next.js migration).** The FastAPI + Alembic `server/` stack this skill documents was deleted.
+> For current DB/migration work use **`nextjs-saas-patterns`** (Drizzle schema in `next-app/drizzle/`, `pnpm db:generate`, `pnpm db:migrate`).
+> Everything below is historical only.
 
 # DBA Migrations — Alembic + SQLAlchemy Patterns
 
