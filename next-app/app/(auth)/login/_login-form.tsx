@@ -29,6 +29,14 @@ interface LoginFormProps {
   urlError?: string
 }
 
+// Demo seed accounts (drizzle/seed.ts). One-click sign-in for the template demo.
+// Remove this block (and the "Quick demo login" UI below) for a real production app.
+const DEMO_ACCOUNTS = [
+  { label: "Admin", email: "admin@example.com", password: "Admin123!" },
+  { label: "Editor", email: "editor@example.com", password: "Editor123!" },
+  { label: "Viewer", email: "viewer@example.com", password: "Viewer123!" },
+] as const
+
 export function LoginForm({ verified, urlError }: LoginFormProps) {
   const [state, formAction, isPending] = useActionState(loginAction, null)
 
@@ -47,6 +55,14 @@ export function LoginForm({ verified, urlError }: LoginFormProps) {
     const fd = new FormData()
     fd.set("email", data.email)
     fd.set("password", data.password)
+    startTransition(() => formAction(fd))
+  }
+
+  // One-click demo sign-in: dispatch the login action with seeded credentials.
+  function quickLogin(email: string, password: string) {
+    const fd = new FormData()
+    fd.set("email", email)
+    fd.set("password", password)
     startTransition(() => formAction(fd))
   }
 
@@ -111,6 +127,22 @@ export function LoginForm({ verified, urlError }: LoginFormProps) {
             </Field>
           </FieldGroup>
         </form>
+
+        <FieldSeparator className="my-6">Quick demo login</FieldSeparator>
+        <div className="grid grid-cols-3 gap-2">
+          {DEMO_ACCOUNTS.map((account) => (
+            <Button
+              key={account.label}
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={isPending}
+              onClick={() => quickLogin(account.email, account.password)}
+            >
+              {account.label}
+            </Button>
+          ))}
+        </div>
 
         <FieldSeparator className="my-6">Or continue with</FieldSeparator>
 
