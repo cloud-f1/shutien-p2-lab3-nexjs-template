@@ -92,6 +92,21 @@ test.describe("RBAC — viewer (read-only, non-admin)", () => {
     await page.goto("/dashboard")
     await expect(page.locator("a[href='/dashboard/items/create']")).toHaveCount(0)
   })
+
+  test("can view the items list but sees no create affordance", async ({ page }) => {
+    // Viewers may read their own items list (requireAuth), but the create
+    // button is gated by canEdit() and must not render.
+    await page.goto("/dashboard/items")
+    await expect(page).toHaveURL(/\/dashboard\/items/)
+    await expect(page.locator("h1, h2").first()).toBeVisible()
+    await expect(page.locator("a[href='/dashboard/items/create']")).toHaveCount(0)
+  })
+
+  test("visiting the create-item page is redirected to /dashboard", async ({ page }) => {
+    // The create page calls requireEditor(), which redirects viewers away.
+    await page.goto("/dashboard/items/create")
+    await expect(page).toHaveURL(/\/dashboard(?!\/items\/create)/)
+  })
 })
 
 test.describe("RBAC — editor (can edit, non-admin)", () => {
@@ -117,5 +132,20 @@ test.describe("RBAC — editor (can edit, non-admin)", () => {
     await expect(
       page.locator("a[href='/dashboard/items/create']").first()
     ).toBeVisible()
+  })
+
+  test("can reach /dashboard/items and see a create affordance", async ({ page }) => {
+    await page.goto("/dashboard/items")
+    await expect(page).toHaveURL(/\/dashboard\/items/)
+    await expect(
+      page.locator("a[href='/dashboard/items/create']").first()
+    ).toBeVisible()
+  })
+
+  test("can reach the create-item page", async ({ page }) => {
+    // Editors pass requireEditor() — the create form (title field) renders.
+    await page.goto("/dashboard/items/create")
+    await expect(page).toHaveURL(/\/dashboard\/items\/create/)
+    await expect(page.locator('input[name="title"]')).toBeVisible()
   })
 })

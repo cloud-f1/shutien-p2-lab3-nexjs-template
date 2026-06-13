@@ -2,25 +2,6 @@
 
 import * as React from "react"
 import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type UniqueIdentifier,
-} from "@dnd-kit/core"
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers"
-import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
-import {
   flexRender,
   getCoreRowModel,
   getFacetedRowModel,
@@ -72,7 +53,6 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs"
 import {
-  GripVerticalIcon,
   CircleCheckIcon,
   LoaderIcon,
   EllipsisVerticalIcon,
@@ -93,33 +73,10 @@ export interface DataTableItem {
   createdAt: string
 }
 
-// Create a separate component for the drag handle
-function DragHandle({ id }: { id: UniqueIdentifier }) {
-  const { attributes, listeners } = useSortable({ id })
-
-  return (
-    <Button
-      {...attributes}
-      {...listeners}
-      variant="ghost"
-      size="icon"
-      className="size-7 text-muted-foreground hover:bg-transparent"
-    >
-      <GripVerticalIcon className="size-3 text-muted-foreground" />
-      <span className="sr-only">拖曳以重新排序</span>
-    </Button>
-  )
-}
-
 // Columns depend on the viewer's permissions: editors/admins get an actions
 // menu with Edit; viewers see neither the actions column nor edit links.
 function getColumns(canEdit: boolean): ColumnDef<DataTableItem>[] {
   const cols: ColumnDef<DataTableItem>[] = [
-  {
-    id: "drag",
-    header: () => null,
-    cell: ({ row }) => <DragHandle id={row.original.id} />,
-  },
   {
     id: "select",
     header: ({ table }) => (
@@ -231,22 +188,9 @@ function getColumns(canEdit: boolean): ColumnDef<DataTableItem>[] {
   return cols
 }
 
-function DraggableRow({ row }: { row: Row<DataTableItem> }) {
-  const { transform, transition, setNodeRef, isDragging } = useSortable({
-    id: row.original.id,
-  })
-
+function ItemRow({ row }: { row: Row<DataTableItem> }) {
   return (
-    <TableRow
-      data-state={row.getIsSelected() && "selected"}
-      data-dragging={isDragging}
-      ref={setNodeRef}
-      className="relative z-0 data-[dragging=true]:z-10 data-[dragging=true]:opacity-80"
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition: transition,
-      }}
-    >
+    <TableRow data-state={row.getIsSelected() && "selected"}>
       {row.getVisibleCells().map((cell) => (
         <TableCell key={cell.id}>
           {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -263,7 +207,7 @@ export function DataTable({
   data: DataTableItem[]
   canEdit?: boolean
 }) {
-  const [data, setData] = React.useState(() => initialData)
+  const data = initialData
   const columns = React.useMemo(() => getColumns(canEdit), [canEdit])
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
@@ -276,17 +220,6 @@ export function DataTable({
     pageIndex: 0,
     pageSize: 10,
   })
-  const sortableId = React.useId()
-  const sensors = useSensors(
-    useSensor(MouseSensor, {}),
-    useSensor(TouchSensor, {}),
-    useSensor(KeyboardSensor, {})
-  )
-
-  const dataIds = React.useMemo<UniqueIdentifier[]>(
-    () => data?.map(({ id }) => id) || [],
-    [data]
-  )
 
   const table = useReactTable({
     data,
@@ -312,17 +245,6 @@ export function DataTable({
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
   })
-
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
-    if (active && over && active.id !== over.id) {
-      setData((data) => {
-        const oldIndex = dataIds.indexOf(active.id)
-        const newIndex = dataIds.indexOf(over.id)
-        return arrayMove(data, oldIndex, newIndex)
-      })
-    }
-  }
 
   return (
     <Tabs
@@ -400,13 +322,6 @@ export function DataTable({
         className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6"
       >
         <div className="overflow-hidden rounded-lg border">
-          <DndContext
-            collisionDetection={closestCenter}
-            modifiers={[restrictToVerticalAxis]}
-            onDragEnd={handleDragEnd}
-            sensors={sensors}
-            id={sortableId}
-          >
             <Table>
               <TableHeader className="sticky top-0 z-10 bg-muted">
                 {table.getHeaderGroups().map((headerGroup) => (
@@ -428,14 +343,9 @@ export function DataTable({
               </TableHeader>
               <TableBody className="**:data-[slot=table-cell]:first:w-8">
                 {table.getRowModel().rows?.length ? (
-                  <SortableContext
-                    items={dataIds}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {table.getRowModel().rows.map((row) => (
-                      <DraggableRow key={row.id} row={row} />
-                    ))}
-                  </SortableContext>
+                  table.getRowModel().rows.map((row) => (
+                    <ItemRow key={row.id} row={row} />
+                  ))
                 ) : (
                   <TableRow>
                     <TableCell
@@ -448,7 +358,6 @@ export function DataTable({
                 )}
               </TableBody>
             </Table>
-          </DndContext>
         </div>
         <div className="flex items-center justify-between px-4">
           <div className="hidden flex-1 text-sm text-muted-foreground lg:flex">

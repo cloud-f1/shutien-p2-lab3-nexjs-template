@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useId, useMemo } from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
@@ -177,10 +177,17 @@ function FieldError({
   className,
   children,
   errors,
+  id,
   ...props
 }: React.ComponentProps<"div"> & {
   errors?: Array<{ message?: string } | undefined>
 }) {
+  // Stable fallback id so callers can wire `aria-describedby` on the associated
+  // Input even when they don't supply an explicit id. Always rendered on the
+  // element below; an empty error returns null, so describedby should only be
+  // applied by the caller when the field is actually invalid.
+  const generatedId = useId()
+  const errorId = id ?? generatedId
   const content = useMemo(() => {
     if (children) {
       return children
@@ -214,6 +221,7 @@ function FieldError({
 
   return (
     <div
+      id={errorId}
       role="alert"
       data-slot="field-error"
       className={cn("text-sm font-normal text-destructive", className)}

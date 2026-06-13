@@ -132,11 +132,13 @@ const chartConfig = {
   },
   desktop: {
     label: "桌面",
-    color: "var(--primary)",
+    color: "var(--chart-1)",
   },
   mobile: {
     label: "行動裝置",
-    color: "var(--primary)",
+    // Distinct from the desktop series (WCAG 1.4.1) — previously both used
+    // var(--primary), making the two areas indistinguishable.
+    color: "var(--chart-2)",
   },
 } satisfies ChartConfig
 
@@ -211,7 +213,11 @@ export function ChartAreaInteractive() {
           config={chartConfig}
           className="aspect-auto h-[250px] w-full"
         >
-          <AreaChart data={filteredData}>
+          <AreaChart
+            data={filteredData}
+            role="img"
+            aria-label="總訪客數面積圖：桌面與行動裝置兩條數列隨日期變化的趨勢"
+          >
             <defs>
               <linearGradient id="fillDesktop" x1="0" y1="0" x2="0" y2="1">
                 <stop
@@ -247,7 +253,7 @@ export function ChartAreaInteractive() {
               minTickGap={32}
               tickFormatter={(value) => {
                 const date = new Date(value)
-                return date.toLocaleDateString("en-US", {
+                return date.toLocaleDateString("zh-Hant", {
                   month: "short",
                   day: "numeric",
                 })
@@ -258,7 +264,7 @@ export function ChartAreaInteractive() {
               content={
                 <ChartTooltipContent
                   labelFormatter={(value) => {
-                    return new Date(value).toLocaleDateString("en-US", {
+                    return new Date(value).toLocaleDateString("zh-Hant", {
                       month: "short",
                       day: "numeric",
                     })

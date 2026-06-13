@@ -12,7 +12,11 @@
 #   export REVIEW_LOOP_BUDGET=<N>
 #   export AUTOPILOT_THRESHOLD=<N>
 #   export ATHENA_VERIFY_POSTURE="<string>"
-#   export ATHENA_MODEL_MAP="reviewer=<model>,evaluator=<model>"
+#   export ATHENA_MODEL_MAP="reviewer=<model>,evaluator=<model>,execute=<model>"
+#       execute = the model for the per-epic spec→implement→qa→commit agent in
+#       /athena:flow. It is the BASELINE for a "simple" epic; flow escalates a
+#       "complex" epic (size L/XL) to opus regardless of tier. This is what stops
+#       every epic running on opus — see .claude/commands/athena/flow.md Step 5.
 #
 # Also emits an effort_resolved audit event to .claude/audit.jsonl.
 #
@@ -28,16 +32,16 @@
 # Tier — knob table:
 #   quick:    MAX_CONCURRENT=1, MAX_ITERATIONS=1, REVIEW_LOOP_BUDGET=15000,
 #             AUTOPILOT_THRESHOLD=0.80, ATHENA_VERIFY_POSTURE=single-vote,
-#             reviewer=haiku, evaluator=sonnet
+#             reviewer=haiku, evaluator=sonnet, execute=sonnet
 #   standard: MAX_CONCURRENT=4, MAX_ITERATIONS=4, REVIEW_LOOP_BUDGET=50000,
 #             AUTOPILOT_THRESHOLD=0.85, ATHENA_VERIFY_POSTURE=single-vote,
-#             reviewer=sonnet, evaluator=sonnet
+#             reviewer=sonnet, evaluator=sonnet, execute=sonnet
 #   thorough: MAX_CONCURRENT=4, MAX_ITERATIONS=6, REVIEW_LOOP_BUDGET=150000,
 #             AUTOPILOT_THRESHOLD=0.90, ATHENA_VERIFY_POSTURE=adversarial-3+perspective,
-#             reviewer=sonnet, evaluator=opus
+#             reviewer=sonnet, evaluator=opus, execute=sonnet
 #   ultra:    MAX_CONCURRENT=min(16,cores-2), MAX_ITERATIONS=8, REVIEW_LOOP_BUDGET=500000,
 #             AUTOPILOT_THRESHOLD=0.95, ATHENA_VERIFY_POSTURE=judge-panel+adversarial+multimodal,
-#             reviewer=opus, evaluator=opus
+#             reviewer=opus, evaluator=opus, execute=opus
 #
 # CRITICAL: standard tier values are IDENTICAL to today's hardcoded numbers.
 # Omitting --effort changes no current behavior.
@@ -89,7 +93,7 @@ case "$TIER" in
     REVIEW_LOOP_BUDGET=15000
     AUTOPILOT_THRESHOLD=0.80
     ATHENA_VERIFY_POSTURE="single-vote"
-    ATHENA_MODEL_MAP="reviewer=haiku,evaluator=sonnet"
+    ATHENA_MODEL_MAP="reviewer=haiku,evaluator=sonnet,execute=sonnet"
     ;;
   standard)
     # MUST match today's hardcoded values byte-for-byte
@@ -98,7 +102,7 @@ case "$TIER" in
     REVIEW_LOOP_BUDGET=50000
     AUTOPILOT_THRESHOLD=0.85
     ATHENA_VERIFY_POSTURE="single-vote"
-    ATHENA_MODEL_MAP="reviewer=sonnet,evaluator=sonnet"
+    ATHENA_MODEL_MAP="reviewer=sonnet,evaluator=sonnet,execute=sonnet"
     ;;
   thorough)
     MAX_CONCURRENT=4
@@ -106,7 +110,7 @@ case "$TIER" in
     REVIEW_LOOP_BUDGET=150000
     AUTOPILOT_THRESHOLD=0.90
     ATHENA_VERIFY_POSTURE="adversarial-3+perspective"
-    ATHENA_MODEL_MAP="reviewer=sonnet,evaluator=opus"
+    ATHENA_MODEL_MAP="reviewer=sonnet,evaluator=opus,execute=sonnet"
     ;;
   ultra)
     # Cores-aware cap: min(16, cores-2), floored at 1
@@ -119,7 +123,7 @@ case "$TIER" in
     REVIEW_LOOP_BUDGET=500000
     AUTOPILOT_THRESHOLD=0.95
     ATHENA_VERIFY_POSTURE="judge-panel+adversarial+multimodal"
-    ATHENA_MODEL_MAP="reviewer=opus,evaluator=opus"
+    ATHENA_MODEL_MAP="reviewer=opus,evaluator=opus,execute=opus"
     ;;
   *)
     # Unknown tier — fall back to standard (non-fatal)
@@ -128,7 +132,7 @@ case "$TIER" in
     REVIEW_LOOP_BUDGET=50000
     AUTOPILOT_THRESHOLD=0.85
     ATHENA_VERIFY_POSTURE="single-vote"
-    ATHENA_MODEL_MAP="reviewer=sonnet,evaluator=sonnet"
+    ATHENA_MODEL_MAP="reviewer=sonnet,evaluator=sonnet,execute=sonnet"
     TIER="standard"
     SOURCE="default"
     ;;

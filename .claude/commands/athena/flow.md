@@ -17,9 +17,15 @@ You run epics through the full dev pipeline using the **native Workflow engine**
 ## Step 0 — Resolve effort
 Run and capture the effort knobs:
 ```bash
-source <(bash scripts/effort/resolve.sh "${ATHENA_EFFORT:-standard}")
+source <(bash scripts/effort/resolve.sh --effort "${ATHENA_EFFORT:-standard}")
 # exports: MAX_CONCURRENT, MAX_ITERATIONS, REVIEW_LOOP_BUDGET, ATHENA_MODEL_MAP, ...
 ```
+`ATHENA_MODEL_MAP` now carries three models: `reviewer`, `evaluator`, and **`execute`**
+(the per-epic spec→implement→qa→commit agent's baseline). Parse all three into the
+`MODEL` literal for Step 5. `execute` is the model for a *simple* epic; Step 2 marks
+*complex* epics so Step 5 escalates them to `opus`. This is what keeps the dispatch
+from running every epic on opus — model now tracks task complexity, mirroring the
+athena agent team's doer(sonnet)/thinker(opus) split.
 
 ## Step 1 — Capability probe + delegation
 Confirm the `Workflow` tool is actually available in THIS session (it is a main-loop
@@ -34,12 +40,16 @@ tool; absent in headless/cron and in older Claude Code). If it is **not** callab
 2. Read `docs/context/epic-progress.md`; drop any epic already marked ✅ by a prior `/athena:flow`
    run in this cycle (this is the resume mechanism — re-running continues where it stopped).
 3. If no pending epics remain → print "flow: nothing to do (graph drained)" and STOP.
+4. **Classify each pending epic's complexity** (drives its model): read its catalog row in
+   `EPIC_INDEX.md` for a SIZE/SP hint. `S`/`M` (or `< 8` SP) → `"simple"`; `L`/`XL` (or `≥ 8` SP),
+   or anything touching auth/security/migrations/multi-file features → `"complex"`. Unknown → `"simple"`.
+   Build the `COMPLEXITY` literal `{ Exxx: "simple"|"complex", ... }` for Step 5.
 
 ## Step 3 — Wave loop (outer plane — you own this, NOT the Workflow)
 Set a count-cap backstop = `MAX_ITERATIONS * MAX_CONCURRENT` epics (the practical stand-in
 for the token budget, since the main-loop cannot read `budget.spent()` outside a script).
 For each pending wave in order, while the count-cap is not exceeded:
-1. Author the Step-5 Workflow script (below) with this wave's epics, `CAP`, `MODEL` as pure literals.
+1. Author the Step-5 Workflow script (below) with this wave's epics, `CAP`, `MODEL` (incl. `execute`), and `COMPLEXITY` as pure literals.
 2. Run it via the `Workflow` tool; await the returned `AgentReport[]`.
 3. Write back (Step 4).
 4. If the count-cap is reached, STOP before the next wave (clean checkpoint).
@@ -86,7 +96,17 @@ export const meta = {
 
 const WAVE  = ["E2XX", "E2YY"];                      // <-- literal: this wave's pending epics
 const CAP   = 4;                                     // <-- literal: $MAX_CONCURRENT
-const MODEL = { reviewer: "sonnet", evaluator: "sonnet" }; // <-- literal: $ATHENA_MODEL_MAP
+const MODEL = { execute: "sonnet", reviewer: "sonnet", evaluator: "sonnet" }; // <-- literal: $ATHENA_MODEL_MAP
+
+// Per-epic model is chosen by TASK COMPLEXITY — NOT blanket opus. This mirrors the
+// athena agent team's tiering (doers like @reviewer/@qa/@debugger = sonnet; only
+// deep-design/orchestration like @spec-writer/@best-practice/@strategist = opus).
+// COMPLEXITY is injected from Step 2 by reading each epic's SIZE in EPIC_INDEX.md:
+//   S / M  → "simple"  → MODEL.execute (sonnet at standard)
+//   L / XL → "complex" → "opus"
+// At ultra tier MODEL.execute is already "opus", so everything escalates there.
+const COMPLEXITY = { E2XX: "complex", E2YY: "simple" }; // <-- literal: per-epic, from EPIC_INDEX size
+const modelForEpic = (E) => (COMPLEXITY[E] === "complex" ? "opus" : MODEL.execute);
 
 const REPORT = {
   type: "object",
@@ -116,7 +136,7 @@ function runEpic(E) {
       `4. COMMIT — only if QA passed: commit on branch MH/feat/${E}-<slug> (Conventional Commits). Do NOT merge.`,
       `Return ONLY the AgentReport JSON: status="success" requires implemented AND qa-passed AND committed; "failure" if impl/QA failed; "blocked" if you cannot proceed (e.g. unmet dependency / needs human).`,
     ].join("\n"),
-    { schema: REPORT, label: `${E}`, phase: "Wave", isolation: "worktree" }
+    { schema: REPORT, label: `${E}`, phase: "Wave", isolation: "worktree", model: modelForEpic(E) }
   );
 }
 

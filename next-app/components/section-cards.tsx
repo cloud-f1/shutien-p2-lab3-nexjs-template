@@ -37,7 +37,7 @@ export function SectionCards({
           <CardAction>
             <Badge variant="outline">
               <TrendingUpIcon />
-              Live
+              即時
             </Badge>
           </CardAction>
         </CardHeader>
@@ -63,7 +63,7 @@ export function SectionCards({
           <CardAction>
             <Badge variant="outline">
               <TrendingUpIcon />
-              {isAdminView ? "Live" : "+12.5%"}
+              {isAdminView ? "即時" :"+12.5%"}
             </Badge>
           </CardAction>
         </CardHeader>
@@ -92,7 +92,7 @@ export function SectionCards({
           <CardAction>
             <Badge variant="outline">
               <TrendingUpIcon />
-              {isAdminView ? "Live" : "+8.2%"}
+              {isAdminView ? "即時" :"+8.2%"}
             </Badge>
           </CardAction>
         </CardHeader>

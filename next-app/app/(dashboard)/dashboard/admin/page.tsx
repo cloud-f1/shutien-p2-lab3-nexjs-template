@@ -45,6 +45,7 @@ export default async function AdminPage() {
               <TableCell>
                 <RoleSelector
                   userId={user.id}
+                  userEmail={user.email}
                   currentRole={user.role}
                   isSelf={user.id === session.user.id}
                 />

@@ -49,8 +49,18 @@ export function ProfileForm({ defaultName, defaultImage }: ProfileFormProps) {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="space-y-1.5">
         <Label htmlFor="name">顯示名稱</Label>
-        <Input id="name" autoComplete="name" {...register("name")} />
-        {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+        <Input
+          id="name"
+          autoComplete="name"
+          aria-invalid={errors.name ? true : undefined}
+          aria-describedby={errors.name ? "name-error" : undefined}
+          {...register("name")}
+        />
+        {errors.name && (
+          <p id="name-error" role="alert" className="text-xs text-destructive">
+            {errors.name.message}
+          </p>
+        )}
       </div>
 
       <div className="space-y-1.5">
@@ -60,13 +70,22 @@ export function ProfileForm({ defaultName, defaultImage }: ProfileFormProps) {
           type="url"
           placeholder="https://example.com/avatar.png"
           autoComplete="photo"
+          aria-invalid={errors.image ? true : undefined}
+          aria-describedby={errors.image ? "image-error" : undefined}
           {...register("image")}
         />
-        {errors.image && <p className="text-xs text-destructive">{errors.image.message}</p>}
+        {errors.image && (
+          <p id="image-error" role="alert" className="text-xs text-destructive">
+            {errors.image.message}
+          </p>
+        )}
       </div>
 
       {serverMessage && (
-        <p className={cn("text-sm", serverMessage.type === "error" ? "text-destructive" : "text-green-600")}>
+        <p
+          role={serverMessage.type === "error" ? "alert" : "status"}
+          className={cn("text-sm", serverMessage.type === "error" ? "text-destructive" : "text-green-600")}
+        >
           {serverMessage.text}
         </p>
       )}

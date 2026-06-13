@@ -72,12 +72,18 @@ export function LoginForm({ verified, urlError }: LoginFormProps) {
       </CardHeader>
       <CardContent>
         {verified && (
-          <p className="mb-4 rounded-md bg-green-50 px-3 py-2 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
+          <p
+            role="status"
+            className="mb-4 rounded-md bg-green-50 px-3 py-2 text-sm text-green-800 dark:bg-green-950 dark:text-green-300"
+          >
             ✅ 電子郵件已驗證！您現在可以登入。
           </p>
         )}
         {(state?.error ?? urlError) && (
-          <p className="mb-4 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <p
+            role="alert"
+            className="mb-4 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          >
             {state?.error ?? urlError}
           </p>
         )}
@@ -92,9 +98,13 @@ export function LoginForm({ verified, urlError }: LoginFormProps) {
                 placeholder="m@example.com"
                 autoComplete="email"
                 aria-invalid={errors.email ? true : undefined}
+                aria-describedby={errors.email ? "email-error" : undefined}
                 {...register("email")}
               />
-              <FieldError errors={errors.email ? [errors.email] : undefined} />
+              <FieldError
+                id="email-error"
+                errors={errors.email ? [errors.email] : undefined}
+              />
             </Field>
             <Field data-invalid={errors.password ? true : undefined}>
               <div className="flex items-center">
@@ -112,9 +122,11 @@ export function LoginForm({ verified, urlError }: LoginFormProps) {
                 placeholder="••••••••"
                 autoComplete="current-password"
                 aria-invalid={errors.password ? true : undefined}
+                aria-describedby={errors.password ? "password-error" : undefined}
                 {...register("password")}
               />
               <FieldError
+                id="password-error"
                 errors={errors.password ? [errors.password] : undefined}
               />
             </Field>

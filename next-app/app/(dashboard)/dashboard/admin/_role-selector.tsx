@@ -13,6 +13,7 @@ import type { Role } from "@/lib/schema"
 
 interface RoleSelectorProps {
   userId: string
+  userEmail: string
   currentRole: Role
   isSelf: boolean
 }
@@ -23,7 +24,7 @@ const ROLE_LABELS: Record<Role, string> = {
   viewer: "檢視者",
 }
 
-export function RoleSelector({ userId, currentRole, isSelf }: RoleSelectorProps) {
+export function RoleSelector({ userId, userEmail, currentRole, isSelf }: RoleSelectorProps) {
   const [isPending, startTransition] = useTransition()
 
   if (isSelf) {
@@ -38,7 +39,7 @@ export function RoleSelector({ userId, currentRole, isSelf }: RoleSelectorProps)
         startTransition(() => { void setUserRole(userId, value as Role) })
       }
     >
-      <SelectTrigger className="w-28 h-8 text-xs">
+      <SelectTrigger className="w-28 h-8 text-xs" aria-label={`變更 ${userEmail} 的角色`}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

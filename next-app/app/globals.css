@@ -89,7 +89,10 @@
     --card-foreground: oklch(0.985 0.001 106.423);
     --popover: oklch(0.216 0.006 56.043);
     --popover-foreground: oklch(0.985 0.001 106.423);
-    --primary: oklch(0.424 0.199 265.638);
+    /* Raised from oklch(0.424 …) — the darker value sat at ~2.2:1 on the dark
+       background (WCAG fail) so chart strokes and link text were near-invisible.
+       0.623 lightness clears the 3:1 non-text / 4.5:1 text thresholds. */
+    --primary: oklch(0.623 0.214 259.815);
     --primary-foreground: oklch(0.97 0.014 254.604);
     --secondary: oklch(0.274 0.006 286.033);
     --secondary-foreground: oklch(0.985 0 0);

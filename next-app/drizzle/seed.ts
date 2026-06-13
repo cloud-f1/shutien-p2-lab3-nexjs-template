@@ -3,6 +3,15 @@ import { usersTable } from "../lib/schema"
 import bcrypt from "bcryptjs"
 
 async function seed() {
+  // Production guard — these are static, publicly-known demo passwords. Refuse to
+  // run against a production database unless explicitly opted in via ALLOW_SEED=true.
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_SEED !== "true") {
+    console.error(
+      "❌ Refusing to seed in production. Set ALLOW_SEED=true to override (NOT recommended — these are public demo credentials).",
+    )
+    process.exit(1)
+  }
+
   console.log("🌱 Seeding database...")
 
   const adminHash = await bcrypt.hash("Admin123!", 12)

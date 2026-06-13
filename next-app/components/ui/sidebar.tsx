@@ -30,6 +30,9 @@ const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
+// Stable id wired onto the sidebar container/sheet so SidebarTrigger's
+// aria-controls points at the element it expands/collapses (single app sidebar).
+const SIDEBAR_CONTROLS_ID = "app-sidebar"
 
 type SidebarContextProps = {
   state: "expanded" | "collapsed"
@@ -182,6 +185,7 @@ function Sidebar({
     return (
       <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
         <SheetContent
+          id={SIDEBAR_CONTROLS_ID}
           dir={dir}
           data-sidebar="sidebar"
           data-slot="sidebar"
@@ -226,6 +230,7 @@ function Sidebar({
         )}
       />
       <div
+        id={SIDEBAR_CONTROLS_ID}
         data-slot="sidebar-container"
         data-side={side}
         className={cn(
@@ -255,7 +260,8 @@ function SidebarTrigger({
   onClick,
   ...props
 }: React.ComponentProps<typeof Button>) {
-  const { toggleSidebar } = useSidebar()
+  const { toggleSidebar, isMobile, open, openMobile } = useSidebar()
+  const expanded = isMobile ? openMobile : open
 
   return (
     <Button
@@ -264,6 +270,9 @@ function SidebarTrigger({
       variant="ghost"
       size="icon-sm"
       className={cn(className)}
+      aria-expanded={expanded}
+      aria-controls={SIDEBAR_CONTROLS_ID}
+      aria-keyshortcuts="Meta+B Control+B"
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()

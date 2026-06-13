@@ -69,6 +69,3 @@ export const itemsTable = pgTable("items", {
 })
 
 export type User = typeof usersTable.$inferSelect
-export type NewUser = typeof usersTable.$inferInsert
-export type Item = typeof itemsTable.$inferSelect
-export type NewItem = typeof itemsTable.$inferInsert

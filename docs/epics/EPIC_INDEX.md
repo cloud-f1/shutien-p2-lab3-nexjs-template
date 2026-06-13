@@ -68,7 +68,8 @@
 | Phase 53 | E217, E218, E219, E220, E221 | ✅ QA'd, committed on branch MH/feat/E217-E221-nextjs-migration (Next.js Migration — shared Zod validations + RBAC + account settings + admin panel + e2e smoke; 2 critical pre-existing bugs fixed) |
 | Phase 54 | E222, E223, E224, E225, E226 | ✅ Merged to main (PR #2) — shadcn-blocks UI + Docker + Athena hardening |
 | Phase 55 | E227, E228 | ✅ Merged to main (PR #3) — 3-tier RBAC + athena loop speedup + consolidated Docker |
-| Phase 56 | E229, E230 | 🔄 In Progress (apply shadcn preset b1Yn96132 = blue theme merged into repo style; full 繁體中文 i18n of all UI + validation + action messages; demo-login security gate). 30 unit + 25 e2e green, verified in Docker |
+| Phase 56 | E229, E230 | ✅ Merged to main (PR #5) — shadcn blue preset + full 繁體中文 i18n |
+| Phase 57 | E231, E232, E233, E234, E235, E236 | ✅ Done on branch (remediated all 33 app-audit findings via a sequential Workflow + E236 task-tiered model dispatch). typecheck · lint · 31 unit · 29 e2e green, verified in Docker |
 <!-- PHASE_STATUS_END -->
 
 <!-- EPIC_MATRIX_START -->
@@ -314,6 +315,12 @@ Phase 46+ epics: enriched template — epic files include Implementation Phases,
 | E228 | ✅ | ✅ | ✅ | — | — | Phase 55 — Athena loop speedup: worktree-parallel default in batch.md; "Speed & Reliability" practices in loop.md/qa.md; stale Python gate refs purged; docs/context/loop-speedup-retro.md |
 | E229 | ✅ | ✅ | ✅ | — | — | Phase 56 — applied shadcn preset b1Yn96132 (blue/indigo primary theme) via `shadcn apply --preset`; merged into globals.css/components.json; restored lint-fixed use-mobile.ts the preset reverted |
 | E230 | ✅ | ✅ | ✅ | — | — | Phase 56 — full 繁體中文 i18n: all UI text, Zod messages, Server-Action errors, metadata, html lang=zh-Hant (3 parallel subagents + shared glossary); e2e + unit assertions updated to zh-Hant; demo-login gated behind NEXT_PUBLIC_ENABLE_DEMO_LOGIN (prod-safe, on for local Docker) |
+| E231 | ✅ | ✅ | ✅ | — | — | Phase 57 — Security & auth hardening: seed prod-guard (#1); requireAdmin/requireEditor re-read live role from DB via getLiveRole (#2); fresh name/image via unstable_update (#10); rate-limit.ts (failed-attempts-only login limiter + resend cooldown) + non-enumerating register (#9); image https-only (#20) |
+| E232 | ✅ | ✅ | ✅ | — | — | Phase 57 — Accessibility (WCAG AA): dark --primary contrast (#3); settings-form aria-invalid + error linking (#4); aria-live banners (#12); FieldError aria-describedby (#13); role-selector aria-label (#14); chart distinct colors + role=img/alt (#15); sidebar aria-expanded/keyshortcuts (#22) |
+| E233 | ✅ | ✅ | ✅ | — | — | Phase 57 — i18n completeness: 即時/您/使用者/王小明/chart zh-Hant locale/resend-button strings + success-flag (#16,#17,#19,#23,#24,#25) |
+| E234 | ✅ | ✅ | ✅ | — | — | Phase 57 — Items CRUD built: /dashboard/items list/create/edit (requireEditor-gated) + shared RHF form; wired orphaned actions/validations/DeleteButton (zh-Hant #6/#7/#8), .count no-op returns (#21), removed drag-reorder (#27); resolves dead links (#11/#28). +4 e2e |
+| E235 | ✅ | ✅ | ✅ | — | — | Phase 57 — Cleanup & perf: not-found + error boundary (#28); recharts next/dynamic (#29); removed breadcrumb/drawer + vaul dep (#30/#31), unused types (#33); kept getUserById (now used by E231) |
+| E236 | ✅ | ✅ | ✅ | — | — | Phase 57 — Athena task-tiered model dispatch: /athena:flow + /athena:batch pick model by epic complexity (execute=sonnet baseline, opus for complex/ultra) from ATHENA_MODEL_MAP; fixed flow's --effort passthrough. No more blanket-Opus. Effort cost-proxy test 10/10 |
 <!-- EPIC_MATRIX_END -->
 
 ## Dependency Rules

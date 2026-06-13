@@ -21,6 +21,12 @@ describe("updateProfileSchema", () => {
   it("rejects a non-URL image", () => {
     expect(updateProfileSchema.safeParse({ name: "Ada", image: "not-a-url" }).success).toBe(false)
   })
+
+  it("rejects a non-https (http) image URL", () => {
+    const r = updateProfileSchema.safeParse({ name: "Ada", image: "http://x.com/a.png" })
+    expect(r.success).toBe(false)
+    if (!r.success) expect(r.error.errors[0].message).toMatch(/https/)
+  })
 })
 
 describe("changePasswordSchema", () => {

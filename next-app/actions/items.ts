@@ -15,23 +15,33 @@ export async function createItem(prevState: State, formData: FormData): Promise<
 
   const title = formData.get("title")
   if (!title || typeof title !== "string" || title.trim().length === 0) {
-    return { error: "Title is required" }
+    return { error: "請輸入標題" }
   }
 
   await db.insert(itemsTable).values({ title: title.trim(), userId: session.user.id })
 
   revalidatePath("/dashboard")
-  redirect("/dashboard")
+  revalidatePath("/dashboard/items")
+  redirect("/dashboard/items")
 }
 
-export async function deleteItem(id: string) {
+export async function deleteItem(id: string): Promise<State> {
   const session = await requireEditor()
 
-  await db
+  const result = await db
     .delete(itemsTable)
     .where(and(eq(itemsTable.id, id), eq(itemsTable.userId, session.user.id)))
 
+  // Ownership-scoped WHERE matching zero rows means the item doesn't exist or
+  // belongs to another user — surface that instead of silently "succeeding".
+  // (postgres-js exposes rows-affected as `.count`.)
+  if (result.count === 0) {
+    return { error: "找不到項目，或您沒有權限刪除。" }
+  }
+
   revalidatePath("/dashboard")
+  revalidatePath("/dashboard/items")
+  return null
 }
 
 export async function updateItem(id: string, prevState: State, formData: FormData): Promise<State> {
@@ -39,14 +49,19 @@ export async function updateItem(id: string, prevState: State, formData: FormDat
 
   const title = formData.get("title")
   if (!title || typeof title !== "string" || title.trim().length === 0) {
-    return { error: "Title is required" }
+    return { error: "請輸入標題" }
   }
 
-  await db
+  const result = await db
     .update(itemsTable)
     .set({ title: title.trim(), updatedAt: new Date() })
     .where(and(eq(itemsTable.id, id), eq(itemsTable.userId, session.user.id)))
 
+  if (result.count === 0) {
+    return { error: "找不到項目，或您沒有權限編輯。" }
+  }
+
   revalidatePath("/dashboard")
-  redirect("/dashboard")
+  revalidatePath("/dashboard/items")
+  redirect("/dashboard/items")
 }

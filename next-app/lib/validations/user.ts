@@ -3,7 +3,12 @@ import { passwordSchema } from "./auth"
 
 export const updateProfileSchema = z.object({
   name: z.string().min(1, "請輸入姓名").max(100),
-  image: z.string().url("請輸入有效的網址").optional().or(z.literal("")),
+  image: z
+    .string()
+    .url("請輸入有效的網址")
+    .refine((url) => url.startsWith("https://"), "圖片網址必須使用 https")
+    .optional()
+    .or(z.literal("")),
 })
 
 export const changePasswordSchema = z

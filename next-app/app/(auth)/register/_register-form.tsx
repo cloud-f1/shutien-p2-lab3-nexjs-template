@@ -53,7 +53,10 @@ export function RegisterForm() {
       </CardHeader>
       <CardContent>
         {state?.error && (
-          <p className="mb-4 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <p
+            role="alert"
+            className="mb-4 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          >
             {state.error}
           </p>
         )}
@@ -65,12 +68,16 @@ export function RegisterForm() {
               <Input
                 id="name"
                 type="text"
-                placeholder="John Doe"
+                placeholder="王小明"
                 autoComplete="name"
                 aria-invalid={errors.name ? true : undefined}
+                aria-describedby={errors.name ? "name-error" : undefined}
                 {...register("name")}
               />
-              <FieldError errors={errors.name ? [errors.name] : undefined} />
+              <FieldError
+                id="name-error"
+                errors={errors.name ? [errors.name] : undefined}
+              />
             </Field>
             <Field data-invalid={errors.email ? true : undefined}>
               <FieldLabel htmlFor="email">電子郵件</FieldLabel>
@@ -80,9 +87,13 @@ export function RegisterForm() {
                 placeholder="m@example.com"
                 autoComplete="email"
                 aria-invalid={errors.email ? true : undefined}
+                aria-describedby={errors.email ? "email-error" : undefined}
                 {...register("email")}
               />
-              <FieldError errors={errors.email ? [errors.email] : undefined} />
+              <FieldError
+                id="email-error"
+                errors={errors.email ? [errors.email] : undefined}
+              />
             </Field>
             <Field data-invalid={errors.password ? true : undefined}>
               <FieldLabel htmlFor="password">密碼</FieldLabel>
@@ -92,12 +103,15 @@ export function RegisterForm() {
                 placeholder="••••••••"
                 autoComplete="new-password"
                 aria-invalid={errors.password ? true : undefined}
+                aria-describedby={
+                  errors.password ? "password-error" : "password-hint"
+                }
                 {...register("password")}
               />
               {errors.password ? (
-                <FieldError errors={[errors.password]} />
+                <FieldError id="password-error" errors={[errors.password]} />
               ) : (
-                <FieldDescription>
+                <FieldDescription id="password-hint">
                   至少需 8 個字元，並包含 1 個大寫字母與 1 個數字。
                 </FieldDescription>
               )}

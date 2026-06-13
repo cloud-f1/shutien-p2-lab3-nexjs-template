@@ -5,6 +5,7 @@ import { usersTable } from "@/lib/schema"
 import { eq } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
 import { requireAuth } from "@/lib/permissions"
+import { unstable_update } from "@/lib/auth"
 import { comparePassword, hashPassword } from "@/lib/password"
 import { updateProfileSchema, changePasswordSchema } from "@/lib/validations/user"
 import type { FormState } from "@/lib/validations/types"
@@ -19,10 +20,15 @@ export async function updateProfile(prevState: FormState, formData: FormData): P
   if (!result.success) return { error: result.error.errors[0].message }
 
   const { name, image } = result.data
+  const nextImage = image || null
   await db
     .update(usersTable)
-    .set({ name, image: image || null, updatedAt: new Date() })
+    .set({ name, image: nextImage, updatedAt: new Date() })
     .where(eq(usersTable.id, session.user.id))
+
+  // Push the new name/image into the JWT (trigger==='update' in lib/auth.ts jwt
+  // callback) so the sidebar/settings reflect the change without a re-login.
+  await unstable_update({ user: { name, image: nextImage } })
 
   revalidatePath("/dashboard/settings")
   return { success: true }

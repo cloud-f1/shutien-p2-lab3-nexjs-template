@@ -10,8 +10,18 @@ import { sendVerificationEmail } from "@/lib/email"
 import type { FormState } from "@/lib/validations/types"
 import { unstable_rethrow } from "next/navigation"
 import { redirect } from "next/navigation"
+import { headers } from "next/headers"
 import crypto from "crypto"
 import { registerSchema, loginSchema } from "@/lib/validations/auth"
+import { isRateLimited, recordFailure, cooldown } from "@/lib/rate-limit"
+
+// Best-effort client IP from common proxy headers (Zeabur / Vercel / nginx).
+async function getClientIp(): Promise<string> {
+  const h = await headers()
+  const forwarded = h.get("x-forwarded-for")
+  if (forwarded) return forwarded.split(",")[0].trim()
+  return h.get("x-real-ip") ?? "unknown"
+}
 
 // ─── OAuth ───────────────────────────────────────────────────────────────────
 
@@ -38,25 +48,26 @@ export async function registerUser(prevState: FormState, formData: FormData): Pr
 
   const { name, email, password } = result.data
 
+  // Non-enumerating: never reveal whether the email already exists. If it does,
+  // silently skip the insert and still route to the verification page with a
+  // generic success path — an attacker cannot distinguish "taken" from "new".
   const existing = await getUserByEmail(email)
-  if (existing) {
-    return { error: "此電子郵件已被註冊。" }
+  if (!existing) {
+    const passwordHash = await hashPassword(password)
+    const [user] = await db
+      .insert(usersTable)
+      .values({ name, email, passwordHash })
+      .returning({ id: usersTable.id })
+
+    const token = crypto.randomBytes(32).toString("hex")
+    await db.insert(emailVerificationTokensTable).values({
+      userId: user.id,
+      token,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    })
+
+    await sendVerificationEmail(email, token)
   }
-
-  const passwordHash = await hashPassword(password)
-  const [user] = await db
-    .insert(usersTable)
-    .values({ name, email, passwordHash })
-    .returning({ id: usersTable.id })
-
-  const token = crypto.randomBytes(32).toString("hex")
-  await db.insert(emailVerificationTokensTable).values({
-    userId: user.id,
-    token,
-    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-  })
-
-  await sendVerificationEmail(email, token)
 
   redirect(`/verify-email?email=${encodeURIComponent(email)}`)
 }
@@ -76,6 +87,17 @@ export async function loginAction(prevState: FormState, formData: FormData): Pro
 
   const { email, password } = result.data
 
+  // Rate limit before doing any (expensive) bcrypt work. We only count *failed*
+  // attempts (recordFailure below) so a legitimate login never burns the budget:
+  // 5 failures per email and 10 per IP within a 15-minute window blunts brute-force.
+  const WINDOW_MS = 15 * 60 * 1000
+  const emailKey = `login:email:${email.toLowerCase()}`
+  const ip = await getClientIp()
+  const ipKey = `login:ip:${ip}`
+  if (!isRateLimited(emailKey, 5).ok || !isRateLimited(ipKey, 10).ok) {
+    return { error: "嘗試次數過多，請稍後再試。" }
+  }
+
   // Pre-check: unverified credentials users get a helpful error before Auth.js runs
   const user = await getUserByEmail(email)
   if (user?.passwordHash && !user.emailVerified) {
@@ -86,6 +108,10 @@ export async function loginAction(prevState: FormState, formData: FormData): Pro
     await signIn("credentials", { email, password, redirectTo: "/dashboard" })
   } catch (error) {
     unstable_rethrow(error) // re-throw redirect() so the redirect actually fires
+    // Only reached on a genuine auth failure (the success path threw a redirect
+    // and was re-thrown above) — count it against both buckets.
+    recordFailure(emailKey, WINDOW_MS)
+    recordFailure(ipKey, WINDOW_MS)
     return { error: "電子郵件或密碼錯誤。" }
   }
 
@@ -125,6 +151,13 @@ export async function verifyEmailToken(
 export async function resendVerificationEmail(
   email: string,
 ): Promise<{ error?: string; success?: boolean }> {
+  // Per-email cooldown (60s) to prevent email-bombing. Checked before the DB
+  // lookup and before revealing anything about the account.
+  const cool = cooldown(`resend:${email.toLowerCase()}`, 60 * 1000)
+  if (!cool.ok) {
+    return { error: `請稍候 ${cool.retryAfter} 秒後再重新寄送。` }
+  }
+
   const user = await getUserByEmail(email)
 
   // Don't reveal whether the email exists

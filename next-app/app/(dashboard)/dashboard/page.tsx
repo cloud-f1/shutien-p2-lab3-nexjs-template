@@ -1,4 +1,4 @@
-import { ChartAreaInteractive } from "@/components/chart-area-interactive"
+import { ChartAreaInteractiveLazy } from "@/components/chart-area-interactive-lazy"
 import { DataTable, type DataTableItem } from "@/components/data-table"
 import { SectionCards } from "@/components/section-cards"
 import { SiteHeader } from "@/components/site-header"
@@ -51,7 +51,7 @@ export default async function DashboardPage() {
             <div className="flex items-center justify-between px-4 lg:px-6">
               <div>
                 <h1 className="text-xl font-semibold">
-                  歡迎回來，{session.user.name ?? "there"}
+                  歡迎回來，{session.user.name ?? "您"}
                 </h1>
                 <p className="text-sm text-muted-foreground">
                   以下是您帳戶的概覽。
@@ -69,7 +69,7 @@ export default async function DashboardPage() {
               verifiedUsers={verifiedUsers}
             />
             <div className="px-4 lg:px-6">
-              <ChartAreaInteractive />
+              <ChartAreaInteractiveLazy />
             </div>
             <DataTable data={tableData} canEdit={editable} />
           </div>

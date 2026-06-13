@@ -58,13 +58,21 @@ The batch command is a **thin orchestrator**. It reads state, computes waves via
 
 | Step | Delegation | Why |
 |------|-----------|-----|
-| spec | `Agent(subagent_type="general-purpose")` | Spec writing reads many files — isolate |
-| implement | `Agent(subagent_type="general-purpose", isolation="worktree")` | Heaviest step — gets its own git worktree |
-| qa | `Agent(subagent_type="general-purpose")` | Review + test execution reads/runs many files |
+| spec | `Agent(subagent_type="general-purpose", model=<spec/exec>)` | Spec writing reads many files — isolate |
+| implement | `Agent(subagent_type="general-purpose", isolation="worktree", model=<by complexity>)` | Heaviest step — gets its own git worktree |
+| qa | `Agent(subagent_type="general-purpose", model=$reviewer)` | Review + test execution reads/runs many files |
 | commit | Inline (Bash + Edit) | Just git commands — fast, no subagent needed |
 | merge | Inline (Bash) | Push + PR + auto-merge on GitHub — no worktree needed |
 
 **IMPORTANT**: Only spec/implement/qa steps are dispatched to parallel agents. Commit and merge steps run **inline sequentially** after the parallel wave completes.
+
+### Model tiering (task-based — NOT all opus)
+Dispatch the agent `model` from `$ATHENA_MODEL_MAP` (Step 0), by step + epic complexity — mirroring the athena agent team (doers like @reviewer/@qa/@debugger = `sonnet`; deep-design like @spec-writer/@best-practice = `opus`):
+- **implement** → `execute` from the map for a *simple* epic (S/M size); escalate to `opus` for a *complex* epic (L/XL, or anything touching auth/security/migrations/multi-file features). At `ultra` tier `execute` is already `opus`.
+- **qa** → the map's `reviewer` model (haiku at quick, sonnet standard/thorough, opus ultra).
+- **spec** → `execute` (sonnet baseline; opus for complex epics).
+
+This keeps the inherited main-loop model (often opus) from being applied blanket to every agent. Read each epic's size from `EPIC_INDEX.md` to classify complexity, same as `/athena:flow` Step 2.
 
 ---
 
@@ -98,22 +106,24 @@ grep -h "next-app/app/\|components/" docs/epics/e83-*.md docs/epics/e84-*.md doc
 
 **Step 2 — dispatch all three in parallel, each in its own worktree**:
 ```
-# Dispatched concurrently (single message, three Agent tool calls):
+# Dispatched concurrently (single message, three Agent tool calls).
+# model is chosen per epic complexity (see "Model tiering" above): E83/E84 are M (simple)
+# → execute model (sonnet); E85 touches auth/keys (complex) → opus.
 
-Agent(E83, isolation="worktree"):
+Agent(E83, isolation="worktree", model="sonnet"):
   prompt: "Epic E83 (dashboard widget). Step: implement.
            Read CLAUDE.md. Read docs/epics/e83-dashboard-widget.md.
            Implement on branch MH/feat/E83-dashboard-widget.
            Return AgentReport JSON."
 
-Agent(E84, isolation="worktree"):
+Agent(E84, isolation="worktree", model="sonnet"):
   prompt: "Epic E84 (settings page). Step: implement.
            Read CLAUDE.md. Read docs/epics/e84-settings-page.md.
            Implement on branch MH/feat/E84-settings-page.
            Return AgentReport JSON."
 
-Agent(E85, isolation="worktree"):
-  prompt: "Epic E85 (API key management). Step: implement.
+Agent(E85, isolation="worktree", model="opus"):
+  prompt: "Epic E85 (API key management — complex: auth/secrets). Step: implement.
            Read CLAUDE.md. Read docs/epics/e85-api-key-management.md.
            Implement on branch MH/feat/E85-api-key-management.
            Return AgentReport JSON."
