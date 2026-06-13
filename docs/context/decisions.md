@@ -5,6 +5,32 @@
 
 ---
 
+## decisions — 2026-06-13 (Next.js migration + hardening)
+Branch: `main` | Trigger: Phases 53–57 complete
+
+#### D: Next.js as the single stack
+**Decision:** Replace the Vite SPA (`client/`) + FastAPI (`server/`) split with one Next.js 16 App Router app (`next-app/`); backend logic is Server Actions + Route Handlers + Drizzle. **Why:** one language/runtime/deploy unit, server-rendered auth, less contract drift than two services + an OpenAPI bridge.
+
+#### D: Auth.js v5 — JWT sessions (NOT database sessions)
+**Decision:** `session: { strategy: "jwt" }` with `jwt`/`session` callbacks carrying `id`+`role`. **Why:** the Credentials provider **cannot create a DrizzleAdapter database session** — credentials login otherwise POSTs 303 but `auth()` returns null and the dashboard crashes. This was a real, hours-costing bug. Trade-off accepted: JWT role can go stale → mitigated next.
+
+#### D: RBAC re-reads the live role from the DB
+**Decision:** `requireAdmin`/`requireEditor` look up the current role in the DB (`getLiveRole`) rather than trusting `session.user.role` (a JWT snapshot). **Why:** otherwise a demoted user keeps elevated access until re-login. Three tiers: admin/editor/viewer (`pgEnum`, default viewer). Client-safe `isAdmin`/`canEdit` live in `lib/is-admin.ts` (zero imports) so they never drag Node-only auth code into the client bundle. Server Actions are the real gate (public POST endpoints); UI hiding is cosmetic.
+
+#### D: Middleware (`proxy.ts`) = authentication only
+**Decision:** Edge `proxy.ts` imports only `auth.config.ts` (no adapter) and does a coarse logged-in gate; authorization is server-side. **Why:** Edge runtime can't run DrizzleAdapter/Node code, and DB-session tokens don't carry `role` reliably at the edge.
+
+#### D: Tests + gate are first-class; "must actually run it"
+**Decision:** Restored Vitest (unit) + Playwright (e2e); `scripts/pre-merge-check.sh` gates every merge; any epic touching auth/Server-Actions/DB/routes must pass a real e2e (not a status-code probe). **Why:** the old "smoke test" was green while login was 100% broken — only an end-to-end run caught it.
+
+#### D: Task-tiered model dispatch (no blanket Opus)
+**Decision:** `/athena:flow` + `/athena:batch` pick each epic's model by complexity from `ATHENA_MODEL_MAP` (`execute`=sonnet baseline; opus for L/XL or auth/security/migration epics; ultra→opus). **Why:** the per-epic worktree agent inherited the main-loop model (Opus) for everything; tiering mirrors the agent team (doers=sonnet, deep-design=opus) and cuts cost without hurting quality on simple work.
+
+#### D: Docker = one consolidated stack
+**Decision:** `output: "standalone"` + multi-stage Dockerfile + a single `docker-compose` (postgres + mailpit + one-shot migrate/seed + web) sharing the dev DB creds. **Why:** one Postgres for both `pnpm dev`/e2e and the dockerized app; no duplicate containers. Seed refuses to run in production; demo creds never ship to a prod DB.
+
+---
+
 ## decisions — 2026-03-06T14:00:00Z
 Branch: `main` | Trigger: Architecture phase completion
 

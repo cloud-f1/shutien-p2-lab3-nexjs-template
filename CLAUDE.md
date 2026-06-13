@@ -103,11 +103,32 @@ Pass `--effort <tier>` to any athena command to scale cost vs depth. Resolved by
 
 `standard` is byte-identical to today's hardcoded values — omitting `--effort` changes no current behavior.
 
+## Current State (Phases 53–57 complete — 2026-06-13)
+
+The Vite SPA (`client/`) + FastAPI (`server/`) stack was **fully migrated to Next.js** under `next-app/`,
+then hardened. Shipped to `main` via PRs #1–#8:
+
+- **Phase 53** — shared Zod validations, **RBAC**, account settings, admin panel, Playwright e2e, Vitest.
+- **Phase 54** — shadcn **blocks** UI (login-01 / signup-01 / sidebar-01 / dashboard-01) + **Dockerized** local run + athena hardening.
+- **Phase 55** — **3-tier RBAC** (admin/editor/viewer) + demo seed; consolidated `docker-compose` (+ mailpit); athena loop speedups (worktree-parallel default).
+- **Phase 56** — shadcn **blue preset** (`b1Yn96132`) + full **繁體中文** i18n.
+- **Phase 57** — remediated 33 verified audit findings + **task-tiered model dispatch** in `/athena:flow` + `/athena:batch`.
+
+**Run it locally:** `docker compose up --build -d` → http://localhost:3000 (mailpit on :8025). Demo logins:
+`admin@example.com / Admin123!` · `editor@example.com / Editor123!` · `viewer@example.com / Viewer123!`.
+
+**Auth gotcha that will bite you:** Auth.js v5 Credentials needs **JWT sessions** (not DrizzleAdapter's
+default DB sessions) and RBAC guards **re-read the role from the DB**. See the `nextjs-saas-patterns` skill.
+
+**Key project skills (`.claude/skills/`):** `nextjs-saas-patterns` (stack gotchas), `athena-loop-speedups`
+(orchestration practices). Stale FastAPI/Vite skills are deprecated; vendor `next-best-practices` + `vercel-*` remain.
+
 ## Active Epic
 
 See `docs/epics/EPIC_INDEX.md` for current phase and next action.
 Run `/athena:loop` to advance, or `/athena:loop status` to check state.
 Run `/athena:batch auto` for cron-friendly autopilot — **tries parallel by default (`--max-concurrent 4`); auto-falls-back to sequential if your machine's worktree isolation is broken**. Step 3.5 (pre-flight smoke test) gates parallel dispatch; Step 4a-detect catches any post-hoc cross-contamination — see `.claude/commands/athena/batch.md`. `/loop 5m /athena:batch auto` is the intended cron-driven pattern.
+Per-epic model is **tiered by complexity** (sonnet baseline, opus for complex/ultra) — not blanket Opus; see `scripts/effort/resolve.sh` + `athena-loop-speedups`.
 
 ## Agent Team (12 agents)
 

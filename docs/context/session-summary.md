@@ -4,6 +4,30 @@
 
 ---
 
+## Latest Session — 2026-06-13 (Next.js migration → production-ready + audit remediation)
+Branch: `main` | Latest commits: `e7cd75a` (skills sweep #8), `f7c22fe` (#7), `a241a1d` Phase 57 (#6)
+
+### Done this session (all merged to `main`, PRs #1–#8)
+- **Migrated the whole app** from Vite SPA (`client/`) + FastAPI (`server/`) → **Next.js 16** in `next-app/`. Removed the legacy stack; unified the repo (deleted a stray nested `next-app/.git`).
+- **Phase 53** (PR #1): shared Zod validations (`lib/validations/`), RBAC, account settings, admin panel, Playwright e2e, Vitest. e2e caught **2 critical pre-existing bugs**: (a) Credentials+DrizzleAdapter DB-session login was 100% broken → switched to **JWT sessions**; (b) dashboard `$count` crash on zero items.
+- **Phase 54** (PR #2): shadcn blocks UI (login-01/signup-01/sidebar-01/dashboard-01) + **Dockerized** + athena hardening (pre-merge gate, husky/hooks fixed, P4 retro-spec). Bug: sidebar-01 needed a `TooltipProvider` (was crashing every dashboard page).
+- **Phase 55** (PR #3): **3-tier RBAC** admin/editor/viewer (migration 0003 user→viewer) + demo seed; consolidated `docker-compose` to one stack + mailpit; athena worktree-parallel default.
+- **Phase 56** (PR #5): shadcn **blue preset** `b1Yn96132` + full **繁體中文** i18n. (+ PR #4 demo quick-login buttons.)
+- **Phase 57** (PR #6): ran a multi-agent **Workflow audit** (33 verified findings) then a remediation Workflow — security/auth hardening, WCAG a11y, i18n completeness, **built the Items CRUD feature**, cleanup/perf. **E236**: task-tiered model dispatch in `/athena:flow` + `/athena:batch` (sonnet baseline, opus for complex/ultra — no more blanket-Opus).
+- **Skills** (PRs #7, #8): created `nextjs-saas-patterns` + `athena-loop-speedups` via skill-creator; deprecated dead-stack skills (server/client-patterns, dba-migrations) and updated 7 others to the Next.js stack.
+
+### Current state
+- **All green:** typecheck · lint (0 err) · 31 Vitest unit · 29 Playwright e2e; `docker compose up` verified by screenshot (blue theme + 繁中 + 3 roles + Items CRUD).
+- **Run locally:** `docker compose up --build -d` → http://localhost:3000 · mailpit :8025. Logins: admin@/editor@/viewer@example.com (Admin123!/Editor123!/Viewer123!).
+- **Gate before merge:** `scripts/pre-merge-check.sh [--e2e]`. **Auth rule:** JWT sessions required for Credentials; RBAC re-reads role from DB (see `nextjs-saas-patterns`).
+- **Known limitation:** skill-creator's description optimizer needs `ANTHROPIC_API_KEY` (Claude Code uses OAuth) → descriptions hand-tuned; eval fixtures saved at `.claude/skills-workspace/`.
+
+### Open / next
+- Drafted (not started) `/goal`: deep-dive enhancement plan to make the whole project modular + AI-agent-ready / quick-start-able as a SaaS template.
+- New docs: `docs/context/audit-2026-06-13.md` (full audit), `docs/context/loop-speedup-retro.md` (loop retro).
+
+---
+
 ## Latest Session — 2026-05-30
 Branch: `main` | Commit: `9a7753a docs(epics): plan Phase 47-49 — Foundation Truth + Ultracode Orchestration + Template↔Plugin`
 
