@@ -1,5 +1,0 @@
-/* ────────── SHARED BUTTON PRIMITIVES — EMPTIED ──────────
-   All `.btn` / `.btn-*` rules removed in E170 — 0 references in TSX.
-   Use the `<Button>` primitive from `components/ui/` instead, which
-   composes Tailwind utilities through the active preset.
-   ────────────────────────────────────────────────────── */

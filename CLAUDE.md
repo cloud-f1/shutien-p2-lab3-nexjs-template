@@ -1,46 +1,80 @@
-# AI Coding Template — Claude Code Session Identity
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+# AI Coding Template (Next.js) — Claude Code Session Identity
 
 > **Auto-loaded every session.** Keep concise — essential rules only.
-> Full architecture → `TECHSTACK.md` | Last state → `docs/context/session-summary.md`
+> Epic progress → `docs/epics/EPIC_INDEX.md` | Last state → `docs/context/session-summary.md`
 
 ---
 
 ## What This Project Is
 
-A production-ready full-stack SaaS starter (FastAPI + React + PostgreSQL) with an optional AI agent team for automated development via Claude Code.
-Epic-driven development — see `docs/epics/EPIC_INDEX.md` for all progress.
+A production-ready Next.js SaaS starter template with shadcn/ui, Tailwind CSS v4, and dark-mode theming — paired with an optional AI agent team for automated development via Claude Code.
+
+Stack: **Next.js 16 (App Router) + React 19 + TypeScript + Tailwind CSS v4 + shadcn/ui**
+
+## Development Commands
+
+All commands run from `next-app/`:
+
+```bash
+pnpm dev          # start dev server (http://localhost:3000)
+pnpm build        # production build
+pnpm lint         # ESLint (eslint-config-next)
+pnpm typecheck    # tsc --noEmit
+pnpm format       # prettier --write
+
+# Tests
+pnpm test            # Vitest unit tests (lib/validations, lib/is-admin, actions)
+pnpm test:coverage   # Vitest with v8 coverage
+pnpm test:e2e        # Playwright e2e (needs DB seeded + dev server; webServer auto-boots locally)
+pnpm db:seed         # seed admin@example.com/Admin123! + user@example.com/User123! (required for e2e)
+
+# Add a shadcn/ui component (run from next-app/)
+npx shadcn@latest add <component-name>
+```
+
+> **Quality gate before merge:** run `scripts/pre-merge-check.sh [--e2e]` from the repo root —
+> it checks repo hygiene (no nested `.git`, no accidental mass deletions) + typecheck + lint +
+> unit (+ e2e). The athena loop's `merge` step should pass this first.
 
 ## File Layout
 
 ```
-server/              FastAPI + PostgreSQL (Python 3.12)
-client/              React 18 + TypeScript + Vite
+next-app/
+  app/                     Next.js App Router — pages and layouts
+    layout.tsx             Root layout: fonts + ThemeProvider
+    page.tsx               Homepage
+    globals.css            Global styles + Tailwind CSS v4 directives
+  components/
+    ui/                    shadcn/ui components (generated, do not hand-edit)
+    theme-provider.tsx     next-themes wrapper + keyboard shortcut (d → toggle dark)
+  hooks/                   Custom React hooks
+  lib/
+    utils.ts               cn() — clsx + tailwind-merge helper
+  next.config.ts           Next.js config
+  tsconfig.json            Path alias: @/* → next-app root
 docs/
-  openapi.yaml       API contract — SINGLE SOURCE OF TRUTH for all types
-  epics/             EPIC_INDEX.md — single source of dev progress
-  specs/             Feature specs (@spec-writer output) — see specs/CLAUDE.md
-  context/           Agent write-back memory — see context/CLAUDE.md
-scripts/hooks/       Lifecycle hooks — see hooks/CLAUDE.md
-.claude/agents/      12 agent definitions (YAML frontmatter + instructions)
-.claude/commands/athena/  23 slash commands (athena namespace) — grouped by epic/planning/memory/ops/ui
-.claude/skills/          11 active context injectors (+ 2 tombstone stubs — E210)
-scripts/epic-graph.sh    Dependency graph parser + wave planner + tier classifier
+  epics/                   EPIC_INDEX.md — single source of dev progress
+  specs/                   Feature specs (@spec-writer output)
+  context/                 Agent write-back memory
+scripts/hooks/             Lifecycle hooks — see hooks/CLAUDE.md
+.claude/agents/            Agent definitions (YAML frontmatter + instructions)
+.claude/commands/athena/   Slash commands (athena namespace)
+scripts/epic-graph.sh      Dependency graph parser + wave planner
 ```
 
 ## Architecture Rules — NEVER DEVIATE
 
-- `openapi.yaml` edited **FIRST** — never write server/client code before the spec
-- `server/`: **fastapi-users** for auth — stateless JWT, no custom auth code
-- `client/`: access token in `tokenCache.ts` (in-memory) — never localStorage
-- React Query: tiers from `cacheConfig.ts` — never hardcode staleTime inline
-- Folder names: `server/` and `client/` — never `backend/` or `frontend/`
-- UI styling: **primitive-first** — pages compose `client/src/components/ui/` primitives. Visual styling rides on the **Preset axis** (`components/ui/preset.ts`) × **Theme axis** (`styles/themes.css`). No new page-co-located CSS; no new rules in `styles/common/`.
-
-## Testing Rules
-
-- `asyncio_mode = auto` in `pyproject.toml` — no `@pytest.mark.asyncio` needed
-- Client tests: `userEvent` not `fireEvent`, MSW handlers in `src/tests/handlers/`
-- Coverage gate: **>=80%** both suites — enforced locally (GitHub Actions CI is `workflow_dispatch`-only since 2026-05-20 — see deployment docs)
+- **Default to Server Components** — only add `"use client"` when you need browser APIs, event handlers, or React state/hooks.
+- **Path alias** `@/*` resolves to `next-app/` root (not `src/`) — no relative `../../` imports.
+- **shadcn/ui components live in `components/ui/`** — add via `npx shadcn@latest add`, never hand-author them there.
+- **Theme system** uses Tailwind `dark:` variants + `next-themes` class strategy. Toggle is `components/theme-provider.tsx`. Do not add inline `style=` color overrides.
+- **`cn()` for all conditional Tailwind classes** — never raw string concatenation.
+- New route groups: use `(group)/` folders to isolate layouts (e.g., `(auth)/`, `(dashboard)/`).
+- Server-side data fetching: fetch directly in async Server Components; use Server Actions for mutations (`"use server"`).
 
 ## Plugin Relationship (E202)
 
@@ -48,19 +82,11 @@ scripts/epic-graph.sh    Dependency graph parser + wave planner + tier classifie
 
 - Run `make drift-check` to detect divergence (exits non-zero if diff found).
 - Run `scripts/sync-to-plugin.sh --apply` to export changes to `athena-core` (default: `../athena-core`).
-- See `docs/guides/en/plugin-sync.md` for the full sync workflow.
 
 ## Deployment
 
-- Platform: Zeabur — server + client as separate services, each with `zbpack.json`
-- Migrations on startup: `alembic upgrade head && uvicorn ...`
-- `VITE_API_URL` baked at **build time** — set in Zeabur before client build
-
-## Observability Env Vars (E159)
-
-- Server: `SENTRY_DSN_SERVER` — REQUIRED in production (startup fails fast); empty in dev/staging is a silent no-op. `GIT_SHA` becomes the Sentry release tag.
-- Client: `VITE_SENTRY_DSN` + `VITE_GIT_SHA` — baked at **build time**, must be set before `pnpm build`. Empty `VITE_SENTRY_DSN` in production logs `console.warn` (does NOT crash).
-- Triage: `request_id` is in every server log line and in `x-request-id` response headers. See `docs/guides/en/sre-observability.md`.
+- Platform: Zeabur — `next-app/` as a single service with `zbpack.json`
+- `NEXT_PUBLIC_*` env vars baked at **build time** — set in Zeabur before build
 
 ## Effort Tiers (E198)
 
@@ -163,33 +189,18 @@ considerations before the dialogue begins. Emits tier0_loaded {context:"brainsto
 
 ## Hooks (auto-run, see scripts/hooks/CLAUDE.md)
 
-**Stop verifier** blocks completion if violations detected (23 rules):
-localStorage ban, fireEvent ban, staleTime hardcoding, MSW handler location,
-folder names, OpenAPI drift, console.log residue, large file warning,
-internal mock assertions, parametrize nudge, mock depth limit, test file size,
-orphan route, CSS co-location, MSW factory, schema bridge, CSS var drift,
-QA gate enforcement (E155), migration review SQL (E157 — Rule #19, requires
-`<rev>-*-upgrade.sql` artifact in `docs/context/migration-review/` when
-`server/alembic/versions/*.py` changes), OpenAPI contract evidence (E156 —
-Rule #20, requires green `qa_contract` audit event when `docs/openapi.yaml`
-changes), design-system: no new page CSS (E176 — Rule #21, blocks new files
-matching `client/src/pages/**/*.css` — compose `components/ui/` primitives
-instead), design-system: no new rules in `styles/common/` (E176 — Rule #22,
-blocks added selectors under `client/src/styles/common/*.css` — new CSS
-belongs in `components/ui/<Name>.tsx` Preset slots), verification discipline
-(E188 — Rule #23, blocks completion-verb commits `feat:` / `fix:` /
-`refactor:` / `perf:` / `test:` / `style:` unless a `verification_check`
-audit event with `exit=0` exists in the last 10 min — pilot mode gated behind
-`STOP_RULE_23_ENABLED=1`; emit via
-`scripts/hooks/audit-emit-verification.sh`). See
-`scripts/hooks/CLAUDE.md` for the full table.
+**Stop verifier** blocks completion if violations detected. Key rules for this Next.js stack:
+- No `console.log` residue in committed code
+- No inline `style=` color overrides (use Tailwind + `dark:` variants)
+- No hand-authored files in `components/ui/` (use `npx shadcn@latest add`)
+- Verification discipline (E188 — Rule #23): blocks `feat:`/`fix:`/`refactor:`/`perf:`/`test:`/`style:` commits unless a `verification_check` audit event with `exit=0` exists in the last 10 min (gated behind `STOP_RULE_23_ENABLED=1`; emit via `scripts/hooks/audit-emit-verification.sh`)
+
+See `scripts/hooks/CLAUDE.md` for the full rule table.
 
 **Webhook** fires on task completion to `$AI_CODING_WEBHOOK_URL` (Slack/Discord/n8n).
 **JSONL audit log** at `.claude/audit.jsonl` — queryable with `jq`.
 
-SessionStart injects active-phase context (~30 lines). PreToolUse guards block
-destructive commands and dirty deploys. PostToolUse auto-formats edits.
-SubagentStop timestamps write-backs.
+SessionStart injects active-phase context. PreToolUse guards block destructive commands.
 All configured in `.claude/settings.json` + agent frontmatter.
 
 ---
@@ -201,18 +212,12 @@ All configured in `.claude/settings.json` + agent frontmatter.
 ### 必改
 
 1. **`## What This Project Is`** — 改成你的 project description
-2. **File Layout** — 如果你的 stack 不是 React + FastAPI，改 layout
-3. **`## Architecture Rules — NEVER DEVIATE`** — 寫**你 codebase** 的 invariants（不是這個 template 的）
+2. **File Layout** — 如果你的 stack 不同，改 layout
+3. **`## Architecture Rules — NEVER DEVIATE`** — 寫**你 codebase** 的 invariants
 
 ### 可保留
 
-- Epic-driven development workflow（如果你也用 epic 管理 dev）
-- 「Avoid Known Pitfalls」 pattern
+- Epic-driven development workflow
 - `.claude/` directory layout convention
-
-### 不要改
-
-- Markdown 結構 / heading hierarchy（保持 Claude Code session 識別格式）
-- frontmatter pattern
 
 詳細 fork 流程見 [`docs/zh-tw/getting-started.md`](docs/zh-tw/getting-started.md) Step 4。Track B 5 模組對應導讀見 [`docs/zh-tw/track-b-integration.md`](docs/zh-tw/track-b-integration.md)。

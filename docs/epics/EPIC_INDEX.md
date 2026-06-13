@@ -65,6 +65,8 @@
 | Phase 50 | E206, E207, E208, E209, E210 | ✅ Complete (Operationalize the Dial — ultra judge panel + effort→cost observability + dependency security + athena-core sync v0.2.0 + deploy-skill consolidation) |
 | Phase 51 | E211, E212, E213, E214, E215 | ✅ Complete (Stabilize + Phase 2 Foundation — all 5 shipped PRs #195-197/#200-201: athena-saas-profile registry foundation + fork secrets/OWASP + WCAG guides + VRT Phase B 336-matrix + cross-theme a11y matrix; auth `social_providers` server bug fixed en route, #199) |
 | Phase 52 | E216 | ✅ Complete (Native Workflow Orchestration — `/athena:flow` interactive native-Workflow epic dispatcher merged via PR#205; completes the E198–E201 line with a budget-enforced, live-tree, no-`claude -p` path; athena-core sync pending) |
+| Phase 53 | E217, E218, E219, E220, E221 | ✅ QA'd, committed on branch MH/feat/E217-E221-nextjs-migration (Next.js Migration — shared Zod validations + RBAC + account settings + admin panel + e2e smoke; 2 critical pre-existing bugs fixed) |
+| Phase 54 | E222, E223, E224, E225, E226 | 🔄 In Progress (shadcn-blocks UI + Docker + Athena hardening — login-01/signup-01/sidebar-01/dashboard-01 + dockerized local run + loop/hooks hardening + P4) |
 <!-- PHASE_STATUS_END -->
 
 <!-- EPIC_MATRIX_START -->
@@ -296,6 +298,16 @@ Phase 46+ epics: enriched template — epic files include Implementation Phases,
 | E214 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 51 — DONE PR#196 — fork secrets-setup + OWASP Top 10 guide (bilingual EN+繁中, citations copy-verified); QA PASS |
 | E215 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 51 — DONE PR#197 — WCAG AA extension guide for custom domains (bilingual EN+繁中, real matrix-edit recipe); QA PASS |
 | E216 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 52 — DONE PR#205 (squash auto-merge) — `/athena:flow` interactive native-Workflow dispatcher (spec→implement→qa→commit, no `claude -p`); 20/20 fixture test, e201 regression 14/14; **adversarially validated — 3 bugs fixed** (wave truncation, cross-agent worktree stranding, blocked mis-mark); spec+plan in docs/superpowers/; athena-core sync (sync-to-plugin.sh --apply) pending |
+| E217 | ✅ | ✅ | ✅ | — | — | Phase 53 — shared Zod validation layer (`lib/validations/`). QA (sonnet agent): found+fixed 🔴 `loginAction` skipped `loginSchema` server re-validation (client/server drift) + 🟠 `formRef`/`requestSubmit` lint error → now `startTransition(formAction)` + `noValidate` |
+| E218 | ✅ | ✅ | ✅ | — | — | Phase 53 — RBAC. QA (sonnet agent): found+fixed 🔴 Edge middleware checked `role` that DB-session tokens don't carry → switched to **JWT sessions** (also fixes the login bug below) + middleware now auth-only, `requireAdmin()` is the authz gate |
+| E219 | ✅ | ✅ | ✅ | — | — | Phase 53 — Account settings. QA (sonnet agent): found+fixed 🟠 `cn()` violations + missing `revalidatePath` in `changePassword` + added try/catch around async transitions |
+| E220 | ✅ | ✅ | ✅ | — | — | Phase 53 — Admin dashboard. QA (sonnet agent): found+fixed 🟠 `setUserRole` missing runtime role-allowlist (Server Actions are public POST) + removed unused `ne` import |
+| E221 | ✅ | ✅ | ✅ | — | — | Phase 53 — Next.js e2e (19 tests, all green). QA (sonnet agent): fixed selector mismatch (shadcn `CardTitle` is `<div>`), added 2nd non-admin seed user, made non-admin redirect a real test. **e2e caught 2 critical pre-existing bugs: Credentials+DB-session login breakage (→JWT) and dashboard `$count` crash on zero items** |
+| E222 | — | — | — | — | — | Phase 54 — Athena hardening: wire `pre-merge-check.sh` into loop merge gate + e2e gate; single-repo-aware hooks; remove stale `.husky/` (referenced deleted client/server); **fix P4** (loop state-model for out-of-order spec/implement/qa) |
+| E223 | — | — | — | — | — | Phase 54 — Auth UI: adopt shadcn `login-01` + `signup-01` look; KEEP existing RHF+Zod+Server-Action+verify-email+Google wiring (Hybrid confirmed) |
+| E224 | — | — | — | — | — | Phase 54 — `sidebar-01`: real shadcn Sidebar primitive in (dashboard) layout; port RBAC nav (conditional admin), user menu, sign-out |
+| E225 | — | — | — | — | — | Phase 54 — `dashboard-01`: stat cards + area chart + data table. **Hybrid data**: cards + table wired to real DB (item count / users / items), chart on representative data |
+| E226 | — | — | — | — | — | Phase 54 — Dockerize next-app: `output:standalone` + Dockerfile + docker-compose (app + postgres + auto-seed); `docker compose up` serves the new UI locally, verified |
 <!-- EPIC_MATRIX_END -->
 
 ## Dependency Rules
@@ -496,6 +508,20 @@ E201: E198, E200
 # Phase 49 — Template↔Plugin Resolution
 E202: no deps
 E203: E202
+
+# Phase 53 — Next.js Migration (shared validations + RBAC + settings + admin + e2e)
+E217: no deps
+E218: E217
+E219: E217, E218
+E220: E217, E218
+E221: E219, E220
+
+# Phase 54 — shadcn-blocks UI + Docker + Athena hardening
+E222: no deps                    # athena hardening + P4 (independent)
+E223: no deps                    # auth UI blocks (login-01 / signup-01)
+E224: no deps                    # sidebar-01
+E225: E224                       # dashboard-01 uses the new sidebar
+E226: E223, E224, E225           # dockerize the finished UI
 ```
 
 ## Phase Parallelism
@@ -524,11 +550,12 @@ Phase 43: E167 (already done) → E168 + E169 (parallel after E167) → E170 + E
 Phase 44: 7 epics parallel after E167 (E172 + E173 + E174 + E175 + E176 + E178 + E179) → E177 (after the 7 stabilize) — ideal `/athena:batch --phase 44` wave
 Phase 45: E180 + E185 (parallel, no deps) → E181 + E183 + E186 (parallel after E180) + E182 (after E180+E181) → E184 (after E181)
 Phase 46: E187 + E188 + E190 + E192 (parallel, no deps) → E189 (after E187) → E191 (after E187+E188+E189) — ideal `/athena:batch auto` first wave (4-epic parallel)
+Phase 53: E217 (no deps) → E218 (after E217) → E219 + E220 (parallel after E217+E218) → E221 (after E219+E220)
 ```
 
 ---
 
-**Next Action:** Phase 47 in progress (Cycle 21, 2026-05-30) — 7 epics, 69 SP. E204 ✅ done (guard-integrity). Push the pending commits first, then run `/loop 2m /athena:batch auto` to dispatch Wave 1 (E193 + E194 + E196 + E197 + E205 — 5 parallel, no deps) → Wave 2 (E195). ⚠️ batch does `git reset --hard origin/main` — push local commits before running it.
+**Next Action:** Phase 53 in progress (Cycle 22, 2026-06-13) — 5 epics (E217–E221). E217 ✅ (shared Zod validations + RHF), E218 ✅ (RBAC + Edge middleware), E219 ✅ (account settings), E220 ✅ (admin dashboard), E221 ✅ (e2e smoke tests). Next: run `/athena:qa` on each epic to close the QA gate, then `/athena:loop` to advance to commit+merge. Run `npx playwright test` to validate e2e specs against a running dev server.
 
 - **Phase 43 (Universal Adoption)** — E167 already landed in PR #142 (Tailwind + 8 primitives + Preset axis + 9 dashboard views migrated). Remaining: `/athena:batch --phase 43` will dispatch E168 (public) + E169 (auth) in parallel after E167's PR merges; E170 (cleanup) + E171 (Playwright VRT) follow as a second wave.
 - **Phase 44 (Completion & Validation)** — 8 epics. After Phase 43's PRs merge: `/athena:batch --phase 44` dispatches the 7-epic parallel wave (E172 + E173 + E174 + E175 + E176 + E178 + E179). Then E177 (a11y sweep) closes the phase once every surface is stable.

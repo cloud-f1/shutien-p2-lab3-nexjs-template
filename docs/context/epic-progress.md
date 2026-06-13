@@ -609,9 +609,23 @@ Phase 48: E198 (no deps) → E199 + E200 (parallel after E198) → E201 (after E
 Phase 49: E202 (no deps) → E203 (after E202)
 Phase 50: E206 + E207 + E208 + E209 + E210 (all parallel, no deps — single 5-wide wave)
 Phase 51: E211 + E212 + E213 + E214 + E215 (all parallel, no deps — single 5-wide wave; NOTE: E211+E212 are manual/local dev-server, NOT headless-batch — see Next Action)
+Phase 53: E217 (no deps) → E218 (after E217) → E219 + E220 (parallel after E217+E218) → E221 (after E219+E220)
+Phase 54: E222 + E223 + E224 (parallel, no deps) → E225 (after E224) → E226 (after E223+E224+E225)
 ```
 
 ## Next Action
+
+**🔄 Phase 53 IN PROGRESS — Next.js Migration (Cycle 25, 2026-06-13).** 5 epics (E217–E221) implemented + QA'd. QA ran as a 5-agent parallel wave (one sonnet reviewer per epic, orchestrated by the main model) — all 5 returned PASS-WITH-FIXES; every fix applied. **lint ✅ · typecheck ✅ · 19/19 e2e green.**
+
+Critical bugs the QA wave + e2e exposed and we fixed:
+1. 🔴 **Login totally broken (pre-existing):** Auth.js v5 Credentials provider + DrizzleAdapter default **database** sessions → credentials login created no usable session, `auth()` returned `null`, dashboard crashed → bounced to /login. Fix: `session: { strategy: "jwt" }` + `jwt`/`session` callbacks carrying `id`+`role`. The old 6/6 "smoke test" never actually logged in, so it never caught this.
+2. 🔴 **Dashboard `$count` crash (pre-existing):** `const [items, [{ count }]] = …` destructured an empty array for any user with zero items. Fix: idiomatic `db.$count(table, where)`.
+3. 🔴 **loginAction** skipped `loginSchema` server re-validation (client/server drift) → now re-validates.
+4. 🟠 RHF `formRef`/`requestSubmit` lint error → `startTransition(() => formAction(fd))` + `noValidate`.
+5. 🟠 Edge middleware role check unreliable with DB sessions → middleware is auth-only; `requireAdmin()` is the authz gate (now reliable via JWT role).
+6. 🟠 `cn()` violations, missing `revalidatePath`, `setUserRole` role-allowlist, unused imports.
+
+**MERGE BLOCKED (needs human decision):** outer repo has 464 uncommitted deletions (the client/ SPA migration) + a nested `next-app/.git`. The loop's merge step would `git push` + `gh pr merge --auto` that half-migrated tree to `cloud-f1/ai-coding-nexjs-template` main. Do NOT auto-merge — resolve repo structure first (see enhancement plan).
 
 **✅ Phase 51 DONE — Stabilize + Phase 2 Foundation (Cycle 23, 2026-06-02).** All 5 epics shipped: E213 (#195) athena-saas-profile registry foundation, E214 (#196) fork secrets/OWASP guide, E215 (#197) WCAG extension guide, E211 (#200) VRT Phase B 336-matrix infra + runbook, E212 (#201) cross-theme a11y matrix + interaction sweep (~20 token/aria fixes). E211/E212 ran on a hands-on local backend session (Postgres + uvicorn + Playwright); their captured artifacts are local (gitignored, fork-specific). En route, fixed a real auth bug: server `UserRead` omitted `social_providers` (OpenAPI SSOT) → broke client Zod parse → signup/signin failed (#199). **Cycle 23 complete — run `/athena:plan` to propose Cycle 24.**
 

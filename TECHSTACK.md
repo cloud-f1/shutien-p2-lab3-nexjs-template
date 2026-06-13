@@ -1,31 +1,8 @@
-# {{PROJECT_DISPLAY}} — Tech Stack Summary
+# AI Coding Template (Next.js) — Tech Stack Summary
 
-> **React 18 . FastAPI . PostgreSQL**
-> SDD + TDD . Domain Modules . 7-Agent Team
+> **Next.js 16 · React 19 · Drizzle · PostgreSQL · shadcn/ui**
+> App Router + Server Actions + Auth.js v5
 > Upload this file to restore full context in any Claude session.
-> Product overview → [PRD.md](docs/PRD.md)
-
----
-
-## How to Use This Document
-
-```
-Restore context:
-  Option A (Claude Code):  SessionStart hook auto-loads session-summary.md + primer
-  Option B (Any interface): Upload this TECHSTACK.md -> full context in one file
-  Option C (Checkpoint):   "Update your document" -> agent writes current state
-```
-
-## Detailed Docs (split for context control)
-
-| Topic | File |
-|---|---|
-| Architecture + project structure | [docs/techstack/architecture.md](docs/techstack/architecture.md) |
-| Server (FastAPI, DB, security) | [docs/techstack/server.md](docs/techstack/server.md) |
-| Client (React, cache, auth flow) | [docs/techstack/client.md](docs/techstack/client.md) |
-| OpenAPI contract + SDD/TDD | [docs/techstack/openapi-workflow.md](docs/techstack/openapi-workflow.md) |
-| Deployment (Zeabur, env vars) | [docs/techstack/deployment.md](docs/techstack/deployment.md) |
-| Agent team + memory system | [docs/techstack/agents-memory.md](docs/techstack/agents-memory.md) |
 
 ---
 
@@ -33,103 +10,125 @@ Restore context:
 
 ### Stack
 
-| Layer | Tech |
-|---|---|
-| Client | React 18 + Vite + TypeScript + Zustand + React Query |
-| Server | FastAPI 0.115 + Python 3.12 + Pydantic v2 |
-| Auth | PyJWT 2.9 (`import jwt`) + bcrypt 4.x (`import bcrypt`) |
-| DB | PostgreSQL 15 + SQLAlchemy 2.x async + Alembic |
-| Testing | pytest (asyncio_mode=auto) + Vitest + MSW + Playwright |
-| Deploy | Zeabur (server + client as separate services) |
+| Layer | Tech | Notes |
+|---|---|---|
+| Framework | Next.js 16 (App Router) | React Server Components + Server Actions |
+| Language | TypeScript 5.x | Strict mode; path alias `@/*` → `next-app/` root |
+| UI | React 19 | `useActionState`, `useOptimistic`, form `action` prop |
+| Styling | Tailwind CSS v4 | `dark:` variants; no inline `style=` colors |
+| Components | shadcn/ui (Radix UI) | Generated into `components/ui/`; never hand-edited |
+| ORM | Drizzle + drizzle-kit | SQL-first; schema in `lib/schema.ts` |
+| DB | PostgreSQL 15 | UUID PKs; Drizzle migrations in `drizzle/migrations/` |
+| Auth | Auth.js v5 (NextAuth) | Drizzle adapter; edge-compatible session |
+| Theme | next-themes | Class strategy; toggle: `d` key |
+| Deploy | Zeabur | Single `next-app/` service |
 
 ### Non-Negotiable Rules
 
-1. `docs/openapi.yaml` edited FIRST -- never write code before the spec
-2. `import jwt` (PyJWT) -- never python-jose (unmaintained, CVEs)
-3. `import bcrypt` -- never passlib (unmaintained since 2023)
-4. Access token in `tokenCache.ts` (in-memory) -- never localStorage
-5. React Query tiers from `cacheConfig.ts` -- never hardcode staleTime
-6. Folders: `server/` and `client/` -- never `backend/` or `frontend/`
-7. Coverage gate: >= 80% both suites -- blocks deploy
+1. **Default to Server Components** — add `"use client"` only for event handlers / hooks
+2. **`@/*` path alias** — never use relative `../../` imports
+3. **shadcn/ui via CLI only** — `npx shadcn@latest add <name>`; never hand-edit `components/ui/`
+4. **`cn()` for all conditional classes** — never string concatenation
+5. **Server Actions for mutations** — `"use server"` in `actions/*.ts`
+6. **Auth.js session on server** — always `await auth()` for server-side user identity; never trust client payload
+7. **URL as state** — filters / pagination in `searchParams`, not `useState`
+8. **No new page-level CSS files** — compose `components/ui/` primitives with Tailwind
 
-### Token Design
-
-| Token | TTL | Storage |
-|---|---|---|
-| Access (JWT HS256) | 15 min | `tokenCache.ts` in-memory |
-| Refresh | 30 days | httpOnly cookie (prod) / localStorage (dev) |
-
-### Cache Tiers
-
-| Tier | staleTime | Data Type |
-|---|---|---|
-| STATIC | 1 hr | User profile, settings |
-| SEMI_DYNAMIC | 15 min | Domain list data |
-| SECURITY | 5 min | Sessions, auth state |
-| REALTIME | 1 min | Live updates |
-
-### Core Tables
+### Project Structure
 
 ```
-users          UUID PK, email, password_hash (nullable for social), is_verified
-sessions       UUID PK, user_id FK, refresh_token_hash, expires_at
-social_accounts UUID PK, user_id FK, provider, provider_user_id
-# Domain tables are auto-discovered from server/app/domains/
+next-app/
+├── app/
+│   ├── (auth)/          login/, register/, layout.tsx
+│   ├── (dashboard)/     dashboard/, layout.tsx (sidebar)
+│   ├── api/auth/[...nextauth]/route.ts
+│   ├── layout.tsx       root layout: fonts + ThemeProvider
+│   └── globals.css
+├── actions/             Server Actions ("use server")
+├── components/
+│   ├── ui/              shadcn/ui (generated)
+│   └── *.tsx            shared Client/Server components
+├── lib/
+│   ├── auth.ts          Auth.js config + session helper
+│   ├── db.ts            Drizzle client singleton
+│   ├── schema.ts        Drizzle table definitions
+│   └── utils.ts         cn()
+├── drizzle/migrations/  Generated SQL migrations
+├── drizzle.config.ts
+└── middleware.ts        Edge route guard
 ```
 
-### Agent Team (6 agents — consolidated from 8)
+### Auth Design
 
-| Agent | Model | Trigger | Doc |
-|---|---|---|---|
-| @spec-writer | opus | /athena:spec | spec-log.md |
-| @qa | sonnet | /athena:qa, auto | review-log.md + test-status.md |
-| @best-practice | opus | auto | decisions.md |
-| @debugger | sonnet | auto | debug-log.md |
-| @deployer | sonnet | /athena:deploy | deploy-log.md |
-| @memory-curator | sonnet | /athena:promote | template-memory/ |
-
-### Domain Architecture
-
-| Layer | Content | Status |
-|---|---|---|
-| Auth & Identity | users, sessions, JWT, OAuth | Built-in |
-| Domain Modules | Auto-discovered from server/app/domains/ | Customizable |
-
-### Security Defenses
-
-| Threat | Defense |
+| Concern | Implementation |
 |---|---|
-| XSS token theft | Access token in-memory only |
-| Refresh replay | Token rotation on every refresh |
-| Email enumeration | forgot-password always returns 200 |
-| Brute force | slowapi 5 req/min on auth routes |
-| Sequential ID | UUID v4 primary keys |
+| Session storage | Auth.js database sessions (stored in DB via Drizzle adapter) |
+| Route protection | `middleware.ts` — edge-level redirect before page renders |
+| Server identity | `await auth()` in Server Components / Server Actions |
+| Client identity | `useSession()` in Client Components (next-auth/react) |
+| OAuth providers | Configured in `lib/auth.ts` |
+
+### Drizzle Schema (Core Tables)
+
+```ts
+users            id (UUID), name, email, emailVerified, image
+accounts         Auth.js OAuth accounts
+sessions         Auth.js database sessions
+verificationTokens  Email verification
+// Domain tables added per feature in lib/schema.ts
+```
 
 ### Key Commands
 
 ```bash
-/athena:spec "feature"   # Design OpenAPI spec
-/athena:implement feat   # TDD: RED -> GREEN -> REFACTOR
-/athena:qa               # Code review + test suite (--review-only | --test-only)
-/athena:pr               # Pre-PR pipeline
-/athena:deploy           # 6-gate Zeabur deploy
-/athena:save             # All agents checkpoint
-/athena:load             # Restore full context
-/athena:promote          # Extract wisdom -> template tier
+# Development (run from next-app/)
+pnpm dev               # http://localhost:3000
+pnpm build
+pnpm lint
+pnpm typecheck         # tsc --noEmit
+pnpm format
+
+# Drizzle migrations (run from next-app/)
+pnpm drizzle-kit generate   # generate SQL from schema changes
+pnpm drizzle-kit migrate    # apply to DB
+pnpm drizzle-kit studio     # GUI at https://local.drizzle.studio
+
+# Add shadcn component
+npx shadcn@latest add <component>
+```
+
+### Required Packages (install if missing)
+
+```bash
+pnpm add drizzle-orm postgres next-auth@beta @auth/drizzle-adapter
+pnpm add -D drizzle-kit
 ```
 
 ### Environment Variables
 
-```
-# Server (server/.env)
-DATABASE_URL, SECRET_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
-ALLOWED_ORIGINS, DEBUG, SMTP_HOST, SMTP_USER, SMTP_PASSWORD, SMTP_FROM
-
-# Client (client/.env.local)
-VITE_API_URL          # Baked at BUILD TIME, set before build
+```bash
+# next-app/.env.local
+DATABASE_URL=postgresql://user:pass@localhost:5432/dbname
+AUTH_SECRET=<generate: openssl rand -base64 32>
+AUTH_GITHUB_ID=
+AUTH_GITHUB_SECRET=
+AUTH_GOOGLE_ID=
+AUTH_GOOGLE_SECRET=
 ```
 
 ---
 
-*{{PROJECT_DISPLAY}} . Tech Stack Summary . v3.0.0*
-*Detailed docs in docs/techstack/ . Agent memory in docs/context/*
+## Detailed Docs
+
+| Topic | File |
+|---|---|
+| Architecture + project structure | [docs/techstack/architecture.md](docs/techstack/architecture.md) |
+| Next.js background concepts | [docs/nextjs-background.md](docs/nextjs-background.md) |
+| Next.js best practices | [docs/nextjs-best-pratice.md](docs/nextjs-best-pratice.md) |
+| Layout guide + page structure | [docs/nextjs-layout.md](docs/nextjs-layout.md) |
+| Agent team + memory system | [docs/techstack/agents-memory.md](docs/techstack/agents-memory.md) |
+
+---
+
+*AI Coding Template (Next.js) · Tech Stack Summary · v4.0.0*
+*Detailed docs in docs/techstack/ · Agent memory in docs/context/*

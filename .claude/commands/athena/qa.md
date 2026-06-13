@@ -140,7 +140,34 @@ the full pipeline doesn't multiply by 4× rounds.
 After: agent writes to docs/context/review-findings.md
 
 ## Phase 2 — Test Execution (dispatch to @qa)
-1. openapi lint  2. pytest 80%  3. vitest 80%  4. tsc  5. e2e (if --e2e flag)
+
+> **Stack note (Phase 53 migration):** this repo is now **Next.js-only** (`next-app/`).
+> The old Python `server/` + `client/` SPA were removed, so `uv run pytest` and the
+> server openapi-lint steps no longer apply. The gate commands are now, all from `next-app/`:
+>
+> | # | Gate | Command | Blocks merge? |
+> |---|------|---------|---------------|
+> | 1 | Typecheck | `pnpm typecheck` | yes |
+> | 2 | Lint | `pnpm lint` | yes |
+> | 3 | Unit (Vitest) | `pnpm test` (coverage: `pnpm test:coverage`) | yes |
+> | 4 | **E2E (Playwright)** | `pnpm test:e2e` (needs DB seeded + dev server) | **yes — see below** |
+>
+> One-shot: `scripts/pre-merge-check.sh [--e2e] [--allow-deletions]` runs gates 1–4 + repo hygiene.
+
+### The "must actually run it" rule (Phase 53 retro — non-negotiable)
+
+Static review and unit tests are necessary but **not sufficient**. In Phase 53 a
+single-reviewer-per-epic pass missed two *critical* integration bugs that only an
+end-to-end run surfaced: (a) credentials login was 100% broken (Auth.js Credentials
+provider is incompatible with DrizzleAdapter's default database sessions → `auth()`
+returned null → dashboard crash), and (b) the dashboard crashed for any zero-item
+user. The old "smoke test" reported 6/6 green because it never logged in.
+
+**Therefore: no epic touching an auth flow, a Server Action, a DB query, or a route
+may pass QA on review + unit tests alone.** A real `pnpm test:e2e` run that exercises
+the actual user flow (login → land on the page → perform the mutation) is a required
+gate. A probe that only checks status codes / redirects does NOT satisfy this.
+
 After: agent writes to docs/context/test-status.md
 
 After the coverage gate result is determined (pass or fail), emit the audit event.
