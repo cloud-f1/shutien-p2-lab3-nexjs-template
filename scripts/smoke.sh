@@ -43,6 +43,11 @@ hdr "Registry + modules"
 rung "registry:build"   pnpm registry:build
 rung "module:validate"  pnpm module:validate
 
+hdr "Plan alignment (deliverables present)"
+# Phase 60 (Cobalt design integration) — asserts every planned token/FX/landing/
+# dashboard deliverable actually landed. Extend with more suites as phases ship.
+rung "cobalt-integration" pnpm test app/cobalt-integration.test.ts
+
 hdr "Athena guards (repo root)"
 rung "guard-selftest" make -C "$ROOT" guard-selftest
 rung "skills-guard"   make -C "$ROOT" skills-guard
