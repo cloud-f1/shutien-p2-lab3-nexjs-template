@@ -86,8 +86,8 @@ function PricingCard({ tier }: PricingCardProps) {
   return (
     <div
       className={cn(
-        "relative flex flex-col gap-6 rounded-lg border bg-card p-6 text-card-foreground shadow-sm",
-        tier.highlighted && "border-primary ring-2 ring-primary",
+        "lift relative flex flex-col gap-6 rounded-xl border bg-card p-6 text-card-foreground shadow-xs",
+        tier.highlighted && "border-primary shadow-md ring-2 ring-primary md:-translate-y-2",
       )}
       data-plan-id={tier.planId}
     >
