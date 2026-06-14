@@ -1,0 +1,130 @@
+{
+  "$schema": "../module.manifest.schema.json",
+  "id": "billing",
+  "version": "1.0.0",
+  "title": "Billing (Stripe)",
+  "summary": "Stripe subscription billing with checkout, webhooks, and customer portal for the @saas template.",
+  "registryDependencies": [
+    "@saas/hello-module"
+  ],
+  "npmDependencies": {
+    "stripe": "^17.0.0",
+    "@stripe/stripe-js": "^5.0.0"
+  },
+  "npmDevDependencies": {},
+  "envVars": [
+    {
+      "name": "STRIPE_SECRET_KEY",
+      "description": "Stripe secret key for server-side API calls. Obtain from Stripe Dashboard > Developers > API Keys.",
+      "required": true,
+      "example": "sk_test_..."
+    },
+    {
+      "name": "STRIPE_WEBHOOK_SECRET",
+      "description": "Stripe webhook signing secret for validating webhook payloads.",
+      "required": true,
+      "example": "whsec_..."
+    },
+    {
+      "name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+      "description": "Stripe publishable key for client-side Stripe.js initialization.",
+      "required": true,
+      "example": "pk_test_..."
+    },
+    {
+      "name": "STRIPE_PRICE_ID_PRO_MONTHLY",
+      "description": "Stripe Price ID for the Pro plan (monthly). Create in Stripe Dashboard > Products.",
+      "required": true,
+      "example": "price_..."
+    }
+  ],
+  "dbTables": [
+    "subscriptions",
+    "stripe_customers"
+  ],
+  "db": {
+    "schemaFragmentPath": "lib/billing/schema.ts",
+    "generateCommand": "pnpm db:generate",
+    "migrateCommand": "pnpm db:migrate"
+  },
+  "routes": [
+    "(dashboard)/billing/page.tsx",
+    "(dashboard)/billing/success/page.tsx",
+    "api/webhooks/stripe/route.ts"
+  ],
+  "serverActions": [
+    "actions/billing.ts"
+  ],
+  "postInstall": [
+    {
+      "step": 1,
+      "action": "env-wire",
+      "description": "Add STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY, and STRIPE_PRICE_ID_PRO_MONTHLY to .env.local."
+    },
+    {
+      "step": 2,
+      "action": "db-generate",
+      "description": "Generate Drizzle migrations for the subscriptions and stripe_customers tables.",
+      "command": "pnpm db:generate"
+    },
+    {
+      "step": 3,
+      "action": "db-migrate",
+      "description": "Apply migrations to the database.",
+      "command": "pnpm db:migrate"
+    },
+    {
+      "step": 4,
+      "action": "manual",
+      "description": "Configure a Stripe webhook endpoint in the Stripe Dashboard pointing to /api/webhooks/stripe with events: customer.subscription.created, customer.subscription.updated, customer.subscription.deleted, checkout.session.completed."
+    },
+    {
+      "step": 5,
+      "action": "docs",
+      "description": "Read /docs/modules/billing for the full integration guide and Stripe test card numbers."
+    }
+  ],
+  "docs": "/docs/modules/billing",
+  "demo": {
+    "path": "/demo/billing",
+    "iframeSrc": "http://localhost:3000/demo/billing",
+    "apiDemoPath": "/api/demo/billing/checkout"
+  },
+  "files": [
+    {
+      "path": "registry/billing/components/billing-card.tsx",
+      "type": "registry:component",
+      "target": "components/billing/billing-card.tsx"
+    },
+    {
+      "path": "registry/billing/components/subscription-badge.tsx",
+      "type": "registry:component",
+      "target": "components/billing/subscription-badge.tsx"
+    },
+    {
+      "path": "registry/billing/lib/billing-schema.ts",
+      "type": "registry:lib",
+      "target": "lib/billing/schema.ts"
+    },
+    {
+      "path": "registry/billing/lib/billing-provider.ts",
+      "type": "registry:lib",
+      "target": "lib/billing/provider.ts"
+    },
+    {
+      "path": "registry/billing/actions/billing.ts",
+      "type": "registry:file",
+      "target": "actions/billing.ts"
+    },
+    {
+      "path": "registry/billing/app/(dashboard)/billing/page.tsx",
+      "type": "registry:page",
+      "target": "app/(dashboard)/billing/page.tsx"
+    },
+    {
+      "path": "registry/billing/app/api/webhooks/stripe/route.ts",
+      "type": "registry:file",
+      "target": "app/api/webhooks/stripe/route.ts"
+    }
+  ]
+}

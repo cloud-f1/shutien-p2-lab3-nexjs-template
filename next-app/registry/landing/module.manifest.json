@@ -1,0 +1,107 @@
+{
+  "$schema": "../schema/module.manifest.schema.json",
+  "id": "landing",
+  "version": "1.0.0",
+  "title": "Landing Page",
+  "summary": "Public marketing landing page with Hero, Features, Pricing, FAQ, and CTA sections inside an app/(marketing)/ route group with shared nav and footer.",
+  "registryDependencies": [
+    "button",
+    "badge",
+    "card"
+  ],
+  "npmDependencies": {},
+  "envVars": [],
+  "dbTables": [],
+  "db": {},
+  "routes": [
+    "(marketing)/layout.tsx",
+    "(marketing)/page.tsx"
+  ],
+  "serverActions": [],
+  "postInstall": [
+    {
+      "step": 1,
+      "action": "manual",
+      "description": "Remove or archive the existing app/page.tsx placeholder — the landing module owns the / route via app/(marketing)/page.tsx."
+    },
+    {
+      "step": 2,
+      "action": "manual",
+      "description": "Customise branding: update the site name in components/marketing/marketing-nav.tsx and components/marketing/marketing-footer.tsx."
+    },
+    {
+      "step": 3,
+      "action": "manual",
+      "description": "Update pricing tiers in components/marketing/pricing.tsx (DEFAULT_PRICING_TIERS) to match your billing plans once the billing adapter is live."
+    },
+    {
+      "step": 4,
+      "action": "command",
+      "description": "Run typecheck and lint to verify no import errors.",
+      "command": "pnpm typecheck && pnpm lint"
+    },
+    {
+      "step": 5,
+      "action": "docs",
+      "description": "Read the landing module docs for theming and customisation guidance."
+    }
+  ],
+  "docs": "/docs/modules/landing",
+  "demo": {
+    "path": "/",
+    "iframeSrc": "http://localhost:3000/",
+    "apiDemoPath": "/api/demo/landing"
+  },
+  "files": [
+    {
+      "path": "registry/landing/components/hero.tsx",
+      "type": "registry:component",
+      "target": "components/marketing/hero.tsx"
+    },
+    {
+      "path": "registry/landing/components/features.tsx",
+      "type": "registry:component",
+      "target": "components/marketing/features.tsx"
+    },
+    {
+      "path": "registry/landing/components/pricing.tsx",
+      "type": "registry:component",
+      "target": "components/marketing/pricing.tsx"
+    },
+    {
+      "path": "registry/landing/components/faq.tsx",
+      "type": "registry:component",
+      "target": "components/marketing/faq.tsx"
+    },
+    {
+      "path": "registry/landing/components/cta.tsx",
+      "type": "registry:component",
+      "target": "components/marketing/cta.tsx"
+    },
+    {
+      "path": "registry/landing/components/marketing-nav.tsx",
+      "type": "registry:component",
+      "target": "components/marketing/marketing-nav.tsx"
+    },
+    {
+      "path": "registry/landing/components/marketing-footer.tsx",
+      "type": "registry:component",
+      "target": "components/marketing/marketing-footer.tsx"
+    },
+    {
+      "path": "registry/landing/app/(marketing)/layout.tsx",
+      "type": "registry:page",
+      "target": "app/(marketing)/layout.tsx"
+    },
+    {
+      "path": "registry/landing/app/(marketing)/page.tsx",
+      "type": "registry:page",
+      "target": "app/(marketing)/page.tsx"
+    },
+    {
+      "path": "registry/landing/module.manifest.json",
+      "type": "registry:file",
+      "target": "registry/landing/module.manifest.json"
+    }
+  ]
+}

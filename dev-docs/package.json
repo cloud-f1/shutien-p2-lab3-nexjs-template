@@ -1,0 +1,19 @@
+{
+  "name": "saas-dev-docs",
+  "version": "1.0.0",
+  "description": "VitePress developer documentation, whitepaper, API playground, and live demo gallery for the @saas Next.js modular registry template",
+  "private": true,
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "node scripts/generate-catalog.mjs && vitepress build",
+    "preview": "vitepress preview",
+    "catalog": "node scripts/generate-catalog.mjs"
+  },
+  "devDependencies": {
+    "vitepress": "^1.5.0",
+    "vue": "^3.5.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  }
+}

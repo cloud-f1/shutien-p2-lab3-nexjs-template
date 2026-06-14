@@ -70,6 +70,7 @@
 | Phase 55 | E227, E228 | ✅ Merged to main (PR #3) — 3-tier RBAC + athena loop speedup + consolidated Docker |
 | Phase 56 | E229, E230 | ✅ Merged to main (PR #5) — shadcn blue preset + full 繁體中文 i18n |
 | Phase 57 | E231, E232, E233, E234, E235, E236 | ✅ Done on branch (remediated all 33 app-audit findings via a sequential Workflow + E236 task-tiered model dispatch). typecheck · lint · 31 unit · 29 e2e green, verified in Docker |
+| Phase 58 | E247, E248, E249, E250, E251, E252, E253 | ✅ Done on branch MH/phase-58-modular-graft (AI-Ready Modular SaaS graft — shadcn @saas registry + module-author skill + PaymentProvider abstraction (Stripe DEFAULT + ECPay 定期定額) + Landing module + MCP). 182 unit · 29 e2e green, production build + registry:build + module:validate OK. Account/Admin modules deferred; VitePress dev-docs deferred (E258, carryover) |
 <!-- PHASE_STATUS_END -->
 
 <!-- EPIC_MATRIX_START -->
@@ -321,6 +322,13 @@ Phase 46+ epics: enriched template — epic files include Implementation Phases,
 | E234 | ✅ | ✅ | ✅ | — | — | Phase 57 — Items CRUD built: /dashboard/items list/create/edit (requireEditor-gated) + shared RHF form; wired orphaned actions/validations/DeleteButton (zh-Hant #6/#7/#8), .count no-op returns (#21), removed drag-reorder (#27); resolves dead links (#11/#28). +4 e2e |
 | E235 | ✅ | ✅ | ✅ | — | — | Phase 57 — Cleanup & perf: not-found + error boundary (#28); recharts next/dynamic (#29); removed breadcrumb/drawer + vaul dep (#30/#31), unused types (#33); kept getUserById (now used by E231) |
 | E236 | ✅ | ✅ | ✅ | — | — | Phase 57 — Athena task-tiered model dispatch: /athena:flow + /athena:batch pick model by epic complexity (execute=sonnet baseline, opus for complex/ultra) from ATHENA_MODEL_MAP; fixed flow's --effort passthrough. No more blanket-Opus. Effort cost-proxy test 10/10 |
+| E247 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — Registry infrastructure: registry.json + `pnpm registry:build` → public/r/*.json + components.json `@saas` namespace + hello-module smoke item + lib/registry/validate-manifest. `npx shadcn add @saas/<id>` install loop |
+| E248 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — module.manifest.json spec + JSON Schema + `pnpm module:validate` (scripts/module-validate.ts) + `module-author` skill + install-* consumer skills (the AI-builds-a-module engine) |
+| E249 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — PaymentProvider abstraction (lib/billing/provider.ts) + env-selected resolver (default=stripe) + Drizzle plans/subscriptions/payment_events (migration 0004, provider_meta JSONB, idempotency unique) |
+| E250 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — Landing module: (marketing) route group + hero/features/pricing/FAQ/CTA/nav/footer → `@saas/landing` registry module + install-landing skill (registry E2E proof) |
+| E251 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — Stripe billing (DEFAULT): PaymentProvider/Stripe + Checkout action + webhook Route Handler (constructEvent sig-verify, idempotent, out-of-order tolerant) → `@saas/billing-stripe` + install-stripe-billing skill |
+| E252 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — ECPay billing (Taiwan-local): 定期定額 CheckMacValue (SHA256) + dual notify Route Handlers (ReturnURL + PeriodReturnURL) + ExecTimes renewal → `@saas/billing-ecpay` + install-ecpay-billing skill |
+| E253 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — MCP + AI-assembly: .mcp.json (shadcn MCP `@saas` namespace) so an AI agent reads the registry + manifests and installs a module by natural language |
 <!-- EPIC_MATRIX_END -->
 
 ## Dependency Rules
@@ -568,11 +576,12 @@ Phase 44: 7 epics parallel after E167 (E172 + E173 + E174 + E175 + E176 + E178 +
 Phase 45: E180 + E185 (parallel, no deps) → E181 + E183 + E186 (parallel after E180) + E182 (after E180+E181) → E184 (after E181)
 Phase 46: E187 + E188 + E190 + E192 (parallel, no deps) → E189 (after E187) → E191 (after E187+E188+E189) — ideal `/athena:batch auto` first wave (4-epic parallel)
 Phase 53: E217 (no deps) → E218 (after E217) → E219 + E220 (parallel after E217+E218) → E221 (after E219+E220)
+Phase 58: E247 + E249 (parallel, no deps) → E248 (after E247) → E250 (after E247+E248) → E251 (after E249+E250) + E253 (after E250) → E252 (after E249+E251)
 ```
 
 ---
 
-**Next Action:** Phase 53 in progress (Cycle 22, 2026-06-13) — 5 epics (E217–E221). E217 ✅ (shared Zod validations + RHF), E218 ✅ (RBAC + Edge middleware), E219 ✅ (account settings), E220 ✅ (admin dashboard), E221 ✅ (e2e smoke tests). Next: run `/athena:qa` on each epic to close the QA gate, then `/athena:loop` to advance to commit+merge. Run `npx playwright test` to validate e2e specs against a running dev server.
+**Next Action:** Phase 58 (E247–E253, AI-Ready Modular SaaS) committed on branch `MH/phase-58-modular-graft` — grafted onto current origin/main after the parallel Next.js track diverged (origin reused E229–E236 for theme/i18n/audit; this modular work was renumbered to E247+ to avoid collision). Verified: 182 unit · 29 e2e · production build · registry:build (4 modules) · module:validate (4 manifests). **Next: open a PR for this branch** (direct push to origin/main is gated to the human). Carryover: Account/Admin modules (re-derive vs i18n dashboard), VitePress dev-docs + Cloudflare deploy.
 
 - **Phase 43 (Universal Adoption)** — E167 already landed in PR #142 (Tailwind + 8 primitives + Preset axis + 9 dashboard views migrated). Remaining: `/athena:batch --phase 43` will dispatch E168 (public) + E169 (auth) in parallel after E167's PR merges; E170 (cleanup) + E171 (Playwright VRT) follow as a second wave.
 - **Phase 44 (Completion & Validation)** — 8 epics. After Phase 43's PRs merge: `/athena:batch --phase 44` dispatches the 7-epic parallel wave (E172 + E173 + E174 + E175 + E176 + E178 + E179). Then E177 (a11y sweep) closes the phase once every surface is stable.

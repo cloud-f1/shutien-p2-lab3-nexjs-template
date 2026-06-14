@@ -1,0 +1,21 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "hello-module",
+  "title": "Hello Module",
+  "description": "Smoke-test registry item. Proves the @saas registry install loop end-to-end.",
+  "files": [
+    {
+      "path": "registry/hello-module/components/hello-banner.tsx",
+      "content": "/**\n * hello-banner — smoke-test component for the @saas registry.\n * Installed via: npx shadcn@latest add @saas/hello-module\n */\nexport function HelloBanner({ message = \"Hello from @saas registry!\" }: { message?: string }) {\n  return (\n    <div className=\"rounded-md border border-dashed p-4 text-sm text-muted-foreground\">\n      {message}\n    </div>\n  )\n}\n",
+      "type": "registry:component",
+      "target": "components/hello-banner.tsx"
+    },
+    {
+      "path": "registry/hello-module/lib/hello-utils.ts",
+      "content": "/**\n * hello-utils — smoke-test lib file for the @saas registry.\n * Installed via: npx shadcn@latest add @saas/hello-module\n */\n\n/** Returns a greeting string. */\nexport function greet(name: string): string {\n  return `Hello, ${name}! Welcome to the @saas registry.`\n}\n",
+      "type": "registry:lib",
+      "target": "lib/hello-utils.ts"
+    }
+  ],
+  "type": "registry:block"
+}

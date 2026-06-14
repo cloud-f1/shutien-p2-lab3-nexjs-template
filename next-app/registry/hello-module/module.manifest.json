@@ -1,0 +1,27 @@
+{
+  "$schema": "../schema/module.manifest.schema.json",
+  "id": "hello-module",
+  "version": "1.0.0",
+  "title": "Hello Module",
+  "summary": "Smoke-test registry item that proves the @saas registry install loop end-to-end.",
+  "registryDependencies": [],
+  "npmDependencies": {},
+  "envVars": [],
+  "dbTables": [],
+  "db": {},
+  "routes": [],
+  "serverActions": [],
+  "postInstall": [],
+  "files": [
+    {
+      "path": "registry/hello-module/components/hello-banner.tsx",
+      "type": "registry:component",
+      "target": "components/hello-banner.tsx"
+    },
+    {
+      "path": "registry/hello-module/lib/hello-utils.ts",
+      "type": "registry:lib",
+      "target": "lib/hello-utils.ts"
+    }
+  ]
+}

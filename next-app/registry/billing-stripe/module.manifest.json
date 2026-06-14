@@ -1,0 +1,145 @@
+{
+  "$schema": "../schema/module.manifest.schema.json",
+  "id": "billing-stripe",
+  "version": "1.0.0",
+  "title": "Billing (Stripe)",
+  "summary": "Stripe billing integration — Checkout sessions, subscription lifecycle, signed webhooks, and idempotent event processing. DEFAULT PaymentProvider for the @saas stack.",
+  "registryDependencies": [
+    "@saas/billing"
+  ],
+  "npmDependencies": {
+    "stripe": "^22.0.0"
+  },
+  "envVars": [
+    {
+      "name": "STRIPE_SECRET_KEY",
+      "description": "Stripe secret API key. Get from Stripe Dashboard → Developers → API Keys. Never expose to client.",
+      "required": true,
+      "example": "sk_test_..."
+    },
+    {
+      "name": "STRIPE_WEBHOOK_SECRET",
+      "description": "Stripe webhook signing secret. Get from Stripe Dashboard → Webhooks → your endpoint → Signing secret.",
+      "required": true,
+      "example": "whsec_..."
+    },
+    {
+      "name": "STRIPE_PRICE_ID_PRO_MONTHLY",
+      "description": "Stripe Price ID for the Pro plan (monthly). Get from Stripe Dashboard → Products → Pro → Prices.",
+      "required": false,
+      "example": "price_..."
+    },
+    {
+      "name": "STRIPE_PRICE_ID_PRO_YEARLY",
+      "description": "Stripe Price ID for the Pro plan (yearly). Optional if you only offer monthly.",
+      "required": false,
+      "example": "price_..."
+    },
+    {
+      "name": "STRIPE_PRICE_ID_ENTERPRISE_MONTHLY",
+      "description": "Stripe Price ID for the Enterprise plan (monthly).",
+      "required": false,
+      "example": "price_..."
+    }
+  ],
+  "dbTables": [
+    "plans",
+    "subscriptions",
+    "payment_events"
+  ],
+  "db": {
+    "schemaFragmentPath": "lib/schema.ts",
+    "generateCommand": "pnpm db:generate",
+    "migrateCommand": "pnpm db:migrate"
+  },
+  "routes": [
+    "api/billing/stripe/webhook/route.ts"
+  ],
+  "serverActions": [
+    "actions/billing.ts"
+  ],
+  "postInstall": [
+    {
+      "step": 1,
+      "action": "env-wire",
+      "description": "Add STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, and price ID vars to .env.local. Never commit these to git."
+    },
+    {
+      "step": 2,
+      "action": "command",
+      "description": "Set BILLING_PROVIDER=stripe in .env.local (this is the default, but be explicit).",
+      "command": "echo 'BILLING_PROVIDER=stripe' >> .env.local"
+    },
+    {
+      "step": 3,
+      "action": "db-generate",
+      "description": "Generate Drizzle migrations for the billing tables (plans, subscriptions, payment_events).",
+      "command": "pnpm db:generate"
+    },
+    {
+      "step": 4,
+      "action": "db-migrate",
+      "description": "Apply the billing migrations to your database.",
+      "command": "pnpm db:migrate"
+    },
+    {
+      "step": 5,
+      "action": "manual",
+      "description": "Create products and prices in the Stripe Dashboard (or use the Stripe CLI: stripe prices create ...). Copy the price IDs to your .env.local as STRIPE_PRICE_ID_* vars."
+    },
+    {
+      "step": 6,
+      "action": "manual",
+      "description": "Register the webhook endpoint in Stripe Dashboard → Webhooks → Add endpoint. URL: https://yourdomain.com/api/billing/stripe/webhook. Events: checkout.session.completed, customer.subscription.created, customer.subscription.updated, customer.subscription.deleted, invoice.payment_succeeded, invoice.payment_failed."
+    },
+    {
+      "step": 7,
+      "action": "manual",
+      "description": "For local development, use Stripe CLI to forward webhooks: stripe listen --forward-to localhost:3000/api/billing/stripe/webhook. Copy the whsec_... signing secret to STRIPE_WEBHOOK_SECRET in .env.local."
+    },
+    {
+      "step": 8,
+      "action": "manual",
+      "description": "Update pricing tiers in components/marketing/pricing.tsx (DEFAULT_PRICING_TIERS) to use your Stripe price IDs as planId values, so the checkout server action routes to the correct Stripe price."
+    },
+    {
+      "step": 9,
+      "action": "command",
+      "description": "Run typecheck and lint to verify no import errors.",
+      "command": "pnpm typecheck && pnpm lint"
+    },
+    {
+      "step": 10,
+      "action": "docs",
+      "description": "Read the billing-stripe module docs for full integration guide and testing instructions."
+    }
+  ],
+  "docs": "/docs/modules/billing-stripe",
+  "demo": {
+    "path": "/demo/billing",
+    "iframeSrc": "http://localhost:3000/",
+    "apiDemoPath": "/api/billing/stripe/webhook"
+  },
+  "files": [
+    {
+      "path": "registry/billing-stripe/lib/billing/providers/stripe.ts",
+      "type": "registry:lib",
+      "target": "lib/billing/providers/stripe.ts"
+    },
+    {
+      "path": "registry/billing-stripe/app/api/billing/stripe/webhook/route.ts",
+      "type": "registry:file",
+      "target": "app/api/billing/stripe/webhook/route.ts"
+    },
+    {
+      "path": "registry/billing-stripe/actions/billing.ts",
+      "type": "registry:file",
+      "target": "actions/billing.ts"
+    },
+    {
+      "path": "registry/billing-stripe/module.manifest.json",
+      "type": "registry:file",
+      "target": "registry/billing-stripe/module.manifest.json"
+    }
+  ]
+}
