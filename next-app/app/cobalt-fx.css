@@ -1,0 +1,112 @@
+/* ============================================================
+   Cobalt — Premium FX utilities (E260)
+   Ported from the Claude-Design "Cobalt" handoff (components.css
+   §EYE-CATCHING FX). Binds to the E259 token superset. Plain CSS
+   classes — opt-in, used by the landing (E261) + dashboard (E262).
+   All motion is disabled under prefers-reduced-motion (bottom).
+   ============================================================ */
+
+/* ---------- shared helpers ---------- */
+.mono { font-family: var(--font-mono); font-feature-settings: "tnum"; }
+.tnum { font-variant-numeric: tabular-nums; }
+
+.icon-tile {
+  width: 36px; height: 36px; border-radius: var(--radius-lg);
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+}
+.icon-tile svg { width: 18px; height: 18px; }
+.icon-tile-brand { background: color-mix(in oklch, var(--primary) 12%, transparent); color: var(--primary); }
+.icon-tile-soft { background: var(--muted); color: var(--foreground); }
+
+/* KPI card brand wash (light only — flat in dark) */
+.kpi { background: linear-gradient(to top, color-mix(in oklch, var(--primary) 5%, var(--card)), var(--card)); }
+.dark .kpi { background: var(--card); }
+
+/* Status dots */
+.dot { width: 7px; height: 7px; border-radius: 99px; background: var(--muted-foreground); flex: none; display: inline-block; }
+.dot-success { background: var(--success); box-shadow: 0 0 0 3px color-mix(in oklch, var(--success) 18%, transparent); }
+.dot-warning { background: var(--warning); box-shadow: 0 0 0 3px color-mix(in oklch, var(--warning) 18%, transparent); }
+.dot-danger  { background: var(--destructive); box-shadow: 0 0 0 3px color-mix(in oklch, var(--destructive) 18%, transparent); }
+
+/* ---------- Hero aurora: slow-drifting colored light blobs ---------- */
+.aurora { position: absolute; inset: -20% -10% auto -10%; height: 140%; overflow: hidden; pointer-events: none; z-index: 0; }
+.aurora-blob { position: absolute; border-radius: 50%; filter: blur(70px); opacity: 0.55; }
+.dark .aurora-blob { opacity: 0.4; }
+.aurora-blob.b1 { width: 520px; height: 520px; left: 6%;  top: -8%;  background: radial-gradient(circle, var(--chart-2), transparent 68%); animation: drift1 18s var(--ease-in-out) infinite; }
+.aurora-blob.b2 { width: 460px; height: 460px; right: 4%; top: 2%;   background: radial-gradient(circle, var(--chart-4), transparent 68%); animation: drift2 22s var(--ease-in-out) infinite; }
+.aurora-blob.b3 { width: 400px; height: 400px; left: 42%; top: 18%;  background: radial-gradient(circle, var(--chart-1), transparent 70%); animation: drift3 26s var(--ease-in-out) infinite; }
+@keyframes drift1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(8%, 6%) scale(1.12); } }
+@keyframes drift2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-7%, 9%) scale(0.92); } }
+@keyframes drift3 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(5%, -7%) scale(1.08); } }
+
+/* ---------- Hero entrance stagger ---------- */
+@keyframes heroIn { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+.hero-in { opacity: 0; animation: heroIn 0.8s var(--ease-out) forwards; }
+.hero-d1 { animation-delay: 0.05s; }
+.hero-d2 { animation-delay: 0.16s; }
+.hero-d3 { animation-delay: 0.28s; }
+.hero-d4 { animation-delay: 0.40s; }
+.hero-d5 { animation-delay: 0.54s; }
+
+/* ---------- Gradient text shimmer on the accent phrase ---------- */
+.shimmer-text {
+  background: linear-gradient(100deg, var(--primary) 20%, var(--chart-2) 40%, var(--chart-1) 50%, var(--chart-2) 60%, var(--primary) 80%);
+  background-size: 220% auto;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  animation: shimmerMove 5.5s linear infinite;
+}
+@keyframes shimmerMove { to { background-position: -220% center; } }
+
+/* ---------- Pulsing glow on the primary CTA ---------- */
+.glow-cta { position: relative; }
+.glow-cta::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; z-index: -1;
+  animation: ctaPulse 2.8s var(--ease-in-out) infinite;
+}
+@keyframes ctaPulse { 0% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 45%, transparent); } 70%,100% { box-shadow: 0 0 0 14px transparent; } }
+
+/* ---------- Button shine sweep on hover ---------- */
+.shine { position: relative; overflow: hidden; }
+.shine::before {
+  content: ""; position: absolute; top: 0; left: -120%; width: 60%; height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,0.35), transparent);
+  transform: skewX(-18deg);
+}
+.shine:hover::before { animation: shineSweep 0.85s var(--ease-out); }
+@keyframes shineSweep { to { left: 140%; } }
+
+/* ---------- Live pulse dot ---------- */
+.live-dot { position: relative; }
+.live-dot::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  animation: liveRing 1.8s var(--ease-out) infinite;
+}
+@keyframes liveRing { 0% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--success) 55%, transparent); } 100% { box-shadow: 0 0 0 9px transparent; } }
+
+/* ---------- Logo marquee ---------- */
+.marquee { overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+.marquee-track { display: flex; width: max-content; animation: marqueeMove 30s linear infinite; }
+.marquee:hover .marquee-track { animation-play-state: paused; }
+@keyframes marqueeMove { to { transform: translateX(-50%); } }
+
+/* ---------- Card hover lift ---------- */
+.lift { transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), border-color var(--dur-base); }
+.lift:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: color-mix(in oklch, var(--primary) 30%, var(--border)); }
+
+/* ---------- Float + rise ---------- */
+@keyframes floatY { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+.float { animation: floatY 5s var(--ease-in-out) infinite; }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+.rise { animation: rise var(--dur-slow) var(--ease-out) both; }
+
+/* ---------- Scroll reveal (driven by use-reveal hook) ---------- */
+.reveal { opacity: 0; transform: translateY(16px); transition: opacity var(--dur-slow) var(--ease-out), transform var(--dur-slow) var(--ease-out); }
+.reveal[data-shown="true"] { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora-blob, .shimmer-text, .glow-cta::after, .marquee-track, .float, .live-dot::after, .hero-in { animation: none !important; }
+  .hero-in { opacity: 1 !important; }
+  .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
+  .shimmer-text { -webkit-text-fill-color: var(--primary); color: var(--primary); }
+}
