@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "shadcn": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@shadcn/mcp-server@latest"
+      ],
+      "env": {
+        "REGISTRY_URL": "http://localhost:3000/r",
+        "REGISTRY_NAME": "saas"
+      }
+    }
+  }
+}

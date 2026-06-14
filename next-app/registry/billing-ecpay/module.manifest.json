@@ -1,0 +1,149 @@
+{
+  "$schema": "../schema/module.manifest.schema.json",
+  "id": "billing-ecpay",
+  "version": "1.0.0",
+  "title": "Billing (ECPay 綠界)",
+  "summary": "ECPay 全方位金流 AIO 定期定額 billing integration — CheckMacValue (SHA256), recurring 定期定額 order management, dual notify route handlers (ReturnURL + PeriodReturnURL), renewal scheduler, and idempotent event processing. Taiwan-local PaymentProvider for the @saas stack.",
+  "registryDependencies": [
+    "@saas/billing"
+  ],
+  "npmDependencies": {},
+  "devDependencies": {},
+  "envVars": [
+    {
+      "name": "ECPAY_MERCHANT_ID",
+      "description": "ECPay 特店編號 (MerchantID). Get from ECPay 廠商管理後台. Sandbox: 3002607",
+      "required": true,
+      "example": "3002607"
+    },
+    {
+      "name": "ECPAY_HASH_KEY",
+      "description": "ECPay Hash Key for CheckMacValue computation. Get from ECPay 廠商管理後台 → 系統開發設定. Sandbox: pwFHCqoQZGmho4w6",
+      "required": true,
+      "example": "pwFHCqoQZGmho4w6"
+    },
+    {
+      "name": "ECPAY_HASH_IV",
+      "description": "ECPay Hash IV for CheckMacValue computation. Get from ECPay 廠商管理後台 → 系統開發設定. Sandbox: EkRm7iFT261dpevs",
+      "required": true,
+      "example": "EkRm7iFT261dpevs"
+    },
+    {
+      "name": "ECPAY_API_BASE_URL",
+      "description": "ECPay API base URL. Sandbox: https://payment-stage.ecpay.com.tw (default). Production: https://payment.ecpay.com.tw",
+      "required": false,
+      "example": "https://payment-stage.ecpay.com.tw"
+    },
+    {
+      "name": "ECPAY_RENEWAL_THRESHOLD",
+      "description": "Number of remaining periods that triggers a new 定期定額 order rebuild. When remaining = ExecTimes - TotalSuccessTimes < this threshold, rebuild a new order. Default: 3",
+      "required": false,
+      "example": "3"
+    },
+    {
+      "name": "BILLING_PROVIDER",
+      "description": "Set to 'ecpay' to activate this provider. Default is 'stripe'.",
+      "required": false,
+      "example": "ecpay"
+    }
+  ],
+  "dbTables": [
+    "plans",
+    "subscriptions",
+    "payment_events"
+  ],
+  "db": {
+    "schemaFragmentPath": "lib/schema.ts",
+    "generateCommand": "pnpm db:generate",
+    "migrateCommand": "pnpm db:migrate"
+  },
+  "routes": [
+    "app/api/billing/ecpay/return/route.ts",
+    "app/api/billing/ecpay/period/route.ts"
+  ],
+  "serverActions": [],
+  "postInstall": [
+    {
+      "step": 1,
+      "action": "env-wire",
+      "description": "Add ECPAY_MERCHANT_ID, ECPAY_HASH_KEY, ECPAY_HASH_IV to .env.local. Use sandbox values for development (MerchantID: 3002607). Never commit to git."
+    },
+    {
+      "step": 2,
+      "action": "command",
+      "description": "Set BILLING_PROVIDER=ecpay in .env.local to activate the ECPay provider.",
+      "command": "echo 'BILLING_PROVIDER=ecpay' >> .env.local"
+    },
+    {
+      "step": 3,
+      "action": "db-generate",
+      "description": "Generate Drizzle migrations for the billing tables (plans, subscriptions, payment_events). These tables are shared with @saas/billing — skip if already migrated.",
+      "command": "pnpm db:generate"
+    },
+    {
+      "step": 4,
+      "action": "db-migrate",
+      "description": "Apply billing migrations to your database.",
+      "command": "pnpm db:migrate"
+    },
+    {
+      "step": 5,
+      "action": "manual",
+      "description": "planId format for createCheckout: '{interval}:{amountTWD}:{description}' e.g. 'month:299:Pro Plan'. The amount must be a positive integer (TWD). Wire your pricing tiers to use this format as planId."
+    },
+    {
+      "step": 6,
+      "action": "manual",
+      "description": "Register notify URLs in ECPay 廠商管理後台 → 系統開發設定: ReturnURL = https://yourdomain.com/api/billing/ecpay/return, PeriodReturnURL = https://yourdomain.com/api/billing/ecpay/period. For local dev use ngrok or similar tunneling."
+    },
+    {
+      "step": 7,
+      "action": "manual",
+      "description": "Renewal scheduler: set up a cron job (e.g. /api/cron/billing-reconcile) that calls provider.queryAndCheckRenewal(merchantTradeNo) for each active ECPay subscription. When needsRenewal=true, call provider.createCheckout() again to build a new 定期定額 order and send the consumer a re-subscribe link."
+    },
+    {
+      "step": 8,
+      "action": "manual",
+      "description": "ExecTimes caps: D/M periods max 999, Y periods max 99. The renewal scheduler rebuilds before exhaustion (default threshold: remaining < 3). Adjust ECPAY_RENEWAL_THRESHOLD as needed."
+    },
+    {
+      "step": 9,
+      "action": "manual",
+      "description": "Sandbox testing: use ECPay's test credit card (4311-9522-2222-2222, CVV 222, exp 2099/01) to simulate 定期定額 payments. Sandbox PeriodReturnURL is triggered automatically for the first 3 test cycles."
+    },
+    {
+      "step": 10,
+      "action": "command",
+      "description": "Run typecheck and lint to verify no import errors.",
+      "command": "pnpm typecheck && pnpm lint"
+    }
+  ],
+  "docs": "/docs/modules/billing-ecpay",
+  "demo": {
+    "path": "/demo/billing-ecpay",
+    "iframeSrc": "http://localhost:3000/",
+    "apiDemoPath": "/api/billing/ecpay/return"
+  },
+  "files": [
+    {
+      "path": "registry/billing-ecpay/lib/billing/providers/ecpay.ts",
+      "type": "registry:lib",
+      "target": "lib/billing/providers/ecpay.ts"
+    },
+    {
+      "path": "registry/billing-ecpay/app/api/billing/ecpay/return/route.ts",
+      "type": "registry:file",
+      "target": "app/api/billing/ecpay/return/route.ts"
+    },
+    {
+      "path": "registry/billing-ecpay/app/api/billing/ecpay/period/route.ts",
+      "type": "registry:file",
+      "target": "app/api/billing/ecpay/period/route.ts"
+    },
+    {
+      "path": "registry/billing-ecpay/module.manifest.json",
+      "type": "registry:file",
+      "target": "registry/billing-ecpay/module.manifest.json"
+    }
+  ]
+}
