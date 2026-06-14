@@ -5,7 +5,7 @@
 
 ## Problem
 
-`talk.html` is the canonical external-facing artifact for the template (recent active work on branch `MH/feat/talk-presentation` — 37 slides, 6 SVG diagrams already landed via `df72cc6`). Three high-value architectural concepts still render as text walls rather than diagrams:
+`talk.html` is the canonical external-facing artifact for the template (recent active work on branch `feat/talk-presentation` — 37 slides, 6 SVG diagrams already landed via `df72cc6`). Three high-value architectural concepts still render as text walls rather than diagrams:
 
 1. **Agent team shape** — 10 agents, their model assignments (opus vs sonnet), and their write-back files
 2. **Epic pipeline flow** — `spec → implement → qa → commit → merge` with the human-gate checkpoints (`/athena:plan`, `/athena:qa`)

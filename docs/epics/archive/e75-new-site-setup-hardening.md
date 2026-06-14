@@ -2,7 +2,7 @@
 
 > **Phase**: 23 | **Size**: S (5 SP) | **Priority**: P1
 > **Depends on**: E73
-> **Branch**: `MH/feat/E75-new-site-setup-hardening`
+> **Branch**: `feat/E75-new-site-setup-hardening`
 
 ---
 

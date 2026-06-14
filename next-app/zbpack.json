@@ -1,0 +1,7 @@
+{
+  "build_command": "pnpm build",
+  "start_command": "node server.js",
+  "node_version": "22",
+  "install_command": "pnpm install --frozen-lockfile",
+  "output_dir": ".next"
+}

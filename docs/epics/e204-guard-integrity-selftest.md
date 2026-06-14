@@ -9,7 +9,7 @@ The three flagship epic-safety gates in `scripts/hooks/stop-verifier.sh` **silen
 - **Rule 18** (QA Gate, E155) regex `^feat/e[0-9]+-` requires a **lowercase `e`** and **no prefix**.
 - **Rules 19/20** (Migration Review E157, OpenAPI Contract E156) regex `^(MH/)?feat/e[0-9]+|^feat/E[0-9]+`: arm 1 is lowercase-`e` only; arm 2 forbids the `MH/` prefix via the `^` anchor.
 
-Real branches are `MH/feat/E191-cycle-integration` (capital `E` + `MH/` prefix — verified via `git branch -a`). That string matches **none** of the three regexes, and "no match" means "skip" (`exit 0`) — so the QA gate, migration-review gate, and OpenAPI-contract gate **never run on any epic branch the team actually creates**. This is the same fail-open failure **class** that the E157 early-exit bug already caused once, recurring through a different mechanism.
+Real branches are `feat/E191-cycle-integration` (capital `E` + `MH/` prefix — verified via `git branch -a`). That string matches **none** of the three regexes, and "no match" means "skip" (`exit 0`) — so the QA gate, migration-review gate, and OpenAPI-contract gate **never run on any epic branch the team actually creates**. This is the same fail-open failure **class** that the E157 early-exit bug already caused once, recurring through a different mechanism.
 
 Compounding it: **Rule 23** (verification discipline, E188) is gated behind `STOP_RULE_23_ENABLED=1` which is set nowhere, and even if enabled it scans for `verification_check` events the audit log never receives (see E193) — so it is currently a no-op.
 
@@ -17,8 +17,8 @@ A guard that cannot prove it still blocks is indistinguishable from a disabled g
 
 ## Solution
 
-1. **Single shared epic-branch matcher.** Extract one helper `is_epic_branch()` (e.g. `^(.*/)?feat/[Ee][0-9]+-`) used by Rules 18/19/20 and any future epic-scoped rule, so the three regexes can never diverge again. Matches `feat/e1-x`, `feat/E191-x`, `MH/feat/E191-x`, `claude/feat/E12-x`.
-2. **Fail-open self-test canary.** New `scripts/hooks/tests/test-stop-verifier-canary.sh` + a `make guard-selftest` target (and/or a `stop-verifier.sh --self-test` flag) that runs the verifier against known-violating fixture branches + working trees and asserts `exit 2` for **every** blocking rule. Includes a fixture asserting `MH/feat/E191-x` with `impl=✅ / qa=⬜` trips Rule 18, and migration/openapi fixtures on `MH/feat/E{n}` trip Rules 19/20.
+1. **Single shared epic-branch matcher.** Extract one helper `is_epic_branch()` (e.g. `^(.*/)?feat/[Ee][0-9]+-`) used by Rules 18/19/20 and any future epic-scoped rule, so the three regexes can never diverge again. Matches `feat/e1-x`, `feat/E191-x`, `feat/E191-x`, `claude/feat/E12-x`.
+2. **Fail-open self-test canary.** New `scripts/hooks/tests/test-stop-verifier-canary.sh` + a `make guard-selftest` target (and/or a `stop-verifier.sh --self-test` flag) that runs the verifier against known-violating fixture branches + working trees and asserts `exit 2` for **every** blocking rule. Includes a fixture asserting `feat/E191-x` with `impl=✅ / qa=⬜` trips Rule 18, and migration/openapi fixtures on `feat/E{n}` trip Rules 19/20.
 3. **Resolve Rule 23's fate** (sequenced after E193 lands the audit-event flow): either enable it (`STOP_RULE_23_ENABLED=1` + wire `audit-emit-verification.sh` into `/athena:qa`) or retire the pilot. Decision recorded in `scripts/hooks/CLAUDE.md`.
 
 ## Key Files
@@ -32,7 +32,7 @@ A guard that cannot prove it still blocks is indistinguishable from a disabled g
 
 ## Implementation
 
-1. Write the canary FIRST (red): fixture branch `MH/feat/E191-x` + `epic-progress.md` showing `impl=✅ qa=⬜` → assert Rule 18 `exit 2`. It will FAIL against the current regex, proving the bug.
+1. Write the canary FIRST (red): fixture branch `feat/E191-x` + `epic-progress.md` showing `impl=✅ qa=⬜` → assert Rule 18 `exit 2`. It will FAIL against the current regex, proving the bug.
 2. Add `is_epic_branch()` to `stop-verifier.sh`; repoint Rules 18/19/20; canary goes green.
 3. Extend the canary across every epic-branch spelling (lowercase/capital E; `MH/` and `claude/` prefixes) plus non-epic branches that must NOT fire, using the existing `BRANCH_OVERRIDE`/`EPIC_PROGRESS_PATH` test-injection env vars. (Broader per-rule fixtures for the other blocking rules — localStorage, fireEvent, page CSS, etc. — are a follow-on; this epic closes the branch-regex fail-open class for the epic-safety gates.)
 4. Wire `make guard-selftest`; run it; confirm green.
@@ -41,8 +41,8 @@ A guard that cannot prove it still blocks is indistinguishable from a disabled g
 ## Acceptance Criteria
 
 - [x] `is_epic_branch()` exists and is the SINGLE source of epic-branch detection used by Rules 18/19/20
-- [x] `MH/feat/E191-x` with `impl=✅ qa=⬜` trips Rule 18 (`exit 2`) — was `exit 0` before (canary)
-- [x] Rules 19/20 use the same `is_epic_branch()` matcher, so they fire on `MH/feat/E{n}` too (shared-matcher fix; end-to-end migration/openapi fixtures are a follow-on)
+- [x] `feat/E191-x` with `impl=✅ qa=⬜` trips Rule 18 (`exit 2`) — was `exit 0` before (canary)
+- [x] Rules 19/20 use the same `is_epic_branch()` matcher, so they fire on `feat/E{n}` too (shared-matcher fix; end-to-end migration/openapi fixtures are a follow-on)
 - [x] `test-stop-verifier-canary.sh` asserts `exit 2` on every epic-branch spelling (5 epic forms) and `exit 0` on 3 non-epic branches; runs in <2s
 - [x] `make guard-selftest` runs the canary + all blocking-rule suites and fails the build on any fail-open
 - [x] Lowercase `feat/e{n}-` and prefixed `claude/feat/E{n}-` both still match (back-compat) — verified in canary + existing Rule-18 suite (8/8)

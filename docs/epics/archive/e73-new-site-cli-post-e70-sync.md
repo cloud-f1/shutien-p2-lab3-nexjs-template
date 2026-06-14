@@ -2,7 +2,7 @@
 
 > **Phase**: 23 | **Size**: M (13 SP) | **Priority**: P0
 > **Depends on**: none
-> **Branch**: `MH/feat/E73-new-site-cli-sync`
+> **Branch**: `feat/E73-new-site-cli-sync`
 
 ---
 

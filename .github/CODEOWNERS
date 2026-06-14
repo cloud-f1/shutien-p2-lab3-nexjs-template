@@ -1,0 +1,17 @@
+# Code owners — requested for review automatically on matching PRs.
+# Docs: https://docs.github.com/articles/about-code-owners
+
+# Default owner for everything
+*                       @cloud-f1
+
+# Athena agent system + hooks
+/.claude/               @cloud-f1
+/scripts/hooks/         @cloud-f1
+
+# App + modular registry
+/next-app/              @cloud-f1
+/next-app/registry/     @cloud-f1
+
+# Release-critical metadata
+/CHANGELOG.md           @cloud-f1
+/CLAUDE.md              @cloud-f1

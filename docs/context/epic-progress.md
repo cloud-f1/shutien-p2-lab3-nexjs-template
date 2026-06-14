@@ -278,7 +278,7 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E201 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 48 — DONE PR#185 — Workflow-native /athena:batch pipeline dispatch |
 | E202 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 49 — DONE PR#186 — template↔plugin Path B: canonical template + sync |
 | E203 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 49 — DONE (athena-core 5b07880) — v0.1.1 hardening: registry-read + version-sync + repo identity |
-| E204 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 47 — DONE — is_epic_branch() shared matcher fixes Rule 18/19/20 fail-open on MH/feat/E{n}; fail-open canary + `make guard-selftest` (TDD red→green: canary 8/8, rule suites pass). Direct-to-main; push pending |
+| E204 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 47 — DONE — is_epic_branch() shared matcher fixes Rule 18/19/20 fail-open on feat/E{n}; fail-open canary + `make guard-selftest` (TDD red→green: canary 8/8, rule suites pass). Direct-to-main; push pending |
 | E205 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 47 — DONE PR#177 — doc-truth reconciliation (docs match disk) |
 | E206 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 50 — DONE PR#188 — ultra-tier judge panel (double-evaluator + N=3 spec-judge; 35/35 tests) |
 | E207 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 50 — DONE PR#189 — effort→cost observability (effort_resolved enriched + cost-proxy dashboard) |
@@ -291,13 +291,18 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E214 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 51 — DONE PR#196 — fork secrets-setup + OWASP Top 10 guide (bilingual EN+繁中, citations copy-verified); QA PASS |
 | E215 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 51 — DONE PR#197 — WCAG AA extension guide for custom domains (bilingual EN+繁中, real matrix-edit recipe); QA PASS |
 | E216 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 52 — DONE PR#205 (squash auto-merge) — `/athena:flow` interactive native-Workflow dispatcher (spec→implement→qa→commit, no `claude -p`); 20/20 fixture test, e201 regression 14/14; **adversarially validated — 3 bugs fixed** (wave truncation, cross-agent worktree stranding, blocked mis-mark); spec+plan in docs/superpowers/; athena-core sync (sync-to-plugin.sh --apply) pending |
-| E247 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — Registry infrastructure (registry.json + registry:build + @saas namespace + hello-module + validate-manifest). Committed on MH/phase-58-modular-graft; merge = PR pending |
+| E247 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — Registry infrastructure (registry.json + registry:build + @saas namespace + hello-module + validate-manifest). Committed on phase-58-modular-graft; merge = PR pending |
 | E248 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — module.manifest spec + JSON Schema + module:validate + module-author/install-* skills |
 | E249 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — PaymentProvider abstraction + resolver (default=stripe) + Drizzle plans/subscriptions/payment_events (migration 0004, idempotency) |
 | E250 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — Landing module → @saas/landing + install-landing skill |
 | E251 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — Stripe billing (DEFAULT): Checkout + webhook (constructEvent sig-verify, idempotent) → @saas/billing-stripe |
 | E252 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — ECPay billing (定期定額 CheckMacValue + dual notify route handlers) → @saas/billing-ecpay |
 | E253 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — MCP AI-assembly (.mcp.json @saas namespace — AI installs a module by NL) |
+| E254 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — Deploy config artifacts (zbpack.json + .env.example matrix; Dockerfile Cloud-Run readiness) |
+| E255 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — Zeabur deploy path + guide (Road 1) + supersede stale deploy/README |
+| E256 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — GCP Cloud Run + Cloud SQL path + guide (Road 2, gcloud, placeholders) |
+| E257 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — deploy-config skill (both roads) + retire stale deploy-gcr-zeabur |
+| E258 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — Tool-install quick-start script (scripts/install-deploy-tools.sh) + make target |
 
 
 ## Dependency Rules
@@ -619,11 +624,16 @@ Phase 51: E211 + E212 + E213 + E214 + E215 (all parallel, no deps — single 5-w
 Phase 53: E217 (no deps) → E218 (after E217) → E219 + E220 (parallel after E217+E218) → E221 (after E219+E220)
 Phase 54: E222 + E223 + E224 (parallel, no deps) → E225 (after E224) → E226 (after E223+E224+E225)
 Phase 58: E247 + E249 (parallel, no deps) → E248 (after E247) → E250 (after E247+E248) → E251 (after E249+E250) + E253 (after E250) → E252 (after E249+E251)
+Phase 59: E254 + E258 (parallel, no deps) → E255 + E256 (parallel after E254) → E257 (after E255+E256)
 ```
 
 ## Next Action
 
-**✅ Phase 58 DONE (committed, PR pending) — AI-Ready Modular SaaS graft (2026-06-15).** E247–E253 grafted onto current origin/main on branch `MH/phase-58-modular-graft`. The parallel Next.js track diverged (origin reused E229–E236 for theme/i18n/audit), so the modular work was renumbered to E247+ to avoid epic-number collision and delivered as a graft. **Verified: 182 unit · 29 e2e · production build · `pnpm registry:build` (4 modules) · `pnpm module:validate` (4 manifests).** Migration 0004 (plans/subscriptions/payment_events) applied to the live DB. **Next: open a PR** — direct push to origin/main is gated to the human (pre-bash-guard + auto-mode classifier). Carryover: Account/Admin modules (re-derive vs origin's i18n dashboard), VitePress dev-docs + Cloudflare Pages deploy.
+**⬜ Phase 59 PLANNED — Deployment Enablement (Cycle 28, 2026-06-15).** E254–E258 on branch `feat/deploy-config`: deploy config artifacts (zbpack.json + .env.example), Zeabur path + guide (Road 1), GCP Cloud Run + Cloud SQL path + guide (Road 2, `${PLACEHOLDER}`s), deploy-config skill (retire stale deploy-gcr-zeabur), and a tool-install quick-start script. Zeabur Claude plugin (`zeabur@zeabur`) + Zeabur CLI (0.18.0) installed; gcloud 571 present. **E258 (install script) implemented immediately per user request; E254–E257 ready to execute via `/athena:loop`/`/athena:flow`.** DAG: E254 + E258 (parallel) → E255 + E256 (after E254) → E257 (after E255+E256). Delivered via PR.
+
+---
+
+**✅ Phase 58 DONE (committed, PR pending) — AI-Ready Modular SaaS graft (2026-06-15).** E247–E253 grafted onto current origin/main on branch `phase-58-modular-graft`. The parallel Next.js track diverged (origin reused E229–E236 for theme/i18n/audit), so the modular work was renumbered to E247+ to avoid epic-number collision and delivered as a graft. **Verified: 182 unit · 29 e2e · production build · `pnpm registry:build` (4 modules) · `pnpm module:validate` (4 manifests).** Migration 0004 (plans/subscriptions/payment_events) applied to the live DB. **Next: open a PR** — direct push to origin/main is gated to the human (pre-bash-guard + auto-mode classifier). Carryover: Account/Admin modules (re-derive vs origin's i18n dashboard), VitePress dev-docs + Cloudflare Pages deploy.
 
 ---
 

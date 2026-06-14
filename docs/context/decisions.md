@@ -200,7 +200,7 @@ Branch: `main` | Trigger: Architecture phase completion
 <!-- [GENERALIZABLE: any FastAPI project with >5 routes] -->
 
 #### Decision 26: AUTH_UNIFIED_RESPONSE_SHAPE (E161)
-**Status:** COMPLETED end-to-end. Backend landed via PR #133 (commit `34802f7`); client portion landed via this dispatch on `MH/feat/E161-client-auth-adapter`. The historical adapter and the register-auto-login workaround in `client/src/api/auth.ts` + `client/src/hooks/useAuth.ts` are deleted; `SecuritySessionsView` ships under `/dashboard/sessions`.
+**Status:** COMPLETED end-to-end. Backend landed via PR #133 (commit `34802f7`); client portion landed via this dispatch on `feat/E161-client-auth-adapter`. The historical adapter and the register-auto-login workaround in `client/src/api/auth.ts` + `client/src/hooks/useAuth.ts` are deleted; `SecuritySessionsView` ships under `/dashboard/sessions`.
 **Decision:** `POST /auth/register`, `POST /auth/jwt/login`, and `POST /auth/refresh` all return the identical `AuthResponse = {user, access_token, refresh_token, token_type, expires_in}` shape. The client `api/auth.ts` "compose user + tokens" adapter and the "auto-login after register" workaround become redundant and are deleted in the follow-up.
 **Reason:** The historical adapter existed only because the backend register endpoint did not return tokens. The backend now does, so the adapter is dead weight that masked the contract. Unifying the shape lets the client consume one type and lets schemathesis enforce one contract.
 **Also lands (E161 backend, all server-side):**
@@ -224,7 +224,7 @@ Branch: `main` | Trigger: Architecture phase completion
 ### Architecture State
 Track 1 auth fully implemented with fastapi-users + server-side session store (E161). 26 decisions finalized.
 E161 backend landed 2026-04-24 (PR #133, commit 34802f7).
-E161 client portion landed 2026-04-24 (branch MH/feat/E161-client-auth-adapter): adapter deleted, SecuritySessionsView shipped.
+E161 client portion landed 2026-04-24 (branch feat/E161-client-auth-adapter): adapter deleted, SecuritySessionsView shipped.
 Last verified: 2026-04-24
 
 ### Next Action

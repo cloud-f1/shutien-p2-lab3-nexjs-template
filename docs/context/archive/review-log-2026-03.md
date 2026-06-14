@@ -53,7 +53,7 @@ The following rules are pre-loaded from architecture decisions. Every review che
 **Schema diff**: no openapi.yaml change → Stop-verifier Rule #20 N/A
 **Migration**: N/A (no alembic changes) → Rule #19 N/A
 
-**Branch naming**: deviates from `MH/feat/E{n}-...` convention (uses `feat/e164-...`). Recommend renaming on push, or accept-with-note. Not a blocker for QA itself.
+**Branch naming**: deviates from `feat/E{n}-...` convention (uses `feat/e164-...`). Recommend renaming on push, or accept-with-note. Not a blocker for QA itself.
 
 **Smoke tests (manual harness verification)** — all 3 spec fixture cases pass exactly:
 - `QA_ROUNDS=1 QA_HIGH_FINDINGS=0 QA_TEST_QUALITY_SCORE=0.85` → `0.85` ✓
@@ -105,10 +105,10 @@ Additional harness smoke (isolated tmp AUDIT_FILE / AUTOPILOT_LOG):
 - [x] Resume command picks up exactly where pause happened — `--resume` flag + `--status` resume hint documented; pause artifact emits exact resume command
 - [x] Documented threshold tuning guidance in autopilot.md — "Tuning the threshold" section in both en + zh-TW guides; calibration jq snippet in command spec
 
-**Verdict**: APPROVE — 0 HIGH, 1 MED observation (qa.sh epic-tagging mismatch with E162; benign, env-override path works). No regressions (398/4/20 server, 288 client, 92.22% coverage). Bash 3.2 portable. Safety defaults preserved. Suggest: rename branch to `MH/feat/E164-autopilot-confidence-gates` before PR, OR accept the deviation if maintainer prefers.
+**Verdict**: APPROVE — 0 HIGH, 1 MED observation (qa.sh epic-tagging mismatch with E162; benign, env-override path works). No regressions (398/4/20 server, 288 client, 92.22% coverage). Bash 3.2 portable. Safety defaults preserved. Suggest: rename branch to `feat/E164-autopilot-confidence-gates` before PR, OR accept the deviation if maintainer prefers.
 
 ## E162 — QA · 2026-04-25T10:35:00Z
-**Branch**: `MH/feat/E162-iterative-reviewer-convergence` · **Commit**: `c4e8aa3`
+**Branch**: `feat/E162-iterative-reviewer-convergence` · **Commit**: `c4e8aa3`
 **Phase**: 41 · **Step**: QA · **Size**: M (5 SP)
 **Server**: 398 passed / 4 skipped / 20 xfailed — coverage **92.22%** (gate >=80% PASS)
 **Client**: 288/288 (42 files) — coverage **89.22% statements / 81.93% branches / 87.50% funcs / 90.76% lines** (gate >=80% PASS)
@@ -159,7 +159,7 @@ Additional harness smoke (isolated tmp AUDIT_FILE / AUTOPILOT_LOG):
 **Verdict**: APPROVE — 0 HIGH, 0 MED findings. No regressions vs E156+E159 baseline (398/4/20 server, 288 client). Bash 3.2 portable. Audit format consumable by future E164 confidence scorer.
 
 ## E161 (client) — QA · 2026-04-25T17:55:00Z
-**Branch**: `MH/feat/E161-client-auth-adapter` · **Commit**: `b909ebc`
+**Branch**: `feat/E161-client-auth-adapter` · **Commit**: `b909ebc`
 **Phase**: 40 · **Step**: QA · **Size**: ~3 of 8 SP (client slice)
 **Client coverage**: 88.91% lines / 83.65% branches (gate >=80% — PASS)
 **Test suite**: client 279/279 (40 files) — +4 SecuritySessionsView smoke tests vs 275 baseline
@@ -228,7 +228,7 @@ Additional harness smoke (isolated tmp AUDIT_FILE / AUTOPILOT_LOG):
 **Decision**: APPROVE. All client-portion ACs verified, all 11 end-to-end ACs verified across PR #133 + this PR. The lint failure is pre-existing tooling drift (no `eslint.config.js` on `main` either) and explicitly out of scope for this epic — file as a separate cleanup task.
 
 ## E156 — QA · 2026-04-24T17:30:00Z
-**Branch**: MH/feat/E156-schemathesis-contract · **Commit**: 309baec
+**Branch**: feat/E156-schemathesis-contract · **Commit**: 309baec
 **Server coverage**: 93.57% | **Client coverage**: 90.67%
 **Test suites**: server 389 passed + 4 skipped + 16 xfailed (E156 known drift) · client 275/275 (39 files)
 **Static checks**: ruff clean; mypy 65 pre-existing errors (unchanged from E158 baseline); client has no `typecheck` script (pre-existing).
@@ -252,7 +252,7 @@ Additional harness smoke (isolated tmp AUDIT_FILE / AUTOPILOT_LOG):
 **Decision**: APPROVE
 
 ## E158 — QA · 2026-04-24T17:00:00Z
-**Branch**: MH/feat/E158-generalizable-auto-trigger · **Commit**: 3f91943
+**Branch**: feat/E158-generalizable-auto-trigger · **Commit**: 3f91943
 **Server coverage**: 93.40% | **Client coverage**: 90.67%
 **Test suites**: server 388/388 (4 skipped) · client 275/275 (39 files)
 **Static checks**: server ruff clean · server mypy has 65 pre-existing errors unrelated to E158 (no regressions, E158 touches no Python/TS) · client lacks `typecheck` script (existing state, not an E158 issue)
@@ -308,7 +308,7 @@ PROJECT-SPECIFIC — 1M context adaptation is template-specific workflow optimiz
 
 ## E157 — QA · 2026-04-25T05:24:14Z
 
-**Branch**: MH/feat/E157-alembic-migration-review-gate · **Commits**: 837d181 + d90a2d0
+**Branch**: feat/E157-alembic-migration-review-gate · **Commits**: 837d181 + d90a2d0
 **Server coverage**: 93.57% (gate 80%) | **Client coverage**: 90.67% statements / 86.89% branches (gate 80%)
 **Test suites**: server 389/389 passed (+4 skipped, +16 xfail) · client 275/275 passed (39 files)
 **Phase 2.5 (E156 contract sweep)**: 1 pytest item, 7 ops conform / 16 documented xfail — unchanged baseline
@@ -383,7 +383,7 @@ GENERALIZABLE — "Stop-verifier early-exit short-circuits global rules on clean
 
 ## @qa — 2026-04-25T08:58:00Z (E160 Phase 40 QA)
 
-Branch: `MH/feat/E160-context-log-auto-archival` (HEAD `c32b478`) | Diff: 6 files, +326 lines (script 208 LOC, 1 settings entry, 1 docs section, 1 save-md block, archive scaffold)
+Branch: `feat/E160-context-log-auto-archival` (HEAD `c32b478`) | Diff: 6 files, +326 lines (script 208 LOC, 1 settings entry, 1 docs section, 1 save-md block, archive scaffold)
 
 ### Summary
 🔴 Critical: 0 | 🟡 Warning: 0 | 🟢 Suggestion: 1
@@ -443,7 +443,7 @@ GENERALIZABLE — Two reusable lessons:
 ---
 
 ## @qa — 2026-04-25T17:30Z — E161 (backend portion)
-Branch: `MH/feat/E161-backend-auth-sessions` @ 47a1de1 | Diff: 18 files, +1168/-95
+Branch: `feat/E161-backend-auth-sessions` @ 47a1de1 | Diff: 18 files, +1168/-95
 Scope: backend slice only — adapter removal + sessions dashboard land in client follow-up dispatch.
 
 ### Summary
@@ -551,7 +551,7 @@ All critical issues: [resolved / N outstanding]
 
 ## E159 — SRE Observability Platform (Parts 1-4) — 2026-04-24T18:10Z
 
-**Branch:** `MH/feat/E159-sre-observability` @ `22f624b` (rebased clean onto `ebc50a2` main)
+**Branch:** `feat/E159-sre-observability` @ `22f624b` (rebased clean onto `ebc50a2` main)
 **Reviewer:** @qa (full QA pass — static + tests + contract + review + acceptance)
 **Verdict:** **APPROVE** — clean
 

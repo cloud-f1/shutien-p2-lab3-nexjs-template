@@ -9,9 +9,23 @@
 
 | Field | Value |
 |-------|-------|
-| Cycle | 23 |
+| Cycle | 28 |
 | State | APPROVED |
-| Notes | Phase 51 (Stabilize + Phase 2 Foundation) — 5 epics proposed (E211–E215), 59 SP. Theme: close the two deferred design-system testing contracts (E211 VRT baselines, E212 cross-theme a11y matrix), lay the first foundation slice of the athena-saas-profile plugin now that athena-core v0.2.1 is published (E213), and harden the fork story with security + a11y enablement docs (E214, E215). 4-lens multi-modal sweep (audit·evolve·comply·research) → synthesis → adversarial critic (verdict SOLID). Load-bearing core = E211+E212+E213 (36 SP); E214/E215 are critic-flagged trim candidates. _(Prior: Cycle 22 — 5 epics E206–E210, Phase 50, APPROVED + shipped + published v0.2.1 on 2026-06-02.)_ |
+| Notes | Phase 59 (Deployment Enablement) — 5 epics (E254–E258). Two deploy roads: Zeabur (primary) + GCP Cloud Run/Cloud SQL (secondary, `${PLACEHOLDER}`s). Config artifacts (E254), Zeabur path+guide (E255), GCP path+guide (E256), deploy-config skill retiring stale deploy-gcr-zeabur (E257), tool-install quick-start script (E258). Scope user-decided (not strategist-analysed). Zeabur plugin + CLI installed; gcloud present. E258 implemented immediately; rest execute via loop/flow. Delivered via PR on `feat/deploy-config`. _(Prior: Phase 58 E247–E253 modular SaaS graft + v0.1.0 release awaiting human `git push origin main`.)_ |
+
+---
+
+## Cycle 28 — 2026-06-15 — Mode: register-user-scoped-work
+
+**Phase 59 — Deployment Enablement.** 5 epics (E254–E258) formalized at user request via `/athena:plan`; scope pre-decided by the user (not a strategist analysis). Theme: give the template two reproducible deploy roads + a one-command tool quick-start, after v0.1.0.
+
+- **E254** Deploy config artifacts — `next-app/zbpack.json` + `.env.example` env matrix; Dockerfile already Cloud-Run-ready. (no deps)
+- **E255** Zeabur path + guide (Road 1) — supersede stale `deploy/README`. (deps E254)
+- **E256** GCP Cloud Run + Cloud SQL path + guide (Road 2, gcloud, placeholders). (deps E254)
+- **E257** deploy-config skill (both roads) + retire stale `deploy-gcr-zeabur`. (deps E255, E256)
+- **E258** tool-install quick-start script (`scripts/install-deploy-tools.sh`) + make target. (no deps) — **implemented immediately per user request.**
+
+DAG: E254 + E258 (parallel) → E255 + E256 (after E254) → E257 (after E255+E256). Tooling installed this cycle: Zeabur Claude plugin `zeabur@zeabur` + Zeabur CLI 0.18.0.
 
 ---
 
@@ -184,7 +198,7 @@ If forced to a single most-important action: **fix the axios CVE (E208).** Every
 |------|-------|
 | State | APPROVED |
 | Approved | 2026-05-30 — E193,E194,E195,E196,E197 (Phase 47, 50 SP) via `/athena:plan approve`; Phase 48/49 (E198–E203) rendered under "no limit 5 epics" override |
-| Addendum | 2026-05-30 — **completeness audit** (hooks blind-spot + dropped-opportunity critic + product-scope) added **E204** (guard integrity — Rules 18/19/20 fail-OPEN on `MH/feat/E{n}` + self-test canary) + **E205** (doc-truth reconciliation) to Phase 47, and expanded **E193** (M→L 13→16 SP; +Rule 6 read-only +dual-openapi +hook-firing root-cause). Phase 47 now **7 epics / ~69 SP**. Scope verdict: ATHENA-ONLY. Safe micro-fixes done directly in commit `c9f8a47` (pre-bash-guard SQL scoping, rule→lesson backfill, domain.md allowed-tools, dead `domain-expert.md.tmpl` deleted). |
+| Addendum | 2026-05-30 — **completeness audit** (hooks blind-spot + dropped-opportunity critic + product-scope) added **E204** (guard integrity — Rules 18/19/20 fail-OPEN on `feat/E{n}` + self-test canary) + **E205** (doc-truth reconciliation) to Phase 47, and expanded **E193** (M→L 13→16 SP; +Rule 6 read-only +dual-openapi +hook-firing root-cause). Phase 47 now **7 epics / ~69 SP**. Scope verdict: ATHENA-ONLY. Safe micro-fixes done directly in commit `c9f8a47` (pre-bash-guard SQL scoping, rule→lesson backfill, domain.md allowed-tools, dead `domain-expert.md.tmpl` deleted). |
 | Epic files | `docs/epics/e{193..205}-*.md` (13 files) |
 | Next | `!git push origin main` (user runs — guard blocks docs push), then `/athena:loop` (or `/loop 2m /athena:batch auto`) → Phase 47 wave 1 = E193·E194·E196·E197·E205, wave 2 = E195 (E204 already ✅) |
 

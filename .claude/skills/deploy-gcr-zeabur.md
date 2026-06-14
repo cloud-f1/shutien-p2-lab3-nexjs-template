@@ -1,16 +1,17 @@
 ---
 name: deploy-gcr-zeabur
 description: >
-  Retired skill — do not load. Consolidated into the deploy-readiness skill;
-  this file is a tombstone redirect kept for git history and back-references and
-  carries no active guidance. The GCR + Zeabur procedure now lives in
-  deploy-readiness.md under its Tier 2 "This repo's deploy stack (customize for
-  your fork)" section. Use deploy-readiness instead.
+  Retired skill — do not load. The GCR + dual FastAPI client/server flow it
+  described is obsolete (the app migrated to a single Next.js service). For the
+  current Next.js deploy use the `deploy-config` skill (Zeabur + GCP Cloud Run).
+  Tombstone kept for git history and back-references; carries no active guidance.
 ---
 
 # [Retired] Deploy GCR + Zeabur
 
-> This skill has been consolidated into [deploy-readiness.md](deploy-readiness.md).
-> The GCR + Zeabur SOP is preserved in Tier 2 of that skill under the heading
-> "This repo's deploy stack (customize for your fork)".
-> Consolidated by E210 (2026-06-02).
+> **Superseded.** This described the old GCR + dual FastAPI/Vite client+server
+> deploy, which no longer exists. For the current single Next.js service, use the
+> **[`deploy-config`](deploy-config/SKILL.md)** skill (Road 1 Zeabur · Road 2 GCP
+> Cloud Run + Cloud SQL) and the runbooks in
+> [`docs/guides/deployment.md`](../../docs/guides/deployment.md).
+> Retired by E257 (2026-06-15); originally consolidated into deploy-readiness by E210.

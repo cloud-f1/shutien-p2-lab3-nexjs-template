@@ -4,7 +4,7 @@
 #        make setup     (first-time setup for new developers)
 #        make test      (run all test suites)
 
-.PHONY: go init new-site check-prereqs ensure-env ensure-db generate-types dev server client dev-docs setup setup-server setup-client setup-dev-docs test test-server test-client test-migrations verify-migrations guard-selftest lint flaky ci-all db db-stop docker-dev docker-prod docker-down docker-logs docker-ps doctor doctor-production doctor-deploy verify tutorial new-domain docker-clean db-backup deploy install-tools reset strip error-budget drift-check help
+.PHONY: go init new-site check-prereqs ensure-env ensure-db generate-types dev server client dev-docs setup setup-server setup-client setup-dev-docs test test-server test-client test-migrations verify-migrations guard-selftest lint flaky ci-all db db-stop docker-dev docker-prod docker-down docker-logs docker-ps doctor doctor-production doctor-deploy verify tutorial new-domain docker-clean db-backup deploy install-tools install-deploy-tools reset strip error-budget drift-check help
 
 # ─── Zero-Config Startup ─────────────────────
 # `make go` is the single-command happy path for first-time developers.
@@ -350,6 +350,9 @@ install-tools: ## Install all required dev tools (macOS — uses Homebrew)
 	@command -v uv >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh
 	@echo ""
 	@echo "✅ Tools installed. Run 'make go' to start."
+
+install-deploy-tools: ## Install/verify the deploy toolchain (Zeabur plugin + CLI; checks gcloud/node/pnpm/docker)
+	@bash scripts/install-deploy-tools.sh
 
 # ─── Template Reset ──────────────────────────────
 

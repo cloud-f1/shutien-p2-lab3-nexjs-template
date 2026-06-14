@@ -324,7 +324,7 @@ Every stage result MUST match this schema (freeform → retry). No path advances
   "status": "success" | "failure" | "blocked",
   "filesChanged": ["<path>", "..."],
   "worktreePath": "<absolute path>",
-  "worktreeBranch": "MH/feat/E{n}-{slug}",
+  "worktreeBranch": "feat/E{n}-{slug}",
   "summary": "<one-line description>"
 }
 ```

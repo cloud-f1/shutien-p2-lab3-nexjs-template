@@ -2,7 +2,7 @@
 
 > **Phase**: 23 | **Size**: M (13 SP) | **Priority**: P2
 > **Depends on**: none
-> **Branch**: `MH/feat/E76-strip-to-core`
+> **Branch**: `feat/E76-strip-to-core`
 > **Spec status**: COMPLETE
 
 ---

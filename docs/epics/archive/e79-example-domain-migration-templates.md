@@ -2,7 +2,7 @@
 
 > **Phase**: 24 — Migration Domain-Based Refactoring
 > **Priority**: P1 | **Points**: 5 SP | **Size**: S
-> **Branch**: `MH/feat/E79-example-migrations`
+> **Branch**: `feat/E79-example-migrations`
 > **Depends on**: E78
 
 ---

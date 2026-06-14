@@ -2,7 +2,7 @@
 
 > **Phase**: 21 | **Size**: S (5 SP) | **Priority**: P1
 > **Depends on**: none
-> **Branch**: `MH/feat/E69-template-reset`
+> **Branch**: `feat/E69-template-reset`
 
 ---
 

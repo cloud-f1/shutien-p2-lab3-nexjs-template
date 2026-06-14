@@ -75,7 +75,7 @@ FILE=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.path // empty
 | 22 | Design System: no new rules in `styles/common/` (E176) — block when staged diff under `client/src/styles/common/*.css` adds a new selector opening (heuristic: `+`-prefixed line containing `selector ... {`). Trimming/removing rules is allowed. New CSS rules belong in `components/ui/<Name>.tsx` Preset slots. Bypass via `DESIGN_SYSTEM_COMMON_RULES_OK=1`. | Global | exit 2 |
 | 23 | Verification Discipline (E188) — block completion-verb commits (`feat:`, `fix:`, `refactor:`, `perf:`, `test:`, `style:`) when no `verification_check` event with `exit=0` exists in `.claude/audit.jsonl` within the last 10 min. Whitelisted prefixes bypass: `wip:`, `chore(state):`, `docs:`, `chore:`, `chore(memory):`, `chore(roadmap):`, `build:`, `ci:`. Pilot mode: gated behind `STOP_RULE_23_ENABLED=1` env var. Emit: `scripts/hooks/audit-emit-verification.sh <check> 0`. Skill: `.claude/skills/verification-discipline.md`. | Global | exit 2 |
 
-> **E204 — epic-branch detection + fail-open canary.** Rules 18/19/20 share one `is_epic_branch()` matcher in `stop-verifier.sh` (`(^|/)feat/[Ee][0-9]+-`) — matches `feat/e1-`, `feat/E191-`, `MH/feat/E191-`, `claude/feat/E12-`, etc. It replaced three divergent per-rule regexes that silently **failed open** on the real `MH/feat/E{n}` convention (capital `E` + `MH/` prefix), disabling all three epic-safety gates. The fail-open class is now guarded by `scripts/hooks/tests/test-stop-verifier-canary.sh` (run via `make guard-selftest`), which asserts the verifier still BLOCKS (exit 2) on every epic-branch spelling. _A gate that can't prove it still blocks is indistinguishable from a disabled one._ Rule 23's pilot enable/retire decision is deferred to E193 (which fixes the audit-event flow it depends on).
+> **E204 — epic-branch detection + fail-open canary.** Rules 18/19/20 share one `is_epic_branch()` matcher in `stop-verifier.sh` (`(^|/)feat/[Ee][0-9]+-`) — matches `feat/e1-`, `feat/E191-`, `feat/E191-`, `claude/feat/E12-`, etc. It replaced three divergent per-rule regexes that silently **failed open** on the real `feat/E{n}` convention (capital `E` + `MH/` prefix), disabling all three epic-safety gates. The fail-open class is now guarded by `scripts/hooks/tests/test-stop-verifier-canary.sh` (run via `make guard-selftest`), which asserts the verifier still BLOCKS (exit 2) on every epic-branch spelling. _A gate that can't prove it still blocks is indistinguishable from a disabled one._ Rule 23's pilot enable/retire decision is deferred to E193 (which fixes the audit-event flow it depends on).
 
 ## Exit Validation Rules
 
@@ -121,7 +121,7 @@ Generic payload (unchanged for back-compat):
   "step": "implement",
   "status": "completed",
   "duration_seconds": 42,
-  "branch": "MH/feat/E82-webhook-jsonl-audit",
+  "branch": "feat/E82-webhook-jsonl-audit",
   "timestamp": "2026-03-28T12:00:00Z"
 }
 ```

@@ -65,12 +65,13 @@
 | Phase 50 | E206, E207, E208, E209, E210 | ✅ Complete (Operationalize the Dial — ultra judge panel + effort→cost observability + dependency security + athena-core sync v0.2.0 + deploy-skill consolidation) |
 | Phase 51 | E211, E212, E213, E214, E215 | ✅ Complete (Stabilize + Phase 2 Foundation — all 5 shipped PRs #195-197/#200-201: athena-saas-profile registry foundation + fork secrets/OWASP + WCAG guides + VRT Phase B 336-matrix + cross-theme a11y matrix; auth `social_providers` server bug fixed en route, #199) |
 | Phase 52 | E216 | ✅ Complete (Native Workflow Orchestration — `/athena:flow` interactive native-Workflow epic dispatcher merged via PR#205; completes the E198–E201 line with a budget-enforced, live-tree, no-`claude -p` path; athena-core sync pending) |
-| Phase 53 | E217, E218, E219, E220, E221 | ✅ QA'd, committed on branch MH/feat/E217-E221-nextjs-migration (Next.js Migration — shared Zod validations + RBAC + account settings + admin panel + e2e smoke; 2 critical pre-existing bugs fixed) |
+| Phase 53 | E217, E218, E219, E220, E221 | ✅ QA'd, committed on branch feat/E217-E221-nextjs-migration (Next.js Migration — shared Zod validations + RBAC + account settings + admin panel + e2e smoke; 2 critical pre-existing bugs fixed) |
 | Phase 54 | E222, E223, E224, E225, E226 | ✅ Merged to main (PR #2) — shadcn-blocks UI + Docker + Athena hardening |
 | Phase 55 | E227, E228 | ✅ Merged to main (PR #3) — 3-tier RBAC + athena loop speedup + consolidated Docker |
 | Phase 56 | E229, E230 | ✅ Merged to main (PR #5) — shadcn blue preset + full 繁體中文 i18n |
 | Phase 57 | E231, E232, E233, E234, E235, E236 | ✅ Done on branch (remediated all 33 app-audit findings via a sequential Workflow + E236 task-tiered model dispatch). typecheck · lint · 31 unit · 29 e2e green, verified in Docker |
-| Phase 58 | E247, E248, E249, E250, E251, E252, E253 | ✅ Done on branch MH/phase-58-modular-graft (AI-Ready Modular SaaS graft — shadcn @saas registry + module-author skill + PaymentProvider abstraction (Stripe DEFAULT + ECPay 定期定額) + Landing module + MCP). 182 unit · 29 e2e green, production build + registry:build + module:validate OK. Account/Admin modules deferred; VitePress dev-docs deferred (E258, carryover) |
+| Phase 58 | E247, E248, E249, E250, E251, E252, E253 | ✅ Done on branch phase-58-modular-graft (AI-Ready Modular SaaS graft — shadcn @saas registry + module-author skill + PaymentProvider abstraction (Stripe DEFAULT + ECPay 定期定額) + Landing module + MCP). 182 unit · 29 e2e green, production build + registry:build + module:validate OK. Account/Admin modules deferred; VitePress dev-docs deferred (E258, carryover) |
+| Phase 59 | E254, E255, E256, E257, E258 | ✅ Done on branch feat/deploy-config (Cycle 28, 2026-06-15) — Deployment Enablement: zbpack.json + .env.example (E254) · Zeabur Road-1 guide + superseded deploy/README (E255) · GCP Cloud Run + Cloud SQL Road-2 guide, placeholders only (E256) · deploy-config skill + retired deploy-gcr-zeabur (E257) · install-deploy-tools.sh + make target (E258). E254–E256 built via `/athena:flow` (validated the await fix); E257/E258 direct. Merge ⬜ (PR pending) |
 <!-- PHASE_STATUS_END -->
 
 <!-- EPIC_MATRIX_START -->
@@ -289,7 +290,7 @@ Phase 46+ epics: enriched template — epic files include Implementation Phases,
 | E201 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 48 — DONE PR#185 — Workflow-native /athena:batch pipeline dispatch |
 | E202 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 49 — DONE PR#186 — template↔plugin Path B: canonical template + sync |
 | E203 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 49 — DONE (athena-core 5b07880) — v0.1.1 hardening: registry-read + version-sync + repo identity |
-| E204 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 47 — DONE — is_epic_branch() shared matcher fixes Rule 18/19/20 fail-open on MH/feat/E{n}; fail-open canary + `make guard-selftest` (TDD red→green: canary 8/8, rule suites pass). Direct-to-main; push pending |
+| E204 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 47 — DONE — is_epic_branch() shared matcher fixes Rule 18/19/20 fail-open on feat/E{n}; fail-open canary + `make guard-selftest` (TDD red→green: canary 8/8, rule suites pass). Direct-to-main; push pending |
 | E205 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 47 — DONE PR#177 — doc-truth reconciliation (docs match disk) |
 | E206 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 50 — DONE PR#188 — ultra-tier judge panel (double-evaluator + N=3 spec-judge; 35/35 tests) |
 | E207 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 50 — DONE PR#189 — effort→cost observability (effort_resolved enriched + cost-proxy dashboard) |
@@ -329,6 +330,11 @@ Phase 46+ epics: enriched template — epic files include Implementation Phases,
 | E251 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — Stripe billing (DEFAULT): PaymentProvider/Stripe + Checkout action + webhook Route Handler (constructEvent sig-verify, idempotent, out-of-order tolerant) → `@saas/billing-stripe` + install-stripe-billing skill |
 | E252 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — ECPay billing (Taiwan-local): 定期定額 CheckMacValue (SHA256) + dual notify Route Handlers (ReturnURL + PeriodReturnURL) + ExecTimes renewal → `@saas/billing-ecpay` + install-ecpay-billing skill |
 | E253 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — MCP + AI-assembly: .mcp.json (shadcn MCP `@saas` namespace) so an AI agent reads the registry + manifests and installs a module by natural language |
+| E254 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — Deploy config artifacts: next-app/zbpack.json (Zeabur) + .env.example env-var matrix (build vs runtime: NEXT_PUBLIC_*, AUTH_*, DATABASE_URL, OAuth, SMTP, Stripe, ECPay); confirm Dockerfile Cloud-Run readiness |
+| E255 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — Zeabur deploy path + guide (Road 1): zbpack/Dockerfile build + Postgres service + build-time NEXT_PUBLIC_* gotcha + AUTH_SECRET/AUTH_URL + zeabur CLI deploy + custom domain; supersede stale deploy/README |
+| E256 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — GCP Cloud Run + Cloud SQL path + guide (Road 2, gcloud): Artifact Registry → gcloud run deploy + Cloud SQL connector + Secret Manager + migrate/seed job + domain; ${PROJECT_ID}/${REGION}/${INSTANCE} placeholders |
+| E257 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — deploy-config skill (.claude/skills/deploy-config) covering both roads (preflight + Zeabur + GCP + gotchas); retire stale deploy-gcr-zeabur skill |
+| E258 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — Tool-install quick-start script (scripts/install-deploy-tools.sh): idempotent installer for zeabur plugin + zeabur CLI + gcloud/node/pnpm/docker checks; make target |
 <!-- EPIC_MATRIX_END -->
 
 ## Dependency Rules
@@ -577,11 +583,12 @@ Phase 45: E180 + E185 (parallel, no deps) → E181 + E183 + E186 (parallel after
 Phase 46: E187 + E188 + E190 + E192 (parallel, no deps) → E189 (after E187) → E191 (after E187+E188+E189) — ideal `/athena:batch auto` first wave (4-epic parallel)
 Phase 53: E217 (no deps) → E218 (after E217) → E219 + E220 (parallel after E217+E218) → E221 (after E219+E220)
 Phase 58: E247 + E249 (parallel, no deps) → E248 (after E247) → E250 (after E247+E248) → E251 (after E249+E250) + E253 (after E250) → E252 (after E249+E251)
+Phase 59: E254 + E258 (parallel, no deps) → E255 + E256 (parallel after E254) → E257 (after E255+E256)
 ```
 
 ---
 
-**Next Action:** Phase 58 (E247–E253, AI-Ready Modular SaaS) committed on branch `MH/phase-58-modular-graft` — grafted onto current origin/main after the parallel Next.js track diverged (origin reused E229–E236 for theme/i18n/audit; this modular work was renumbered to E247+ to avoid collision). Verified: 182 unit · 29 e2e · production build · registry:build (4 modules) · module:validate (4 manifests). **Next: open a PR for this branch** (direct push to origin/main is gated to the human). Carryover: Account/Admin modules (re-derive vs i18n dashboard), VitePress dev-docs + Cloudflare deploy.
+**Next Action:** Phase 59 (E254–E258, Deployment Enablement) PLANNED on branch `feat/deploy-config` — Zeabur (primary) + GCP Cloud Run/Cloud SQL (secondary, placeholders) deploy paths, config artifacts, deploy-config skill, and a tool-install quick-start script. E258 (install script) implemented immediately per user request; E254–E257 ready to execute via `/athena:loop`/`/athena:flow`. DAG: E254 + E258 (parallel) → E255 + E256 (after E254) → E257 (after E255+E256). Delivered via PR. **Prior: Phase 58 (E247–E253) + v0.1.0 release await the human `git push origin main`.**
 
 - **Phase 43 (Universal Adoption)** — E167 already landed in PR #142 (Tailwind + 8 primitives + Preset axis + 9 dashboard views migrated). Remaining: `/athena:batch --phase 43` will dispatch E168 (public) + E169 (auth) in parallel after E167's PR merges; E170 (cleanup) + E171 (Playwright VRT) follow as a second wave.
 - **Phase 44 (Completion & Validation)** — 8 epics. After Phase 43's PRs merge: `/athena:batch --phase 44` dispatches the 7-epic parallel wave (E172 + E173 + E174 + E175 + E176 + E178 + E179). Then E177 (a11y sweep) closes the phase once every surface is stable.
@@ -594,7 +601,7 @@ Phase 58: E247 + E249 (parallel, no deps) → E248 (after E247) → E250 (after 
 
 ```
 E{number} — {Short Name}
-Branch: MH/feat/E{number}-{slug}
+Branch: feat/E{number}-{slug}
 Commit: feat(E{number}): {description}
 ```
 

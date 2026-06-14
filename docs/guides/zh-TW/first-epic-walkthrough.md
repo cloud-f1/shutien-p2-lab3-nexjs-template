@@ -103,13 +103,13 @@ spec → implement → qa → commit → merge
 > **命名慣例**：
 >
 > - Epic 編號：`E{數字}`（遞增，取下一個可用號碼）
-> - 分支名稱：`MH/feat/E99-bookmark-domain`
+> - 分支名稱：`feat/E99-bookmark-domain`
 > - Commit 訊息：`feat(E99): Bookmark domain CRUD`
 
 建立 feature 分支：
 
 ```bash
-git checkout -b MH/feat/E99-bookmark-domain
+git checkout -b feat/E99-bookmark-domain
 ```
 
 ---
@@ -409,7 +409,7 @@ git commit -m "feat(E99): Bookmark domain CRUD
 - Integration + component tests"
 
 # 推送並建立 PR
-git push -u origin MH/feat/E99-bookmark-domain
+git push -u origin feat/E99-bookmark-domain
 ```
 
 ### 更新 EPIC_INDEX

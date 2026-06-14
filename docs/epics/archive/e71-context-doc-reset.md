@@ -2,7 +2,7 @@
 
 > **Phase**: 21 | **Size**: S (3 SP) | **Priority**: P1
 > **Depends on**: E69 (reset script references these templates)
-> **Branch**: `MH/feat/E71-context-doc-reset`
+> **Branch**: `feat/E71-context-doc-reset`
 
 ---
 

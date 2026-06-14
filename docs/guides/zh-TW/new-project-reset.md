@@ -47,7 +47,7 @@ docs/epics/
 
 ```bash
 # 1. 開一個新分支
-git checkout -b MH/feat/E1-my-first-feature
+git checkout -b feat/E1-my-first-feature
 
 # 2. 啟動 spec 工作流
 /athena:spec E1 "使用者註冊 + Email 驗證"

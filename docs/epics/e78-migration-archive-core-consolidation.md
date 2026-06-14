@@ -2,7 +2,7 @@
 
 > **Phase**: 24 — Migration Domain-Based Refactoring
 > **Priority**: P0 | **Points**: 8 SP | **Size**: M
-> **Branch**: `MH/feat/E78-migration-archive`
+> **Branch**: `feat/E78-migration-archive`
 > **Depends on**: none
 
 ---

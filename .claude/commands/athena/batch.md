@@ -113,19 +113,19 @@ grep -h "next-app/app/\|components/" docs/epics/e83-*.md docs/epics/e84-*.md doc
 Agent(E83, isolation="worktree", model="sonnet"):
   prompt: "Epic E83 (dashboard widget). Step: implement.
            Read CLAUDE.md. Read docs/epics/e83-dashboard-widget.md.
-           Implement on branch MH/feat/E83-dashboard-widget.
+           Implement on branch feat/E83-dashboard-widget.
            Return AgentReport JSON."
 
 Agent(E84, isolation="worktree", model="sonnet"):
   prompt: "Epic E84 (settings page). Step: implement.
            Read CLAUDE.md. Read docs/epics/e84-settings-page.md.
-           Implement on branch MH/feat/E84-settings-page.
+           Implement on branch feat/E84-settings-page.
            Return AgentReport JSON."
 
 Agent(E85, isolation="worktree", model="opus"):
   prompt: "Epic E85 (API key management — complex: auth/secrets). Step: implement.
            Read CLAUDE.md. Read docs/epics/e85-api-key-management.md.
-           Implement on branch MH/feat/E85-api-key-management.
+           Implement on branch feat/E85-api-key-management.
            Return AgentReport JSON."
 ```
 
@@ -144,7 +144,7 @@ After all three agents complete (or timeout at 30 min):
 **Step 4 — merge-back/verify sequence** (inline, not parallel):
 ```bash
 # For each successfully QA'd epic branch:
-git push -u origin MH/feat/E83-dashboard-widget
+git push -u origin feat/E83-dashboard-widget
 gh pr create --title "feat(E83): dashboard widget" ...
 gh pr merge --squash --delete-branch --auto
 
@@ -363,7 +363,7 @@ All agent step results **MUST** match this schema. Freeform responses trigger a 
   "status": "success" | "failure" | "blocked",
   "filesChanged": ["<path>", "..."],
   "worktreePath": "<absolute path>",
-  "worktreeBranch": "MH/feat/E{n}-{slug}",
+  "worktreeBranch": "feat/E{n}-{slug}",
   "summary": "<one-line description>"
 }
 ```

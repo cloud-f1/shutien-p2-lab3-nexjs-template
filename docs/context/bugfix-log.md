@@ -24,7 +24,7 @@
 **Test Added:** _(pending)_
 
 ## 2026-05-31T22:37:40+08:00 — c1a1065
-**Message:** fix(memory): lesson-tags branch-cue fail-open — match MH/feat/E{n} (same class as E204)
+**Message:** fix(memory): lesson-tags branch-cue fail-open — match feat/E{n} (same class as E204)
 **Files:** scripts/memory/lesson-tags.json
 **Root Cause:** _(pending — enrich during /athena:save)_
 **Test Added:** _(pending)_
