@@ -4,88 +4,6 @@
   "homepage": "http://localhost:3000",
   "items": [
     {
-      "name": "account",
-      "type": "registry:block",
-      "title": "Account Settings",
-      "description": "User profile, password change, and danger-zone (delete account) settings module for the @saas stack.",
-      "registryDependencies": [],
-      "dependencies": [],
-      "devDependencies": [],
-      "files": [
-        {
-          "path": "registry/account/components/profile-form.tsx",
-          "type": "registry:component",
-          "target": "components/account/profile-form.tsx"
-        },
-        {
-          "path": "registry/account/components/password-form.tsx",
-          "type": "registry:component",
-          "target": "components/account/password-form.tsx"
-        },
-        {
-          "path": "registry/account/components/delete-account-form.tsx",
-          "type": "registry:component",
-          "target": "components/account/delete-account-form.tsx"
-        },
-        {
-          "path": "registry/account/actions/account.ts",
-          "type": "registry:file",
-          "target": "actions/account.ts"
-        },
-        {
-          "path": "registry/account/app/(dashboard)/dashboard/settings/page.tsx",
-          "type": "registry:page",
-          "target": "app/(dashboard)/dashboard/settings/page.tsx"
-        },
-        {
-          "path": "registry/account/module.manifest.json",
-          "type": "registry:file",
-          "target": "registry/account/module.manifest.json"
-        }
-      ]
-    },
-    {
-      "name": "admin",
-      "type": "registry:block",
-      "title": "Admin Dashboard",
-      "description": "User management admin panel gated by 3-tier RBAC (admin-only). Provides user table, role selector, and delete-user action.",
-      "registryDependencies": [],
-      "dependencies": [],
-      "devDependencies": [],
-      "files": [
-        {
-          "path": "registry/admin/components/admin-user-table.tsx",
-          "type": "registry:component",
-          "target": "components/admin/admin-user-table.tsx"
-        },
-        {
-          "path": "registry/admin/components/admin-role-selector.tsx",
-          "type": "registry:component",
-          "target": "components/admin/admin-role-selector.tsx"
-        },
-        {
-          "path": "registry/admin/components/admin-delete-user-button.tsx",
-          "type": "registry:component",
-          "target": "components/admin/admin-delete-user-button.tsx"
-        },
-        {
-          "path": "registry/admin/actions/admin.ts",
-          "type": "registry:file",
-          "target": "actions/admin.ts"
-        },
-        {
-          "path": "registry/admin/app/(dashboard)/admin/page.tsx",
-          "type": "registry:page",
-          "target": "app/(dashboard)/dashboard/admin/page.tsx"
-        },
-        {
-          "path": "registry/admin/module.manifest.json",
-          "type": "registry:file",
-          "target": "registry/admin/module.manifest.json"
-        }
-      ]
-    },
-    {
       "name": "hello-module",
       "type": "registry:block",
       "title": "Hello Module",
@@ -109,7 +27,9 @@
       "title": "Billing (Stripe)",
       "description": "Stripe billing integration — Checkout sessions, subscription lifecycle, signed webhooks (HMAC-SHA256 via stripe.webhooks.constructEvent), and idempotent event processing. DEFAULT PaymentProvider for the @saas stack.",
       "registryDependencies": [],
-      "dependencies": ["stripe"],
+      "dependencies": [
+        "stripe"
+      ],
       "devDependencies": [],
       "files": [
         {
@@ -170,7 +90,11 @@
       "type": "registry:block",
       "title": "Landing Page",
       "description": "Public marketing landing page with Hero, Features, Pricing, FAQ, and CTA sections inside an app/(marketing)/ route group.",
-      "registryDependencies": ["button", "badge", "card"],
+      "registryDependencies": [
+        "button",
+        "badge",
+        "card"
+      ],
       "files": [
         {
           "path": "registry/landing/components/hero.tsx",
