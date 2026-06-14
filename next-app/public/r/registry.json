@@ -1,0 +1,228 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "saas",
+  "homepage": "http://localhost:3000",
+  "items": [
+    {
+      "name": "account",
+      "type": "registry:block",
+      "title": "Account Settings",
+      "description": "User profile, password change, and danger-zone (delete account) settings module for the @saas stack.",
+      "registryDependencies": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "files": [
+        {
+          "path": "registry/account/components/profile-form.tsx",
+          "type": "registry:component",
+          "target": "components/account/profile-form.tsx"
+        },
+        {
+          "path": "registry/account/components/password-form.tsx",
+          "type": "registry:component",
+          "target": "components/account/password-form.tsx"
+        },
+        {
+          "path": "registry/account/components/delete-account-form.tsx",
+          "type": "registry:component",
+          "target": "components/account/delete-account-form.tsx"
+        },
+        {
+          "path": "registry/account/actions/account.ts",
+          "type": "registry:file",
+          "target": "actions/account.ts"
+        },
+        {
+          "path": "registry/account/app/(dashboard)/dashboard/settings/page.tsx",
+          "type": "registry:page",
+          "target": "app/(dashboard)/dashboard/settings/page.tsx"
+        },
+        {
+          "path": "registry/account/module.manifest.json",
+          "type": "registry:file",
+          "target": "registry/account/module.manifest.json"
+        }
+      ]
+    },
+    {
+      "name": "admin",
+      "type": "registry:block",
+      "title": "Admin Dashboard",
+      "description": "User management admin panel gated by 3-tier RBAC (admin-only). Provides user table, role selector, and delete-user action.",
+      "registryDependencies": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "files": [
+        {
+          "path": "registry/admin/components/admin-user-table.tsx",
+          "type": "registry:component",
+          "target": "components/admin/admin-user-table.tsx"
+        },
+        {
+          "path": "registry/admin/components/admin-role-selector.tsx",
+          "type": "registry:component",
+          "target": "components/admin/admin-role-selector.tsx"
+        },
+        {
+          "path": "registry/admin/components/admin-delete-user-button.tsx",
+          "type": "registry:component",
+          "target": "components/admin/admin-delete-user-button.tsx"
+        },
+        {
+          "path": "registry/admin/actions/admin.ts",
+          "type": "registry:file",
+          "target": "actions/admin.ts"
+        },
+        {
+          "path": "registry/admin/app/(dashboard)/admin/page.tsx",
+          "type": "registry:page",
+          "target": "app/(dashboard)/dashboard/admin/page.tsx"
+        },
+        {
+          "path": "registry/admin/module.manifest.json",
+          "type": "registry:file",
+          "target": "registry/admin/module.manifest.json"
+        }
+      ]
+    },
+    {
+      "name": "hello-module",
+      "type": "registry:block",
+      "title": "Hello Module",
+      "description": "Smoke-test registry item. Proves the @saas registry install loop end-to-end.",
+      "files": [
+        {
+          "path": "registry/hello-module/components/hello-banner.tsx",
+          "type": "registry:component",
+          "target": "components/hello-banner.tsx"
+        },
+        {
+          "path": "registry/hello-module/lib/hello-utils.ts",
+          "type": "registry:lib",
+          "target": "lib/hello-utils.ts"
+        }
+      ]
+    },
+    {
+      "name": "billing-stripe",
+      "type": "registry:block",
+      "title": "Billing (Stripe)",
+      "description": "Stripe billing integration — Checkout sessions, subscription lifecycle, signed webhooks (HMAC-SHA256 via stripe.webhooks.constructEvent), and idempotent event processing. DEFAULT PaymentProvider for the @saas stack.",
+      "registryDependencies": [],
+      "dependencies": ["stripe"],
+      "devDependencies": [],
+      "files": [
+        {
+          "path": "registry/billing-stripe/lib/billing/providers/stripe.ts",
+          "type": "registry:lib",
+          "target": "lib/billing/providers/stripe.ts"
+        },
+        {
+          "path": "registry/billing-stripe/app/api/billing/stripe/webhook/route.ts",
+          "type": "registry:file",
+          "target": "app/api/billing/stripe/webhook/route.ts"
+        },
+        {
+          "path": "registry/billing-stripe/actions/billing.ts",
+          "type": "registry:file",
+          "target": "actions/billing.ts"
+        },
+        {
+          "path": "registry/billing-stripe/module.manifest.json",
+          "type": "registry:file",
+          "target": "registry/billing-stripe/module.manifest.json"
+        }
+      ]
+    },
+    {
+      "name": "billing-ecpay",
+      "type": "registry:block",
+      "title": "Billing (ECPay 綠界)",
+      "description": "ECPay 全方位金流 AIO 定期定額 billing integration — CheckMacValue (SHA256), 定期定額 recurring orders (PeriodType/Frequency/ExecTimes), dual notify route handlers (ReturnURL + PeriodReturnURL), renewal scheduler, and idempotent event processing. Taiwan-local PaymentProvider for the @saas stack.",
+      "registryDependencies": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "files": [
+        {
+          "path": "registry/billing-ecpay/lib/billing/providers/ecpay.ts",
+          "type": "registry:lib",
+          "target": "lib/billing/providers/ecpay.ts"
+        },
+        {
+          "path": "registry/billing-ecpay/app/api/billing/ecpay/return/route.ts",
+          "type": "registry:file",
+          "target": "app/api/billing/ecpay/return/route.ts"
+        },
+        {
+          "path": "registry/billing-ecpay/app/api/billing/ecpay/period/route.ts",
+          "type": "registry:file",
+          "target": "app/api/billing/ecpay/period/route.ts"
+        },
+        {
+          "path": "registry/billing-ecpay/module.manifest.json",
+          "type": "registry:file",
+          "target": "registry/billing-ecpay/module.manifest.json"
+        }
+      ]
+    },
+    {
+      "name": "landing",
+      "type": "registry:block",
+      "title": "Landing Page",
+      "description": "Public marketing landing page with Hero, Features, Pricing, FAQ, and CTA sections inside an app/(marketing)/ route group.",
+      "registryDependencies": ["button", "badge", "card"],
+      "files": [
+        {
+          "path": "registry/landing/components/hero.tsx",
+          "type": "registry:component",
+          "target": "components/marketing/hero.tsx"
+        },
+        {
+          "path": "registry/landing/components/features.tsx",
+          "type": "registry:component",
+          "target": "components/marketing/features.tsx"
+        },
+        {
+          "path": "registry/landing/components/pricing.tsx",
+          "type": "registry:component",
+          "target": "components/marketing/pricing.tsx"
+        },
+        {
+          "path": "registry/landing/components/faq.tsx",
+          "type": "registry:component",
+          "target": "components/marketing/faq.tsx"
+        },
+        {
+          "path": "registry/landing/components/cta.tsx",
+          "type": "registry:component",
+          "target": "components/marketing/cta.tsx"
+        },
+        {
+          "path": "registry/landing/components/marketing-nav.tsx",
+          "type": "registry:component",
+          "target": "components/marketing/marketing-nav.tsx"
+        },
+        {
+          "path": "registry/landing/components/marketing-footer.tsx",
+          "type": "registry:component",
+          "target": "components/marketing/marketing-footer.tsx"
+        },
+        {
+          "path": "registry/landing/app/(marketing)/layout.tsx",
+          "type": "registry:page",
+          "target": "app/(marketing)/layout.tsx"
+        },
+        {
+          "path": "registry/landing/app/(marketing)/page.tsx",
+          "type": "registry:page",
+          "target": "app/(marketing)/page.tsx"
+        },
+        {
+          "path": "registry/landing/module.manifest.json",
+          "type": "registry:file",
+          "target": "registry/landing/module.manifest.json"
+        }
+      ]
+    }
+  ]
+}

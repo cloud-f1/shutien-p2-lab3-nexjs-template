@@ -1,0 +1,227 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/your-org/ai-coding-nexjs-template/registry/schema/module.manifest.schema.json",
+  "title": "Module Manifest",
+  "description": "Spec-compliant manifest for a feature module in the @saas registry. Extends the shadcn registry-item schema with db, postInstall, serverActions, and demo fields.",
+  "type": "object",
+  "required": ["id", "version", "title", "summary"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique module identifier. Must match the shadcn registry item name (kebab-case). e.g. 'billing', 'user-profile'.",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "version": {
+      "type": "string",
+      "description": "Semantic version of this module manifest. e.g. '1.0.0'.",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.]+)?$"
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable module title. e.g. 'Billing (Stripe)'.",
+      "minLength": 1
+    },
+    "summary": {
+      "type": "string",
+      "description": "One-sentence description of what this module provides.",
+      "minLength": 1
+    },
+    "registryDependencies": {
+      "type": "array",
+      "description": "Other @saas module IDs this module depends on. Supports version-pinning via ref: '@saas/account#v1.0.0'. Maps to shadcn registry-item.registryDependencies.",
+      "items": {
+        "type": "string",
+        "description": "Registry item reference. Format: 'module-id' or '@namespace/module-id' or '@namespace/module-id#ref'."
+      },
+      "default": []
+    },
+    "npmDependencies": {
+      "type": "object",
+      "description": "npm packages required at runtime. Key = package name, value = semver range. Maps to shadcn registry-item.dependencies.",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "default": {}
+    },
+    "npmDevDependencies": {
+      "type": "object",
+      "description": "npm packages required for development/build only. Maps to shadcn registry-item.devDependencies.",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "default": {}
+    },
+    "envVars": {
+      "type": "array",
+      "description": "Environment variables this module needs. Written to .env.local by the install-* skill — never overwrites existing values. Maps to shadcn registry-item.envVars.",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Environment variable name. e.g. 'STRIPE_SECRET_KEY'.",
+            "pattern": "^[A-Z_][A-Z0-9_]*$"
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description of what this env var does."
+          },
+          "required": {
+            "type": "boolean",
+            "description": "Whether missing this var causes a runtime error.",
+            "default": true
+          },
+          "example": {
+            "type": "string",
+            "description": "Example value (non-sensitive). e.g. 'sk_test_...'."
+          }
+        }
+      },
+      "default": []
+    },
+    "dbTables": {
+      "type": "array",
+      "description": "Drizzle table names this module introduces or depends on. Used to generate uninstall checklists.",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "default": []
+    },
+    "db": {
+      "type": "object",
+      "description": "Drizzle ORM integration metadata for this module.",
+      "additionalProperties": false,
+      "properties": {
+        "schemaFragmentPath": {
+          "type": "string",
+          "description": "Relative path (from next-app/) to the Drizzle schema fragment file. e.g. 'lib/billing/schema.ts'."
+        },
+        "generateCommand": {
+          "type": "string",
+          "description": "Command to generate migrations after schema changes. Defaults to 'pnpm db:generate'.",
+          "default": "pnpm db:generate"
+        },
+        "migrateCommand": {
+          "type": "string",
+          "description": "Command to apply migrations. Defaults to 'pnpm db:migrate'.",
+          "default": "pnpm db:migrate"
+        }
+      }
+    },
+    "routes": {
+      "type": "array",
+      "description": "Next.js App Router route segments this module adds. Used to generate uninstall checklists.",
+      "items": {
+        "type": "string",
+        "description": "Route segment path relative to app/. e.g. '(dashboard)/billing/page.tsx'."
+      },
+      "default": []
+    },
+    "serverActions": {
+      "type": "array",
+      "description": "Server Action file paths this module adds, relative to next-app/. Used to generate uninstall checklists.",
+      "items": {
+        "type": "string",
+        "description": "Server Action file path. e.g. 'actions/billing.ts'."
+      },
+      "default": []
+    },
+    "postInstall": {
+      "type": "array",
+      "description": "DECLARATIVE ordered steps that a consumer must perform after installing registry files. The registry does NOT execute these — they are instructions for the paired install-* skill. The install-* skill reads this array and performs each step (env wiring, db:generate, db:migrate, etc.).",
+      "items": {
+        "type": "object",
+        "required": ["step", "description"],
+        "additionalProperties": false,
+        "properties": {
+          "step": {
+            "type": "integer",
+            "description": "Step number (1-based) for ordering.",
+            "minimum": 1
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "env-wire",
+              "db-generate",
+              "db-migrate",
+              "db-seed",
+              "command",
+              "manual",
+              "docs"
+            ],
+            "description": "Machine-readable action type. 'env-wire' = write envVars to .env.local. 'command' = run shell command. 'manual' = human must do this. 'docs' = read documentation."
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description of what to do."
+          },
+          "command": {
+            "type": "string",
+            "description": "Shell command to run (only when action = 'command')."
+          }
+        }
+      },
+      "default": []
+    },
+    "docs": {
+      "type": "string",
+      "description": "Path or URL to this module's documentation page. Aligns with E240 VitePress site. This is a native shadcn registry-item field. e.g. '/docs/modules/billing'."
+    },
+    "demo": {
+      "type": "object",
+      "description": "Live demo configuration. Custom convention for E240 VitePress site (iframe + API demonstration).",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Next.js route path for the live demo page. e.g. '/demo/billing'."
+        },
+        "iframeSrc": {
+          "type": "string",
+          "description": "Full URL for an iframe embed of the demo."
+        },
+        "apiDemoPath": {
+          "type": "string",
+          "description": "Path to an API route that demonstrates this module's server capabilities. e.g. '/api/demo/billing/checkout'."
+        }
+      }
+    },
+    "files": {
+      "type": "array",
+      "description": "All files this module installs, for generating a complete uninstall checklist. These mirror the shadcn registry-item files array.",
+      "items": {
+        "type": "object",
+        "required": ["path", "type"],
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Source path relative to next-app/. e.g. 'registry/billing/components/billing-card.tsx'."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "registry:component",
+              "registry:lib",
+              "registry:hook",
+              "registry:page",
+              "registry:block",
+              "registry:file"
+            ],
+            "description": "shadcn registry file type."
+          },
+          "target": {
+            "type": "string",
+            "description": "Install target path relative to next-app/. e.g. 'components/billing/billing-card.tsx'."
+          }
+        }
+      },
+      "default": []
+    }
+  }
+}
