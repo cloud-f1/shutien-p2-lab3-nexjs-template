@@ -71,7 +71,7 @@
 | Phase 56 | E229, E230 | ✅ Merged to main (PR #5) — shadcn blue preset + full 繁體中文 i18n |
 | Phase 57 | E231, E232, E233, E234, E235, E236 | ✅ Done on branch (remediated all 33 app-audit findings via a sequential Workflow + E236 task-tiered model dispatch). typecheck · lint · 31 unit · 29 e2e green, verified in Docker |
 | Phase 58 | E247, E248, E249, E250, E251, E252, E253 | ✅ Done on branch phase-58-modular-graft (AI-Ready Modular SaaS graft — shadcn @saas registry + module-author skill + PaymentProvider abstraction (Stripe DEFAULT + ECPay 定期定額) + Landing module + MCP). 182 unit · 29 e2e green, production build + registry:build + module:validate OK. Account/Admin modules deferred; VitePress dev-docs deferred (E258, carryover) |
-| Phase 59 | E254, E255, E256, E257, E258 | ⬜ PLANNED (Cycle 28, 2026-06-15) — Deployment Enablement: deploy config artifacts (zbpack.json + .env.example) · Zeabur path + guide · GCP Cloud Run + Cloud SQL path + guide (placeholders) · deploy-config skill (retire stale deploy-gcr-zeabur) · tool-install quick-start script. Zeabur plugin + CLI installed; gcloud present. Delivered via PR on feat/deploy-config |
+| Phase 59 | E254, E255, E256, E257, E258 | ✅ Done on branch feat/deploy-config (Cycle 28, 2026-06-15) — Deployment Enablement: zbpack.json + .env.example (E254) · Zeabur Road-1 guide + superseded deploy/README (E255) · GCP Cloud Run + Cloud SQL Road-2 guide, placeholders only (E256) · deploy-config skill + retired deploy-gcr-zeabur (E257) · install-deploy-tools.sh + make target (E258). E254–E256 built via `/athena:flow` (validated the await fix); E257/E258 direct. Merge ⬜ (PR pending) |
 <!-- PHASE_STATUS_END -->
 
 <!-- EPIC_MATRIX_START -->
@@ -330,11 +330,11 @@ Phase 46+ epics: enriched template — epic files include Implementation Phases,
 | E251 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — Stripe billing (DEFAULT): PaymentProvider/Stripe + Checkout action + webhook Route Handler (constructEvent sig-verify, idempotent, out-of-order tolerant) → `@saas/billing-stripe` + install-stripe-billing skill |
 | E252 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — ECPay billing (Taiwan-local): 定期定額 CheckMacValue (SHA256) + dual notify Route Handlers (ReturnURL + PeriodReturnURL) + ExecTimes renewal → `@saas/billing-ecpay` + install-ecpay-billing skill |
 | E253 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — MCP + AI-assembly: .mcp.json (shadcn MCP `@saas` namespace) so an AI agent reads the registry + manifests and installs a module by natural language |
-| E254 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 59 — Deploy config artifacts: next-app/zbpack.json (Zeabur) + .env.example env-var matrix (build vs runtime: NEXT_PUBLIC_*, AUTH_*, DATABASE_URL, OAuth, SMTP, Stripe, ECPay); confirm Dockerfile Cloud-Run readiness |
-| E255 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 59 — Zeabur deploy path + guide (Road 1): zbpack/Dockerfile build + Postgres service + build-time NEXT_PUBLIC_* gotcha + AUTH_SECRET/AUTH_URL + zeabur CLI deploy + custom domain; supersede stale deploy/README |
-| E256 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 59 — GCP Cloud Run + Cloud SQL path + guide (Road 2, gcloud): Artifact Registry → gcloud run deploy + Cloud SQL connector + Secret Manager + migrate/seed job + domain; ${PROJECT_ID}/${REGION}/${INSTANCE} placeholders |
-| E257 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 59 — deploy-config skill (.claude/skills/deploy-config) covering both roads (preflight + Zeabur + GCP + gotchas); retire stale deploy-gcr-zeabur skill |
-| E258 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 59 — Tool-install quick-start script (scripts/install-deploy-tools.sh): idempotent installer for zeabur plugin + zeabur CLI + gcloud/node/pnpm/docker checks; make target |
+| E254 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — Deploy config artifacts: next-app/zbpack.json (Zeabur) + .env.example env-var matrix (build vs runtime: NEXT_PUBLIC_*, AUTH_*, DATABASE_URL, OAuth, SMTP, Stripe, ECPay); confirm Dockerfile Cloud-Run readiness |
+| E255 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — Zeabur deploy path + guide (Road 1): zbpack/Dockerfile build + Postgres service + build-time NEXT_PUBLIC_* gotcha + AUTH_SECRET/AUTH_URL + zeabur CLI deploy + custom domain; supersede stale deploy/README |
+| E256 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — GCP Cloud Run + Cloud SQL path + guide (Road 2, gcloud): Artifact Registry → gcloud run deploy + Cloud SQL connector + Secret Manager + migrate/seed job + domain; ${PROJECT_ID}/${REGION}/${INSTANCE} placeholders |
+| E257 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — deploy-config skill (.claude/skills/deploy-config) covering both roads (preflight + Zeabur + GCP + gotchas); retire stale deploy-gcr-zeabur skill |
+| E258 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — Tool-install quick-start script (scripts/install-deploy-tools.sh): idempotent installer for zeabur plugin + zeabur CLI + gcloud/node/pnpm/docker checks; make target |
 <!-- EPIC_MATRIX_END -->
 
 ## Dependency Rules

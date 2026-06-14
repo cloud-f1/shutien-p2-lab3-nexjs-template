@@ -298,11 +298,11 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E251 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — Stripe billing (DEFAULT): Checkout + webhook (constructEvent sig-verify, idempotent) → @saas/billing-stripe |
 | E252 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — ECPay billing (定期定額 CheckMacValue + dual notify route handlers) → @saas/billing-ecpay |
 | E253 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — MCP AI-assembly (.mcp.json @saas namespace — AI installs a module by NL) |
-| E254 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 59 — Deploy config artifacts (zbpack.json + .env.example matrix; Dockerfile Cloud-Run readiness) |
-| E255 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 59 — Zeabur deploy path + guide (Road 1) + supersede stale deploy/README |
-| E256 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 59 — GCP Cloud Run + Cloud SQL path + guide (Road 2, gcloud, placeholders) |
-| E257 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 59 — deploy-config skill (both roads) + retire stale deploy-gcr-zeabur |
-| E258 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 59 — Tool-install quick-start script (scripts/install-deploy-tools.sh) + make target |
+| E254 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — Deploy config artifacts (zbpack.json + .env.example matrix; Dockerfile Cloud-Run readiness) |
+| E255 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — Zeabur deploy path + guide (Road 1) + supersede stale deploy/README |
+| E256 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — GCP Cloud Run + Cloud SQL path + guide (Road 2, gcloud, placeholders) |
+| E257 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — deploy-config skill (both roads) + retire stale deploy-gcr-zeabur |
+| E258 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — Tool-install quick-start script (scripts/install-deploy-tools.sh) + make target |
 
 
 ## Dependency Rules
