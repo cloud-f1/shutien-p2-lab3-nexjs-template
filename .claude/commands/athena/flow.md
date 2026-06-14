@@ -152,7 +152,7 @@ for (let i = 0; i < WAVE.length; i += CAP) {
     log(`budget exhausted — ran ${results.length}/${WAVE.length} epics this wave; rest stay pending`);
     break;
   }
-  results.push(...pipeline(WAVE.slice(i, i + CAP), runEpic));
+  results.push(...(await pipeline(WAVE.slice(i, i + CAP), runEpic)));
 }
 return results;
 ```
