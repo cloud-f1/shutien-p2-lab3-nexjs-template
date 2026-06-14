@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 📚 Dev Docs
+    url: https://ai-coding-nexjs-template-docs.pages.dev/
+    about: Module catalog, API reference, whitepaper, and demos.
+  - name: 💬 Track B 模組包 (Skool)
+    url: https://www.skool.com/ai-brain-alex/about?ref=5dde9b20e8e7432aa9a01df6e89685f4
+    about: Course + community for the AI agentic coding track.

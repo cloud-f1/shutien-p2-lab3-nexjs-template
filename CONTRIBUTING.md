@@ -1,33 +1,40 @@
 # Contributing Guide
 
-[繁體中文版](CONTRIBUTING.zh-TW.md)
-
-Thank you for your interest in AI Coding Template! We welcome contributions of all kinds — bug reports, feature suggestions, documentation improvements, or code submissions.
+Thank you for your interest in the AI Coding Template (Next.js)! We welcome
+contributions of all kinds — bug reports, feature suggestions, documentation
+improvements, and code.
 
 ---
 
 ## Code of Conduct
 
-By participating in this project, you agree to the following principles:
-
-- **Respect**: Interact with others in a friendly, professional manner
-- **Inclusion**: Welcome participants of all backgrounds and experience levels
-- **Constructive**: Provide constructive feedback, focusing on improvement rather than criticism
+- **Respect** — interact professionally and in good faith.
+- **Inclusion** — welcome participants of all backgrounds and experience levels.
+- **Constructive** — focus feedback on improvement, not criticism.
 
 ---
 
-## Development Environment Setup
+## Development Environment
 
-See the [Quickstart Guide](docs/guides/en/quickstart.md) to set up your development environment.
+The fastest path is Docker:
 
-**Requirements**:
+```bash
+git clone https://github.com/cloud-f1/ai-coding-nexjs-template.git && cd ai-coding-nexjs-template
+docker compose up --build -d        # postgres + migrate/seed + web (+ mailpit)
+open http://localhost:3000
+```
 
-- Node.js >= 22
-- pnpm >= 8
-- Python >= 3.12
-- uv (Python package management)
-- PostgreSQL >= 15
-- Git
+Or run the app directly from `next-app/`:
+
+```bash
+cd next-app
+pnpm install
+# set DATABASE_URL + AUTH_SECRET (see .env.example)
+pnpm db:migrate && pnpm db:seed
+pnpm dev
+```
+
+**Requirements:** Node.js >= 20 · pnpm >= 9 · PostgreSQL >= 15 (or Docker) · Git.
 
 ---
 
@@ -36,139 +43,80 @@ See the [Quickstart Guide](docs/guides/en/quickstart.md) to set up your developm
 | Branch | Purpose |
 |--------|---------|
 | `main` | Stable branch, target for all PR merges |
-| `feat/E{n}-{slug}` | Epic feature branch (e.g.: `feat/E7-places-crud`) |
-| `feat/{description}` | Non-Epic feature branch (e.g.: `feat/add-dark-mode`) |
-| `fix/{description}` | Bug fix branch |
+| `MH/feat/E{n}-{slug}` | Epic feature branch (e.g. `MH/feat/E251-stripe-billing`) |
+| `MH/feat/{description}` | Non-Epic feature branch |
+| `MH/fix/{description}` | Bug fix branch |
 
-**Flow**:
+**Flow:** branch from `main` → develop & commit → open a PR back to `main`.
 
-1. Create a new branch from `main`
-2. Develop and commit
-3. Create a PR back to `main`
+> Direct pushes to `main` are blocked by `scripts/hooks/pre-bash-guard.sh` — always go through a PR.
 
 ---
 
-## Commit Conventions
+## Commit Conventions & Versioning
 
-This project uses **Conventional Commits** format. `git-cliff` relies on this format for auto-generating the Changelog.
+This project uses **[Conventional Commits](https://www.conventionalcommits.org/)** and
+**[Semantic Versioning](https://semver.org/)**.
 
-### Format
+### Commit format
 
 ```
 <type>(<scope>): <description>
-
-[optional body]
 ```
-
-### Common Types
 
 | Type | Description | Example |
 |------|-------------|---------|
-| `feat` | New feature | `feat(E7): Places CRUD endpoints` |
-| `fix` | Bug fix | `fix: resolve token refresh race condition` |
-| `docs` | Documentation changes | `docs: update quickstart guide` |
-| `refactor` | Refactoring (no functionality change) | `refactor: extract auth middleware` |
-| `test` | Test-related | `test: add portfolio service tests` |
-| `chore` | Build, tooling, config | `chore: update dependencies` |
+| `feat` | New feature | `feat(E251): Stripe billing module` |
+| `fix` | Bug fix | `fix: re-read role from DB in RBAC guard` |
+| `docs` | Documentation | `docs: refresh README for Next.js stack` |
+| `refactor` | Refactor (no behavior change) | `refactor: extract billing resolver` |
+| `test` | Tests | `test: add ECPay CheckMacValue vectors` |
+| `chore` | Build / tooling / config | `chore: bump deps` |
 
-### Rules
+- Scope is the Epic number when applicable: `feat(E251): ...`.
+- Description in English, lowercase start; each commit is one meaningful change.
 
-- Scope should use the Epic number: `feat(E7): ...`
-- Description in English, starting with lowercase
-- Each commit should represent a meaningful change
+### Versioning (SemVer)
+
+- **MAJOR** — incompatible API / module-contract changes.
+- **MINOR** — new modules or backward-compatible features (e.g. a new `@saas/*` module).
+- **PATCH** — backward-compatible bug fixes.
+
+Releases are tagged `vMAJOR.MINOR.PATCH` (e.g. `v0.1.0`). Every release adds an entry to
+[`CHANGELOG.md`](CHANGELOG.md) (Keep a Changelog format). Bump `next-app/package.json`
+`version` in the same commit, then tag `main`.
 
 ---
 
 ## PR Workflow
 
-### Using Agents to Create PRs (Recommended)
+```bash
+/athena:pr         # full flow: merge main -> build -> test -> create PR
+/athena:ship       # quick flow: review -> fix -> commit -> PR
+```
+
+Manual: push the branch, open a PR titled in Conventional Commits format
+(`feat(E{n}): short description`), pass the local quality gate, and merge after review.
+
+Before opening a PR, run the quality gate:
 
 ```bash
-/athena:pr         # Full flow: merge main -> build -> test -> create PR
-/athena:ship       # Quick flow: review -> fix -> commit -> PR
+scripts/pre-merge-check.sh [--e2e]   # repo hygiene + typecheck + lint + unit (+ e2e)
+# or, from next-app/:
+pnpm typecheck && pnpm lint && pnpm test && pnpm build
 ```
-
-### Manual PR Creation
-
-1. Ensure the branch has been pushed to remote
-2. Create a PR with a title following Conventional Commits format:
-   ```
-   feat(E{n}): Short description (#issue)
-   ```
-3. Wait for CI to pass:
-   - Backend tests (pytest, >= 80% coverage)
-   - Frontend tests (Vitest, >= 80% coverage)
-   - Lint checks
-4. Merge after at least one reviewer approves
 
 ---
 
-## Agent Team Usage
+## Architecture Rules (must follow)
 
-This project includes 7 built-in AI Agents, dispatched through the Athena command system:
+See [`CLAUDE.md`](CLAUDE.md) § "Architecture Rules — NEVER DEVIATE". Highlights:
 
-| Command | Purpose |
-|---------|---------|
-| `/athena:spec <feature>` | Design a new feature spec (OpenAPI-first) |
-| `/athena:implement` | TDD cycle: spec -> code -> QA |
-| `/athena:qa` | Code review + test suite |
-| `/athena:pr [--draft]` | Merge main -> build -> test -> create PR |
-| `/athena:deploy [env]` | 6-gate deployment to Zeabur |
-| `/athena:load` | Load all context documents |
-| `/athena:save` | All agents checkpoint simultaneously |
-| `/athena:promote` | Extract reusable insights to Tier 0 |
-
-**Recommended workflow**:
-
-1. Use `/athena:spec` to design the feature spec
-2. Use `/athena:implement` for TDD development
-3. Use `/athena:qa` for quality checks
-4. Use `/athena:pr` or `/athena:ship` to create the PR
-
----
-
-## Epic Pipeline
-
-All feature development must go through the **Epic Pipeline**:
-
-```
-spec -> implement -> qa -> commit -> merge
-```
-
-| Step | Description |
-|------|-------------|
-| **spec** | Design the feature spec, write OpenAPI spec |
-| **implement** | TDD cycle (RED -> GREEN -> REFACTOR) |
-| **qa** | Code review + test coverage check |
-| **commit** | Commit code following Conventional Commits |
-| **merge** | Create PR, pass CI, merge to main |
-
-Use `/athena:loop` to advance through the Epic Pipeline step by step.
-
-Progress tracking: [`docs/epics/EPIC_INDEX.md`](docs/epics/EPIC_INDEX.md)
-
----
-
-## Code Style
-
-### Server (Python)
-
-- Follow Python conventions (see CLAUDE.md for architecture rules)
-- Use `uv` for package management (not pip)
-- Use `async def` for async endpoints
-- Complete type hints
-
-### Client (React + TypeScript)
-
-- Follow React conventions (see CLAUDE.md for architecture rules)
-- Use `userEvent` (not `fireEvent`) for interaction tests
-- MSW handlers go in `src/tests/handlers/`
-- React Query cache tiers from `cacheConfig.ts`
-
-### API Design
-
-- **Spec-Driven Development (SDD)**: Edit `docs/openapi.yaml` first, then write code
-- OpenAPI spec is the single source of truth for all types
+- **Default to Server Components** — add `"use client"` only for browser APIs / events / state.
+- **Path alias `@/*`** resolves to `next-app/` root — no relative `../../` imports.
+- **shadcn/ui** lives in `components/ui/` — add via `npx shadcn@latest add`, never hand-author.
+- **Drizzle** for all DB access (no raw SQL, no Prisma); mutations via Server Actions (`"use server"`).
+- **`cn()`** for conditional Tailwind; theme via `dark:` variants — no inline `style=` color overrides.
 
 ---
 
@@ -176,32 +124,39 @@ Progress tracking: [`docs/epics/EPIC_INDEX.md`](docs/epics/EPIC_INDEX.md)
 
 | Item | Requirement |
 |------|-------------|
-| Coverage gate | >= 80% (Server + Client) |
-| Server test framework | pytest + asyncio (`asyncio_mode = auto`) |
-| Client test framework | Vitest + @testing-library/react + MSW |
-| Interaction testing | Use `userEvent`, not `fireEvent` |
+| Unit | Vitest (`pnpm test`) — keep meaningful coverage on `lib/`, validations, actions |
+| E2E | Playwright (`pnpm test:e2e`) — needs a seeded DB (`pnpm db:seed`) |
+| Types / lint | `pnpm typecheck` + `pnpm lint` must pass |
+| Registry | `pnpm registry:build` + `pnpm module:validate` for module changes |
 
 ```bash
-# Run Server tests
-cd server && uv run pytest --cov
-
-# Run Client tests
-cd client && pnpm test --coverage
+cd next-app
+pnpm test                # unit
+pnpm test:e2e            # e2e (DB up + seeded)
+make smoke               # full smoke (typecheck + lint + unit + build + e2e + registry install)
 ```
 
-For details on what CI checks run and how to fix common failures, see the [CI Explained guide](docs/guides/en/ci-explained.md).
+---
+
+## Authoring a Module
+
+New `@saas` registry modules follow the `module-author` skill — see
+`.claude/skills/module-author/` and the
+[module catalog](https://ai-coding-nexjs-template-docs.pages.dev/modules/). Each module ships
+code + a machine-readable `module.manifest.json` + a paired `install-<module>` skill.
 
 ---
 
 ## Reporting Issues
 
-Use [Issue Templates](https://github.com/cloud-f1/ai-coding-template/issues/new/choose) to report issues:
+Use the [issue templates](https://github.com/cloud-f1/ai-coding-nexjs-template/issues/new/choose):
 
-- **Bug Report**: Report errors with reproduction steps and environment info
-- **Feature Request**: Suggest new features with motivation and proposed solution
+- **Bug Report** — error with reproduction steps and environment info.
+- **Feature Request** — motivation and proposed solution.
 
 ---
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE). By submitting contributions, you agree to release your code under the same license.
+This project is licensed under the [MIT License](LICENSE). By submitting contributions,
+you agree to release your code under the same license.
