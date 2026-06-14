@@ -72,6 +72,7 @@
 | Phase 57 | E231, E232, E233, E234, E235, E236 | ✅ Done on branch (remediated all 33 app-audit findings via a sequential Workflow + E236 task-tiered model dispatch). typecheck · lint · 31 unit · 29 e2e green, verified in Docker |
 | Phase 58 | E247, E248, E249, E250, E251, E252, E253 | ✅ Done on branch phase-58-modular-graft (AI-Ready Modular SaaS graft — shadcn @saas registry + module-author skill + PaymentProvider abstraction (Stripe DEFAULT + ECPay 定期定額) + Landing module + MCP). 182 unit · 29 e2e green, production build + registry:build + module:validate OK. Account/Admin modules deferred; VitePress dev-docs deferred (E258, carryover) |
 | Phase 59 | E254, E255, E256, E257, E258 | ✅ Done on branch feat/deploy-config (Cycle 28, 2026-06-15) — Deployment Enablement: zbpack.json + .env.example (E254) · Zeabur Road-1 guide + superseded deploy/README (E255) · GCP Cloud Run + Cloud SQL Road-2 guide, placeholders only (E256) · deploy-config skill + retired deploy-gcr-zeabur (E257) · install-deploy-tools.sh + make target (E258). E254–E256 built via `/athena:flow` (validated the await fix); E257/E258 direct. Merge ⬜ (PR pending) |
+| Phase 60 | E259, E260, E261, E262 | ⬜ PLANNED (Cycle 29, 2026-06-15) — Cobalt Design Integration: merge the Claude-Design "Cobalt — AI SaaS" handoff (generated FROM our own tokens, elevated to premium) into our UI — foundation tokens (E259) · premium FX utilities (E260) · landing redesign (E261) · dashboard polish (E262). Brand-neutral, additive. Delivered via PR on feat/cobalt-design |
 <!-- PHASE_STATUS_END -->
 
 <!-- EPIC_MATRIX_START -->
@@ -335,6 +336,10 @@ Phase 46+ epics: enriched template — epic files include Implementation Phases,
 | E256 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — GCP Cloud Run + Cloud SQL path + guide (Road 2, gcloud): Artifact Registry → gcloud run deploy + Cloud SQL connector + Secret Manager + migrate/seed job + domain; ${PROJECT_ID}/${REGION}/${INSTANCE} placeholders |
 | E257 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — deploy-config skill (.claude/skills/deploy-config) covering both roads (preflight + Zeabur + GCP + gotchas); retire stale deploy-gcr-zeabur skill |
 | E258 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — Tool-install quick-start script (scripts/install-deploy-tools.sh): idempotent installer for zeabur plugin + zeabur CLI + gcloud/node/pnpm/docker checks; make target |
+| E259 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 60 — Cobalt foundation tokens: add --success/--warning/--info + shadow/motion/8pt-spacing scales + --font-mono + --radius-pill + --header-height to globals.css (light+dark) + wire colors into @theme inline. Additive |
+| E260 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 60 — Premium FX utilities: cobalt-fx.css (aurora/shimmer-text/glow-cta/shine/lift/marquee/live-dot/float/rise, reduced-motion-safe) + use-reveal hook (scroll-reveal + count-up, SSR-safe) |
+| E261 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 60 — Landing redesign: rebuild components/marketing/* to Cobalt aesthetic (hero aurora+shimmer+preview, marquee+count-up social proof, feature grid, pricing toggle+comparison, FAQ, CTA, footer). Brand-neutral, i18n-ready |
+| E262 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 60 — Dashboard polish: KPI brand-wash cards + semantic badges/status dots + premium inputs + optional ⌘K palette, applied to existing (dashboard) shell without breaking RBAC/e2e |
 <!-- EPIC_MATRIX_END -->
 
 ## Dependency Rules
@@ -584,11 +589,12 @@ Phase 46: E187 + E188 + E190 + E192 (parallel, no deps) → E189 (after E187) �
 Phase 53: E217 (no deps) → E218 (after E217) → E219 + E220 (parallel after E217+E218) → E221 (after E219+E220)
 Phase 58: E247 + E249 (parallel, no deps) → E248 (after E247) → E250 (after E247+E248) → E251 (after E249+E250) + E253 (after E250) → E252 (after E249+E251)
 Phase 59: E254 + E258 (parallel, no deps) → E255 + E256 (parallel after E254) → E257 (after E255+E256)
+Phase 60: E259 (no deps) → E260 (after E259) + E262 (after E259, parallel) → E261 (after E259+E260)
 ```
 
 ---
 
-**Next Action:** Phase 59 (E254–E258, Deployment Enablement) PLANNED on branch `feat/deploy-config` — Zeabur (primary) + GCP Cloud Run/Cloud SQL (secondary, placeholders) deploy paths, config artifacts, deploy-config skill, and a tool-install quick-start script. E258 (install script) implemented immediately per user request; E254–E257 ready to execute via `/athena:loop`/`/athena:flow`. DAG: E254 + E258 (parallel) → E255 + E256 (after E254) → E257 (after E255+E256). Delivered via PR. **Prior: Phase 58 (E247–E253) + v0.1.0 release await the human `git push origin main`.**
+**Next Action:** Phase 60 (E259–E262, Cobalt Design Integration) on branch `feat/cobalt-design` — merge the Claude-Design "Cobalt — AI SaaS" handoff (generated from our own tokens) into our UI: foundation tokens (E259) → FX utilities (E260) + dashboard polish (E262) → landing redesign (E261). Brand-neutral, additive. Implementing now, delivered via PR. **Prior open PRs: #12 (Phase 59 deploy + v0.1.0 release) stacked on the unpushed local `main`; needs `git push origin main` to narrow.**
 
 - **Phase 43 (Universal Adoption)** — E167 already landed in PR #142 (Tailwind + 8 primitives + Preset axis + 9 dashboard views migrated). Remaining: `/athena:batch --phase 43` will dispatch E168 (public) + E169 (auth) in parallel after E167's PR merges; E170 (cleanup) + E171 (Playwright VRT) follow as a second wave.
 - **Phase 44 (Completion & Validation)** — 8 epics. After Phase 43's PRs merge: `/athena:batch --phase 44` dispatches the 7-epic parallel wave (E172 + E173 + E174 + E175 + E176 + E178 + E179). Then E177 (a11y sweep) closes the phase once every surface is stable.

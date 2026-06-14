@@ -303,6 +303,10 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E256 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — GCP Cloud Run + Cloud SQL path + guide (Road 2, gcloud, placeholders) |
 | E257 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — deploy-config skill (both roads) + retire stale deploy-gcr-zeabur |
 | E258 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — Tool-install quick-start script (scripts/install-deploy-tools.sh) + make target |
+| E259 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 60 — Cobalt foundation tokens (success/warning/info + shadow/motion/spacing scales + font-mono; @theme inline wiring) |
+| E260 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 60 — Premium FX utilities (cobalt-fx.css + use-reveal hook; reduced-motion-safe) |
+| E261 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 60 — Landing redesign (components/marketing/* → Cobalt aesthetic, brand-neutral, i18n-ready) |
+| E262 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 60 — Dashboard polish (KPI brand-wash + semantic badges/dots + premium inputs + optional ⌘K) |
 
 
 ## Dependency Rules
@@ -625,9 +629,14 @@ Phase 53: E217 (no deps) → E218 (after E217) → E219 + E220 (parallel after E
 Phase 54: E222 + E223 + E224 (parallel, no deps) → E225 (after E224) → E226 (after E223+E224+E225)
 Phase 58: E247 + E249 (parallel, no deps) → E248 (after E247) → E250 (after E247+E248) → E251 (after E249+E250) + E253 (after E250) → E252 (after E249+E251)
 Phase 59: E254 + E258 (parallel, no deps) → E255 + E256 (parallel after E254) → E257 (after E255+E256)
+Phase 60: E259 (no deps) → E260 (after E259) + E262 (after E259, parallel) → E261 (after E259+E260)
 ```
 
 ## Next Action
+
+**⬜ Phase 60 PLANNED — Cobalt Design Integration (Cycle 29, 2026-06-15).** E259–E262 on branch `feat/cobalt-design`: merge the Claude-Design "Cobalt — AI SaaS" handoff (generated from our own shadcn tokens, elevated to premium) into our UI — foundation tokens (E259) → FX utilities (E260) + dashboard polish (E262) → landing redesign (E261). Brand-neutral, additive (core colors already match ours). Bundle ref: `/tmp/cobalt-design/ai-app/`. Implementing now; delivered via PR.
+
+---
 
 **⬜ Phase 59 PLANNED — Deployment Enablement (Cycle 28, 2026-06-15).** E254–E258 on branch `feat/deploy-config`: deploy config artifacts (zbpack.json + .env.example), Zeabur path + guide (Road 1), GCP Cloud Run + Cloud SQL path + guide (Road 2, `${PLACEHOLDER}`s), deploy-config skill (retire stale deploy-gcr-zeabur), and a tool-install quick-start script. Zeabur Claude plugin (`zeabur@zeabur`) + Zeabur CLI (0.18.0) installed; gcloud 571 present. **E258 (install script) implemented immediately per user request; E254–E257 ready to execute via `/athena:loop`/`/athena:flow`.** DAG: E254 + E258 (parallel) → E255 + E256 (after E254) → E257 (after E255+E256). Delivered via PR.
 
