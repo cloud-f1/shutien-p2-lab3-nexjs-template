@@ -151,16 +151,7 @@
           }
         ]
       }
-    ],
-    "WorktreeCreate": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\" && ./scripts/hooks/worktree-setup.sh"
-          }
-        ]
-      }
     ]
-  }
+  },
+  "worktree": { "baseRef": "head" }
 }
