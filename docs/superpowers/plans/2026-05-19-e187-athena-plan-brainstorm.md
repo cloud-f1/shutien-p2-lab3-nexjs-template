@@ -1206,7 +1206,7 @@ Expected: clean working tree (all changes committed task-by-task).
 git push origin "$(git branch --show-current)"
 ```
 
-Expected: push succeeds. (If working on main directly — switch to a `MH/feat/E187-athena-plan-brainstorm` branch before pushing.)
+Expected: push succeeds. (If working on main directly — switch to a `feat/E187-athena-plan-brainstorm` branch before pushing.)
 
 - [ ] **Step 5: Open PR via `gh`**
 

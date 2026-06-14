@@ -77,7 +77,7 @@ Every stage result MUST match this schema (freeform → retry). No path advances
   "status": "success" | "failure" | "blocked",
   "filesChanged": ["<path>", "..."],
   "worktreePath": "<absolute path>",
-  "worktreeBranch": "MH/feat/E{n}-{slug}",
+  "worktreeBranch": "feat/E{n}-{slug}",
   "summary": "<one-line description>"
 }
 ```
@@ -133,7 +133,7 @@ function runEpic(E) {
       `1. SPEC — read CLAUDE.md + docs/epics/${E.toLowerCase()}-*.md; edit docs/openapi.yaml FIRST (OpenAPI-first SSOT).`,
       `2. IMPLEMENT — TDD red→green→refactor against the spec.`,
       `3. QA — run both test suites; enforce the 80% coverage gate (reviewer=${MODEL.reviewer}, evaluator=${MODEL.evaluator}). If QA fails, return status="failure" and DO NOT commit.`,
-      `4. COMMIT — only if QA passed: commit on branch MH/feat/${E}-<slug> (Conventional Commits). Do NOT merge.`,
+      `4. COMMIT — only if QA passed: commit on branch feat/${E}-<slug> (Conventional Commits). Do NOT merge.`,
       `Return ONLY the AgentReport JSON: status="success" requires implemented AND qa-passed AND committed; "failure" if impl/QA failed; "blocked" if you cannot proceed (e.g. unmet dependency / needs human).`,
     ].join("\n"),
     { schema: REPORT, label: `${E}`, phase: "Wave", isolation: "worktree", model: modelForEpic(E) }

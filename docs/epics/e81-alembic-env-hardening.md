@@ -2,7 +2,7 @@
 
 > **Phase**: 24 — Migration Domain-Based Refactoring
 > **Priority**: P2 | **Points**: 5 SP | **Size**: S
-> **Branch**: `MH/feat/E81-alembic-ci-gate`
+> **Branch**: `feat/E81-alembic-ci-gate`
 > **Depends on**: E78, E80
 
 ---

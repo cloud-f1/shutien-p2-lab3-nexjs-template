@@ -184,7 +184,7 @@ If forced to a single most-important action: **fix the axios CVE (E208).** Every
 |------|-------|
 | State | APPROVED |
 | Approved | 2026-05-30 — E193,E194,E195,E196,E197 (Phase 47, 50 SP) via `/athena:plan approve`; Phase 48/49 (E198–E203) rendered under "no limit 5 epics" override |
-| Addendum | 2026-05-30 — **completeness audit** (hooks blind-spot + dropped-opportunity critic + product-scope) added **E204** (guard integrity — Rules 18/19/20 fail-OPEN on `MH/feat/E{n}` + self-test canary) + **E205** (doc-truth reconciliation) to Phase 47, and expanded **E193** (M→L 13→16 SP; +Rule 6 read-only +dual-openapi +hook-firing root-cause). Phase 47 now **7 epics / ~69 SP**. Scope verdict: ATHENA-ONLY. Safe micro-fixes done directly in commit `c9f8a47` (pre-bash-guard SQL scoping, rule→lesson backfill, domain.md allowed-tools, dead `domain-expert.md.tmpl` deleted). |
+| Addendum | 2026-05-30 — **completeness audit** (hooks blind-spot + dropped-opportunity critic + product-scope) added **E204** (guard integrity — Rules 18/19/20 fail-OPEN on `feat/E{n}` + self-test canary) + **E205** (doc-truth reconciliation) to Phase 47, and expanded **E193** (M→L 13→16 SP; +Rule 6 read-only +dual-openapi +hook-firing root-cause). Phase 47 now **7 epics / ~69 SP**. Scope verdict: ATHENA-ONLY. Safe micro-fixes done directly in commit `c9f8a47` (pre-bash-guard SQL scoping, rule→lesson backfill, domain.md allowed-tools, dead `domain-expert.md.tmpl` deleted). |
 | Epic files | `docs/epics/e{193..205}-*.md` (13 files) |
 | Next | `!git push origin main` (user runs — guard blocks docs push), then `/athena:loop` (or `/loop 2m /athena:batch auto`) → Phase 47 wave 1 = E193·E194·E196·E197·E205, wave 2 = E195 (E204 already ✅) |
 

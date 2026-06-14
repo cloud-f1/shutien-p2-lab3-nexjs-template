@@ -1,6 +1,6 @@
 # E32: Pipeline Friction Fixes — Spec
 
-> **Size**: S (single session) | **Dependencies**: none | **Branch**: `MH/feat/E32-pipeline-friction-fixes`
+> **Size**: S (single session) | **Dependencies**: none | **Branch**: `feat/E32-pipeline-friction-fixes`
 
 ---
 
@@ -8,7 +8,7 @@
 
 Four independent friction points in the developer pipeline waste context tokens, cause false-positive blocks, and add unnecessary complexity to the merge flow:
 
-1. **False-positive push guard** — `pre-bash-guard.sh` blocks any branch name containing "main" (e.g. `MH/feat/E32-maintain-xyz`) because the regex `git push.*(origin )?main` is unanchored.
+1. **False-positive push guard** — `pre-bash-guard.sh` blocks any branch name containing "main" (e.g. `feat/E32-maintain-xyz`) because the regex `git push.*(origin )?main` is unanchored.
 2. **Oversized session injection** — `session-start.sh` dumps ~79 lines into the context window (session summary + active track + full template primer). Only the Quick Reference block (~10 lines) is needed; deeper context is available via `/athena:load`.
 3. **Stash dance on merge** — The loop's inline merge step requires stashing dirty files (e.g. `session-summary.md`, `epic-progress.md`) before `gh pr merge`, then popping. Since `session-summary.md` is already gitignored, the real issue is `epic-progress.md` and other tracked context docs that get modified during the loop. Solution: use `--auto-merge` so the merge happens asynchronously on GitHub, avoiding local dirty-tree conflicts entirely.
 4. **Bloated EPIC_INDEX.md** — The file is 415 lines. Phases 0–7 (E0–E21) are fully complete and their detail sections are never referenced by the loop. Moving them to an archive file cuts the catalog to ~200 lines, reducing token cost every time the loop reads it.
@@ -42,8 +42,8 @@ echo "$CMD" | grep -qE "git push\s+(--[a-z-]+\s+)*origin\s+main(\s|$)" && { echo
 |---|---|---|---|
 | `git push origin main` | BLOCK | BLOCK | Yes |
 | `git push --force origin main` | BLOCK | BLOCK | Yes |
-| `git push -u origin MH/feat/E32-maintain-search` | BLOCK | ALLOW | Yes (fixed) |
-| `git push origin MH/feat/main-page` | BLOCK | ALLOW | Yes (fixed) |
+| `git push -u origin feat/E32-maintain-search` | BLOCK | ALLOW | Yes (fixed) |
+| `git push origin feat/main-page` | BLOCK | ALLOW | Yes (fixed) |
 | `git push -u origin HEAD` | ALLOW | ALLOW | Yes |
 | `git push origin main-backup` | BLOCK | ALLOW | Yes (fixed) |
 
@@ -175,7 +175,7 @@ The "Epic Details" section from line 109 to line 270 (Phases 0–7, epics E0–E
 
 ## Acceptance Criteria
 
-1. **Push guard**: `git push -u origin MH/feat/E32-maintain-search` is NOT blocked; `git push origin main` IS blocked
+1. **Push guard**: `git push -u origin feat/E32-maintain-search` is NOT blocked; `git push origin main` IS blocked
 2. **Session injection**: `bash scripts/hooks/session-start.sh` produces <= 20 lines of output
 3. **Merge flow**: loop.md merge step instructions reference `--auto` flag and do NOT mention `git stash` or `git checkout main`
 4. **Archive**: EPIC_INDEX.md is under 260 lines; `docs/epics/archive/phases-0-7.md` contains all moved detail sections; no information is lost

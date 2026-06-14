@@ -2,7 +2,7 @@
 
 > **Phase**: 21 | **Size**: S (3 SP) | **Priority**: P1
 > **Depends on**: E67 (env vars must be renamed first)
-> **Branch**: `MH/feat/E68-deploy-script-email`
+> **Branch**: `feat/E68-deploy-script-email`
 
 ---
 

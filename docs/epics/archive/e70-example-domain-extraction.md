@@ -2,7 +2,7 @@
 
 > **Phase**: 21 | **Size**: M (8 SP) | **Priority**: P1
 > **Depends on**: E69 (reset script must exist to reference)
-> **Branch**: `MH/feat/E70-example-domain-extraction`
+> **Branch**: `feat/E70-example-domain-extraction`
 
 ---
 

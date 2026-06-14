@@ -30,7 +30,7 @@
 
 ```
 E{number} — {Short Name}
-Branch: MH/feat/E{number}-{slug}
+Branch: feat/E{number}-{slug}
 Commit: feat(E{number}): {description}
 ```
 

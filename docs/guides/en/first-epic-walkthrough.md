@@ -103,13 +103,13 @@ Add a new row to the Epic Step Matrix:
 > **Naming Convention**:
 >
 > - Epic number: `E{number}` (incrementing, use the next available number)
-> - Branch name: `MH/feat/E99-bookmark-domain`
+> - Branch name: `feat/E99-bookmark-domain`
 > - Commit message: `feat(E99): Bookmark domain CRUD`
 
 Create a feature branch:
 
 ```bash
-git checkout -b MH/feat/E99-bookmark-domain
+git checkout -b feat/E99-bookmark-domain
 ```
 
 ---
@@ -409,7 +409,7 @@ git commit -m "feat(E99): Bookmark domain CRUD
 - Integration + component tests"
 
 # Push and create PR
-git push -u origin MH/feat/E99-bookmark-domain
+git push -u origin feat/E99-bookmark-domain
 ```
 
 ### Update EPIC_INDEX

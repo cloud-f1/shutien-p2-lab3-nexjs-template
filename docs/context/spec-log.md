@@ -98,4 +98,4 @@ Epic files at `docs/epics/e{193..203}-*.md`. These are **tooling/meta-system** e
 > ⚠️ NOTE: this log was itself stale (last real entry 2026-03-30, E35) and lines 9/24 reference `server/app/domains/teams/` which does NOT exist on disk — corroborates the doc-truth drift the completeness audit flagged (folds into the proposed Foundation-truth reconciliation).
 
 ### Pending follow-up (completeness audit, awaiting human gate)
-Recommended Phase 47 additions: **guard self-test canary + Rule 18/19/20 branch-regex fix** (QA/migration/contract gates fail-open on real `MH/feat/E{n}` branches); **expand E193** with Rule 6 read-only + dual-openapi reconcile; one **doc-truth reconciliation** epic.
+Recommended Phase 47 additions: **guard self-test canary + Rule 18/19/20 branch-regex fix** (QA/migration/contract gates fail-open on real `feat/E{n}` branches); **expand E193** with Rule 6 read-only + dual-openapi reconcile; one **doc-truth reconciliation** epic.

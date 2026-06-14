@@ -43,9 +43,9 @@ pnpm dev
 | Branch | Purpose |
 |--------|---------|
 | `main` | Stable branch, target for all PR merges |
-| `MH/feat/E{n}-{slug}` | Epic feature branch (e.g. `MH/feat/E251-stripe-billing`) |
-| `MH/feat/{description}` | Non-Epic feature branch |
-| `MH/fix/{description}` | Bug fix branch |
+| `feat/E{n}-{slug}` | Epic feature branch (e.g. `feat/E251-stripe-billing`) |
+| `feat/{description}` | Non-Epic feature branch |
+| `fix/{description}` | Bug fix branch |
 
 **Flow:** branch from `main` → develop & commit → open a PR back to `main`.
 

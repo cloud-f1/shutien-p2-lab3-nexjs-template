@@ -77,7 +77,7 @@ After each wave's branches merge to main (and before starting the next wave), ru
 
 | Epic | Wave | Agent | Status | Duration | Branch | Retries |
 |------|------|-------|--------|----------|--------|---------|
-| E{n} | {w}  | agent-{id} | ✅/❌/⏸️ | {Xm Ys} | MH/feat/E{n}-{slug} | {0-2} |
+| E{n} | {w}  | agent-{id} | ✅/❌/⏸️ | {Xm Ys} | feat/E{n}-{slug} | {0-2} |
 
 ### Integration Test (E91)
 | Integration | Wave {N} | ✅ PASS / ❌ FAIL | server: {X}% ({+/-delta}), client: {Y}% ({+/-delta}) |

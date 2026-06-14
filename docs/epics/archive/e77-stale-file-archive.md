@@ -2,7 +2,7 @@
 
 > **Phase**: 23 | **Size**: S (3 SP) | **Priority**: P2
 > **Depends on**: none
-> **Branch**: `MH/feat/E77-stale-file-archive`
+> **Branch**: `feat/E77-stale-file-archive`
 > **Status**: spec ✅
 
 ---

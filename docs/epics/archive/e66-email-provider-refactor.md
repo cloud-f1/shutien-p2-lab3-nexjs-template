@@ -2,7 +2,7 @@
 
 > **Phase**: 21 | **Size**: M (13 SP) | **Priority**: P0
 > **Depends on**: none
-> **Branch**: `MH/feat/E66-email-provider-refactor`
+> **Branch**: `feat/E66-email-provider-refactor`
 
 ---
 

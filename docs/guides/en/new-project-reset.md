@@ -46,7 +46,7 @@ docs/epics/
 ## Create Your First Epic
 
 ```bash
-git checkout -b MH/feat/E1-my-first-feature
+git checkout -b feat/E1-my-first-feature
 /athena:spec E1 "User registration + email verification"
 /athena:loop
 ```

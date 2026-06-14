@@ -2,7 +2,7 @@
 
 > **Phase**: 23 | **Size**: M (8 SP) | **Priority**: P1
 > **Depends on**: E73
-> **Branch**: `MH/feat/E74-unified-make-init`
+> **Branch**: `feat/E74-unified-make-init`
 
 ---
 

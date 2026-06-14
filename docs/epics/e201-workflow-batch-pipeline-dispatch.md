@@ -37,7 +37,7 @@ Agent step reports become a typed object — model must return this shape or the
   "status": "success" | "failure" | "blocked",
   "filesChanged": ["server/app/...", "client/src/..."],
   "worktreePath": "/path/to/worktree",
-  "worktreeBranch": "MH/feat/E{n}-{slug}",
+  "worktreeBranch": "feat/E{n}-{slug}",
   "summary": "<one-line>"
 }
 ```
@@ -51,7 +51,7 @@ The existing pre-dispatch probe is retained but its output is a typed verdict fi
 ```json
 {
   "pwd": "/worktrees/E{n}",
-  "branch": "MH/feat/E{n}-{slug}",
+  "branch": "feat/E{n}-{slug}",
   "isolationVerdict": "ISOLATED" | "SHARED"
 }
 ```

@@ -2,7 +2,7 @@
 
 > **Phase**: 24 — Migration Domain-Based Refactoring
 > **Priority**: P1 | **Points**: 5 SP | **Size**: S
-> **Branch**: `MH/feat/E80-migration-generator`
+> **Branch**: `feat/E80-migration-generator`
 > **Depends on**: E78
 
 ---

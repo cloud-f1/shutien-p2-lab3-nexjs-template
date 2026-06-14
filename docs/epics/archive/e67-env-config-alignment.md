@@ -2,7 +2,7 @@
 
 > **Phase**: 21 | **Size**: S (5 SP) | **Priority**: P1
 > **Depends on**: E66 (email provider pattern must exist first)
-> **Branch**: `MH/feat/E67-env-config-alignment`
+> **Branch**: `feat/E67-env-config-alignment`
 
 ---
 

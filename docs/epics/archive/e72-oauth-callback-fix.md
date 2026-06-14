@@ -2,7 +2,7 @@
 
 > **Phase**: 22 | **Size**: M (8 SP) | **Priority**: P0
 > **Depends on**: none
-> **Branch**: `MH/feat/E72-oauth-callback-fix`
+> **Branch**: `feat/E72-oauth-callback-fix`
 
 ---
 
