@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowRight, Github } from "lucide-react"
+import { ArrowRight, Star } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 
@@ -27,7 +27,7 @@ export function Cta() {
             </Button>
             <Button asChild size="lg" variant="outline">
               <Link href="https://github.com" target="_blank" rel="noopener noreferrer">
-                <Github className="size-4" /> 在 GitHub 查看
+                <Star className="size-4" /> 在 GitHub 查看
               </Link>
             </Button>
           </div>
