@@ -18,6 +18,7 @@ Add the deploy-time config artifacts the two roads share:
 
 - `next-app/zbpack.json` (new)
 - `next-app/.env.example` (new or refreshed)
+- `docs/guides/deployment.md` (new) — overview/index linking the two road guides (`deployment-zeabur.md` from E255, `deployment-gcp.md` from E256) + the `make install-deploy-tools` step
 - `next-app/Dockerfile` (verify only)
 - `next-app/next.config.ts` (verify `output: "standalone"`)
 

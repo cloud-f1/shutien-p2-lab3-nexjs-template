@@ -12,7 +12,7 @@ Document the GCP road (Road 2): containerize `next-app/` (existing Cloud-Run-rea
 
 ## Key Files
 
-- `docs/guides/deployment.md` (new) — Road 2 section
+- `docs/guides/deployment-gcp.md` (new) — Road 2 (own file, parallel-safe vs E255)
 
 ## Implementation
 
@@ -26,7 +26,7 @@ Document the GCP road (Road 2): containerize `next-app/` (existing Cloud-Run-rea
 
 ## Acceptance Criteria
 
-- [ ] `docs/guides/deployment.md` Road 2 covers APIs, build/push, Cloud Run deploy, Cloud SQL connector, Secret Manager, migrate/seed, domain.
+- [ ] `docs/guides/deployment-gcp.md` covers APIs, build/push, Cloud Run deploy, Cloud SQL connector, Secret Manager, migrate/seed, domain.
 - [ ] All GCP identifiers use `${PLACEHOLDER}` form — no real project/region/instance values.
 - [ ] Cloud SQL connector + build-time `NEXT_PUBLIC_*` gotchas are explicit.
 

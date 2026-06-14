@@ -12,7 +12,7 @@ Document and validate the Zeabur road (Road 1) for the single `next-app/` servic
 
 ## Key Files
 
-- `docs/guides/deployment.md` (new) — Road 1 section
+- `docs/guides/deployment-zeabur.md` (new) — Road 1 (own file, parallel-safe vs E256)
 - `next-app/zbpack.json` (from E254)
 - `deploy/README.md` (supersede / point to the new guide)
 
@@ -26,7 +26,7 @@ Document and validate the Zeabur road (Road 1) for the single `next-app/` servic
 
 ## Acceptance Criteria
 
-- [ ] `docs/guides/deployment.md` Road 1 covers project, Postgres, env (build vs runtime), CLI deploy, domain.
+- [ ] `docs/guides/deployment-zeabur.md` covers project, Postgres, env (build vs runtime), CLI deploy, domain.
 - [ ] The build-time `NEXT_PUBLIC_*` gotcha is explicit.
 - [ ] `deploy/README.md` no longer presents the stale GCR/dual-service flow as current.
 
