@@ -14,13 +14,13 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { isAdmin, canEdit } from "@/lib/is-admin"
+import { Logo } from "@/components/logo"
 import Link from "next/link"
 import {
   LayoutDashboardIcon,
   ListIcon,
   Settings2Icon,
   ShieldIcon,
-  CommandIcon,
   ServerIcon,
 } from "lucide-react"
 
@@ -55,7 +55,7 @@ export function AppSidebar({
               className="data-[slot=sidebar-menu-button]:p-1.5!"
             >
               <Link href="/dashboard">
-                <CommandIcon className="size-5!" />
+                <Logo className="size-6!" />
                 <span className="text-base font-semibold">AI App Template</span>
               </Link>
             </SidebarMenuButton>
