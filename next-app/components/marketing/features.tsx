@@ -19,37 +19,37 @@ interface Feature {
 const FEATURES: Feature[] = [
   {
     Icon: Lock,
-    title: "內建認證 · Auth built-in",
+    title: "內建認證",
     description:
       "NextAuth v5：Email/密碼、Email 驗證、與 3 階 RBAC（admin/editor/viewer），開箱即用。",
   },
   {
     Icon: CreditCard,
-    title: "模組化金流 · Billing-ready",
+    title: "模組化金流",
     description:
       "PaymentProvider 抽象層支援 Stripe 與綠界 ECPay 定期定額。換金流不必動到業務邏輯。",
   },
   {
     Icon: Database,
-    title: "Drizzle 資料庫 · Type-safe DB",
+    title: "Drizzle 資料庫",
     description:
       "型別安全的 Drizzle ORM + PostgreSQL。遷移、seed、schema fragment 全部齊備。",
   },
   {
     Icon: Palette,
-    title: "深色主題 · Dark mode & theming",
+    title: "深色主題",
     description:
       "Tailwind v4 + next-themes + shadcn/ui。class 策略深色模式，一個按鍵即可切換。",
   },
   {
     Icon: Blocks,
-    title: "Registry 模組 · Installable modules",
+    title: "Registry 模組",
     description:
       "用 `npx shadcn@latest add @saas/<module>` 安裝整個功能模組，附 manifest 與安裝 skill。",
   },
   {
     Icon: Rocket,
-    title: "隨處部署 · Deploy anywhere",
+    title: "隨處部署",
     description:
       "內含 Zeabur 設定與 Dockerfile，單一 Next.js 服務、啟動自動遷移。Cloud Run 亦可。",
   },

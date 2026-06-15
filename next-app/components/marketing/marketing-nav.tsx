@@ -6,7 +6,7 @@ const NAV_LINKS = [
   { href: "#features", label: "功能" },
   { href: "#solutions", label: "解決方案" },
   { href: "#pricing", label: "定價" },
-  { href: "#faq", label: "FAQ" },
+  { href: "#faq", label: "常見問題" },
 ]
 
 export function MarketingNav() {
@@ -32,10 +32,10 @@ export function MarketingNav() {
         </nav>
         <div className="flex items-center gap-2">
           <Button asChild variant="ghost" size="sm">
-            <Link href="/login">Sign in</Link>
+            <Link href="/login">登入</Link>
           </Button>
           <Button asChild size="sm">
-            <Link href="/register">Get started</Link>
+            <Link href="/register">開始使用</Link>
           </Button>
         </div>
       </div>

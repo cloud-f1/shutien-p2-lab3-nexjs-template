@@ -4,7 +4,7 @@ import { ArrowRight, Check, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { VideoDemo } from "@/components/marketing/video-demo"
 
-const TRUST = ["無需信用卡 · No credit card", "幾分鐘即可部署 · Deploy in minutes", "MIT 授權 · MIT licensed"]
+const TRUST = ["無需信用卡", "幾分鐘即可部署", "MIT 授權"]
 
 export function Hero() {
   return (
@@ -20,7 +20,7 @@ export function Hero() {
         {/* "New" pill */}
         <div className="hero-in hero-d1 inline-flex items-center gap-2 rounded-full border bg-background/70 px-3 py-1 text-sm shadow-xs backdrop-blur">
           <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
-            <Sparkles className="size-3" /> New
+            <Sparkles className="size-3" /> 新上線
           </span>
           <span className="text-muted-foreground">AI-Ready 模組化金流現已登場</span>
           <ArrowRight className="size-3.5 text-muted-foreground" />
