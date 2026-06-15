@@ -21,7 +21,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export default async function ComponentsPage() {
   await requireAuth()
   return (
-    <div className="mx-auto max-w-3xl space-y-8 p-6">
+    <div className="max-w-3xl space-y-8 p-6">
       <div>
         <h1 className="text-2xl font-semibold">元件參考 · Component reference</h1>
         <p className="text-muted-foreground mt-1 text-sm">

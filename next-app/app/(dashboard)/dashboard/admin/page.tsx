@@ -23,7 +23,7 @@ export default async function AdminPage() {
   const [users, invitations] = await Promise.all([getAllUsers(), listInvitations()])
 
   return (
-    <div className="mx-auto max-w-5xl p-6 space-y-10">
+    <div className="max-w-5xl p-6 space-y-10">
       <div>
         <h1 className="text-2xl font-semibold">使用者管理</h1>
         <p className="text-sm text-muted-foreground mt-1">共 {users.length} 位使用者</p>
