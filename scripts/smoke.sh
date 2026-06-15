@@ -35,7 +35,14 @@ rung_make() {
   else skip "$1" "no '$1' make target on this branch"; fi
 }
 
-cd "$APP" || exit 1
+# Abnormal-exit guard. Gates run with `set +e` semantics (we WANT to run them all),
+# so a non-zero gate is handled by rung(). This trap catches the *other* class of
+# failure — the harness itself dying before the summary (a setup crash, a `set -u`
+# unbound var, a syntax error) — so we never emit a misleading partial/green result.
+SMOKE_DONE=0
+trap 'rc=$?; if [ "$SMOKE_DONE" != 1 ]; then printf "\n\033[31m✖ smoke ABORTED (exit %s) before the summary — harness/setup error, NOT a gate result. Last captured log:\033[0m\n" "$rc"; tail -12 /tmp/smoke-last.log 2>/dev/null | sed "s/^/      /"; fi' EXIT
+
+cd "$APP" || { echo "✖ next-app not found at $APP" >&2; exit 1; }
 
 hdr "Static + build (next-app)"
 rung "typecheck"        pnpm typecheck
@@ -96,6 +103,7 @@ if [ "$DO_DOCKER" -eq 1 ]; then
 fi
 
 hdr "SMOKE SUMMARY"
+SMOKE_DONE=1  # reached the summary cleanly → disarm the abnormal-exit guard
 printf '  \033[32mPASS:%d\033[0m  \033[31mFAIL:%d\033[0m  \033[33mSKIP:%d\033[0m\n' "${#PASS[@]}" "${#FAILED[@]}" "${#SKIPPED[@]}"
 [ "${#SKIPPED[@]}" -gt 0 ] && printf '  skipped: %s\n' "$(printf '%s; ' "${SKIPPED[@]}")"
 if [ "${#FAILED[@]}" -gt 0 ]; then printf '  \033[31mFAILED: %s\033[0m\n' "$(printf '%s ' "${FAILED[@]}")"; exit 1; fi
