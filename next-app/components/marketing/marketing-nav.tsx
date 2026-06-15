@@ -3,8 +3,9 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 
 const NAV_LINKS = [
-  { href: "#features", label: "Features" },
-  { href: "#pricing", label: "Pricing" },
+  { href: "#features", label: "功能" },
+  { href: "#solutions", label: "解決方案" },
+  { href: "#pricing", label: "定價" },
   { href: "#faq", label: "FAQ" },
 ]
 

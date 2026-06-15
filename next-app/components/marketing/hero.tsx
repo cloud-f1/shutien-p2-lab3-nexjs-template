@@ -1,7 +1,8 @@
 import Link from "next/link"
-import { ArrowRight, Check, Play, Sparkles } from "lucide-react"
+import { ArrowRight, Check, Sparkles } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { VideoDemo } from "@/components/marketing/video-demo"
 
 const TRUST = ["無需信用卡 · No credit card", "幾分鐘即可部署 · Deploy in minutes", "MIT 授權 · MIT licensed"]
 
@@ -41,11 +42,7 @@ export function Hero() {
               免費開始 <ArrowRight className="size-4" />
             </Link>
           </Button>
-          <Button asChild size="lg" variant="outline">
-            <Link href="#features">
-              <Play className="size-4" /> 看看功能
-            </Link>
-          </Button>
+          <VideoDemo />
         </div>
 
         <ul className="hero-in hero-d5 mt-2 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-muted-foreground">

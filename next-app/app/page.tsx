@@ -8,6 +8,8 @@ import { MarketingFooter } from "@/components/marketing/marketing-footer"
 import { MarketingNav } from "@/components/marketing/marketing-nav"
 import { Pricing } from "@/components/marketing/pricing"
 import { SocialProof } from "@/components/marketing/social-proof"
+import { Testimonials } from "@/components/marketing/testimonials"
+import { UseCases } from "@/components/marketing/use-cases"
 
 export const metadata: Metadata = {
   title: "Next.js SaaS 起手式 · AI-Ready Modular Template",
@@ -23,6 +25,8 @@ export default function Page() {
         <Hero />
         <SocialProof />
         <Features />
+        <UseCases />
+        <Testimonials />
         <Pricing />
         <Faq />
         <Cta />

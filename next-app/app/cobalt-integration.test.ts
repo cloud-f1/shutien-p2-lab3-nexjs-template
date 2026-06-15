@@ -94,3 +94,63 @@ describe("E262 — dashboard polish", () => {
     expect(cards).toContain("from-primary/5")
   })
 })
+
+// ── Phase 61 — Cobalt UI surfaces (E263–E266) ──────────────────────────────
+describe("E263 — app shell (⌘K + notifications + breadcrumb)", () => {
+  it("command palette uses CommandDialog + ⌘K hotkey", () => {
+    const cp = read("../components/command-palette.tsx")
+    expect(cp).toContain("CommandDialog")
+    expect(cp).toMatch(/metaKey|ctrlKey/)
+  })
+  it("site-header mounts all three shell affordances", () => {
+    const h = read("../components/site-header.tsx")
+    for (const c of ["CommandPalette", "NotificationsMenu", "AppBreadcrumb"]) {
+      expect(h, c).toContain(c)
+    }
+  })
+  it("notifications + breadcrumb components exist", () => {
+    expect(read("../components/notifications-menu.tsx")).toContain("NotificationsMenu")
+    expect(read("../components/app-breadcrumb.tsx")).toContain("usePathname")
+  })
+})
+
+describe("E264 — settings expansion", () => {
+  it("tabbed settings reuses the profile + password forms", () => {
+    const t = read("./(dashboard)/dashboard/settings/_settings-tabs.tsx")
+    expect(t).toContain("Tabs")
+    expect(t).toContain("ProfileForm")
+    expect(t).toContain("PasswordForm")
+    expect(read("./(dashboard)/dashboard/settings/page.tsx")).toContain("SettingsTabs")
+  })
+})
+
+describe("E265 — auth split-screen + component reference", () => {
+  it("auth layout is a split-screen with the brand panel", () => {
+    const l = read("./(auth)/layout.tsx")
+    expect(l).toContain("lg:grid-cols-2")
+    expect(l).toContain("aurora")
+  })
+  it("component reference page renders primitives + StatusBadge", () => {
+    const c = read("./(dashboard)/dashboard/components/page.tsx")
+    expect(c).toContain("StatusBadge")
+    expect(c).toContain("shimmer-text")
+  })
+})
+
+describe("E266 — marketing gaps", () => {
+  it("use-cases (#solutions) + testimonials + video-demo exist", () => {
+    expect(read("../components/marketing/use-cases.tsx")).toContain('id="solutions"')
+    expect(read("../components/marketing/testimonials.tsx")).toContain("Testimonials")
+    expect(read("../components/marketing/video-demo.tsx")).toContain("Dialog")
+  })
+  it("pricing has a monthly/yearly toggle (DEFAULT_PRICING_TIERS preserved)", () => {
+    const p = read("../components/marketing/pricing.tsx")
+    expect(p).toContain("BillingPeriod")
+    expect(p).toContain("DEFAULT_PRICING_TIERS")
+  })
+  it("landing page renders the new sections", () => {
+    const page = read("./page.tsx")
+    expect(page).toContain("UseCases")
+    expect(page).toContain("Testimonials")
+  })
+})
