@@ -6,10 +6,10 @@ import { useCountUp } from "@/hooks/use-reveal"
 const LOGOS = ["Acme", "Globex", "Initech", "Umbra", "Hooli", "Stark", "Wayne", "Soylent"]
 
 const STATS: { end: number; decimals?: number; suffix: string; label: string }[] = [
-  { end: 10, suffix: "M+", label: "每月處理請求 · Requests / mo" },
-  { end: 99.98, decimals: 2, suffix: "%", label: "可用性 · Uptime" },
-  { end: 4200, suffix: "+", label: "開發者使用 · Developers" },
-  { end: 24, suffix: "/7", label: "全天候運行 · Always on" },
+  { end: 10, suffix: "M+", label: "每月處理請求" },
+  { end: 99.98, decimals: 2, suffix: "%", label: "可用性" },
+  { end: 4200, suffix: "+", label: "開發者使用" },
+  { end: 24, suffix: "/7", label: "全天候運行" },
 ]
 
 function Stat({ end, decimals, suffix, label }: (typeof STATS)[number]) {
@@ -30,7 +30,7 @@ export function SocialProof() {
     <section className="border-y bg-muted/30 py-12">
       <div className="mx-auto max-w-5xl px-4">
         <p className="mb-6 text-center text-sm text-muted-foreground">
-          受到各地團隊信賴 · Trusted by teams everywhere
+          受到各地團隊信賴
         </p>
         <div className="marquee mb-12">
           <div className="marquee-track gap-12 pr-12">

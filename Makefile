@@ -4,7 +4,7 @@
 #        make setup     (first-time setup for new developers)
 #        make test      (run all test suites)
 
-.PHONY: go init new-site check-prereqs ensure-env ensure-db generate-types dev server client dev-docs setup setup-server setup-client setup-dev-docs test test-server test-client test-migrations verify-migrations guard-selftest lint flaky ci-all db db-stop docker-dev docker-prod docker-down docker-logs docker-ps doctor doctor-production doctor-deploy verify tutorial new-domain docker-clean db-backup deploy install-tools install-deploy-tools reset strip error-budget drift-check help
+.PHONY: go init new-site check-prereqs ensure-env ensure-db generate-types dev server client dev-docs local local-setup local-infra local-db local-env local-down setup setup-server setup-client setup-dev-docs test test-server test-client test-migrations verify-migrations guard-selftest lint flaky ci-all db db-stop docker-dev docker-prod docker-down docker-logs docker-ps doctor doctor-production doctor-deploy verify tutorial new-domain docker-clean db-backup deploy install-tools install-deploy-tools reset strip error-budget drift-check help
 
 # ─── Zero-Config Startup ─────────────────────
 # `make go` is the single-command happy path for first-time developers.
@@ -114,6 +114,51 @@ client: ## Run Vite dev server
 
 dev-docs: ## Run dev-docs site
 	cd dev-docs && pnpm dev
+
+# ─── Next.js App — Local Run (current stack) ─────────────────
+# Run the Next.js app on the host (fast HMR) against Dockerized Postgres + Mailpit.
+# First time:  make local-setup        Then every run:  make local
+NEXT := next-app
+
+local: local-env local-infra ## ⭐ Local dev — Docker infra + Next.js on http://localhost:3000
+	@echo "▶ Next.js dev → http://localhost:3000  (Mailpit inbox: http://localhost:8025)"
+	@cd $(NEXT) && pnpm dev
+
+local-setup: local-env local-infra ## First-time local setup — install deps + migrate + seed demo data
+	cd $(NEXT) && pnpm install
+	cd $(NEXT) && pnpm db:migrate
+	cd $(NEXT) && pnpm db:seed
+	@echo "✅ Local setup complete. Run 'make local' to start the dev server."
+
+local-infra: ## Start Postgres + Mailpit in Docker (infra only; waits for DB health)
+	docker compose up -d --wait postgres mailpit
+	@echo "✅ Postgres localhost:5432 · Mailpit UI http://localhost:8025"
+
+local-db: ## Apply migrations + seed demo data (idempotent)
+	cd $(NEXT) && pnpm db:migrate && pnpm db:seed
+
+local-env: ## Generate next-app/.env.local for local dev (only if missing)
+	@if [ -f $(NEXT)/.env.local ]; then \
+		echo "✅ $(NEXT)/.env.local already present (leaving as-is)"; \
+	else \
+		printf '%s\n' \
+			'NEXT_PUBLIC_APP_URL=http://localhost:3000' \
+			'NEXT_PUBLIC_ENABLE_DEMO_LOGIN=true' \
+			"AUTH_SECRET=$$(openssl rand -base64 32)" \
+			'AUTH_URL=http://localhost:3000' \
+			'AUTH_TRUST_HOST=true' \
+			'DATABASE_URL=postgresql://saas_user:saas_pass@localhost:5432/saas_dev' \
+			'SMTP_HOST=localhost' \
+			'SMTP_PORT=1025' \
+			'SMTP_SECURE=false' \
+			'EMAIL_FROM=noreply@saas-dev.local' \
+			> $(NEXT)/.env.local; \
+		echo "✅ Wrote $(NEXT)/.env.local (localhost Postgres + Mailpit + fresh AUTH_SECRET)"; \
+	fi
+
+local-down: ## Stop the local Docker infra (Postgres + Mailpit)
+	docker compose down
+	@echo "✅ Local infra stopped."
 
 # ─── Setup (first-time) ──────────────────────
 

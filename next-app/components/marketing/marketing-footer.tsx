@@ -1,11 +1,11 @@
 import Link from "next/link"
 
 const FOOTER_LINKS = [
-  { href: "#features", label: "Features" },
-  { href: "#pricing", label: "Pricing" },
-  { href: "#faq", label: "FAQ" },
-  { href: "/login", label: "Sign in" },
-  { href: "/register", label: "Register" },
+  { href: "#features", label: "功能" },
+  { href: "#pricing", label: "定價" },
+  { href: "#faq", label: "常見問題" },
+  { href: "/login", label: "登入" },
+  { href: "/register", label: "註冊" },
 ]
 
 export function MarketingFooter() {
@@ -14,8 +14,7 @@ export function MarketingFooter() {
       <div className="mx-auto max-w-5xl px-4">
         <div className="flex flex-col items-center gap-4 md:flex-row md:justify-between">
           <p className="text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} AI App Template. All rights
-            reserved.
+            &copy; {new Date().getFullYear()} AI App Template. 版權所有。
           </p>
           <nav className="flex flex-wrap justify-center gap-4 text-sm text-muted-foreground">
             {FOOTER_LINKS.map(({ href, label }) => (

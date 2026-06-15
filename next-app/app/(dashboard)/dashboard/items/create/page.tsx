@@ -11,7 +11,7 @@ export default async function CreateItemPage() {
   await requireEditor()
 
   return (
-    <div className="mx-auto max-w-2xl p-6 space-y-6">
+    <div className="max-w-2xl p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">新增項目</h1>
         <p className="text-sm text-muted-foreground mt-1">建立一個新的項目。</p>

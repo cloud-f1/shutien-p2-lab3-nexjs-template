@@ -29,7 +29,7 @@ export default async function ItemsPage() {
     .orderBy(itemsTable.createdAt)
 
   return (
-    <div className="mx-auto max-w-5xl p-6 space-y-6">
+    <div className="max-w-5xl p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">項目</h1>

@@ -109,7 +109,7 @@ function PricingCard({ tier, period }: PricingCardProps & { period: BillingPerio
       </div>
       <div className="flex items-baseline gap-1">
         {tier.monthlyPrice === 0 ? (
-          <span className="text-4xl font-bold">Free</span>
+          <span className="text-4xl font-bold">免費</span>
         ) : period === "yearly" ? (
           <>
             <span className="text-4xl font-bold">${yearly}</span>
