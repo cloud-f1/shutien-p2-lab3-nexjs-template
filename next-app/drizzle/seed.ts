@@ -18,6 +18,7 @@ import {
 import { generateApiKey } from "../lib/api-keys-utils"
 import { generateWebhookSecret } from "../lib/webhooks-utils"
 import { generateInviteToken, inviteExpiry } from "../lib/team-utils"
+import { PAID_TIERS, PRICING_CURRENCY, getTierBySlug } from "../lib/billing/pricing"
 
 const now = new Date()
 const daysAgo = (n: number) => new Date(now.getTime() - n * 86_400_000)
@@ -86,13 +87,18 @@ async function enrich(adminId: string, editorId: string | undefined) {
   // ── Billing: pricing tiers + an active subscription for the admin ────────
   const plans = await db
     .insert(plansTable)
-    .values([
-      { providerPriceId: "price_starter_demo", interval: "month", amount: 0, currency: "usd" },
-      { providerPriceId: "price_pro_demo", interval: "month", amount: 2900, currency: "usd" },
-      { providerPriceId: "price_scale_demo", interval: "month", amount: 9900, currency: "usd" },
-    ])
+    .values(
+      // Derived from config/pricing.json (single source of truth) — the paid tiers.
+      PAID_TIERS.map((t) => ({
+        providerPriceId: t.providerPriceId!,
+        interval: t.interval,
+        amount: t.monthlyPrice * 100, // dollars → cents
+        currency: PRICING_CURRENCY,
+      })),
+    )
     .returning({ id: plansTable.id, priceId: plansTable.providerPriceId })
-  const proPlan = plans.find((p) => p.priceId === "price_pro_demo")!
+  const proTier = getTierBySlug("pro")
+  const proPlan = plans.find((p) => p.priceId === proTier?.providerPriceId) ?? plans[0]
 
   await db.insert(subscriptionsTable).values({
     userId: adminId,

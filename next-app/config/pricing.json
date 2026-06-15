@@ -1,0 +1,42 @@
+{
+  "$comment": "Single source of truth for pricing tiers (E274). Edit HERE — no hardcoded tiers in code. Consumed by the pricing page, the DB seed (plans table), and checkout. For production, set each paid tier's `providerPriceId` to your real Stripe price ID (price_xxx) or ECPay PlanID.",
+  "currency": "usd",
+  "tiers": [
+    {
+      "slug": "free",
+      "name": "免費",
+      "description": "適合個人與小型專案起步。",
+      "monthlyPrice": 0,
+      "interval": "month",
+      "providerPriceId": null,
+      "highlighted": false,
+      "badge": null,
+      "ctaLabel": "免費開始",
+      "features": ["1 個專案", "2 位成員", "5 GB 儲存空間", "社群支援"]
+    },
+    {
+      "slug": "pro",
+      "name": "Pro",
+      "description": "適合需要更多火力的團隊。",
+      "monthlyPrice": 29,
+      "interval": "month",
+      "providerPriceId": "price_pro_demo",
+      "highlighted": true,
+      "badge": "最受歡迎",
+      "ctaLabel": "開始 Pro",
+      "features": ["無限專案", "10 位成員", "50 GB 儲存空間", "優先支援", "進階分析"]
+    },
+    {
+      "slug": "scale",
+      "name": "Scale",
+      "description": "為快速成長的組織打造。",
+      "monthlyPrice": 99,
+      "interval": "month",
+      "providerPriceId": "price_scale_demo",
+      "highlighted": false,
+      "badge": null,
+      "ctaLabel": "升級 Scale",
+      "features": ["無限專案", "無限成員", "500 GB 儲存空間", "專屬支援", "自訂整合", "SLA 保證"]
+    }
+  ]
+}

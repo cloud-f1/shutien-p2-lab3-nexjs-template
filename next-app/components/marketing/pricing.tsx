@@ -1,87 +1,16 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
 import Link from "next/link"
 
-import type { Plan } from "@/lib/billing/provider"
+import { createCheckoutSession } from "@/actions/billing"
+import { PRICING_TIERS, type PricingTier } from "@/lib/billing/pricing"
 import { cn } from "@/lib/utils"
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 
 type BillingPeriod = "monthly" | "yearly"
-
-// ---------------------------------------------------------------------------
-// Static plan display shape (subset of Plan used for display)
-// ---------------------------------------------------------------------------
-
-interface PricingTier {
-  /** Maps to Plan.id from E231 billing provider */
-  planId: string
-  name: string
-  description: string
-  /** Monthly price in dollars (display only) */
-  monthlyPrice: number
-  currency: string
-  interval: Plan["interval"]
-  features: string[]
-  highlighted?: boolean
-  badge?: string
-  ctaLabel: string
-  ctaHref: string
-}
-
-// Default tiers — replace with DB-driven data once the billing adapter is live
-export const DEFAULT_PRICING_TIERS: PricingTier[] = [
-  {
-    planId: "free",
-    name: "Free",
-    description: "Get started with the basics.",
-    monthlyPrice: 0,
-    currency: "usd",
-    interval: "month",
-    features: ["1 project", "2 team members", "5 GB storage", "Community support"],
-    ctaLabel: "Start for free",
-    ctaHref: "/register",
-  },
-  {
-    planId: "pro",
-    name: "Pro",
-    description: "For teams that need more power.",
-    monthlyPrice: 29,
-    currency: "usd",
-    interval: "month",
-    highlighted: true,
-    badge: "Most popular",
-    features: [
-      "Unlimited projects",
-      "10 team members",
-      "50 GB storage",
-      "Priority support",
-      "Advanced analytics",
-    ],
-    ctaLabel: "Start Pro trial",
-    ctaHref: "/register?plan=pro",
-  },
-  {
-    planId: "enterprise",
-    name: "Enterprise",
-    description: "Custom solutions for large organisations.",
-    monthlyPrice: 99,
-    currency: "usd",
-    interval: "month",
-    features: [
-      "Unlimited projects",
-      "Unlimited team members",
-      "500 GB storage",
-      "Dedicated support",
-      "Custom integrations",
-      "SLA guarantee",
-    ],
-    ctaLabel: "Contact sales",
-    ctaHref: "/register?plan=enterprise",
-  },
-]
 
 interface PricingCardProps {
   tier: PricingTier
@@ -90,13 +19,31 @@ interface PricingCardProps {
 function PricingCard({ tier, period }: PricingCardProps & { period: BillingPeriod }) {
   // Yearly = 10× monthly (2 months free) — display-only; data shape unchanged.
   const yearly = tier.monthlyPrice * 10
+  const [pending, startTransition] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+
+  function onSubscribe() {
+    if (!tier.providerPriceId) return
+    setError(null)
+    startTransition(async () => {
+      const origin = window.location.origin
+      const res = await createCheckoutSession(
+        tier.providerPriceId!,
+        `${origin}/dashboard/system?billing=success`,
+        `${origin}/#pricing`,
+      )
+      if (res.success && res.checkoutUrl) window.location.href = res.checkoutUrl
+      else setError(res.error ?? "無法開始結帳，請稍後再試。")
+    })
+  }
+
   return (
     <div
       className={cn(
         "lift relative flex flex-col gap-6 rounded-xl border bg-card p-6 text-card-foreground shadow-xs",
         tier.highlighted && "border-primary shadow-md ring-2 ring-primary md:-translate-y-2",
       )}
-      data-plan-id={tier.planId}
+      data-plan-id={tier.slug}
     >
       {tier.badge && (
         <Badge className="absolute right-4 top-4" variant="default">
@@ -132,14 +79,31 @@ function PricingCard({ tier, period }: PricingCardProps & { period: BillingPerio
           </li>
         ))}
       </ul>
-      <Button
-        asChild
-        variant={tier.highlighted ? "default" : "outline"}
-        className="mt-auto"
-        data-testid={`pricing-cta-${tier.planId}`}
-      >
-        <Link href={tier.ctaHref}>{tier.ctaLabel}</Link>
-      </Button>
+      <div className="mt-auto flex flex-col gap-1.5">
+        {tier.providerPriceId ? (
+          <Button
+            variant={tier.highlighted ? "default" : "outline"}
+            onClick={onSubscribe}
+            disabled={pending}
+            data-testid={`pricing-cta-${tier.slug}`}
+          >
+            {pending ? "處理中…" : tier.ctaLabel}
+          </Button>
+        ) : (
+          <Button
+            asChild
+            variant={tier.highlighted ? "default" : "outline"}
+            data-testid={`pricing-cta-${tier.slug}`}
+          >
+            <Link href="/register">{tier.ctaLabel}</Link>
+          </Button>
+        )}
+        {error && (
+          <p role="alert" className="text-destructive text-xs">
+            {error}
+          </p>
+        )}
+      </div>
     </div>
   )
 }
@@ -148,7 +112,7 @@ interface PricingProps {
   tiers?: PricingTier[]
 }
 
-export function Pricing({ tiers = DEFAULT_PRICING_TIERS }: PricingProps) {
+export function Pricing({ tiers = PRICING_TIERS }: PricingProps) {
   const [period, setPeriod] = useState<BillingPeriod>("monthly")
   return (
     <section className="px-4 py-16 md:py-24" id="pricing">
@@ -177,7 +141,7 @@ export function Pricing({ tiers = DEFAULT_PRICING_TIERS }: PricingProps) {
         </div>
         <div className="grid gap-6 md:grid-cols-3">
           {tiers.map((tier) => (
-            <PricingCard key={tier.planId} tier={tier} period={period} />
+            <PricingCard key={tier.slug} tier={tier} period={period} />
           ))}
         </div>
         <p className="text-muted-foreground mt-6 text-center text-xs">
