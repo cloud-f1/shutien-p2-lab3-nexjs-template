@@ -126,16 +126,23 @@ local: local-env local-infra ## ⭐ Local dev — Docker infra + Next.js on http
 
 local-setup: local-env local-infra ## First-time local setup — install deps + migrate + seed demo data
 	cd $(NEXT) && pnpm install
-	cd $(NEXT) && pnpm db:migrate
-	cd $(NEXT) && pnpm db:seed
+	@$(MAKE) local-db
 	@echo "✅ Local setup complete. Run 'make local' to start the dev server."
 
 local-infra: ## Start Postgres + Mailpit in Docker (infra only; waits for DB health)
 	docker compose up -d --wait postgres mailpit
 	@echo "✅ Postgres localhost:5432 · Mailpit UI http://localhost:8025"
 
-local-db: ## Apply migrations + seed demo data (idempotent)
-	cd $(NEXT) && pnpm db:migrate && pnpm db:seed
+local-db: local-env ## Apply migrations + seed demo data (idempotent; tolerates an already-migrated DB)
+	@cd $(NEXT) && set -a && . ./.env.local && set +a && \
+		if pnpm db:migrate > /tmp/athena-migrate.log 2>&1; then \
+			cat /tmp/athena-migrate.log; \
+		elif grep -qiE "already exists|no migrations" /tmp/athena-migrate.log; then \
+			echo "⚠ db:migrate — schema already present on this DB, skipping"; \
+		else \
+			cat /tmp/athena-migrate.log; echo "❌ db:migrate failed (see above)"; exit 1; \
+		fi && \
+		pnpm db:seed
 
 local-env: ## Generate next-app/.env.local for local dev (only if missing)
 	@if [ -f $(NEXT)/.env.local ]; then \
