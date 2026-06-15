@@ -307,6 +307,16 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E260 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 60 — Premium FX utilities (cobalt-fx.css + use-reveal hook; reduced-motion-safe) |
 | E261 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 60 — Landing redesign (components/marketing/* → Cobalt aesthetic, brand-neutral, i18n-ready) |
 | E262 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 60 — Dashboard polish (KPI brand-wash + semantic badges/dots + premium inputs + optional ⌘K) |
+| E263 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 61 — App shell: ⌘K palette + notifications dropdown + breadcrumb |
+| E264 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 61 — Settings expansion (tabbed: profile/account/2FA-stub/notifications/appearance/connected) |
+| E265 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 61 — Auth split-screen + /components reference page (auth logic unchanged) |
+| E266 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 61 — Marketing gaps (use-cases/testimonials/pricing toggle+comparison/video modal) |
+| E267 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 62 — API keys (table + create/revoke + bearer-auth + System UI) |
+| E268 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 62 — Webhooks (+ deliveries, retry/backoff, System UI) |
+| E269 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 62 — Audit log (table + write helper + viewer) |
+| E270 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 62 — Team invites + member status + permission matrix |
+| E271 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 62 — Billing UI over plans/subscriptions/payment_events |
+| E272 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 62 — Notifications (table + mark-read; wires E263 dropdown) |
 
 
 ## Dependency Rules
@@ -630,11 +640,17 @@ Phase 54: E222 + E223 + E224 (parallel, no deps) → E225 (after E224) → E226 
 Phase 58: E247 + E249 (parallel, no deps) → E248 (after E247) → E250 (after E247+E248) → E251 (after E249+E250) + E253 (after E250) → E252 (after E249+E251)
 Phase 59: E254 + E258 (parallel, no deps) → E255 + E256 (parallel after E254) → E257 (after E255+E256)
 Phase 60: E259 (no deps) → E260 (after E259) + E262 (after E259, parallel) → E261 (after E259+E260)
+Phase 61: E263 + E264 + E265 (parallel) → E266 (after E261)
+Phase 62: E267 + E268 + E269 + E271 + E272 (parallel, independent tables) → E270 (after E269)
 ```
 
 ## Next Action
 
-**⬜ Phase 60 PLANNED — Cobalt Design Integration (Cycle 29, 2026-06-15).** E259–E262 on branch `feat/cobalt-design`: merge the Claude-Design "Cobalt — AI SaaS" handoff (generated from our own shadcn tokens, elevated to premium) into our UI — foundation tokens (E259) → FX utilities (E260) + dashboard polish (E262) → landing redesign (E261). Brand-neutral, additive (core colors already match ours). Bundle ref: `/tmp/cobalt-design/ai-app/`. Implementing now; delivered via PR.
+**⬜ Phase 61 PLANNED + Phase 62 QUEUED — Cobalt UI surfaces + backend (Cycle 30/31, 2026-06-15).** Phase 61 (E263–E266, branch `feat/phase-61-app-shell`): ⌘K palette + notifications + breadcrumb (E263), settings expansion (E264), auth split-screen + component reference (E265), marketing gaps (E266) — UI-leaning. Phase 62 (E267–E272, queued): real-backend SaaS surfaces — API keys, webhooks, audit log, team invites + permission matrix, billing UI, notifications (new Drizzle tables + actions + RBAC + tests). Cobalt product pages (workflows/analytics/AI-models/integrations) **intentionally skipped** (domain-specific). Scope user-confirmed; awaiting greenlight to implement.
+
+---
+
+**✅ Phase 60 DONE — Cobalt Design Integration (Cycle 29, 2026-06-15).** E259–E262 on branch `feat/cobalt-design`: merge the Claude-Design "Cobalt — AI SaaS" handoff (generated from our own shadcn tokens, elevated to premium) into our UI — foundation tokens (E259) → FX utilities (E260) + dashboard polish (E262) → landing redesign (E261). Brand-neutral, additive (core colors already match ours). Bundle ref: `/tmp/cobalt-design/ai-app/`. Implementing now; delivered via PR.
 
 ---
 
