@@ -75,6 +75,7 @@
 | Phase 60 | E259, E260, E261, E262 | ✅ Done on branch feat/cobalt-design (Cycle 29, 2026-06-15) — Cobalt Design Integration: foundation tokens (E259) · premium FX utilities (E260) · landing redesign wired to / (E261) · dashboard polish + StatusBadge (E262). Brand-neutral, additive. Full smoke PASS 11/FAIL 0; PR #13. Merge ⬜ |
 | Phase 61 | E263, E264, E265, E266 | ⬜ PLANNED (Cycle 30, 2026-06-15) — App Shell & Settings & Auth & Marketing (Cobalt UI surfaces, domain-neutral): ⌘K palette + notifications + breadcrumb (E263) · settings expansion (E264) · auth split-screen + component reference (E265) · marketing gaps — use-cases/testimonials/pricing toggle+comparison/video modal (E266). UI-leaning; real backend deferred to Phase 62 |
 | Phase 62 | E267, E268, E269, E270, E271, E272 | ⬜ PLANNED — full specs rendered (Cycle 31, 2026-06-15) on branch feat/phase-62-backend — Backend-backed SaaS surfaces (real Drizzle tables + actions + RBAC + tests): API keys (E267) · webhooks + deliveries (E268) · audit log + viewer (E269) · team invites + permission matrix + member status (E270) · billing UI over plans/subscriptions/payment_events (E271) · notifications (E272, wires E263). All 6 add to lib/schema.ts → ONE migration after the schema additions. Cobalt product pages intentionally SKIPPED |
+| Phase 63 | E273 | ✅ Done — CRUD modals + reusable DataTable (UX convention): create/edit Dialog + ConfirmDialog delete + generic `<DataTable>` (filter/pagination/page-size); actions return success (no redirect); `?new`/`?edit` deep-links; codified in CLAUDE.md + nextjs-saas-patterns skill. Branch feat/E273-crud-modals-datatable. Merge ⬜ |
 <!-- PHASE_STATUS_END -->
 
 <!-- EPIC_MATRIX_START -->
@@ -352,6 +353,7 @@ Phase 46+ epics: enriched template — epic files include Implementation Phases,
 | E270 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 62 — Team: invitations table + member status (active/invited/suspended) + invite/accept flow + permission matrix UI (extends RBAC admin) |
 | E271 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 62 — Billing UI: plan summary + usage meters + payment method + invoice history over Phase 58 plans/subscriptions/payment_events |
 | E272 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 62 — Notifications: notifications table + mark-read actions + wires the E263 dropdown to real data |
+| E273 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 63 — CRUD modals + reusable DataTable: create/edit Dialog + ConfirmDialog delete + generic <DataTable> (filter/pagination/page-size); actions return success (no redirect); ?new/?edit deep-links; convention in CLAUDE.md + nextjs-saas-patterns. Branch feat/E273-crud-modals-datatable |
 <!-- EPIC_MATRIX_END -->
 
 ## Dependency Rules

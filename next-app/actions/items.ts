@@ -4,7 +4,6 @@ import { db } from "@/lib/db"
 import { itemsTable } from "@/lib/schema"
 import { eq, and } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
-import { redirect } from "next/navigation"
 import { requireEditor } from "@/lib/permissions"
 
 type State = { error?: string } | null
@@ -22,7 +21,7 @@ export async function createItem(prevState: State, formData: FormData): Promise<
 
   revalidatePath("/dashboard")
   revalidatePath("/dashboard/items")
-  redirect("/dashboard/items")
+  return null // success — the modal closes + the list revalidates
 }
 
 export async function deleteItem(id: string): Promise<State> {
@@ -63,5 +62,5 @@ export async function updateItem(id: string, prevState: State, formData: FormDat
 
   revalidatePath("/dashboard")
   revalidatePath("/dashboard/items")
-  redirect("/dashboard/items")
+  return null // success — the modal closes + the list revalidates
 }

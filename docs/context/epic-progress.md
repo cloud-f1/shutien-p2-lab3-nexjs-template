@@ -317,6 +317,7 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E270 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 62 — Team invites + member status + permission matrix |
 | E271 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 62 — Billing UI over plans/subscriptions/payment_events |
 | E272 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 62 — Notifications (table + mark-read; wires E263 dropdown) |
+| E273 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 63 — CRUD modals + reusable DataTable (filter/pagination/page-size); actions return success (no redirect); ?new/?edit deep-links; CLAUDE.md + nextjs-saas-patterns convention |
 
 
 ## Dependency Rules

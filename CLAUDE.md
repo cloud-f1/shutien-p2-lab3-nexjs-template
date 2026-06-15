@@ -75,6 +75,8 @@ scripts/epic-graph.sh      Dependency graph parser + wave planner
 - **`cn()` for all conditional Tailwind classes** — never raw string concatenation.
 - New route groups: use `(group)/` folders to isolate layouts (e.g., `(auth)/`, `(dashboard)/`).
 - Server-side data fetching: fetch directly in async Server Components; use Server Actions for mutations (`"use server"`).
+- **CRUD uses modals, never page redirects** (E273) — create/edit open a shadcn `Dialog` (form with an `onSuccess` callback); delete uses `components/confirm-dialog.tsx`. The Server Action **returns success (no `redirect`)** so the modal closes and the list refreshes via `revalidatePath` + `router.refresh()`. Deep-link a modal open with a query param (`?new=1`, `?edit=<id>`). Pattern reference: `app/(dashboard)/dashboard/items/`.
+- **List/table views use the reusable `<DataTable>`** (`components/data-table-generic.tsx`) — built-in filter + pagination + page-size — never a hand-rolled `<table>` for record lists.
 
 ## Plugin Relationship (E202)
 

@@ -136,10 +136,29 @@ strings (they break otherwise). Build-time `NEXT_PUBLIC_*` flags (e.g. a demo-lo
 build — pass them as Docker `--build-arg` to surface in the standalone image, and default them off so
 prod builds tree-shake the gated code (and any literals) out.
 
+## CRUD modals + list tables (E273 — project convention)
+
+Record CRUD in this template is **modal-based, never page-redirect**, and lists use a
+**reusable DataTable**. Follow this when adding any domain (it's a CLAUDE.md Architecture Rule):
+
+- **Create/edit → shadcn `Dialog`.** The form takes an `onSuccess` callback; the dialog closes
+  + `router.refresh()` on success. There is **no** `/x/create` or `/x/[id]/edit` page.
+- **Server Actions return success, do NOT `redirect()`.** A `redirect` inside a modal navigates
+  away. Return `null` (success) / `{ error }` (fail); the list refreshes via `revalidatePath`
+  in the action + `router.refresh()` in the dialog.
+- **Delete → `components/confirm-dialog.tsx`** (built on `Dialog`; no `alert-dialog` dep).
+- **Lists → `components/data-table-generic.tsx` `<DataTable columns={} data={} />`** — global
+  filter + pagination + page-size + count are built in. Don't hand-roll `<table>` for records.
+- **Deep-link modals** with query params: `?new=1` (create), `?edit=<id>` (edit) — the list page
+  reads them and opens the right modal on mount. Other surfaces link in (e.g. dashboard table).
+- **Reference impl:** `app/(dashboard)/dashboard/items/` (`_items-table.tsx`, `_item-dialog.tsx`,
+  `_item-form.tsx`, `page.tsx`) + `actions/items.ts`.
+
 ## Quick file map
 
 | Concern | Files |
 |---|---|
+| CRUD pattern | `components/data-table-generic.tsx`, `components/confirm-dialog.tsx`, `app/(dashboard)/dashboard/items/*` |
 | Auth config | `lib/auth.ts` (full, Node), `auth.config.ts` (Edge), `proxy.ts`, `auth.d.ts` |
 | RBAC | `lib/permissions.ts` (server), `lib/is-admin.ts` (client-safe), `lib/schema.ts` (roleEnum) |
 | Validation | `lib/validations/*.ts` (shared Zod for RHF client + Server Action server) |

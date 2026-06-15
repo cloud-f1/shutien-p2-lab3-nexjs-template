@@ -113,7 +113,7 @@ function getColumns(canEdit: boolean): ColumnDef<DataTableItem>[] {
           variant="link"
           className="w-fit px-0 text-left text-foreground"
         >
-          <Link href={`/dashboard/items/${row.original.id}/edit`}>
+          <Link href={`/dashboard/items?edit=${row.original.id}`}>
             {row.original.title}
           </Link>
         </Button>
@@ -173,7 +173,7 @@ function getColumns(canEdit: boolean): ColumnDef<DataTableItem>[] {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-32">
             <DropdownMenuItem asChild>
-              <Link href={`/dashboard/items/${row.original.id}/edit`}>編輯</Link>
+              <Link href={`/dashboard/items?edit=${row.original.id}`}>編輯</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
@@ -309,7 +309,7 @@ export function DataTable({
           </DropdownMenu>
           {canEdit && (
             <Button asChild variant="outline" size="sm">
-              <Link href="/dashboard/items/create">
+              <Link href="/dashboard/items?new=1">
                 <PlusIcon />
                 <span className="hidden lg:inline">新增項目</span>
               </Link>

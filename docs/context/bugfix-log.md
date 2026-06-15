@@ -40,3 +40,33 @@
 **Files:** docs/context/session-summary.md,next-app/components.json,next-app/drizzle/migrations/meta/_journal.json,next-app/lib/schema.ts,next-app/package.json,next-app/pnpm-lock.yaml,next-app/public/r/registry.json,next-app/registry.json
 **Root Cause:** _(pending — enrich during /athena:save)_
 **Test Added:** _(pending)_
+
+## 2026-06-15T02:10:58+08:00 — a967653
+**Message:** fix(flow): await pipeline() in the wave loop
+**Files:** .claude/commands/athena/flow.md
+**Root Cause:** _(pending — enrich during /athena:save)_
+**Test Added:** _(pending)_
+
+## 2026-06-15T03:53:39+08:00 — 375317f
+**Message:** fix(E261): replace removed lucide `Github` icon + harden smoke.sh
+**Files:** next-app/components/marketing/cta.tsx,scripts/smoke.sh
+**Root Cause:** _(pending — enrich during /athena:save)_
+**Test Added:** _(pending)_
+
+## 2026-06-15T13:57:45+08:00 — 7b3c85c
+**Message:** fix(flow): worktree-readiness gotcha — node_modules + shadcn-add + .claude
+**Files:** .claude/commands/athena/flow.md
+**Root Cause:** _(pending — enrich during /athena:save)_
+**Test Added:** _(pending)_
+
+## 2026-06-15T16:03:17+08:00 — e4572cc
+**Message:** fix(smoke): abnormal-exit guard — distinguish harness crashes from gate failures
+**Files:** scripts/smoke.sh
+**Root Cause:** _(pending — enrich during /athena:save)_
+**Test Added:** _(pending)_
+
+## 2026-06-15T18:21:25+08:00 — 08ae639
+**Message:** fix(ui): topbar on all dashboard routes + unify brand + light shimmer + e2e
+**Files:** next-app/app/(auth)/layout.tsx,next-app/app/(dashboard)/dashboard/page.tsx,next-app/app/(dashboard)/layout.tsx,next-app/app/cobalt-fx.css,next-app/components/app-sidebar.tsx,next-app/components/marketing/marketing-footer.tsx,next-app/components/marketing/marketing-nav.tsx,next-app/e2e/cobalt-ui.spec.ts
+**Root Cause:** _(pending — enrich during /athena:save)_
+**Test Added:** _(pending)_

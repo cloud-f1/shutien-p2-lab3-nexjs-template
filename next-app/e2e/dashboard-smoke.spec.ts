@@ -79,33 +79,18 @@ test.describe("RBAC — viewer (read-only, non-admin)", () => {
   })
 
   test("does NOT see any New Item affordance (read-only)", async ({ page }) => {
-    // Viewers cannot create items — neither the sidebar link, the dashboard
-    // header button, nor the data-table toolbar button should render.
-    await expect(page.locator("a[href='/dashboard/items/create']")).toHaveCount(0)
+    // Create is modal-based (?new=1); viewers (canEdit=false) get no entry
+    // point — no sidebar/dashboard create link.
+    await expect(page.locator("a[href='/dashboard/items?new=1']")).toHaveCount(0)
   })
 
-  test("visiting the create-item action route is redirected away", async ({ page }) => {
-    // The create item server action is gated by requireEditor(); the create
-    // page (if reached) must not let a viewer through — they land back on the
-    // dashboard. Assert the New Item entry points are absent from the create
-    // page guard path by confirming no create link is exposed to viewers.
-    await page.goto("/dashboard")
-    await expect(page.locator("a[href='/dashboard/items/create']")).toHaveCount(0)
-  })
-
-  test("can view the items list but sees no create affordance", async ({ page }) => {
-    // Viewers may read their own items list (requireAuth), but the create
-    // button is gated by canEdit() and must not render.
+  test("can view the items list but sees no create button", async ({ page }) => {
+    // Viewers may read their own items list (requireAuth), but the toolbar
+    // "新增項目" button is gated by canEdit() and must not render.
     await page.goto("/dashboard/items")
     await expect(page).toHaveURL(/\/dashboard\/items/)
     await expect(page.locator("h1, h2").first()).toBeVisible()
-    await expect(page.locator("a[href='/dashboard/items/create']")).toHaveCount(0)
-  })
-
-  test("visiting the create-item page is redirected to /dashboard", async ({ page }) => {
-    // The create page calls requireEditor(), which redirects viewers away.
-    await page.goto("/dashboard/items/create")
-    await expect(page).toHaveURL(/\/dashboard(?!\/items\/create)/)
+    await expect(page.getByRole("button", { name: "新增項目" })).toHaveCount(0)
   })
 })
 
@@ -128,24 +113,22 @@ test.describe("RBAC — editor (can edit, non-admin)", () => {
   })
 
   test("DOES see a New Item affordance", async ({ page }) => {
-    // Editors can create items — at least one create entry point renders.
-    await expect(
-      page.locator("a[href='/dashboard/items/create']").first()
-    ).toBeVisible()
+    // Editors can create items — at least one create entry point (the ?new=1
+    // modal link in the sidebar / dashboard header) renders.
+    await expect(page.locator("a[href='/dashboard/items?new=1']").first()).toBeVisible()
   })
 
-  test("can reach /dashboard/items and see a create affordance", async ({ page }) => {
+  test("can reach /dashboard/items and see a create button", async ({ page }) => {
     await page.goto("/dashboard/items")
     await expect(page).toHaveURL(/\/dashboard\/items/)
-    await expect(
-      page.locator("a[href='/dashboard/items/create']").first()
-    ).toBeVisible()
+    await expect(page.getByRole("button", { name: "新增項目" })).toBeVisible()
   })
 
-  test("can reach the create-item page", async ({ page }) => {
-    // Editors pass requireEditor() — the create form (title field) renders.
-    await page.goto("/dashboard/items/create")
-    await expect(page).toHaveURL(/\/dashboard\/items\/create/)
+  test("opening the create modal shows the form", async ({ page }) => {
+    // Editors pass requireEditor(); ?new=1 auto-opens the create Dialog, so the
+    // title field renders inside the modal (no standalone /create page anymore).
+    await page.goto("/dashboard/items?new=1")
+    await expect(page).toHaveURL(/\/dashboard\/items/)
     await expect(page.locator('input[name="title"]')).toBeVisible()
   })
 })

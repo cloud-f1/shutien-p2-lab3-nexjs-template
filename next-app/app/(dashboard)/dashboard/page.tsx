@@ -56,7 +56,7 @@ export default async function DashboardPage() {
               </div>
               {editable && (
                 <Button asChild>
-                  <Link href="/dashboard/items/create">+ 新增項目</Link>
+                  <Link href="/dashboard/items?new=1">+ 新增項目</Link>
                 </Button>
               )}
             </div>
