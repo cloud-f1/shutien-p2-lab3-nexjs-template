@@ -307,10 +307,10 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E260 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 60 — Premium FX utilities (cobalt-fx.css + use-reveal hook; reduced-motion-safe) |
 | E261 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 60 — Landing redesign (components/marketing/* → Cobalt aesthetic, brand-neutral, i18n-ready) |
 | E262 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 60 — Dashboard polish (KPI brand-wash + semantic badges/dots + premium inputs + optional ⌘K) |
-| E263 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 61 — App shell: ⌘K palette + notifications dropdown + breadcrumb |
-| E264 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 61 — Settings expansion (tabbed: profile/account/2FA-stub/notifications/appearance/connected) |
-| E265 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 61 — Auth split-screen + /components reference page (auth logic unchanged) |
-| E266 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 61 — Marketing gaps (use-cases/testimonials/pricing toggle+comparison/video modal) |
+| E263 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 61 — App shell: ⌘K palette + notifications dropdown + breadcrumb |
+| E264 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 61 — Settings expansion (tabbed: profile/account/2FA-stub/notifications/appearance/connected) |
+| E265 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 61 — Auth split-screen + /components reference page (auth logic unchanged) |
+| E266 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 61 — Marketing gaps (use-cases/testimonials/pricing toggle+comparison/video modal) |
 | E267 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 62 — API keys (table + create/revoke + bearer-auth + System UI) |
 | E268 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 62 — Webhooks (+ deliveries, retry/backoff, System UI) |
 | E269 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 62 — Audit log (table + write helper + viewer) |

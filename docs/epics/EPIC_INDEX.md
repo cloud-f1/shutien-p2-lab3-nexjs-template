@@ -342,10 +342,10 @@ Phase 46+ epics: enriched template — epic files include Implementation Phases,
 | E260 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 60 — Premium FX utilities: cobalt-fx.css (aurora/shimmer-text/glow-cta/shine/lift/marquee/live-dot/float/rise, reduced-motion-safe) + use-reveal hook (scroll-reveal + count-up, SSR-safe) |
 | E261 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 60 — Landing redesign: rebuild components/marketing/* to Cobalt aesthetic (hero aurora+shimmer+preview, marquee+count-up social proof, feature grid, pricing toggle+comparison, FAQ, CTA, footer). Brand-neutral, i18n-ready |
 | E262 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 60 — Dashboard polish: KPI brand-wash cards + semantic badges/status dots + premium inputs + optional ⌘K palette, applied to existing (dashboard) shell without breaking RBAC/e2e |
-| E263 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 61 — App shell: ⌘K command palette (shadcn command) + notifications dropdown + breadcrumb topbar on the existing (dashboard) shell. RBAC-aware, e2e-safe |
-| E264 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 61 — Settings expansion: tabbed /dashboard/settings (Profile · Account/2FA-stub/danger · Notifications · Appearance · Connected accounts), reusing existing forms |
-| E265 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 61 — Auth split-screen (form + testimonial panel) keeping all auth logic + e2e selectors; + /components reference page (all primitives + FX) |
-| E266 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 61 — Marketing gaps: use-cases + testimonials + pricing monthly/yearly toggle & comparison + hero video modal. Keeps DEFAULT_PRICING_TIERS (additive) |
+| E263 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 61 — App shell: ⌘K command palette (shadcn command) + notifications dropdown + breadcrumb topbar on the existing (dashboard) shell. RBAC-aware, e2e-safe |
+| E264 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 61 — Settings expansion: tabbed /dashboard/settings (Profile · Account/2FA-stub/danger · Notifications · Appearance · Connected accounts), reusing existing forms |
+| E265 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 61 — Auth split-screen (form + testimonial panel) keeping all auth logic + e2e selectors; + /components reference page (all primitives + FX) |
+| E266 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 61 — Marketing gaps: use-cases + testimonials + pricing monthly/yearly toggle & comparison + hero video modal. Keeps DEFAULT_PRICING_TIERS (additive) |
 | E267 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 62 — API keys: api_keys table (hashed/prefix/scopes/last_used) + create/revoke actions + bearer-auth middleware + System UI |
 | E268 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 62 — Webhooks: webhooks + webhook_deliveries tables + signed dispatch + retry/backoff + System UI (delivery log) |
 | E269 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 62 — Audit log: audit_log table + write helper (server actions) + admin viewer UI (actor/action/target/ts, filters) |
