@@ -311,12 +311,12 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E264 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 61 — Settings expansion (tabbed: profile/account/2FA-stub/notifications/appearance/connected) |
 | E265 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 61 — Auth split-screen + /components reference page (auth logic unchanged) |
 | E266 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 61 — Marketing gaps (use-cases/testimonials/pricing toggle+comparison/video modal) |
-| E267 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 62 — API keys (table + create/revoke + bearer-auth + System UI) |
-| E268 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 62 — Webhooks (+ deliveries, retry/backoff, System UI) |
-| E269 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 62 — Audit log (table + write helper + viewer) |
-| E270 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 62 — Team invites + member status + permission matrix |
-| E271 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 62 — Billing UI over plans/subscriptions/payment_events |
-| E272 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 62 — Notifications (table + mark-read; wires E263 dropdown) |
+| E267 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 62 — API keys (table + create/revoke + bearer-auth + System UI) |
+| E268 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 62 — Webhooks (+ deliveries, retry/backoff, System UI) |
+| E269 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 62 — Audit log (table + write helper + viewer) |
+| E270 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 62 — Team invites + member status + permission matrix |
+| E271 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 62 — Billing UI over plans/subscriptions/payment_events |
+| E272 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 62 — Notifications (table + mark-read; wires E263 dropdown) |
 
 
 ## Dependency Rules

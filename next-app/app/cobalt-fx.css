@@ -50,7 +50,9 @@
 
 /* ---------- Gradient text shimmer on the accent phrase ---------- */
 .shimmer-text {
-  background: linear-gradient(100deg, var(--primary) 20%, var(--chart-2) 40%, var(--chart-1) 50%, var(--chart-2) 60%, var(--primary) 80%);
+  /* chart-* stops are identical in light + dark, so the accent stays a bright,
+     consistent brand-blue in both modes (--primary is darker in light mode). */
+  background: linear-gradient(100deg, var(--chart-3) 18%, var(--chart-2) 38%, var(--chart-1) 50%, var(--chart-2) 62%, var(--chart-3) 82%);
   background-size: 220% auto;
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent; color: transparent;

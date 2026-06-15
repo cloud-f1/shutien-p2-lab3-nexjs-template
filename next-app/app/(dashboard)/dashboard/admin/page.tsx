@@ -1,8 +1,11 @@
 import { getAllUsers } from "@/actions/admin"
 import { requireAdmin } from "@/lib/permissions"
+import { listInvitations } from "@/lib/team"
 import { Badge } from "@/components/ui/badge"
 import { RoleSelector } from "./_role-selector"
 import { DeleteUserButton } from "./_delete-user-button"
+import { PermissionMatrix } from "./_permission-matrix"
+import { TeamSection } from "./_team-section"
 import {
   Table,
   TableBody,
@@ -17,10 +20,10 @@ export const metadata: Metadata = { title: "管理 — 使用者" }
 
 export default async function AdminPage() {
   const session = await requireAdmin()
-  const users = await getAllUsers()
+  const [users, invitations] = await Promise.all([getAllUsers(), listInvitations()])
 
   return (
-    <div className="mx-auto max-w-5xl p-6 space-y-6">
+    <div className="mx-auto max-w-5xl p-6 space-y-10">
       <div>
         <h1 className="text-2xl font-semibold">使用者管理</h1>
         <p className="text-sm text-muted-foreground mt-1">共 {users.length} 位使用者</p>
@@ -69,6 +72,10 @@ export default async function AdminPage() {
           ))}
         </TableBody>
       </Table>
+
+      <TeamSection invitations={invitations} />
+
+      <PermissionMatrix />
     </div>
   )
 }

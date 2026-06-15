@@ -21,6 +21,7 @@ import {
   Settings2Icon,
   ShieldIcon,
   CommandIcon,
+  ServerIcon,
 } from "lucide-react"
 
 export interface AppSidebarUser {
@@ -38,6 +39,7 @@ export function AppSidebar({
     { title: "儀表板", url: "/dashboard", icon: <LayoutDashboardIcon /> },
     { title: "項目", url: "/dashboard/items", icon: <ListIcon /> },
     { title: "設定", url: "/dashboard/settings", icon: <Settings2Icon /> },
+    { title: "系統", url: "/dashboard/system", icon: <ServerIcon /> },
     ...(isAdmin(user.role)
       ? [{ title: "管理", url: "/dashboard/admin", icon: <ShieldIcon /> }]
       : []),
@@ -54,7 +56,7 @@ export function AppSidebar({
             >
               <Link href="/dashboard">
                 <CommandIcon className="size-5!" />
-                <span className="text-base font-semibold">Acme Inc.</span>
+                <span className="text-base font-semibold">AI App Template</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

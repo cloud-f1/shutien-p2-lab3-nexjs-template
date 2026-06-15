@@ -1,4 +1,5 @@
 import { AppSidebar } from "@/components/app-sidebar"
+import { SiteHeader } from "@/components/site-header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { requireAuth } from "@/lib/permissions"
@@ -30,7 +31,10 @@ export default async function DashboardLayout({
             role,
           }}
         />
-        <SidebarInset>{children}</SidebarInset>
+        <SidebarInset>
+          <SiteHeader />
+          {children}
+        </SidebarInset>
       </SidebarProvider>
     </TooltipProvider>
   )

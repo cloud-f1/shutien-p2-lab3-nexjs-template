@@ -1,6 +1,6 @@
 {
   "name": "next-app",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "private": true,
   "scripts": {
@@ -13,9 +13,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test",
+    "test:e2e": "playwright test --project=chromium",
+    "test:vrt": "playwright test --project=vrt",
+    "test:vrt:update": "playwright test --project=vrt --update-snapshots",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:test-migrate": "tsx drizzle/test-migrate.ts",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx drizzle/seed.ts",
     "registry:build": "shadcn build registry.json --output public/r",

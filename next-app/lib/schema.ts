@@ -3,6 +3,9 @@ import { boolean, integer, jsonb, pgEnum, pgTable, text, timestamp, unique, uuid
 export const roleEnum = pgEnum("role", ["admin", "editor", "viewer"])
 export type Role = "admin" | "editor" | "viewer"
 
+// Member lifecycle status (E270 — team invites)
+export const memberStatusEnum = pgEnum("member_status", ["active", "invited", "suspended"])
+
 // Auth.js v5 required tables (Drizzle adapter)
 export const usersTable = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -12,6 +15,8 @@ export const usersTable = pgTable("users", {
   image: text("image"),
   passwordHash: text("password_hash"), // null for OAuth-only users
   role: roleEnum("role").notNull().default("viewer"),
+  // E270 — member lifecycle (active by default; invited rows created via invitations)
+  status: memberStatusEnum("status").notNull().default("active"),
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
 })
@@ -180,3 +185,95 @@ export type Subscription = typeof subscriptionsTable.$inferSelect
 export type NewSubscription = typeof subscriptionsTable.$inferInsert
 export type PaymentEvent = typeof paymentEventsTable.$inferSelect
 export type NewPaymentEvent = typeof paymentEventsTable.$inferInsert
+
+// ===========================================================================
+// Phase 62 — Backend-backed SaaS surfaces (E267–E272)
+// All additive; one migration covers the whole block.
+// ===========================================================================
+
+/** E267 — API keys. Only a hash is stored; plaintext is shown once at creation. */
+export const apiKeysTable = pgTable("api_keys", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => usersTable.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  prefix: text("prefix").notNull(), // shown in the UI; used to look up the row
+  hashedKey: text("hashed_key").notNull(), // sha256 of the secret
+  scopes: text("scopes").array().notNull().default([]),
+  lastUsedAt: timestamp("last_used_at", { mode: "date" }),
+  revokedAt: timestamp("revoked_at", { mode: "date" }),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+})
+
+/** E268 — outbound webhook subscriptions. */
+export const webhooksTable = pgTable("webhooks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => usersTable.id, { onDelete: "cascade" }),
+  url: text("url").notNull(),
+  events: text("events").array().notNull().default([]),
+  secret: text("secret").notNull(), // HMAC-SHA256 signing secret
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+})
+
+/** E268 — per-attempt delivery record for a webhook. */
+export const webhookDeliveriesTable = pgTable("webhook_deliveries", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  webhookId: uuid("webhook_id")
+    .notNull()
+    .references(() => webhooksTable.id, { onDelete: "cascade" }),
+  event: text("event").notNull(),
+  status: text("status").notNull().default("pending"), // pending | success | failed
+  responseCode: integer("response_code"),
+  attempts: integer("attempts").notNull().default(0),
+  payload: jsonb("payload").notNull().default({}),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+})
+
+/** E269 — audit trail for sensitive actions. */
+export const auditLogTable = pgTable("audit_log", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  actorId: uuid("actor_id").references(() => usersTable.id, { onDelete: "set null" }),
+  action: text("action").notNull(), // e.g. "user.role_changed"
+  targetType: text("target_type"),
+  targetId: text("target_id"),
+  metadata: jsonb("metadata").notNull().default({}),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+})
+
+/** E270 — team invitations. */
+export const invitationStatusEnum = pgEnum("invitation_status", ["pending", "accepted", "revoked"])
+export const invitationsTable = pgTable("invitations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull(),
+  role: roleEnum("role").notNull().default("viewer"),
+  token: text("token").notNull().unique(),
+  status: invitationStatusEnum("status").notNull().default("pending"),
+  invitedBy: uuid("invited_by").references(() => usersTable.id, { onDelete: "set null" }),
+  expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+})
+
+/** E272 — per-user notifications. */
+export const notificationTypeEnum = pgEnum("notification_type", ["info", "success", "warning", "error"])
+export const notificationsTable = pgTable("notifications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => usersTable.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  body: text("body"),
+  type: notificationTypeEnum("type").notNull().default("info"),
+  readAt: timestamp("read_at", { mode: "date" }),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+})
+
+export type ApiKey = typeof apiKeysTable.$inferSelect
+export type Webhook = typeof webhooksTable.$inferSelect
+export type WebhookDelivery = typeof webhookDeliveriesTable.$inferSelect
+export type AuditLog = typeof auditLogTable.$inferSelect
+export type Invitation = typeof invitationsTable.$inferSelect
+export type Notification = typeof notificationsTable.$inferSelect

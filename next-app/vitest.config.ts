@@ -11,8 +11,23 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
-      // Focus coverage on the pure, testable logic layers.
-      include: ["lib/validations/**", "lib/is-admin.ts", "actions/**"],
+      // Scope coverage to the pure, db-free logic that unit tests actually
+      // exercise. Server Actions, route handlers, and lib modules that import
+      // `@/lib/db` throw at import without DATABASE_URL, so they are covered by
+      // Playwright e2e — counting them here only distorts the denominator.
+      include: [
+        "lib/validations/**",
+        "lib/is-admin.ts",
+        "lib/api-keys-utils.ts",
+        "lib/webhooks-utils.ts",
+        "lib/team-utils.ts",
+        "lib/notifications-utils.ts",
+        "lib/registry/validate-manifest.ts",
+        "lib/billing/provider.ts",
+        "lib/billing/billing-utils.ts",
+        "lib/billing/resolver.ts",
+        "lib/billing/providers/**",
+      ],
       exclude: ["**/*.test.ts", "e2e/**"],
     },
   },

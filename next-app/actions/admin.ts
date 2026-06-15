@@ -5,6 +5,7 @@ import { usersTable } from "@/lib/schema"
 import { eq } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
 import { requireAdmin } from "@/lib/permissions"
+import { logAudit } from "@/lib/audit"
 import type { Role } from "@/lib/schema"
 
 const VALID_ROLES: Role[] = ["admin", "editor", "viewer"]
@@ -24,6 +25,13 @@ export async function setUserRole(userId: string, role: Role) {
   }
 
   await db.update(usersTable).set({ role, updatedAt: new Date() }).where(eq(usersTable.id, userId))
+  await logAudit({
+    actorId: session.user.id,
+    action: "user.role_changed",
+    targetType: "user",
+    targetId: userId,
+    metadata: { role },
+  })
 
   revalidatePath("/dashboard/admin")
   return { success: true }

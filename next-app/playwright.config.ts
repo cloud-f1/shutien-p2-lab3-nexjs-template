@@ -11,9 +11,25 @@ export default defineConfig({
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
     trace: "on-first-retry",
   },
+  // VRT tolerance: absorb sub-pixel font-rendering diffs; disable animations so
+  // screenshots are deterministic (the Cobalt FX also self-disable under
+  // reducedMotion="reduce", set on the vrt project below).
+  expect: {
+    toHaveScreenshot: { maxDiffPixelRatio: 0.02, animations: "disabled" },
+  },
   projects: [
     {
+      // Functional e2e (fast, deterministic) — excludes the screenshot VRT.
       name: "chromium",
+      testIgnore: ["**/vrt/**"],
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      // Visual-regression: design-fidelity screenshot diffing (opt-in).
+      // Baselines are platform-suffixed by Playwright; regenerate per-env with
+      // `pnpm test:vrt:update`. Run via `pnpm test:vrt` / `scripts/smoke.sh --vrt`.
+      name: "vrt",
+      testMatch: ["**/vrt/**/*.spec.ts"],
       use: { ...devices["Desktop Chrome"] },
     },
   ],

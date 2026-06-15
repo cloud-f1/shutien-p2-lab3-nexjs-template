@@ -17,7 +17,7 @@ export function MarketingNav() {
           href="/"
           className="text-lg font-semibold tracking-tight hover:opacity-80"
         >
-          SaaS Template
+          AI App Template
         </Link>
         <nav className="hidden items-center gap-6 text-sm md:flex">
           {NAV_LINKS.map(({ href, label }) => (

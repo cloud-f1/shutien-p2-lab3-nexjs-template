@@ -112,6 +112,11 @@ describe("E263 — app shell (⌘K + notifications + breadcrumb)", () => {
     expect(read("../components/notifications-menu.tsx")).toContain("NotificationsMenu")
     expect(read("../components/app-breadcrumb.tsx")).toContain("usePathname")
   })
+  it("the dashboard LAYOUT renders SiteHeader (topbar on every route, not per-page)", () => {
+    // Guards the bug where SiteHeader sat in dashboard/page.tsx only, so the
+    // ⌘K/notifications/breadcrumb were missing on settings/items/admin.
+    expect(read("./(dashboard)/layout.tsx")).toContain("SiteHeader")
+  })
 })
 
 describe("E264 — settings expansion", () => {

@@ -14,7 +14,7 @@ export function MarketingFooter() {
       <div className="mx-auto max-w-5xl px-4">
         <div className="flex flex-col items-center gap-4 md:flex-row md:justify-between">
           <p className="text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} SaaS Template. All rights
+            &copy; {new Date().getFullYear()} AI App Template. All rights
             reserved.
           </p>
           <nav className="flex flex-wrap justify-center gap-4 text-sm text-muted-foreground">

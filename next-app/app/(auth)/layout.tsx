@@ -11,7 +11,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             <span className="bg-primary text-primary-foreground flex size-7 items-center justify-center rounded-lg">
               <Sparkles className="size-4" />
             </span>
-            SaaS Template
+            AI App Template
           </Link>
           <Link href="/" className="text-muted-foreground hover:text-foreground text-sm">
             ← 回首頁

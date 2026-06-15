@@ -17,8 +17,8 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP="$ROOT/next-app"
 DOCS="$ROOT/dev-docs"
-MODE_CORE=0; DO_DOCKER=0
-for a in "$@"; do case "$a" in --core) MODE_CORE=1;; --docker) DO_DOCKER=1;; esac; done
+MODE_CORE=0; DO_DOCKER=0; DO_VRT=0
+for a in "$@"; do case "$a" in --core) MODE_CORE=1;; --docker) DO_DOCKER=1;; --vrt) DO_VRT=1;; esac; done
 
 PASS=(); FAILED=(); SKIPPED=()
 hdr()  { printf '\n\033[1m━━ %s\033[0m\n' "$1"; }
@@ -69,6 +69,15 @@ hdr "Dev-docs (VitePress)"
 if [ -d "$DOCS" ]; then rung "vitepress build" bash -c "cd '$DOCS' && pnpm build"; else skip "vitepress build" "no dev-docs/"; fi
 
 if [ "$MODE_CORE" -eq 0 ]; then
+  hdr "Migration (fresh-DB apply — needs Postgres)"
+  # Validates migrations apply from scratch on a brand-new throwaway DB (the
+  # e2e db:migrate below only proves idempotency on the already-migrated dev DB).
+  if pg_isready >/dev/null 2>&1 || nc -z localhost 5432 >/dev/null 2>&1; then
+    rung "migration (fresh DB)" env DATABASE_URL="${DATABASE_URL:-postgresql://saas_user:saas_pass@localhost:5432/saas_dev}" pnpm db:test-migrate
+  else
+    skip "migration (fresh DB)" "no Postgres on :5432 — run 'make db' / 'docker compose up postgres'"
+  fi
+
   hdr "E2E (Playwright — needs Postgres)"
   if pg_isready >/dev/null 2>&1 || nc -z localhost 5432 >/dev/null 2>&1; then
     # auto-inject the env the dev server (spawned by Playwright's webServer) needs; all overridable
@@ -93,6 +102,13 @@ if [ "$MODE_CORE" -eq 0 ]; then
   else
     skip "install-smoke" "needs the app served at :3000 (npx shadcn add reads /r/*.json over http)"
   fi
+fi
+
+if [ "$DO_VRT" -eq 1 ]; then
+  hdr "Visual regression (design-fidelity, --vrt)"
+  # Compares the design-stable surfaces (light+dark) against committed baselines.
+  # Baselines are platform-suffixed — run `pnpm test:vrt:update` once per env first.
+  rung "vrt" bash -c 'cd "'"$APP"'" && pnpm test:vrt'
 fi
 
 if [ "$DO_DOCKER" -eq 1 ]; then

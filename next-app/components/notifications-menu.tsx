@@ -1,7 +1,10 @@
 "use client"
 
-import { Bell } from "lucide-react"
+import { useTransition } from "react"
+import { Bell, CheckCheck } from "lucide-react"
 
+import { markAllRead, markRead } from "@/actions/notifications"
+import type { Notification } from "@/lib/schema"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -12,21 +15,21 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-// Placeholder feed — wired to the notifications table in Phase 62 (E272).
-const NOTIFICATIONS = [
-  { title: "用量達 82%", body: "Pro 方案 — 本月 41k / 50k。", time: "12分鐘", unread: true },
-  { title: "新成員加入", body: "Sara 已接受邀請。", time: "1小時", unread: true },
-  { title: "工作流程失敗", body: "合約審閱逾時。", time: "4小時", unread: false },
-]
+export function NotificationsMenu({
+  notifications,
+  unreadCount,
+}: {
+  notifications: Notification[]
+  unreadCount: number
+}) {
+  const [pending, startTransition] = useTransition()
 
-export function NotificationsMenu() {
-  const unread = NOTIFICATIONS.filter((n) => n.unread).length
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative" aria-label="通知">
           <Bell className="size-4" />
-          {unread > 0 && (
+          {unreadCount > 0 && (
             <span className="bg-destructive absolute top-1.5 right-1.5 size-2 rounded-full" />
           )}
         </Button>
@@ -34,21 +37,42 @@ export function NotificationsMenu() {
       <DropdownMenuContent align="end" className="w-80">
         <DropdownMenuLabel className="flex items-center justify-between">
           通知
-          {unread > 0 && (
-            <span className="text-muted-foreground text-xs font-normal">{unread} 則未讀</span>
+          {unreadCount > 0 && (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => startTransition(() => void markAllRead())}
+              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-normal"
+            >
+              <CheckCheck className="size-3.5" /> 全部已讀
+            </button>
           )}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {NOTIFICATIONS.map((n) => (
-          <DropdownMenuItem key={n.title} className="flex flex-col items-start gap-0.5 py-2">
-            <div className="flex w-full items-center gap-2">
-              {n.unread && <span className="bg-primary size-1.5 rounded-full" />}
-              <span className="text-sm font-medium">{n.title}</span>
-              <span className="text-muted-foreground ml-auto text-xs">{n.time}</span>
-            </div>
-            <span className="text-muted-foreground text-xs">{n.body}</span>
-          </DropdownMenuItem>
-        ))}
+        {notifications.length === 0 ? (
+          <p className="text-muted-foreground px-2 py-6 text-center text-sm">目前沒有通知。</p>
+        ) : (
+          notifications.map((n) => (
+            <DropdownMenuItem
+              key={n.id}
+              className="flex flex-col items-start gap-0.5 py-2"
+              onSelect={(e) => {
+                if (n.readAt) return
+                e.preventDefault()
+                startTransition(() => void markRead(n.id))
+              }}
+            >
+              <div className="flex w-full items-center gap-2">
+                {!n.readAt && <span className="bg-primary size-1.5 rounded-full" />}
+                <span className="text-sm font-medium">{n.title}</span>
+                <span className="text-muted-foreground ml-auto text-xs">
+                  {n.createdAt.toLocaleDateString()}
+                </span>
+              </div>
+              {n.body && <span className="text-muted-foreground text-xs">{n.body}</span>}
+            </DropdownMenuItem>
+          ))
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )

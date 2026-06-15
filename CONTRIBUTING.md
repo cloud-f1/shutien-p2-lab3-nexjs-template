@@ -128,13 +128,32 @@ See [`CLAUDE.md`](CLAUDE.md) § "Architecture Rules — NEVER DEVIATE". Highligh
 | E2E | Playwright (`pnpm test:e2e`) — needs a seeded DB (`pnpm db:seed`) |
 | Types / lint | `pnpm typecheck` + `pnpm lint` must pass |
 | Registry | `pnpm registry:build` + `pnpm module:validate` for module changes |
+| Design fidelity | structural alignment (`app/cobalt-integration.test.ts`, runs with `pnpm test`) + opt-in visual regression (`pnpm test:vrt`) |
 
 ```bash
 cd next-app
-pnpm test                # unit
-pnpm test:e2e            # e2e (DB up + seeded)
+pnpm test                # unit (incl. structural design-alignment suite)
+pnpm test:e2e            # functional e2e (DB up + seeded)
 make smoke               # full smoke (typecheck + lint + unit + build + e2e + registry install)
+make smoke ... --vrt     # add the visual-regression gate (see below)
 ```
+
+### Design-fidelity gate (two layers)
+
+1. **Structural** — `app/cobalt-integration.test.ts` asserts every design deliverable
+   (tokens, FX classes, shell wiring, sections) is present. Fast + deterministic; runs in `pnpm test`.
+2. **Visual regression (VRT)** — `e2e/vrt/design-fidelity.spec.ts` screenshots the design-stable
+   surfaces (landing/login/register/settings/components × light+dark) and diffs against baselines.
+   Runs only in the `vrt` Playwright project (motion disabled → deterministic).
+
+   Baselines are **platform-suffixed and gitignored** (a `-darwin` baseline won't match Linux CI),
+   so **generate them once per environment** before gating:
+   ```bash
+   pnpm test:vrt:update     # (re)generate baselines for THIS platform
+   pnpm test:vrt            # compare against them
+   scripts/smoke.sh --vrt   # same, as a smoke gate
+   ```
+   Re-run `test:vrt:update` whenever you make an intentional visual change.
 
 ---
 
