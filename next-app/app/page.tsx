@@ -1,19 +1,37 @@
-import { Button } from "@/components/ui/button"
+import type { Metadata } from "next"
+
+import { Cta } from "@/components/marketing/cta"
+import { Faq } from "@/components/marketing/faq"
+import { Features } from "@/components/marketing/features"
+import { Hero } from "@/components/marketing/hero"
+import { MarketingFooter } from "@/components/marketing/marketing-footer"
+import { MarketingNav } from "@/components/marketing/marketing-nav"
+import { Pricing } from "@/components/marketing/pricing"
+import { SocialProof } from "@/components/marketing/social-proof"
+import { Testimonials } from "@/components/marketing/testimonials"
+import { UseCases } from "@/components/marketing/use-cases"
+
+export const metadata: Metadata = {
+  title: "Next.js SaaS 起手式 · AI-Ready Modular Template",
+  description:
+    "內建認證、3 階 RBAC、模組化金流（Stripe + 綠界）與深色主題的 Next.js SaaS 起手式。",
+}
 
 export default function Page() {
   return (
-    <div className="flex min-h-svh p-6">
-      <div className="flex max-w-md min-w-0 flex-col gap-4 text-sm leading-loose">
-        <div>
-          <h1 className="font-medium">專案已就緒！</h1>
-          <p>您現在可以新增元件並開始開發。</p>
-          <p>我們已經為您加入按鈕元件。</p>
-          <Button className="mt-2">按鈕</Button>
-        </div>
-        <div className="font-mono text-xs text-muted-foreground">
-          （按 <kbd>d</kbd> 切換深色模式）
-        </div>
-      </div>
-    </div>
+    <>
+      <MarketingNav />
+      <main>
+        <Hero />
+        <SocialProof />
+        <Features />
+        <UseCases />
+        <Testimonials />
+        <Pricing />
+        <Faq />
+        <Cta />
+      </main>
+      <MarketingFooter />
+    </>
   )
 }

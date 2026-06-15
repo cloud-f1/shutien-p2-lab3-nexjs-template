@@ -72,6 +72,9 @@
 | Phase 57 | E231, E232, E233, E234, E235, E236 | ✅ Done on branch (remediated all 33 app-audit findings via a sequential Workflow + E236 task-tiered model dispatch). typecheck · lint · 31 unit · 29 e2e green, verified in Docker |
 | Phase 58 | E247, E248, E249, E250, E251, E252, E253 | ✅ Done on branch phase-58-modular-graft (AI-Ready Modular SaaS graft — shadcn @saas registry + module-author skill + PaymentProvider abstraction (Stripe DEFAULT + ECPay 定期定額) + Landing module + MCP). 182 unit · 29 e2e green, production build + registry:build + module:validate OK. Account/Admin modules deferred; VitePress dev-docs deferred (E258, carryover) |
 | Phase 59 | E254, E255, E256, E257, E258 | ✅ Done on branch feat/deploy-config (Cycle 28, 2026-06-15) — Deployment Enablement: zbpack.json + .env.example (E254) · Zeabur Road-1 guide + superseded deploy/README (E255) · GCP Cloud Run + Cloud SQL Road-2 guide, placeholders only (E256) · deploy-config skill + retired deploy-gcr-zeabur (E257) · install-deploy-tools.sh + make target (E258). E254–E256 built via `/athena:flow` (validated the await fix); E257/E258 direct. Merge ⬜ (PR pending) |
+| Phase 60 | E259, E260, E261, E262 | ✅ Done on branch feat/cobalt-design (Cycle 29, 2026-06-15) — Cobalt Design Integration: foundation tokens (E259) · premium FX utilities (E260) · landing redesign wired to / (E261) · dashboard polish + StatusBadge (E262). Brand-neutral, additive. Full smoke PASS 11/FAIL 0; PR #13. Merge ⬜ |
+| Phase 61 | E263, E264, E265, E266 | ⬜ PLANNED (Cycle 30, 2026-06-15) — App Shell & Settings & Auth & Marketing (Cobalt UI surfaces, domain-neutral): ⌘K palette + notifications + breadcrumb (E263) · settings expansion (E264) · auth split-screen + component reference (E265) · marketing gaps — use-cases/testimonials/pricing toggle+comparison/video modal (E266). UI-leaning; real backend deferred to Phase 62 |
+| Phase 62 | E267, E268, E269, E270, E271, E272 | 🔜 QUEUED (Cycle 31) — Backend-backed SaaS surfaces (real Drizzle tables + actions + RBAC + tests): API keys (E267) · webhooks + deliveries (E268) · audit log + viewer (E269) · team invites + permission matrix + member status (E270) · billing UI over plans/subscriptions/payment_events (E271) · notifications (E272, wires E263). Cobalt product pages (workflows/analytics/AI-models/integrations) intentionally SKIPPED — domain-specific |
 <!-- PHASE_STATUS_END -->
 
 <!-- EPIC_MATRIX_START -->
@@ -335,6 +338,20 @@ Phase 46+ epics: enriched template — epic files include Implementation Phases,
 | E256 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — GCP Cloud Run + Cloud SQL path + guide (Road 2, gcloud): Artifact Registry → gcloud run deploy + Cloud SQL connector + Secret Manager + migrate/seed job + domain; ${PROJECT_ID}/${REGION}/${INSTANCE} placeholders |
 | E257 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — deploy-config skill (.claude/skills/deploy-config) covering both roads (preflight + Zeabur + GCP + gotchas); retire stale deploy-gcr-zeabur skill |
 | E258 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — Tool-install quick-start script (scripts/install-deploy-tools.sh): idempotent installer for zeabur plugin + zeabur CLI + gcloud/node/pnpm/docker checks; make target |
+| E259 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 60 — Cobalt foundation tokens: add --success/--warning/--info + shadow/motion/8pt-spacing scales + --font-mono + --radius-pill + --header-height to globals.css (light+dark) + wire colors into @theme inline. Additive |
+| E260 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 60 — Premium FX utilities: cobalt-fx.css (aurora/shimmer-text/glow-cta/shine/lift/marquee/live-dot/float/rise, reduced-motion-safe) + use-reveal hook (scroll-reveal + count-up, SSR-safe) |
+| E261 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 60 — Landing redesign: rebuild components/marketing/* to Cobalt aesthetic (hero aurora+shimmer+preview, marquee+count-up social proof, feature grid, pricing toggle+comparison, FAQ, CTA, footer). Brand-neutral, i18n-ready |
+| E262 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 60 — Dashboard polish: KPI brand-wash cards + semantic badges/status dots + premium inputs + optional ⌘K palette, applied to existing (dashboard) shell without breaking RBAC/e2e |
+| E263 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 61 — App shell: ⌘K command palette (shadcn command) + notifications dropdown + breadcrumb topbar on the existing (dashboard) shell. RBAC-aware, e2e-safe |
+| E264 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 61 — Settings expansion: tabbed /dashboard/settings (Profile · Account/2FA-stub/danger · Notifications · Appearance · Connected accounts), reusing existing forms |
+| E265 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 61 — Auth split-screen (form + testimonial panel) keeping all auth logic + e2e selectors; + /components reference page (all primitives + FX) |
+| E266 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 61 — Marketing gaps: use-cases + testimonials + pricing monthly/yearly toggle & comparison + hero video modal. Keeps DEFAULT_PRICING_TIERS (additive) |
+| E267 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 62 — API keys: api_keys table (hashed/prefix/scopes/last_used) + create/revoke actions + bearer-auth middleware + System UI |
+| E268 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 62 — Webhooks: webhooks + webhook_deliveries tables + signed dispatch + retry/backoff + System UI (delivery log) |
+| E269 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 62 — Audit log: audit_log table + write helper (server actions) + admin viewer UI (actor/action/target/ts, filters) |
+| E270 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 62 — Team: invitations table + member status (active/invited/suspended) + invite/accept flow + permission matrix UI (extends RBAC admin) |
+| E271 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 62 — Billing UI: plan summary + usage meters + payment method + invoice history over Phase 58 plans/subscriptions/payment_events |
+| E272 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 62 — Notifications: notifications table + mark-read actions + wires the E263 dropdown to real data |
 <!-- EPIC_MATRIX_END -->
 
 ## Dependency Rules
@@ -584,11 +601,14 @@ Phase 46: E187 + E188 + E190 + E192 (parallel, no deps) → E189 (after E187) �
 Phase 53: E217 (no deps) → E218 (after E217) → E219 + E220 (parallel after E217+E218) → E221 (after E219+E220)
 Phase 58: E247 + E249 (parallel, no deps) → E248 (after E247) → E250 (after E247+E248) → E251 (after E249+E250) + E253 (after E250) → E252 (after E249+E251)
 Phase 59: E254 + E258 (parallel, no deps) → E255 + E256 (parallel after E254) → E257 (after E255+E256)
+Phase 60: E259 (no deps) → E260 (after E259) + E262 (after E259, parallel) → E261 (after E259+E260)
+Phase 61: E263 + E264 + E265 (parallel after E259/E260) → E266 (after E261) — all UI, parallel-safe if each owns its files
+Phase 62: E267 + E268 + E269 + E271 + E272 (parallel, independent tables) → E270 (after E269 audit) — real backend; each epic = own table + actions + UI
 ```
 
 ---
 
-**Next Action:** Phase 59 (E254–E258, Deployment Enablement) PLANNED on branch `feat/deploy-config` — Zeabur (primary) + GCP Cloud Run/Cloud SQL (secondary, placeholders) deploy paths, config artifacts, deploy-config skill, and a tool-install quick-start script. E258 (install script) implemented immediately per user request; E254–E257 ready to execute via `/athena:loop`/`/athena:flow`. DAG: E254 + E258 (parallel) → E255 + E256 (after E254) → E257 (after E255+E256). Delivered via PR. **Prior: Phase 58 (E247–E253) + v0.1.0 release await the human `git push origin main`.**
+**Next Action:** Phase 61 (E263–E266, App Shell & Settings & Auth & Marketing) PLANNED on branch `feat/phase-61-app-shell` — domain-neutral Cobalt UI surfaces, UI-leaning (real backend deferred to Phase 62 = E267–E272, queued). Cobalt product pages (workflows/analytics/AI-models/integrations) intentionally SKIPPED. **Awaiting greenlight to implement** (then via direct/`/athena:flow`). **Standing: PRs #12 (deploy+v0.1.0), #13 (Cobalt) stack on the unpushed local `main` — `git push origin main` to narrow.**
 
 - **Phase 43 (Universal Adoption)** — E167 already landed in PR #142 (Tailwind + 8 primitives + Preset axis + 9 dashboard views migrated). Remaining: `/athena:batch --phase 43` will dispatch E168 (public) + E169 (auth) in parallel after E167's PR merges; E170 (cleanup) + E171 (Playwright VRT) follow as a second wave.
 - **Phase 44 (Completion & Validation)** — 8 epics. After Phase 43's PRs merge: `/athena:batch --phase 44` dispatches the 7-epic parallel wave (E172 + E173 + E174 + E175 + E176 + E178 + E179). Then E177 (a11y sweep) closes the phase once every surface is stable.

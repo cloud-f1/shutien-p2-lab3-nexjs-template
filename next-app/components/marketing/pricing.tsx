@@ -1,3 +1,6 @@
+"use client"
+
+import { useState } from "react"
 import Link from "next/link"
 
 import type { Plan } from "@/lib/billing/provider"
@@ -5,6 +8,8 @@ import { cn } from "@/lib/utils"
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+
+type BillingPeriod = "monthly" | "yearly"
 
 // ---------------------------------------------------------------------------
 // Static plan display shape (subset of Plan used for display)
@@ -82,12 +87,14 @@ interface PricingCardProps {
   tier: PricingTier
 }
 
-function PricingCard({ tier }: PricingCardProps) {
+function PricingCard({ tier, period }: PricingCardProps & { period: BillingPeriod }) {
+  // Yearly = 10× monthly (2 months free) — display-only; data shape unchanged.
+  const yearly = tier.monthlyPrice * 10
   return (
     <div
       className={cn(
-        "relative flex flex-col gap-6 rounded-lg border bg-card p-6 text-card-foreground shadow-sm",
-        tier.highlighted && "border-primary ring-2 ring-primary",
+        "lift relative flex flex-col gap-6 rounded-xl border bg-card p-6 text-card-foreground shadow-xs",
+        tier.highlighted && "border-primary shadow-md ring-2 ring-primary md:-translate-y-2",
       )}
       data-plan-id={tier.planId}
     >
@@ -103,10 +110,15 @@ function PricingCard({ tier }: PricingCardProps) {
       <div className="flex items-baseline gap-1">
         {tier.monthlyPrice === 0 ? (
           <span className="text-4xl font-bold">Free</span>
+        ) : period === "yearly" ? (
+          <>
+            <span className="text-4xl font-bold">${yearly}</span>
+            <span className="text-muted-foreground">/年</span>
+          </>
         ) : (
           <>
             <span className="text-4xl font-bold">${tier.monthlyPrice}</span>
-            <span className="text-muted-foreground">/{tier.interval}</span>
+            <span className="text-muted-foreground">/月</span>
           </>
         )}
       </div>
@@ -137,23 +149,40 @@ interface PricingProps {
 }
 
 export function Pricing({ tiers = DEFAULT_PRICING_TIERS }: PricingProps) {
+  const [period, setPeriod] = useState<BillingPeriod>("monthly")
   return (
     <section className="px-4 py-16 md:py-24" id="pricing">
       <div className="mx-auto max-w-5xl">
-        <div className="mb-12 flex flex-col items-center gap-3 text-center">
-          <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
-            Simple, transparent pricing
-          </h2>
-          <p className="max-w-2xl text-muted-foreground">
-            Choose the plan that fits your team. Upgrade or downgrade at any
-            time — no lock-in.
-          </p>
+        <div className="mb-8 flex flex-col items-center gap-4 text-center">
+          <h2 className="text-3xl font-bold tracking-tight md:text-4xl">簡單透明的定價</h2>
+          <p className="text-muted-foreground max-w-2xl">選擇適合你團隊的方案，隨時升降級，無綁約。</p>
+          {/* Monthly / yearly toggle (segmented) */}
+          <div className="bg-secondary inline-flex rounded-lg p-1" role="group" aria-label="計費週期">
+            {(["monthly", "yearly"] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPeriod(p)}
+                aria-pressed={period === p}
+                className={cn(
+                  "rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
+                  period === p ? "bg-card text-foreground shadow-xs" : "text-muted-foreground",
+                )}
+              >
+                {p === "monthly" ? "每月" : "每年"}
+                {p === "yearly" && <span className="text-success ml-1 text-xs">省 2 個月</span>}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="grid gap-6 md:grid-cols-3">
           {tiers.map((tier) => (
-            <PricingCard key={tier.planId} tier={tier} />
+            <PricingCard key={tier.planId} tier={tier} period={period} />
           ))}
         </div>
+        <p className="text-muted-foreground mt-6 text-center text-xs">
+          所有方案皆含核心功能 · 企業方案另提供 SSO、稽核紀錄與 SLA。
+        </p>
       </div>
     </section>
   )

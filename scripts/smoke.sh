@@ -29,8 +29,20 @@ rung() { # rung "<name>" <cmd...>
   else printf '\033[31mFAIL\033[0m\n'; FAILED+=("$name"); tail -8 /tmp/smoke-last.log | sed 's/^/      /'; fi
 }
 skip() { printf '  ⏭ %s … \033[33mSKIP\033[0m (%s)\n' "$1" "$2"; SKIPPED+=("$1: $2"); }
+# rung_make "<target>" — run a make target, or SKIP if it doesn't exist on this branch
+rung_make() {
+  if make -C "$ROOT" -n "$1" >/dev/null 2>&1; then rung "$1" make -C "$ROOT" "$1";
+  else skip "$1" "no '$1' make target on this branch"; fi
+}
 
-cd "$APP" || exit 1
+# Abnormal-exit guard. Gates run with `set +e` semantics (we WANT to run them all),
+# so a non-zero gate is handled by rung(). This trap catches the *other* class of
+# failure — the harness itself dying before the summary (a setup crash, a `set -u`
+# unbound var, a syntax error) — so we never emit a misleading partial/green result.
+SMOKE_DONE=0
+trap 'rc=$?; if [ "$SMOKE_DONE" != 1 ]; then printf "\n\033[31m✖ smoke ABORTED (exit %s) before the summary — harness/setup error, NOT a gate result. Last captured log:\033[0m\n" "$rc"; tail -12 /tmp/smoke-last.log 2>/dev/null | sed "s/^/      /"; fi' EXIT
+
+cd "$APP" || { echo "✖ next-app not found at $APP" >&2; exit 1; }
 
 hdr "Static + build (next-app)"
 rung "typecheck"        pnpm typecheck
@@ -43,10 +55,15 @@ hdr "Registry + modules"
 rung "registry:build"   pnpm registry:build
 rung "module:validate"  pnpm module:validate
 
+hdr "Plan alignment (deliverables present)"
+# Phase 60 (Cobalt design integration) — asserts every planned token/FX/landing/
+# dashboard deliverable actually landed. Extend with more suites as phases ship.
+rung "cobalt-integration" pnpm test app/cobalt-integration.test.ts
+
 hdr "Athena guards (repo root)"
-rung "guard-selftest" make -C "$ROOT" guard-selftest
-rung "skills-guard"   make -C "$ROOT" skills-guard
-rung "doc-truth"      make -C "$ROOT" doc-truth
+rung_make "guard-selftest"
+rung_make "skills-guard"
+rung_make "doc-truth"
 
 hdr "Dev-docs (VitePress)"
 if [ -d "$DOCS" ]; then rung "vitepress build" bash -c "cd '$DOCS' && pnpm build"; else skip "vitepress build" "no dev-docs/"; fi
@@ -59,7 +76,11 @@ if [ "$MODE_CORE" -eq 0 ]; then
     export AUTH_SECRET="${AUTH_SECRET:-smoke-e2e-secret}" AUTH_TRUST_HOST="${AUTH_TRUST_HOST:-true}"
     export NEXT_PUBLIC_APP_URL="${NEXT_PUBLIC_APP_URL:-http://localhost:3000}"
     export SMTP_HOST="${SMTP_HOST:-localhost}" SMTP_PORT="${SMTP_PORT:-1025}" SMTP_SECURE="${SMTP_SECURE:-false}" EMAIL_FROM="${EMAIL_FROM:-test@example.com}"
-    rung "db:migrate" pnpm db:migrate
+    # db:migrate — tolerate an already-migrated dev DB (idempotent prep, not a gate)
+    printf '  ▶ db:migrate … '
+    if pnpm db:migrate >/tmp/smoke-mig.log 2>&1; then printf '\033[32mPASS\033[0m\n'; PASS+=("db:migrate")
+    elif grep -qi "already exists\|no migrations" /tmp/smoke-mig.log; then printf '\033[33mSKIP\033[0m (already applied)\n'; SKIPPED+=("db:migrate: already applied")
+    else printf '\033[31mFAIL\033[0m\n'; FAILED+=("db:migrate"); tail -8 /tmp/smoke-mig.log | sed 's/^/      /'; fi
     rung "db:seed"  pnpm db:seed
     rung "e2e"      pnpm test:e2e
   else
@@ -82,6 +103,7 @@ if [ "$DO_DOCKER" -eq 1 ]; then
 fi
 
 hdr "SMOKE SUMMARY"
+SMOKE_DONE=1  # reached the summary cleanly → disarm the abnormal-exit guard
 printf '  \033[32mPASS:%d\033[0m  \033[31mFAIL:%d\033[0m  \033[33mSKIP:%d\033[0m\n' "${#PASS[@]}" "${#FAILED[@]}" "${#SKIPPED[@]}"
 [ "${#SKIPPED[@]}" -gt 0 ] && printf '  skipped: %s\n' "$(printf '%s; ' "${SKIPPED[@]}")"
 if [ "${#FAILED[@]}" -gt 0 ]; then printf '  \033[31mFAILED: %s\033[0m\n' "$(printf '%s ' "${FAILED[@]}")"; exit 1; fi

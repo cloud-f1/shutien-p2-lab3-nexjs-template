@@ -1,3 +1,6 @@
+import { AppBreadcrumb } from "@/components/app-breadcrumb"
+import { CommandPalette } from "@/components/command-palette"
+import { NotificationsMenu } from "@/components/notifications-menu"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 
@@ -10,7 +13,11 @@ export function SiteHeader() {
           orientation="vertical"
           className="mx-2 data-[orientation=vertical]:h-4"
         />
-        <h1 className="text-base font-medium">儀表板</h1>
+        <AppBreadcrumb />
+        <div className="ml-auto flex items-center gap-1">
+          <CommandPalette />
+          <NotificationsMenu />
+        </div>
       </div>
     </header>
   )

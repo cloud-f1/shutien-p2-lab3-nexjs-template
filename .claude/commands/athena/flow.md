@@ -126,15 +126,27 @@ const REPORT = {
 // strand qa/commit in the main repo, unable to see implement's worktree changes
 // (and a Workflow script may not `cd`/touch the fs itself). The qa-gate is enforced
 // IN-PROMPT: status="success" REQUIRES qa-passed AND committed.
+//
+// ⚠️ WORKTREE READINESS (the /athena:flow gotcha): a fresh git worktree has NO
+// `next-app/node_modules` (gitignored, not copied), so `pnpm typecheck|lint|test|
+// build` and `npx shadcn add` all fail until deps are installed. Two rules:
+//   1. node_modules-dependent QA → the agent runs `cd next-app && pnpm install
+//      --prefer-offline` first (shared pnpm store → fast).
+//   2. Epics that run `npx shadcn add` (writes components/ui/) or edit `.claude/`
+//      are NOT worktree-safe (shadcn-add needs network+config; .claude/** writes
+//      need a permission absent in worktrees). Such epics return status="blocked"
+//      with reason "needs in-repo run" → the orchestrator runs them in the main
+//      repo (NOT via a worktree agent). Pre-screen these out of flow waves.
 function runEpic(E) {
   return agent(
     [
-      `Epic ${E}. Work end-to-end in THIS isolated worktree; do all four steps IN ORDER:`,
-      `1. SPEC — read CLAUDE.md + docs/epics/${E.toLowerCase()}-*.md; edit docs/openapi.yaml FIRST (OpenAPI-first SSOT).`,
-      `2. IMPLEMENT — TDD red→green→refactor against the spec.`,
-      `3. QA — run both test suites; enforce the 80% coverage gate (reviewer=${MODEL.reviewer}, evaluator=${MODEL.evaluator}). If QA fails, return status="failure" and DO NOT commit.`,
+      `Epic ${E}. Work end-to-end in THIS isolated worktree; do all steps IN ORDER:`,
+      `0. WORKTREE READINESS — this worktree has NO next-app/node_modules. If your QA needs them, run \`cd next-app && pnpm install --prefer-offline\` first. If this epic requires \`npx shadcn add\` (writes components/ui/) or edits \`.claude/\`, it is NOT worktree-safe → return status="blocked", reason "needs in-repo run", and STOP (the orchestrator will run it in the main repo).`,
+      `1. SPEC — read CLAUDE.md + docs/epics/${E.toLowerCase()}-*.md; reconcile scope. (This is a single Next.js app — no OpenAPI/server SSOT.)`,
+      `2. IMPLEMENT — follow the spec: Server Components by default, @/ alias, shadcn from components/ui/, Drizzle for DB, "use server" for mutations, cn() for classes.`,
+      `3. QA — from next-app/: \`pnpm typecheck && pnpm lint && pnpm test\` (+ \`pnpm build\` for anything touching build/runtime). If QA fails, return status="failure" and DO NOT commit.`,
       `4. COMMIT — only if QA passed: commit on branch feat/${E}-<slug> (Conventional Commits). Do NOT merge.`,
-      `Return ONLY the AgentReport JSON: status="success" requires implemented AND qa-passed AND committed; "failure" if impl/QA failed; "blocked" if you cannot proceed (e.g. unmet dependency / needs human).`,
+      `Return ONLY the AgentReport JSON: status="success" requires implemented AND qa-passed AND committed; "failure" if impl/QA failed; "blocked" if you cannot proceed (unmet dependency / needs in-repo run / needs human).`,
     ].join("\n"),
     { schema: REPORT, label: `${E}`, phase: "Wave", isolation: "worktree", model: modelForEpic(E) }
   );
