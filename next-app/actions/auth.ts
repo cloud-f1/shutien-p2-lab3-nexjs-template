@@ -2,18 +2,25 @@
 
 import { signIn, signOut } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { emailVerificationTokensTable, usersTable } from "@/lib/schema"
+import { emailVerificationTokensTable, passwordResetTokensTable, usersTable } from "@/lib/schema"
 import { eq } from "drizzle-orm"
-import { getUserByEmail, getVerificationToken } from "@/lib/queries"
+import { getUserByEmail, getVerificationToken, getPasswordResetToken } from "@/lib/queries"
 import { hashPassword } from "@/lib/password"
-import { sendVerificationEmail } from "@/lib/email"
+import { sendVerificationEmail, sendPasswordResetEmail } from "@/lib/email"
 import type { FormState } from "@/lib/validations/types"
 import { unstable_rethrow } from "next/navigation"
 import { redirect } from "next/navigation"
 import { headers } from "next/headers"
 import crypto from "crypto"
-import { registerSchema, loginSchema } from "@/lib/validations/auth"
+import { registerSchema, loginSchema, resetPasswordSchema } from "@/lib/validations/auth"
+import {
+  generateResetToken,
+  resetExpiry,
+  isResetTokenValid,
+} from "@/lib/password-reset-utils"
 import { isRateLimited, recordFailure, cooldown } from "@/lib/rate-limit"
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
 
 // Best-effort client IP from common proxy headers (Zeabur / Vercel / nginx).
 async function getClientIp(): Promise<string> {
@@ -176,5 +183,83 @@ export async function resendVerificationEmail(
   })
 
   await sendVerificationEmail(email, token)
+  return { success: true }
+}
+
+// ─── Password Reset ─────────────────────────────────────────────────────────
+
+/**
+ * Request a password-reset link. ALWAYS returns success to avoid user
+ * enumeration — the caller cannot tell whether the email is registered. A token
+ * + email are only created/sent when a credentials user actually exists.
+ */
+export async function requestPasswordReset(
+  email: string,
+): Promise<{ success: true }> {
+  const normalized = email.trim().toLowerCase()
+
+  // Per-email cooldown (60s) so the endpoint can't be used to email-bomb a
+  // known address. Checked before the DB lookup; we still return success.
+  const cool = cooldown(`reset:${normalized}`, 60 * 1000)
+  if (!cool.ok) return { success: true }
+
+  const user = await getUserByEmail(normalized)
+
+  // Only credentials users (have a passwordHash) can reset a password.
+  if (user?.passwordHash) {
+    // Invalidate any outstanding reset tokens for this user before minting a new one.
+    await db
+      .delete(passwordResetTokensTable)
+      .where(eq(passwordResetTokensTable.userId, user.id))
+
+    const token = generateResetToken()
+    await db.insert(passwordResetTokensTable).values({
+      userId: user.id,
+      token,
+      expiresAt: resetExpiry(new Date()),
+    })
+
+    const resetUrl = `${APP_URL}/reset-password?token=${encodeURIComponent(token)}`
+    await sendPasswordResetEmail(normalized, resetUrl)
+  }
+
+  return { success: true }
+}
+
+/**
+ * Complete a password reset. Verifies the token is present + unexpired, bcrypts
+ * the new password, updates the user's hash, and consumes (deletes) the token.
+ */
+export async function resetPassword(
+  token: string,
+  newPassword: string,
+): Promise<{ success?: boolean; error?: string }> {
+  const result = resetPasswordSchema.safeParse({ token, password: newPassword })
+  if (!result.success) {
+    return { error: result.error.errors[0].message }
+  }
+
+  const record = await getPasswordResetToken(token)
+  if (!record) {
+    return { error: "重設連結無效或已過期。" }
+  }
+
+  if (!isResetTokenValid(record, new Date())) {
+    await db
+      .delete(passwordResetTokensTable)
+      .where(eq(passwordResetTokensTable.id, record.id))
+    return { error: "此連結已過期，請重新申請。" }
+  }
+
+  const passwordHash = await hashPassword(result.data.password)
+  await db
+    .update(usersTable)
+    .set({ passwordHash, updatedAt: new Date() })
+    .where(eq(usersTable.id, record.userId))
+
+  await db
+    .delete(passwordResetTokensTable)
+    .where(eq(passwordResetTokensTable.id, record.id))
+
   return { success: true }
 }

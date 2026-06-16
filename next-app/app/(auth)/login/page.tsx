@@ -9,14 +9,16 @@ export const metadata: Metadata = {
 }
 
 type Props = {
-  searchParams: Promise<{ verified?: string; error?: string }>
+  searchParams: Promise<{ verified?: string; reset?: string; error?: string }>
 }
 
 export default async function LoginPage({ searchParams }: Props) {
   const session = await auth()
   if (session) redirect("/dashboard")
 
-  const { verified, error } = await searchParams
+  const { verified, reset, error } = await searchParams
 
-  return <LoginForm verified={verified === "true"} urlError={error} />
+  return (
+    <LoginForm verified={verified === "true"} reset={reset === "true"} urlError={error} />
+  )
 }

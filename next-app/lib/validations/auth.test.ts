@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest"
-import { registerSchema, loginSchema, passwordSchema } from "./auth"
+import {
+  registerSchema,
+  loginSchema,
+  passwordSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+} from "./auth"
 
 describe("passwordSchema", () => {
   it("accepts a strong password", () => {
@@ -59,5 +65,35 @@ describe("loginSchema", () => {
 
   it("rejects an empty password", () => {
     expect(loginSchema.safeParse({ email: "ada@example.com", password: "" }).success).toBe(false)
+  })
+})
+
+describe("forgotPasswordSchema", () => {
+  it("accepts a valid email", () => {
+    expect(forgotPasswordSchema.safeParse({ email: "ada@example.com" }).success).toBe(true)
+  })
+
+  it("rejects an invalid email with the shared message", () => {
+    const r = forgotPasswordSchema.safeParse({ email: "nope" })
+    expect(r.success).toBe(false)
+    if (!r.success) expect(r.error.errors[0].message).toMatch(/電子郵件格式不正確/)
+  })
+})
+
+describe("resetPasswordSchema", () => {
+  it("accepts a token + strong password", () => {
+    const r = resetPasswordSchema.safeParse({ token: "abc123", password: "Abcd1234" })
+    expect(r.success).toBe(true)
+  })
+
+  it("rejects an empty token", () => {
+    const r = resetPasswordSchema.safeParse({ token: "", password: "Abcd1234" })
+    expect(r.success).toBe(false)
+    if (!r.success) expect(r.error.errors.some((e) => /權杖/.test(e.message))).toBe(true)
+  })
+
+  it("rejects a weak password (drift guard — reuses passwordSchema)", () => {
+    const r = resetPasswordSchema.safeParse({ token: "abc123", password: "weak" })
+    expect(r.success).toBe(false)
   })
 })

@@ -81,4 +81,17 @@ export const emailVerificationTokensTable = pgTable("email_verification_tokens",
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
 })
 
+// Password reset tokens for credentials auth (E290) — mirrors
+// emailVerificationTokens. A token is single-use: consumed (deleted) on a
+// successful reset and on expiry.
+export const passwordResetTokensTable = pgTable("password_reset_tokens", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => usersTable.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+})
+
 export type User = typeof usersTable.$inferSelect

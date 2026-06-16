@@ -47,6 +47,7 @@ const EXPECTED = [
   "sessions",
   "verification_tokens",
   "email_verification_tokens",
+  "password_reset_tokens",
   "items",
   "plans",
   "subscriptions",

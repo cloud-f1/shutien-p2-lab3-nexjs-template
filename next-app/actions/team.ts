@@ -5,12 +5,14 @@ import { revalidatePath } from "next/cache"
 
 import { db } from "@/lib/db"
 import { logAudit } from "@/lib/audit"
+import { sendInviteEmail } from "@/lib/email"
 import { requireAdmin, requireAuth } from "@/lib/permissions"
 import { invitationsTable, usersTable, type Role } from "@/lib/schema"
 import { generateInviteToken, inviteExpiry, isInviteValid } from "@/lib/team-utils"
 
 const VALID_ROLES: Role[] = ["admin", "editor", "viewer"]
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
 
 /** Invite a member by email with a role. Admin-only. Returns the invite token. */
 export async function inviteMember(input: {
@@ -45,6 +47,15 @@ export async function inviteMember(input: {
     targetType: "invitation",
     metadata: { email, role: input.role },
   })
+
+  // Best-effort email delivery: a transport failure must not fail the invite —
+  // the admin still receives the link to share manually.
+  const inviteUrl = `${APP_URL}/invite/${token}`
+  try {
+    await sendInviteEmail(email, inviteUrl, session.user.name ?? "團隊管理員")
+  } catch {
+    // swallow — the returned token + admin UI link is the fallback channel
+  }
 
   revalidatePath("/dashboard/admin")
   return { token }

@@ -26,6 +26,7 @@ import Link from "next/link"
 
 interface LoginFormProps {
   verified?: boolean
+  reset?: boolean
   urlError?: string
 }
 
@@ -35,7 +36,7 @@ interface LoginFormProps {
 // NEXT_PUBLIC_ENABLE_DEMO_LOGIN=true (Makefile local-env + playwright webServer).
 const SHOW_DEMO_LOGIN = process.env.NEXT_PUBLIC_ENABLE_DEMO_LOGIN === "true"
 
-export function LoginForm({ verified, urlError }: LoginFormProps) {
+export function LoginForm({ verified, reset, urlError }: LoginFormProps) {
   const [state, formAction, isPending] = useActionState(loginAction, null)
 
   const {
@@ -79,6 +80,14 @@ export function LoginForm({ verified, urlError }: LoginFormProps) {
             ✅ 電子郵件已驗證！您現在可以登入。
           </p>
         )}
+        {reset && (
+          <p
+            role="status"
+            className="mb-4 rounded-md bg-green-50 px-3 py-2 text-sm text-green-800 dark:bg-green-950 dark:text-green-300"
+          >
+            ✅ 密碼已重設！請使用新密碼登入。
+          </p>
+        )}
         {(state?.error ?? urlError) && (
           <p
             role="alert"
@@ -109,12 +118,12 @@ export function LoginForm({ verified, urlError }: LoginFormProps) {
             <Field data-invalid={errors.password ? true : undefined}>
               <div className="flex items-center">
                 <FieldLabel htmlFor="password">密碼</FieldLabel>
-                <a
-                  href="#"
+                <Link
+                  href="/forgot-password"
                   className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
                 >
                   忘記密碼？
-                </a>
+                </Link>
               </div>
               <Input
                 id="password"
