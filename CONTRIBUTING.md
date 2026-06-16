@@ -149,6 +149,7 @@ See [`CLAUDE.md`](CLAUDE.md) § "Architecture Rules — NEVER DEVIATE". Highligh
 - **shadcn/ui** lives in `components/ui/` — add via `npx shadcn@latest add`, never hand-author.
 - **Drizzle** for all DB access (no raw SQL, no Prisma); mutations via Server Actions (`"use server"`).
 - **`cn()`** for conditional Tailwind; theme via `dark:` variants — no inline `style=` color overrides.
+- **API contract (E281)** — Server Actions are TS + Zod (compile-time) contract; HTTP routes are the **generated** `docs/openapi.yaml` (+ `GET /api/openapi`). Regenerate with `pnpm openapi:generate` (never hand-edit); drift-guarded in smoke.
 
 ---
 

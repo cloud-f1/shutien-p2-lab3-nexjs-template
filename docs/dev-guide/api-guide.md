@@ -5,6 +5,47 @@
 > **no OpenAPI spec**. The "API surface" is a mix of Server Actions, Route Handlers, and
 > Server-Component data fetching, all in-process.
 
+## API contract (E281)
+
+This app has **two** API surfaces with **two** contract models — don't conflate them:
+
+| Surface | Contract | Where |
+|---|---|---|
+| **Server Actions** (`actions/*.ts`) | TypeScript + the shared Zod schemas in `lib/validations/*`, enforced at **compile time** | The functions themselves — typed RPC, not REST. No OpenAPI entry. |
+| **HTTP route handlers** (`app/api/**`) | **Generated** OpenAPI 3.1 doc | [`../openapi.yaml`](../openapi.yaml) + the live `GET /api/openapi` (built in memory) |
+
+- `docs/openapi.yaml` is **generated from Zod** (`next-app/lib/openapi/registry.ts`).
+  **Never hand-edit it** — regenerate with `pnpm openapi:generate` (from `next-app/`).
+- A drift gate in `scripts/smoke.sh` regenerates the spec and `git diff --exit-code`s
+  it, so a stale committed spec fails the smoke run. This keeps the contract honest:
+  the HTTP surface in the YAML always matches the Zod source.
+- The doc covers only the **real** HTTP routes: `/api/health` + the billing callbacks
+  / cron jobs. Auth.js routes under `/api/auth/[...nextauth]` are framework-owned and
+  intentionally omitted. The pre-Next.js REST endpoints (`/api/users/me`,
+  `/api/admin/users/*`) are gone — they are now Server Actions.
+
+### Adding an HTTP endpoint — contract-first
+
+The contract is enforced by **two guards** that run in `pnpm test` + `scripts/smoke.sh`,
+so you can't ship an undocumented or drifted endpoint:
+
+1. **Coverage guard** (`lib/openapi/coverage.test.ts`) — fails if any `app/api/**/route.ts`
+   is missing from the OpenAPI registry (catches *omissions*).
+2. **Drift gate** (`scripts/smoke.sh`) — regenerates + `git diff --exit-code docs/openapi.yaml`;
+   fails if the committed spec is stale vs the Zod source (catches *drift*).
+
+So the workflow when you add a route is **contract-first by construction**:
+
+1. Define/extend the request + response **Zod schema** in `lib/validations/*` (or inline in the registry).
+2. **Register** the route + its schemas in `lib/openapi/registry.ts` (`registry.registerPath({...})`).
+3. `pnpm openapi:generate` → updates `docs/openapi.yaml`.
+4. Implement `app/api/<path>/route.ts` to satisfy that contract.
+5. `pnpm test` (coverage guard) + `pnpm openapi:generate` (drift gate) must both be green.
+
+> For an app-internal mutation, prefer a **Server Action** — its contract is the TypeScript
+> signature + the Zod schema, checked at compile time. Only reach for a Route Handler when an
+> *external* caller needs an HTTP URL (webhook, cron, public API).
+
 ## The Three API Surfaces
 
 | Surface | Where | Use for | Callable cross-origin? |

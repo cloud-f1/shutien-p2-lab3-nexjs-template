@@ -1,13 +1,10 @@
+# AUTO-GENERATED from Zod — do NOT hand-edit. Regenerate with `pnpm openapi:generate` (next-app/).
+# Source of truth: next-app/lib/openapi/registry.ts + lib/validations/*. Drift-guarded in scripts/smoke.sh.
 openapi: 3.1.0
 info:
-  title: SaaS Starter API
-  description: |
-    REST API for the Next.js SaaS starter template.
-    - Auth endpoints are served by Auth.js v5 at `/api/auth/*`
-    - Admin and user management endpoints are Next.js Route Handlers
-    - Most mutations use Server Actions (not REST) — only browser-facing REST routes are documented here
-  version: 1.0.0
-
+  title: AI App Template API
+  version: 0.2.0
+  description: Server Actions (actions/*.ts) are typed RPC — their contract is TypeScript + the shared Zod schemas in lib/validations, enforced at compile time; this OpenAPI documents the HTTP route-handler surface only. Auth.js routes under /api/auth/[...nextauth] are framework-owned and omitted. This file is GENERATED from Zod (the single source of truth) via `pnpm openapi:generate` — never hand-edit it; a smoke drift gate fails if it is stale.
 servers:
   - url: http://localhost:3000
     description: Local development
@@ -16,69 +13,50 @@ servers:
     variables:
       host:
         default: your-domain.com
-
 tags:
-  - name: auth
-    description: Authentication (Auth.js v5 managed endpoints)
-  - name: users
-    description: User profile management
-  - name: admin
-    description: Admin-only user management (requires role=admin)
   - name: health
     description: Health checks
-
+  - name: billing
+    description: Payment provider callbacks + cron jobs
+  - name: cron
+    description: CRON_SECRET-protected scheduled jobs
 components:
   securitySchemes:
-    sessionCookie:
-      type: apiKey
-      in: cookie
-      name: next-auth.session-token
-      description: Auth.js session cookie (set automatically on login)
-
+    cronBearer:
+      type: http
+      scheme: bearer
+      description: "CRON_SECRET bearer token. Fails closed (401) when the secret is unset. Sent as `Authorization: Bearer <CRON_SECRET>`."
   schemas:
-    User:
+    RegisterInput:
       type: object
       properties:
-        id:
-          type: string
-          format: uuid
         name:
           type: string
-          nullable: true
+          minLength: 1
         email:
           type: string
           format: email
-        role:
+        password:
           type: string
-          enum: [user, admin]
-        emailVerified:
-          type: string
-          format: date-time
-          nullable: true
-        image:
-          type: string
-          format: uri
-          nullable: true
-        createdAt:
-          type: string
-          format: date-time
-      required: [id, email, role, createdAt]
-
-    ErrorResponse:
+          minLength: 8
+          pattern: "[A-Z]"
+      required:
+        - name
+        - email
+        - password
+    LoginInput:
       type: object
       properties:
-        error:
+        email:
           type: string
-      required: [error]
-
-    SuccessResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-      required: [success]
-
-    UpdateProfileRequest:
+          format: email
+        password:
+          type: string
+          minLength: 1
+      required:
+        - email
+        - password
+    UpdateProfileInput:
       type: object
       properties:
         name:
@@ -86,12 +64,15 @@ components:
           minLength: 1
           maxLength: 100
         image:
-          type: string
-          format: uri
-          nullable: true
-      required: [name]
-
-    ChangePasswordRequest:
+          anyOf:
+            - type: string
+              format: uri
+            - type: string
+              enum:
+                - ""
+      required:
+        - name
+    ChangePasswordInput:
       type: object
       properties:
         currentPassword:
@@ -100,278 +81,286 @@ components:
         newPassword:
           type: string
           minLength: 8
-          description: "Min 8 chars, 1 uppercase, 1 number"
+          pattern: "[A-Z]"
         confirmPassword:
           type: string
-      required: [currentPassword, newPassword, confirmPassword]
-
-    SetRoleRequest:
+          minLength: 1
+      required:
+        - currentPassword
+        - newPassword
+        - confirmPassword
+    CreateItemInput:
       type: object
       properties:
-        role:
+        title:
           type: string
-          enum: [user, admin]
-      required: [role]
-
+          minLength: 1
+          maxLength: 255
+      required:
+        - title
+    UpdateItemInput:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+      required:
+        - title
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+        timestamp:
+          type: string
+          format: date-time
+      required:
+        - status
+        - timestamp
+    StripeWebhookAck:
+      type: object
+      properties:
+        received:
+          type: boolean
+          enum:
+            - true
+        skipped:
+          type: boolean
+      required:
+        - received
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+    StripeEvent:
+      type: object
+      properties: {}
+      additionalProperties: {}
+      description: A Stripe.Event object — opaque to this contract.
+    EcpayAck:
+      type: string
+      example: 1|OK
+    EcpayCallback:
+      type: object
+      properties:
+        MerchantTradeNo:
+          type: string
+        RtnCode:
+          type: string
+        CheckMacValue:
+          type: string
+      additionalProperties:
+        type: string
+    CronOkResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum:
+            - true
+      required:
+        - ok
+      additionalProperties: {}
+      description: Cron job acknowledgement. Carries job-specific counters (e.g. checked / updated / flagged).
+    CronErrorResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum:
+            - false
+        error:
+          type: string
+      required:
+        - ok
+        - error
+    ReconcileErrorResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum:
+            - false
+        error:
+          type: string
+      required:
+        - ok
+        - error
+  parameters: {}
 paths:
-  # ── Auth.js managed endpoints ────────────────────────────────────────────────
-  /api/auth/callback/credentials:
-    post:
-      tags: [auth]
-      summary: Credentials sign-in
-      description: |
-        Processes email+password. Called internally by Auth.js.
-        The server enforces emailVerified gate in authorize() regardless of call site.
-      requestBody:
-        required: true
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              type: object
-              properties:
-                email:
-                  type: string
-                  format: email
-                password:
-                  type: string
-              required: [email, password]
-      responses:
-        "302":
-          description: Redirect to dashboard on success, sign-in on failure
-
-  /api/auth/callback/google:
-    get:
-      tags: [auth]
-      summary: Google OAuth callback
-      parameters:
-        - name: code
-          in: query
-          required: true
-          schema:
-            type: string
-      responses:
-        "302":
-          description: Redirect to dashboard on success
-
-  /api/auth/session:
-    get:
-      tags: [auth]
-      summary: Get current session
-      responses:
-        "200":
-          description: Session or null
-          content:
-            application/json:
-              schema:
-                oneOf:
-                  - type: "null"
-                  - type: object
-                    properties:
-                      user:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                          email:
-                            type: string
-                          role:
-                            type: string
-                            enum: [user, admin]
-                      expires:
-                        type: string
-                        format: date-time
-
-  /api/auth/signout:
-    post:
-      tags: [auth]
-      summary: Sign out
-      responses:
-        "302":
-          description: Redirect to login
-
-  # ── User Profile ─────────────────────────────────────────────────────────────
-  /api/users/me:
-    get:
-      tags: [users]
-      summary: Get current user profile
-      security:
-        - sessionCookie: []
-      responses:
-        "200":
-          description: User profile
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/User"
-        "401":
-          description: Not authenticated
-
-    patch:
-      tags: [users]
-      summary: Update profile (name + avatar)
-      description: Validated against updateProfileSchema (Zod) — same schema as the Settings form.
-      security:
-        - sessionCookie: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateProfileRequest"
-      responses:
-        "200":
-          description: Updated
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResponse"
-        "400":
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "401":
-          description: Not authenticated
-
-  /api/users/me/password:
-    post:
-      tags: [users]
-      summary: Change password
-      description: Not available for OAuth-only accounts.
-      security:
-        - sessionCookie: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/ChangePasswordRequest"
-      responses:
-        "200":
-          description: Password changed
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResponse"
-        "400":
-          description: Current password incorrect or validation error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "401":
-          description: Not authenticated
-
-  # ── Admin ────────────────────────────────────────────────────────────────────
-  /api/admin/users:
-    get:
-      tags: [admin]
-      summary: List all users
-      description: Requires role=admin. Returns users ordered by createdAt.
-      security:
-        - sessionCookie: []
-      responses:
-        "200":
-          description: User list
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/User"
-        "401":
-          description: Not authenticated
-        "403":
-          description: Insufficient role
-
-  /api/admin/users/{userId}/role:
-    patch:
-      tags: [admin]
-      summary: Set user role
-      description: Admins cannot change their own role.
-      security:
-        - sessionCookie: []
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/SetRoleRequest"
-      responses:
-        "200":
-          description: Role updated
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResponse"
-        "400":
-          description: Cannot change own role
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "401":
-          description: Not authenticated
-        "403":
-          description: Insufficient role
-
-  /api/admin/users/{userId}:
-    delete:
-      tags: [admin]
-      summary: Delete user
-      description: Permanently deletes the user (cascade). Admins cannot delete themselves.
-      security:
-        - sessionCookie: []
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        "200":
-          description: Deleted
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResponse"
-        "400":
-          description: Cannot delete yourself
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "401":
-          description: Not authenticated
-        "403":
-          description: Insufficient role
-
-  # ── Health ───────────────────────────────────────────────────────────────────
   /api/health:
     get:
-      tags: [health]
       summary: Health check
       description: Returns 200 when the app is running. Used by smoke tests and uptime monitors.
+      tags:
+        - health
       responses:
         "200":
           description: Healthy
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    enum: [ok]
-                  timestamp:
-                    type: string
-                    format: date-time
+                $ref: "#/components/schemas/HealthResponse"
+  /api/billing/stripe/webhook:
+    post:
+      summary: Stripe webhook receiver
+      description: Receives raw Stripe webhook events. Verifies the Stripe-Signature header, then processes the event idempotently. The raw provider event JSON is the request body.
+      tags:
+        - billing
+      parameters:
+        - schema:
+            type: string
+            description: Stripe webhook signature header
+          required: true
+          name: stripe-signature
+          in: header
+      requestBody:
+        description: Raw Stripe event payload (verified by signature, not parsed by schema).
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StripeEvent"
+      responses:
+        "200":
+          description: Event acknowledged (received, optionally skipped as a duplicate).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StripeWebhookAck"
+        "400":
+          description: Missing or invalid stripe-signature header.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal error — Stripe retries.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/billing/ecpay/return:
+    post:
+      summary: ECPay ReturnURL — first authorization notification
+      description: Receives the FIRST payment notification from ECPay after checkout. Verifies CheckMacValue, then upserts the subscription idempotently.
+      tags:
+        - billing
+      requestBody:
+        description: ECPay callback — application/x-www-form-urlencoded form with a CheckMacValue (SHA256). Verified, not schema-parsed.
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/EcpayCallback"
+      responses:
+        "200":
+          description: ECPay acknowledgement string — exactly "1|OK".
+          content:
+            text/plain:
+              schema:
+                $ref: "#/components/schemas/EcpayAck"
+        "400":
+          description: Invalid CheckMacValue — "0|CheckMacValue invalid".
+          content:
+            text/plain:
+              schema:
+                type: string
+        "500":
+          description: Config or processing error — "0|Error" (ECPay retries).
+          content:
+            text/plain:
+              schema:
+                type: string
+  /api/billing/ecpay/period:
+    post:
+      summary: ECPay PeriodReturnURL — recurring cycle notification
+      description: Receives a RECURRING payment notification (2nd cycle onwards), once per successful billing cycle. Verifies CheckMacValue, then advances the subscription period idempotently.
+      tags:
+        - billing
+      requestBody:
+        description: ECPay callback — application/x-www-form-urlencoded form with a CheckMacValue (SHA256). Verified, not schema-parsed.
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/EcpayCallback"
+      responses:
+        "200":
+          description: ECPay acknowledgement string — exactly "1|OK".
+          content:
+            text/plain:
+              schema:
+                $ref: "#/components/schemas/EcpayAck"
+        "400":
+          description: Invalid CheckMacValue — "0|CheckMacValue invalid".
+          content:
+            text/plain:
+              schema:
+                type: string
+        "500":
+          description: Config or processing error — "0|Error" (ECPay retries).
+          content:
+            text/plain:
+              schema:
+                type: string
+  /api/billing/ecpay/renew:
+    post:
+      summary: ECPay 定期定額 renewal sweep (cron)
+      description: Cron-callable. Flags ECPay subscriptions whose remaining periods fall below threshold so the UI prompts a rebuild (ECPay has no auto-renew after ExecTimes exhaustion). Requires the CRON_SECRET bearer token.
+      tags:
+        - billing
+        - cron
+      security:
+        - cronBearer: []
+      responses:
+        "200":
+          description: Sweep result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CronOkResponse"
+        "401":
+          description: Missing or invalid CRON_SECRET bearer token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Sweep error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CronErrorResponse"
+  /api/billing/reconcile:
+    post:
+      summary: Stripe subscription reconcile (cron)
+      description: "Cron-callable drift recovery for a MISSED Stripe webhook: diffs stored subscriptions against Stripe's ground truth and repairs status / period-end / cancel-at. Requires the CRON_SECRET bearer token."
+      tags:
+        - billing
+        - cron
+      security:
+        - cronBearer: []
+      responses:
+        "200":
+          description: Reconcile result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CronOkResponse"
+        "401":
+          description: Missing or invalid CRON_SECRET bearer token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Reconcile error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReconcileErrorResponse"
+webhooks: {}

@@ -51,6 +51,16 @@ rung "lint"             pnpm lint
 rung "production build" env DATABASE_URL="${DATABASE_URL:-postgres://build:build@localhost:5432/build}" AUTH_SECRET="${AUTH_SECRET:-smoke-build-secret}" NEXTAUTH_URL="${NEXTAUTH_URL:-http://localhost:3000}" pnpm build
 rung "unit tests"       pnpm test
 
+hdr "OpenAPI contract (drift-proof — E281)"
+# docs/openapi.yaml is GENERATED from Zod (next-app/lib/openapi/registry.ts). Regenerate
+# then assert the committed spec matches the Zod source — a stale spec fails the gate.
+# Guarded: skips (does not fail) when next-app deps are missing (fresh worktree, no install).
+if [ -d "$APP/node_modules/@asteasolutions/zod-to-openapi" ]; then
+  rung "openapi drift" bash -c 'cd "'"$APP"'" && pnpm openapi:generate >/dev/null && git -C "'"$ROOT"'" diff --exit-code -- docs/openapi.yaml'
+else
+  skip "openapi drift" "next-app deps absent — run 'pnpm install' in next-app/ first"
+fi
+
 hdr "Registry + modules"
 rung "registry:build"   pnpm registry:build
 rung "module:validate"  pnpm module:validate
