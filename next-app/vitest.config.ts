@@ -27,6 +27,7 @@ export default defineConfig({
         "lib/billing/billing-utils.ts",
         "lib/billing/resolver.ts",
         "lib/billing/providers/**",
+        "lib/security-headers.ts",
       ],
       exclude: ["**/*.test.ts", "e2e/**"],
     },
