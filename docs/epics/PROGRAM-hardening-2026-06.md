@@ -22,7 +22,7 @@ added per-epic as they merge, to avoid cross-branch conflicts).
 | **E277** | **Agent brain** — reconceive `/athena:dba`→drizzle-kit & `/athena:audit`→Drizzle/Zod/UI drift; de-stale 9 agents + 9 commands. (Dead-stack skills removed ✅ PR #21) | ✅ done (feat/E277-agent-brain) |
 | **E278** | **Onboarding/dev docs** — rewrite guides / dev-guide / techstack / diagrams / CONTRIBUTING / PRD / dev-docs to Next.js; delete removed-subsystem docs (openapi-patterns, sre-observability, ci-explained) | ✅ done (feat/E278-dev-docs) |
 | **E279** | **Delete dead-stack code** — `docs/examples/**` (52 FastAPI+Vite) + `docs/openapi/` + leftover FastAPI templates | ⬜ |
-| **E280** | **Stale scripts/config** — fix/remove `scripts/{new-site,doctor,deploy-cloudrun,tutorial,verify-pg,migration-review}` + hooks + `.pre-commit`/`.husky`/`.dockerignore`; Makefile legacy targets | ⬜ |
+| **E280** | **Stale scripts/config** — fix/remove `scripts/{new-site,doctor,deploy-cloudrun,tutorial,verify-pg,migration-review}` + hooks + `.pre-commit`/`.husky`/`.dockerignore`; Makefile legacy targets | ✅ done (feat/E280-stale-scripts) |
 
 ## Execution order
 

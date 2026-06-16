@@ -97,7 +97,7 @@ For the requested epic, walk steps in pipeline order. At each step:
    - `qa` → `Agent(general-purpose)` running `/athena:qa`
    - `commit` → inline (Bash + Edit) — branch, stage, commit
    - `merge` → inline (Bash) — `git push` + `gh pr create` + `gh pr merge --auto`
-   - `deploy` → inline (Bash) — `scripts/deploy-zeabur.sh ${AUTOPILOT_DEPLOY_ENV}` (or equivalent)
+   - `deploy` → inline (Bash) — `make deploy` (Zeabur via the `deploy-config` skill / `deploy/deploy-zeabur.sh`, or GCP Cloud Run per `docs/guides/deployment-gcp.md`)
 4. **Re-score** the step after execution to confirm signals are still green.
    If post-execution score drops below threshold, treat as pause for the
    *next* step (do not retroactively unwind the completed step).

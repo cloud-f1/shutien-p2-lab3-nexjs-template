@@ -1,22 +1,15 @@
+# Optional pre-commit hooks (the `pre-commit` framework — https://pre-commit.com).
+# This repo's primary pre-commit gate is .husky/pre-commit (ESLint on next-app/);
+# these are generic, language-agnostic file-hygiene hooks. The old Python (ruff)
+# and Alembic migration-linter hooks were removed with the FastAPI stack.
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
       - id: trailing-whitespace
+        exclude: ^next-app/(node_modules|\.next)/
       - id: end-of-file-fixer
-
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.4
-    hooks:
-      - id: ruff
-        args: [--fix]
-      - id: ruff-format
-
-  - repo: local
-    hooks:
-      - id: migration-linter
-        name: migration-linter
-        entry: bash -c 'cd server && uv run pytest tests/test_migration_lint.py -q --no-header'
-        language: system
-        files: ^server/alembic/versions/.*\.py$
-        pass_filenames: false
+        exclude: ^next-app/(node_modules|\.next)/
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-added-large-files

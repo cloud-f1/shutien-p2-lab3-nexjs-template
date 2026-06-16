@@ -8,11 +8,11 @@ BACKUP_DIR="backups"
 TIMESTAMP=$(date +%Y-%m-%d_%H%M%S)
 DB_USER="${POSTGRES_USER:-saas_user}"
 DB_NAME="${POSTGRES_DB:-saas_dev}"
-CONTAINER=$(docker compose ps -q db 2>/dev/null)
+CONTAINER=$(docker compose ps -q postgres 2>/dev/null)
 
 if [ -z "$CONTAINER" ]; then
-    echo "❌ No running 'db' container found."
-    echo "   Start it with: docker compose up -d db"
+    echo "❌ No running 'postgres' container found."
+    echo "   Start it with: docker compose up -d postgres  (or: make local-infra)"
     exit 1
 fi
 
@@ -26,4 +26,4 @@ SIZE=$(du -h "$BACKUP_FILE" | cut -f1)
 echo "✅ Backup saved: $BACKUP_FILE ($SIZE)"
 echo ""
 echo "To restore:"
-echo "  gunzip -c $BACKUP_FILE | docker exec -i \$(docker compose ps -q db) psql -U $DB_USER $DB_NAME"
+echo "  gunzip -c $BACKUP_FILE | docker exec -i \$(docker compose ps -q postgres) psql -U $DB_USER $DB_NAME"
