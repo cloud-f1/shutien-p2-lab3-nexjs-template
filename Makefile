@@ -197,10 +197,9 @@ reset: ## Reset template to clean state (run once after cloning)
 	fi
 	@bash scripts/template-reset.sh
 
-new-domain: ## Scaffold a new domain — use the /athena:domain command (NAME=notes)
-	@echo "Scaffold a domain with the Athena command:  /athena:domain NAME=$(or $(NAME),<name>)"
-	@echo "  → Drizzle table (lib/schema/) + Zod (lib/validations/) + Server Actions (actions/)"
-	@echo "    + dashboard page (app/(dashboard)/) + Vitest unit test, modeled on the items domain."
+new-domain: ## Scaffold a new CRUD domain by copying the items domain (usage: make new-domain NAME=note [PLURAL=notes])
+	@test -n "$(NAME)" || { echo "Usage: make new-domain NAME=<singular> [PLURAL=<plural>]"; exit 1; }
+	@bash scripts/new-domain.sh $(NAME) $(PLURAL)
 
 # ─── Plugin sync ───────────────────────────────────────────────────────────
 drift-check: ## Check athena-core drift (dry-run sync; exits non-zero if diff detected)

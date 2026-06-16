@@ -81,31 +81,30 @@ and an `index("<plural>_user_id_idx").on(t.userId)`.
 Parse the domain name and fields. Derive all naming variants (table above).
 
 ### Step 2 — Run the scaffold script
-Execute:
+Execute (or `make new-domain NAME=<singular>`):
 
 ```bash
-./scripts/new-domain.sh <NAME>
+./scripts/new-domain.sh <singular> [plural]   # e.g. note  → notes ;  category categories
 ```
 
-This generates the domain skeleton. **Read its actual output** and reconcile to
-the Next.js layout below — do not assume the script's printed file list is
-correct (it predates the migration in places). The authoritative target shape
-is the **items** domain. The files a Next.js domain must end with are:
+The script copies the canonical **items** domain and renames it (singular/plural/Pascal
+variants derived from the input — explicit plural optional). It produces a domain that
+**typechecks, lints, and tests clean out of the box**:
 
-- `next-app/lib/schema/<plural>.ts` — Drizzle `pgTable` (model on `lib/schema/items.ts`)
+- `next-app/lib/schema/<plural>.ts` — Drizzle `pgTable` (`title` column to start; add your own)
 - `next-app/lib/validations/<plural>.ts` — Zod `create<Pascal>Schema` / `update<Pascal>Schema` + inferred types
-- `next-app/actions/<plural>.ts` — `"use server"` Server Actions: `create`, `update`, `delete` — each calls `requireEditor()` (or `requireAuth()`/`requireAdmin()` as appropriate from `@/lib/permissions`), scopes every query by `userId`, and ends success with `revalidatePath(...)` returning `null` (no `redirect` — modals close on success)
-- `next-app/app/(dashboard)/dashboard/<plural>/page.tsx` — async Server Component that `requireAuth()`s, fetches via Drizzle scoped to `session.user.id`, and renders `<DataTable>` + modal affordances
-- `next-app/app/(dashboard)/dashboard/<plural>/_<singular>-table.tsx` + `_<singular>-dialog.tsx` + `_<singular>-form.tsx` — the client CRUD-via-modal trio (copy + rename from the items domain)
-- `next-app/lib/validations/<plural>.test.ts` — a Vitest unit test for the pure Zod validation logic (model on `lib/validations/auth.test.ts`)
+- `next-app/lib/validations/<plural>.test.ts` — a db-free Vitest unit test for the validation schema
+- `next-app/actions/<plural>.ts` — `"use server"` Server Actions (`create`/`update`/`delete`), each `requireEditor()`-guarded, ownership-scoped by `userId`, ending success with `revalidatePath(...)` + `return null` (no `redirect` — modals close on success)
+- `next-app/app/(dashboard)/dashboard/<plural>/page.tsx` — async Server Component (`requireAuth()`, Drizzle fetch scoped to `session.user.id`, renders `<DataTable>` + modal affordances)
+- `next-app/app/(dashboard)/dashboard/<plural>/_<singular>-table.tsx` + `_<singular>-dialog.tsx` + `_<singular>-form.tsx` — the client CRUD-via-modal trio
 
-If the script writes anything under `server/`, `client/src/`, or as a `.css`
-file, that is stale FastAPI/Vite output — delete it and produce the Next.js
-files above by copying + renaming from the items domain instead.
+It refuses to overwrite an existing domain. **Customise beyond the starter `title`
+column** by editing the Drizzle table + the Zod schema + the form fields together.
 
-### Step 3 — Register the table in the schema barrel
-Append `export * from "./<plural>"` to `next-app/lib/schema/index.ts` so
+### Step 3 — Schema barrel (already done by the script)
+The script appends `export * from "./<plural>"` to `next-app/lib/schema/index.ts` so
 drizzle-kit unions the new table (it reads the barrel — see `drizzle.config.ts`).
+Verify it's present.
 
 ### Step 4 — Generate + apply the migration
 From `next-app/`:
