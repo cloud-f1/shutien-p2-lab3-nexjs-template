@@ -148,10 +148,11 @@ describe("E266 — marketing gaps", () => {
     expect(read("../components/marketing/testimonials.tsx")).toContain("Testimonials")
     expect(read("../components/marketing/video-demo.tsx")).toContain("Dialog")
   })
-  it("pricing has a monthly/yearly toggle (DEFAULT_PRICING_TIERS preserved)", () => {
+  it("pricing has a monthly/yearly toggle + renders from the config (E274a)", () => {
     const p = read("../components/marketing/pricing.tsx")
     expect(p).toContain("BillingPeriod")
-    expect(p).toContain("DEFAULT_PRICING_TIERS")
+    // Tiers moved to config/pricing.json (E274a) — pricing renders from PRICING_TIERS.
+    expect(p).toContain("PRICING_TIERS")
   })
   it("landing page renders the new sections", () => {
     const page = read("./page.tsx")
