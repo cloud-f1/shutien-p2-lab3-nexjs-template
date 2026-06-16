@@ -26,7 +26,7 @@ function sanitizeEvents(events: string[]): string[] {
 function isHttpsUrl(raw: string): boolean {
   try {
     const u = new URL(raw)
-    return u.protocol === "https:" || u.protocol === "http:"
+    return u.protocol === "https:"
   } catch {
     return false
   }
@@ -39,7 +39,8 @@ export async function createWebhook(input: {
 }): Promise<{ secret?: string; error?: string }> {
   const session = await requireAuth()
   const url = input.url?.trim()
-  if (!url || !isHttpsUrl(url)) return { error: "請輸入有效的 URL（http/https）。" }
+  if (!url || !isHttpsUrl(url)) return { error: "請輸入有效的 HTTPS URL。" }
+  if (url.length > 2048) return { error: "URL 過長（最多 2048 個字元）。" }
 
   const secret = generateWebhookSecret()
   const [row] = await db

@@ -16,6 +16,9 @@ export async function createItem(prevState: State, formData: FormData): Promise<
   if (!title || typeof title !== "string" || title.trim().length === 0) {
     return { error: "請輸入標題" }
   }
+  if (title.trim().length > 255) {
+    return { error: "標題過長（最多 255 個字元）。" }
+  }
 
   await db.insert(itemsTable).values({ title: title.trim(), userId: session.user.id })
 
@@ -49,6 +52,9 @@ export async function updateItem(id: string, prevState: State, formData: FormDat
   const title = formData.get("title")
   if (!title || typeof title !== "string" || title.trim().length === 0) {
     return { error: "請輸入標題" }
+  }
+  if (title.trim().length > 255) {
+    return { error: "標題過長（最多 255 個字元）。" }
   }
 
   const result = await db

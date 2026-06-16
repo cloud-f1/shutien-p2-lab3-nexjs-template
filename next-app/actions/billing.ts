@@ -6,7 +6,7 @@
  * Uses the PaymentProvider abstraction — defaults to Stripe.
  */
 
-import { auth } from "@/lib/auth"
+import { requireAuth } from "@/lib/permissions"
 import { resolvePaymentProvider } from "@/lib/billing/resolver"
 
 // ---------------------------------------------------------------------------
@@ -31,14 +31,14 @@ export async function createCheckoutSession(
   successUrl: string,
   cancelUrl: string,
 ): Promise<CreateCheckoutResult> {
-  // Require authentication
-  const session = await auth()
+  // Require authentication — redirects to /login if unauthenticated.
+  const session = await requireAuth()
   if (!session?.user?.id) {
-    return { success: false, error: "You must be signed in to subscribe." }
+    return { success: false, error: "請先登入後再訂閱。" }
   }
 
   if (!planId) {
-    return { success: false, error: "Invalid plan." }
+    return { success: false, error: "無效的方案。" }
   }
 
   try {

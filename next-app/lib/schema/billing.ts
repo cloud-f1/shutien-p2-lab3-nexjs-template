@@ -11,26 +11,25 @@ import {
   uuid,
 } from "drizzle-orm/pg-core"
 
+import { BILLING_INTERVALS, SUBSCRIPTION_STATUSES } from "@/lib/billing/provider"
+
 import { usersTable } from "./auth"
 
 // ---------------------------------------------------------------------------
 // Billing — E231 PaymentProvider abstraction (E274 hardening)
 // ---------------------------------------------------------------------------
 
-/** Billing interval enum — mirrors BillingInterval in lib/billing/provider.ts */
-export const billingIntervalEnum = pgEnum("billing_interval", ["month", "year", "week", "day"])
+/**
+ * Billing interval enum — derived from BILLING_INTERVALS in lib/billing/provider.ts
+ * (single source of truth; the DB enum and the TS type can never drift).
+ */
+export const billingIntervalEnum = pgEnum("billing_interval", BILLING_INTERVALS)
 
-/** Subscription status enum — mirrors SubscriptionStatus in lib/billing/provider.ts */
-export const subscriptionStatusEnum = pgEnum("subscription_status", [
-  "active",
-  "trialing",
-  "past_due",
-  "canceled",
-  "unpaid",
-  "incomplete",
-  "incomplete_expired",
-  "paused",
-])
+/**
+ * Subscription status enum — derived from SUBSCRIPTION_STATUSES in
+ * lib/billing/provider.ts (single source of truth).
+ */
+export const subscriptionStatusEnum = pgEnum("subscription_status", SUBSCRIPTION_STATUSES)
 
 /** plans — one row per pricing tier (seeded from config/pricing.json). */
 export const plansTable = pgTable("plans", {

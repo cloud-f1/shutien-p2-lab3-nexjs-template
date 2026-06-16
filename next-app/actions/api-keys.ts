@@ -14,6 +14,7 @@ export async function createApiKey(name: string): Promise<{ plaintext?: string; 
   const session = await requireAuth()
   const trimmed = name?.trim()
   if (!trimmed) return { error: "請輸入金鑰名稱。" }
+  if (trimmed.length > 100) return { error: "金鑰名稱過長（最多 100 個字元）。" }
 
   const { plaintext, prefix, hashedKey } = generateApiKey()
   await db.insert(apiKeysTable).values({ userId: session.user.id, name: trimmed, prefix, hashedKey })

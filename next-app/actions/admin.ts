@@ -45,6 +45,12 @@ export async function deleteUser(userId: string) {
   }
 
   await db.delete(usersTable).where(eq(usersTable.id, userId))
+  await logAudit({
+    actorId: session.user.id,
+    action: "user.deleted",
+    targetType: "user",
+    targetId: userId,
+  })
 
   revalidatePath("/dashboard/admin")
   return { success: true }

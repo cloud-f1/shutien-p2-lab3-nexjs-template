@@ -91,14 +91,16 @@ export async function acceptInvitation(token: string): Promise<{ error?: string;
     return { error: "此邀請是寄給其他電子郵件的。" }
   }
 
-  await db
-    .update(usersTable)
-    .set({ role: invite.role, status: "active", updatedAt: new Date() })
-    .where(eq(usersTable.id, session.user.id))
-  await db
-    .update(invitationsTable)
-    .set({ status: "accepted" })
-    .where(eq(invitationsTable.id, invite.id))
+  await db.transaction(async (tx) => {
+    await tx
+      .update(usersTable)
+      .set({ role: invite.role, status: "active", updatedAt: new Date() })
+      .where(eq(usersTable.id, session.user.id))
+    await tx
+      .update(invitationsTable)
+      .set({ status: "accepted" })
+      .where(eq(invitationsTable.id, invite.id))
+  })
   await logAudit({
     actorId: session.user.id,
     action: "invitation.accepted",

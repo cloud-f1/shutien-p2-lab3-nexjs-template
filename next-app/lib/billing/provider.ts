@@ -10,8 +10,15 @@
 // Shared value types
 // ---------------------------------------------------------------------------
 
+/**
+ * Billing interval values — the single source of truth.
+ * lib/schema/billing.ts imports this array to build the `billing_interval` pgEnum,
+ * so the DB enum and the TS type can never drift.
+ */
+export const BILLING_INTERVALS = ["month", "year", "week", "day"] as const
+
 /** Billing interval for a plan. */
-export type BillingInterval = "month" | "year" | "week" | "day"
+export type BillingInterval = (typeof BILLING_INTERVALS)[number]
 
 /** Currency as ISO-4217 three-letter code (lower-case). */
 export type Currency = string
@@ -30,16 +37,25 @@ export interface Plan {
   active: boolean
 }
 
+/**
+ * Subscription status values that mirror Stripe's lifecycle — the single source
+ * of truth. lib/schema/billing.ts imports this array to build the
+ * `subscription_status` pgEnum, so the DB enum and the TS type can never drift.
+ * Providers MUST map to these.
+ */
+export const SUBSCRIPTION_STATUSES = [
+  "active",
+  "trialing",
+  "past_due",
+  "canceled",
+  "unpaid",
+  "incomplete",
+  "incomplete_expired",
+  "paused",
+] as const
+
 /** Status values that mirror Stripe's lifecycle; providers MUST map to these. */
-export type SubscriptionStatus =
-  | "active"
-  | "trialing"
-  | "past_due"
-  | "canceled"
-  | "unpaid"
-  | "incomplete"
-  | "incomplete_expired"
-  | "paused"
+export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUSES)[number]
 
 /**
  * A subscription as seen by the application layer.
