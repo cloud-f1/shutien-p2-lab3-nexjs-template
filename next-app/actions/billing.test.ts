@@ -28,12 +28,32 @@ vi.mock("@/lib/billing/plans", () => ({
 
 const mockCreateCheckout = vi.fn()
 const mockCancelSubscription = vi.fn()
+const mockResolveProviderKey = vi.fn(() => "stripe")
 vi.mock("@/lib/billing/resolver", () => ({
   resolvePaymentProvider: async () => ({
     createCheckout: (...a: unknown[]) => mockCreateCheckout(...a),
     cancelSubscription: (...a: unknown[]) => mockCancelSubscription(...a),
   }),
-  resolveProviderKey: () => "stripe",
+  resolveProviderKey: () => mockResolveProviderKey(),
+}))
+
+// getActiveSubscription — used by createPortalSession to resolve the customer id.
+const mockGetActiveSubscription = vi.fn()
+vi.mock("@/lib/billing/queries", () => ({
+  getActiveSubscription: (...a: unknown[]) => mockGetActiveSubscription(...a),
+}))
+
+// Stripe SDK client — only billingPortal.sessions.create is exercised here.
+const mockPortalCreate = vi.fn()
+vi.mock("@/lib/billing/providers/stripe", () => ({
+  getStripeClient: () => ({
+    billingPortal: { sessions: { create: (...a: unknown[]) => mockPortalCreate(...a) } },
+  }),
+}))
+
+// next/headers — provide a request origin for the return_url.
+vi.mock("next/headers", () => ({
+  headers: async () => ({ get: (k: string) => (k === "origin" ? "https://app.example.com" : null) }),
 }))
 
 // DB mock — a tiny chainable builder for select/update used by cancelSubscription.
@@ -69,13 +89,14 @@ vi.mock("drizzle-orm", () => ({ eq: (...a: unknown[]) => ({ __eq: a }) }))
 
 // --- Import the SUT after mocks --------------------------------------------
 
-import { cancelSubscription, createCheckoutSession } from "./billing"
+import { cancelSubscription, createCheckoutSession, createPortalSession } from "./billing"
 
 beforeEach(() => {
   vi.clearAllMocks()
   dbState.subRow = null
   dbState.updated = null
   mockRequireAuth.mockResolvedValue({ user: { id: "user_1", email: "u@example.com" } })
+  mockResolveProviderKey.mockReturnValue("stripe")
 })
 
 afterEach(() => {
@@ -213,5 +234,71 @@ describe("cancelSubscription", () => {
     const res = await cancelSubscription("")
     expect(res.success).toBe(false)
     expect(res.error).toContain("無效")
+  })
+})
+
+// ---------------------------------------------------------------------------
+// createPortalSession (E292)
+// ---------------------------------------------------------------------------
+
+describe("createPortalSession", () => {
+  it("opens a Stripe portal with the owner's customer id + computed return_url", async () => {
+    mockGetActiveSubscription.mockResolvedValue({
+      subscription: { id: "sub_db_1", providerMeta: { customer: "cus_abc" } },
+      plan: { id: "plan_1" },
+    })
+    mockPortalCreate.mockResolvedValue({ url: "https://billing.stripe.com/p/session_xyz" })
+
+    const res = await createPortalSession()
+
+    expect(res.success).toBe(true)
+    expect(res.url).toBe("https://billing.stripe.com/p/session_xyz")
+    // Argument shape: customer comes from the subscription, return_url from origin.
+    expect(mockPortalCreate).toHaveBeenCalledWith({
+      customer: "cus_abc",
+      return_url: "https://app.example.com/dashboard/system",
+    })
+    // The portal open is audited against the owned subscription.
+    expect(mockLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "billing.portal_opened", targetId: "sub_db_1" }),
+    )
+  })
+
+  it("refuses non-Stripe providers with a clear unsupported message", async () => {
+    mockResolveProviderKey.mockReturnValue("ecpay")
+    const res = await createPortalSession()
+    expect(res.success).toBe(false)
+    expect(res.error).toContain("不支援")
+    expect(mockGetActiveSubscription).not.toHaveBeenCalled()
+    expect(mockPortalCreate).not.toHaveBeenCalled()
+  })
+
+  it("returns an error when the user has no active subscription", async () => {
+    mockGetActiveSubscription.mockResolvedValue(null)
+    const res = await createPortalSession()
+    expect(res.success).toBe(false)
+    expect(mockPortalCreate).not.toHaveBeenCalled()
+  })
+
+  it("returns an error when the subscription has no Stripe customer id", async () => {
+    mockGetActiveSubscription.mockResolvedValue({
+      subscription: { id: "sub_db_2", providerMeta: { stripe_status: "active" } },
+      plan: { id: "plan_1" },
+    })
+    const res = await createPortalSession()
+    expect(res.success).toBe(false)
+    expect(res.error).toContain("找不到")
+    expect(mockPortalCreate).not.toHaveBeenCalled()
+  })
+
+  it("surfaces a Stripe error as a failed result", async () => {
+    mockGetActiveSubscription.mockResolvedValue({
+      subscription: { id: "sub_db_3", providerMeta: { customer: "cus_abc" } },
+      plan: { id: "plan_1" },
+    })
+    mockPortalCreate.mockRejectedValue(new Error("portal down"))
+    const res = await createPortalSession()
+    expect(res.success).toBe(false)
+    expect(res.error).toContain("portal down")
   })
 })

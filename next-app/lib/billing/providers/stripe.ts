@@ -418,6 +418,18 @@ export class StripeProvider {
   }
 }
 
+/**
+ * Expose the lazily-initialized Stripe SDK client (E292).
+ *
+ * The Customer Portal API (`stripe.billingPortal`) is not part of the
+ * gateway-agnostic PaymentProvider contract, so the billing action reaches for
+ * the typed SDK client directly. Throws PaymentProviderError if STRIPE_SECRET_KEY
+ * is unset (same as every other Stripe call).
+ */
+export function getStripeClient(): Stripe {
+  return getStripe()
+}
+
 // ---------------------------------------------------------------------------
 // Export singleton factory (allows test overrides)
 // ---------------------------------------------------------------------------

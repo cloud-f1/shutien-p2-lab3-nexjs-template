@@ -10,6 +10,8 @@
 import { revalidatePath } from "next/cache"
 import { eq } from "drizzle-orm"
 
+import { headers } from "next/headers"
+
 import { requireAuth } from "@/lib/permissions"
 import { logAudit } from "@/lib/audit"
 import { db } from "@/lib/db"
@@ -17,6 +19,13 @@ import { subscriptionsTable } from "@/lib/schema"
 import { resolvePaymentProvider, resolveProviderKey } from "@/lib/billing/resolver"
 import { resolveOrCreatePlanId } from "@/lib/billing/plans"
 import { getTierByPriceId } from "@/lib/billing/pricing"
+import { getActiveSubscription } from "@/lib/billing/queries"
+import {
+  PORTAL_NO_CUSTOMER_MESSAGE,
+  PORTAL_UNSUPPORTED_MESSAGE,
+  buildPortalReturnUrl,
+  resolveStripeCustomerId,
+} from "@/lib/billing/portal-utils"
 
 // ---------------------------------------------------------------------------
 // createCheckoutSession — called from the Pricing component
@@ -175,5 +184,81 @@ export async function cancelSubscription(
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error"
     return { success: false, error: `取消訂閱失敗：${message}` }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// createPortalSession — Stripe Customer Portal redirect (E292)
+// ---------------------------------------------------------------------------
+
+export interface CreatePortalResult {
+  success: boolean
+  /** The hosted Customer Portal URL to redirect the browser to (Stripe only). */
+  url?: string
+  error?: string
+}
+
+/**
+ * Open a Stripe Customer Portal session for the current user so they can manage
+ * their payment method + download invoices on Stripe's hosted page.
+ *
+ * Owner-scoped: resolves the customer id from the caller's OWN live subscription
+ * (`providerMeta.customer`, written by the webhook) — never from a caller-supplied
+ * value. Stripe-only: ECPay (綠界) has no equivalent hosted portal, so this returns
+ * a clear "not supported" result and management stays in-app.
+ *
+ * On success the caller redirects with `window.location.href = url`.
+ */
+export async function createPortalSession(): Promise<CreatePortalResult> {
+  const session = await requireAuth()
+  if (!session?.user?.id) {
+    return { success: false, error: "請先登入。" }
+  }
+
+  const providerKey = resolveProviderKey()
+  if (providerKey !== "stripe") {
+    // ECPay / reserved providers have no hosted Customer Portal.
+    return { success: false, error: PORTAL_UNSUPPORTED_MESSAGE }
+  }
+
+  // Owner-scoped lookup — the customer id comes from the caller's own subscription.
+  const active = await getActiveSubscription(session.user.id)
+  if (!active) {
+    return { success: false, error: "尚無使用中的方案，無法開啟帳務管理入口。" }
+  }
+
+  const customerId = resolveStripeCustomerId(
+    active.subscription.providerMeta as Record<string, unknown> | null,
+  )
+  if (!customerId) {
+    return { success: false, error: PORTAL_NO_CUSTOMER_MESSAGE }
+  }
+
+  try {
+    const origin = (await headers()).get("origin")
+    const returnUrl = buildPortalReturnUrl(origin)
+
+    // The Stripe provider exposes the typed SDK client; the billingPortal API is
+    // not part of the gateway-agnostic PaymentProvider contract, so we reach for
+    // the Stripe adapter directly (it is the resolved provider here).
+    const { getStripeClient } = await import("@/lib/billing/providers/stripe")
+    const stripe = getStripeClient()
+    const portal = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: returnUrl,
+    })
+
+    await logAudit({
+      actorId: session.user.id,
+      action: "billing.portal_opened",
+      targetType: "subscription",
+      targetId: active.subscription.id,
+      metadata: { provider: providerKey, customerId },
+    })
+
+    return { success: true, url: portal.url }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error"
+    return { success: false, error: `無法開啟帳務管理入口：${message}` }
   }
 }

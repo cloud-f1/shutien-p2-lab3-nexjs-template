@@ -3,16 +3,21 @@ import { CreditCard } from "lucide-react"
 
 import type { ActiveSubscription } from "@/lib/billing/queries"
 import { formatAmount, subscriptionStatusLabel } from "@/lib/billing/billing-utils"
+import { resolveProviderKey } from "@/lib/billing/resolver"
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/status-badge"
 
 import { CancelSubscriptionButton } from "./_cancel-subscription-button"
+import { ManageBillingButton } from "./_manage-billing-button"
 
 export function BillingPanel({ active }: { active: ActiveSubscription }) {
   const periodEndLabel = active?.subscription.currentPeriodEnd
     ? active.subscription.currentPeriodEnd.toLocaleDateString("zh-TW")
     : null
   const cancelScheduled = Boolean(active?.subscription.cancelAt)
+  // Stripe-only: the Customer Portal redirect is wired only when Stripe is the
+  // active provider (綠界 ECPay has no hosted portal — management stays in-app).
+  const isStripe = resolveProviderKey() === "stripe"
 
   return (
     <div className="space-y-6">
@@ -44,14 +49,15 @@ export function BillingPanel({ active }: { active: ActiveSubscription }) {
           {cancelScheduled && (
             <p className="text-warning mt-1 text-xs">此訂閱已排定於本期結束後取消。</p>
           )}
-          {active.subscription.status !== "canceled" && !cancelScheduled && (
-            <div className="mt-4">
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            {active.subscription.status !== "canceled" && !cancelScheduled && (
               <CancelSubscriptionButton
                 subscriptionId={active.subscription.id}
                 periodEndLabel={periodEndLabel}
               />
-            </div>
-          )}
+            )}
+            {isStripe && <ManageBillingButton />}
+          </div>
         </div>
       ) : (
         <div className="rounded-xl border p-6 text-center">
@@ -76,9 +82,16 @@ export function BillingPanel({ active }: { active: ActiveSubscription }) {
         <p className="text-muted-foreground mt-2 text-xs">用量計量將於後續版本接入。</p>
       </div>
 
-      {/* Payment method + invoices (managed by the provider) */}
-      <div className="text-muted-foreground rounded-xl border p-5 text-sm">
-        付款方式與發票由金流商（Stripe / 綠界）管理 —— 串接 Customer Portal 後將在此顯示。
+      {/* Payment method + invoices (managed by the provider's hosted portal) */}
+      <div className="text-muted-foreground space-y-3 rounded-xl border p-5 text-sm">
+        {isStripe ? (
+          <>
+            <p>付款方式與發票由 Stripe Customer Portal 管理。</p>
+            {active && <ManageBillingButton />}
+          </>
+        ) : (
+          <p>付款方式與發票由金流商（綠界）管理 —— 請於應用程式內管理你的訂閱。</p>
+        )}
       </div>
     </div>
   )
