@@ -1,76 +1,51 @@
-# E2E Testing with Test Helpers
+# E2E Testing with Playwright
 
-> How to use the triple-guarded seed API in Playwright tests.
+> How to seed preconditions and write end-to-end tests with Playwright.
 
 ## Overview
 
-The test-helper endpoints (`/api/v1/test-helpers/seed` and `/reset`) let Playwright tests create preconditions (users, roles) without fragile UI automation. Three independent safety gates ensure these endpoints never run in production.
-
-## Safety Gates
-
-| Gate | Check | Failure |
-|------|-------|---------|
-| 1 | `ENABLE_TEST_HELPERS=true` env var | 404 Not Found |
-| 2 | `ENVIRONMENT != production` | 403 Forbidden |
-| 3 | Valid JWT in `Authorization` header | 401 Unauthorized |
-
-All three must pass for any seed request to succeed.
+E2E specs live in `next-app/e2e/` as `*.spec.ts` files and run against a real dev server with a seeded database. Instead of fragile UI automation to create users and roles, tests rely on the deterministic seed (`pnpm db:seed`) for the demo accounts, and on Playwright's `request` fixture for any direct API calls (Route Handlers under `app/api/**/route.ts`).
 
 ## Setup
 
-1. Set environment variables in your `.env` (or CI config):
+1. Seed the database with the demo accounts before running e2e:
 
 ```bash
-ENABLE_TEST_HELPERS=true
-ENVIRONMENT=development   # or "staging" — never "production"
+cd next-app
+pnpm db:seed     # admin@example.com / Admin123! · editor@example.com / Editor123! · viewer@example.com / Viewer123!
 ```
 
-2. Ensure you have an existing user account to authenticate with (e.g., the default seed accounts).
+2. Run the suite (Playwright's `webServer` auto-boots `pnpm dev` locally):
+
+```bash
+pnpm test:e2e
+```
+
+The seeded accounts are idempotent — re-running `pnpm db:seed` is safe and gives every spec the same starting roles (admin / editor / viewer) for the 3-tier RBAC.
 
 ## Playwright Fixture Example
 
+If a spec needs to authenticate via the API (a Route Handler) rather than the login form, extend the base test with a fixture:
+
 ```typescript
-// e2e/fixtures/test-helpers.ts
+// e2e/fixtures/auth.ts
 import { test as base, expect } from '@playwright/test';
 
-type TestHelpers = {
-  seedUser: (email: string, password: string, isSuperuser?: boolean) => Promise<{ id: string; email: string }>;
-  resetUser: (email: string) => Promise<void>;
+type AuthHelpers = {
+  loginAs: (email: string, password: string) => Promise<void>;
 };
 
-export const test = base.extend<{ testHelpers: TestHelpers }>({
-  testHelpers: async ({ request }, use) => {
-    const API_URL = process.env.VITE_API_URL ?? 'http://localhost:8080';
-
-    // Authenticate to get a JWT (Gate 3)
-    const loginResp = await request.post(`${API_URL}/auth/jwt/login`, {
-      form: {
-        username: 'admin@test.com',
-        password: 'Admin#Pass1',
-      },
-    });
-    expect(loginResp.ok()).toBeTruthy();
-    const { access_token } = await loginResp.json();
-    const headers = { Authorization: `Bearer ${access_token}` };
-
-    const seedUser = async (email: string, password: string, isSuperuser = false) => {
-      const resp = await request.post(`${API_URL}/api/v1/test-helpers/seed`, {
-        headers,
-        data: { email, password, is_superuser: isSuperuser },
-      });
-      expect(resp.status()).toBeLessThan(300);
-      return resp.json();
+export const test = base.extend<{ authHelpers: AuthHelpers }>({
+  authHelpers: async ({ page }, use) => {
+    const loginAs = async (email: string, password: string) => {
+      await page.goto('/login');
+      await page.fill('[name="email"]', email);
+      await page.fill('[name="password"]', password);
+      await page.click('button[type="submit"]');
+      await page.waitForURL('**/dashboard');
     };
 
-    const resetUser = async (email: string) => {
-      const resp = await request.post(`${API_URL}/api/v1/test-helpers/reset`, {
-        headers,
-        data: { email },
-      });
-      expect(resp.status()).toBe(204);
-    };
-
-    await use({ seedUser, resetUser });
+    await use({ loginAs });
   },
 });
 
@@ -80,44 +55,43 @@ export { expect };
 ## Usage in Tests
 
 ```typescript
-// e2e/specs/dashboard.spec.ts
-import { test, expect } from '../fixtures/test-helpers';
+// e2e/dashboard.spec.ts
+import { test, expect } from './fixtures/auth';
 
-test('admin can see system health', async ({ page, testHelpers }) => {
-  // Seed a superuser via API — no UI clicks needed
-  const user = await testHelpers.seedUser('e2e-admin@test.com', 'E2eAdmin#1', true);
+test('admin can see the admin panel', async ({ page, authHelpers }) => {
+  // Use a seeded account — no per-test user creation needed
+  await authHelpers.loginAs('admin@example.com', 'Admin123!');
 
-  // Now login through the UI
-  await page.goto('/signin');
-  await page.fill('[name="email"]', 'e2e-admin@test.com');
-  await page.fill('[name="password"]', 'E2eAdmin#1');
-  await page.click('button[type="submit"]');
-
-  // Verify dashboard loads
-  await expect(page.locator('[data-testid="dashboard"]')).toBeVisible();
+  // Verify the dashboard loads
+  await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible();
 });
 
-test.afterEach(async ({ testHelpers }) => {
-  // Clean up seeded users
-  await testHelpers.resetUser('e2e-admin@test.com');
+test('viewer cannot reach the admin panel', async ({ page, authHelpers }) => {
+  await authHelpers.loginAs('viewer@example.com', 'Viewer123!');
+
+  await page.goto('/admin');
+  // RBAC guard re-reads the role from the DB and redirects
+  await expect(page).not.toHaveURL(/\/admin/);
 });
 ```
 
 ## Key Properties
 
-- **Idempotent**: Calling `/seed` twice with the same email returns the existing user (200) instead of failing. Tests can run in any order.
-- **Isolated**: Each test seeds its own users with unique emails. No shared mutable state.
-- **Fast**: Direct API calls skip UI rendering. Seed + login takes ~50ms vs ~3s through the UI.
+- **Deterministic seed**: `pnpm db:seed` always produces the same three demo accounts and roles, so specs share a known starting state.
+- **Isolated**: Each spec drives its own session through the UI (or the `request` fixture). No shared mutable state between specs.
+- **RBAC-aware**: Server-side guards re-read the role from the DB on every request, so role-based specs (admin / editor / viewer) exercise the real authorization path.
 
 ## CI Configuration
 
-In your CI pipeline, set the env vars on the server before running Playwright:
+In CI, seed the database before running Playwright:
 
 ```yaml
 # .github/workflows/e2e.yml
-env:
-  ENABLE_TEST_HELPERS: 'true'
-  ENVIRONMENT: staging
+steps:
+  - run: pnpm db:seed
+    working-directory: next-app
+  - run: pnpm test:e2e
+    working-directory: next-app
 ```
 
-The production deploy pipeline should **never** set `ENABLE_TEST_HELPERS=true`. Even if someone does, Gate 2 blocks execution when `ENVIRONMENT=production`.
+The production deploy pipeline should **never** seed demo accounts. Keep the seed step scoped to test/CI databases only.

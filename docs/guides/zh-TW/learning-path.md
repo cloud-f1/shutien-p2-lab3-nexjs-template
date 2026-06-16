@@ -13,9 +13,7 @@
 | 3 | [不使用 Claude Code 開發](without-claude-code.md) | 入門 | 15 分鐘 | 僅使用 `make` 指令與標準 CLI 工具的完整開發流程 |
 | 4 | [AI Agent 團隊指南](ai-agent-team-guide.md) | 中級 | 15 分鐘 | 序列與並行執行模式、指令速查、觀測性工具 |
 | 5 | [腦力激盪優先工作流程](brainstorm-first.md) | 中級 | 20 分鐘 | 使用 `/athena:plan brainstorm` 在撰寫程式碼前將功能想法精煉為結構化 Epic |
-| 6 | [CI 流程說明](ci-explained.md) | 中級 | 10 分鐘 | CI 執行了哪些檢查、常見失敗原因與修復方法 |
-| 7 | [OpenAPI 設計模式](openapi-patterns.md) | 進階 | 20 分鐘 | 4 種 API 模式（CRUD、分頁、巢狀資源、檔案上傳）與完整四層對應 |
-| 8 | [建立領域專家 Agent](custom-agents.md) | 進階 | 20 分鐘 | 為你的業務領域建立自訂 AI Agent |
+| 6 | [建立領域專家 Agent](custom-agents.md) | 進階 | 20 分鐘 | 為你的業務領域建立自訂 AI Agent |
 
 ---
 
@@ -23,9 +21,9 @@
 
 **剛接觸此專案？** 從 #1 開始按順序閱讀。指南 #1-#3 提供了不需要 AI 輔助即可進行開發的所有知識。
 
-**要加入 Claude Code？** 指南 #4-#6 涵蓋 Agent 團隊、腦力激盪優先工作流程與 CI 整合，解鎖自動化的規格驅動開發。
+**要加入 Claude Code？** 指南 #4-#5 涵蓋 Agent 團隊與腦力激盪優先工作流程，解鎖自動化的規格驅動開發。
 
-**建立進階功能？** 指南 #7-#8 涵蓋 API 設計模式與自訂 Agent 建立，提供領域專業知識。
+**建立進階功能？** 指南 #6 涵蓋自訂 Agent 建立，提供領域專業知識。
 
 ---
 

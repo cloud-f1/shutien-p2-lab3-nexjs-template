@@ -10,8 +10,8 @@
 |-------|------|-------------|---------------|
 | 1 | Conversational | You prompt, Claude responds, you react | - |
 | 2 | Configured | CLAUDE.md guides behavior, memory retains learnings | CLAUDE.md + docs/context/ |
-| 3 | Automated | Hooks enforce rules, skills encode workflows | 19 hooks + 8 skills |
-| 4 | Orchestrated | Custom agents with specific roles, tools, and memory | 10 agents + 20 commands |
+| 3 | Automated | Hooks enforce rules, skills encode workflows | lifecycle hooks + project skills |
+| 4 | Orchestrated | Custom agents with specific roles, tools, and memory | 12 agents + 23 commands |
 | 5 | Autonomous | Agent teams operate independently, verify each other | /athena:loop + /athena:cycle |
 
 ---
@@ -45,20 +45,19 @@ Every enforced rule, where it's defined, and where it's enforced.
 
 | Rule | CLAUDE.md | Stop Verifier | Other Hook |
 |------|-----------|---------------|------------|
-| openapi.yaml edited FIRST | Line 31 | - | @spec-writer: `post-spec-openapi-lint.sh` |
-| fastapi-users for auth (no custom) | Line 32 | - | - |
-| No localStorage (use tokenCache.ts) | Line 33 | `stop-verifier.sh` Rule 1 | - |
-| No hardcoded staleTime (use cacheConfig.ts) | Line 34 | `stop-verifier.sh` Rule 3 | - |
-| Folder names: server/ and client/ | Line 35 | `stop-verifier.sh` Rule 5 | `pre-bash-guard.sh` (mkdir) |
+| Default to Server Components | yes | - | - |
+| No hand-authored files in `components/ui/` | yes | `stop-verifier.sh` | - |
+| No inline `style=` color overrides (use Tailwind `dark:`) | yes | `stop-verifier.sh` | - |
+| Drizzle for DB access; mutations via Server Actions | yes | - | - |
+| RBAC re-reads role from DB (Auth.js v5 + JWT) | yes | - | - |
 
 ### Testing Rules
 
 | Rule | CLAUDE.md | Stop Verifier | Other Hook |
 |------|-----------|---------------|------------|
-| asyncio_mode = auto | Line 39 | - | pyproject.toml config |
-| userEvent not fireEvent | Line 40 | `stop-verifier.sh` Rule 2 | - |
-| MSW handlers in src/tests/handlers/ | Line 40 | `stop-verifier.sh` Rule 4 | - |
-| Coverage >= 80% | Line 41 | - | @qa: `post-test-coverage-gate.sh` |
+| No `console.log` residue in committed code | yes | `stop-verifier.sh` | - |
+| Vitest unit + Playwright e2e (`next-app/`) | yes | - | @qa: `post-test-coverage-gate.sh` |
+| Verification discipline (Rule #23) before `feat:`/`fix:` commits | yes | `stop-verifier.sh` Rule 23 | `audit-emit-verification.sh` |
 
 ### Safety Rules
 
@@ -74,9 +73,9 @@ Every enforced rule, where it's defined, and where it's enforced.
 
 | Rule | CLAUDE.md | Stop Verifier | Other Hook |
 |------|-----------|---------------|------------|
-| Python auto-format (ruff) | - | - | `post-edit-lint.sh` |
-| TypeScript auto-format (prettier) | - | - | `post-edit-lint.sh` |
-| Alembic --autogenerate preferred | - | - | `pre-bash-guard.sh` (warn) |
+| TypeScript / TSX auto-format (Prettier) | - | - | `post-edit-lint.sh` |
+| ESLint (eslint-config-next) clean | - | - | `pre-merge-check.sh` |
+| drizzle-kit migration review | - | - | @dba: `/athena:dba` |
 
 ---
 
@@ -95,7 +94,7 @@ PreToolUse(Bash)
   └─ pre-bash-guard.sh         Block destructive commands + wrong dirs
 
 PostToolUse(Write|Edit)
-  └─ post-edit-lint.sh          Auto-format Python/TypeScript
+  └─ post-edit-lint.sh          Auto-format TypeScript/TSX (Prettier)
 
 PostToolUse(Bash)
   └─ post-bash-log.sh           Audit trail → .claude/audit.log
@@ -117,11 +116,11 @@ WorktreeCreate
 ### Agent-Scoped Hooks (in agent YAML frontmatter)
 
 ```
-@spec-writer  → post-spec-openapi-lint.sh   Validate openapi.yaml after edits
-@qa           → post-test-coverage-gate.sh   Warn if coverage < 80%
+@qa           → post-test-coverage-gate.sh   Warn if coverage drops
 @debugger     → debug-backup-pre-edit.sh     Backup file before edit
 @debugger     → post-debug-verify.sh         Log verify pass/fail
 @deployer     → pre-deploy-guard.sh          Block deploy if dirty or wrong branch
+@dba          → /athena:dba                  Review drizzle-kit migrations
 ```
 
 ---
@@ -133,7 +132,8 @@ WorktreeCreate
 **How it works**:
 1. Collects all changed files (staged + unstaged + untracked)
 2. Skips docs/config files (*.md, *.json, *.yaml, etc.)
-3. Runs 5 static grep checks against changed source files
+3. Runs its static grep checks against changed source files (no `console.log`, no inline
+   `style=` color overrides, no hand-authored `components/ui/`, verification discipline, etc.)
 4. If any violation found: prints file:line + fix instruction → `exit 2` (blocks)
 5. Claude must fix and retry. At 70% per-attempt accuracy, 4 retries → 99% overall.
 
@@ -162,29 +162,29 @@ If all three are true, create a hook. If only #1, make the CLAUDE.md rule more e
 
 | Target | When | Example |
 |--------|------|---------|
-| Stop verifier (add a rule) | Static check on source files | No `eval()` in client code |
+| Stop verifier (add a rule) | Static check on source files | No `console.log` in committed code |
 | PreToolUse hook | Must block BEFORE the action | Dangerous bash commands |
-| PostToolUse hook | Auto-fix AFTER the action | Code formatting |
-| Agent-scoped hook | Only applies to one agent's workflow | OpenAPI lint for @spec-writer |
-| Skill | Complex knowledge Claude needs at a specific time | Migration patterns |
+| PostToolUse hook | Auto-fix AFTER the action | Prettier formatting |
+| Agent-scoped hook | Only applies to one agent's workflow | drizzle-kit migration review for @dba |
+| Skill | Complex knowledge Claude needs at a specific time | `nextjs-saas-patterns` gotchas |
 | Agent | A persistent role across many tasks | @qa reviewing everything |
 
 **Where NOT to graduate**:
 - Rules that have never been violated → keep in CLAUDE.md text
 - Rules that can't be grep-checked → keep in CLAUDE.md text or skills
-- Workflow ordering ("edit spec before code") → keep in CLAUDE.md + skills
+- Workflow ordering ("schema before action") → keep in CLAUDE.md + skills
 
 ---
 
 ## Context Budget (1M Context Era)
 
 ```
-CLAUDE.md:              ~105 lines  ≈ 1,500 tokens
+CLAUDE.md:              ~200 lines  ≈ 2,800 tokens
 Session-start injection: ~80 lines  ≈ 1,200 tokens
-Skills (8 files):       ~960 lines  ≈ 1,500 tokens
-Agents (9 files):       ~590 lines  ≈ 900 tokens
+Skills (project):       ~varies     ≈ 1,500 tokens (only relevant ones auto-inject)
+Agents (12 files):      ~700 lines  ≈ 1,100 tokens
 ─────────────────────────────────────────────────
-Total always-on:       ~1,735 lines ≈ 5,100 tokens = ~2% of budget
+Total always-on:       ~well under 1% of a 1M context budget
 ```
 
 **Conclusion**: With 1M context, there is no reason to slim CLAUDE.md. Be explicit. Verbose-but-clear beats slim-but-implicit. The Boris Cherny approach (invest ruthlessly in CLAUDE.md) is correct at this scale.
@@ -212,9 +212,9 @@ Total always-on:       ~1,735 lines ≈ 5,100 tokens = ~2% of budget
 | `CLAUDE.md` | Session identity — rules, layout, agents, commands |
 | `.claude/settings.json` | Hook registry — which scripts run when |
 | `scripts/hooks/CLAUDE.md` | Hook developer guide — contracts, patterns, registry |
-| `scripts/hooks/*.sh` | 19 hook scripts |
-| `.claude/skills/*.md` | 8 auto-loaded knowledge injectors |
-| `.claude/agents/*.md` | 10 agent role definitions |
-| `.claude/commands/athena/*.md` | 20 slash command orchestrators + 1 pattern doc |
+| `scripts/hooks/*.sh` | Lifecycle hook scripts |
+| `.claude/skills/*/` | Auto-loaded knowledge injectors (`nextjs-saas-patterns`, `athena-loop-speedups`, …) |
+| `.claude/agents/*.md` | 12 agent role definitions |
+| `.claude/commands/athena/*.md` | Athena slash command orchestrators |
 | `docs/context/*.md` | Agent write-back memory (Tier 1) |
 | `~/.claude/template-memory/` | Cross-project wisdom (Tier 0) |

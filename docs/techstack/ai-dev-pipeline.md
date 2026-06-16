@@ -34,7 +34,8 @@ spec-log       PostToolUse         review-log +     deploy-log
 ```
 /athena:spec "add task comments"
   -> @spec-writer (opus) with parallel research
-  -> Edits docs/openapi.yaml -> lint -> regenerate types
+  -> Defines the API surface: Server Actions / Route Handlers + shared Zod
+     schemas (lib/validations/*); plans any Drizzle schema change
   -> Creates docs/specs/FEATURE.md with RED test list
 ```
 
@@ -50,16 +51,16 @@ spec-log       PostToolUse         review-log +     deploy-log
 ```
 /athena:qa (auto or --review-only / --test-only)
   -> Phase 1: RED security -> YELLOW architecture -> GREEN quality
-  -> Phase 2: openapi lint -> pytest >= 80% -> vitest >= 80% -> tsc
+  -> Phase 2: pnpm typecheck -> pnpm lint -> pnpm test:coverage >= 80% -> pnpm test:e2e
   -> On failure: @debugger auto-invoked
 ```
 
 ### Phase 4 — DEPLOY
 ```
 /athena:deploy production
-  -> @deployer: 6 gates (pytest, vitest, lint, tsc, git clean, branch)
-  -> ALL pass: git push -> GitHub Actions -> Zeabur
-  -> Health check: curl /health -> 200
+  -> @deployer: gates (typecheck, lint, vitest >= 80%, e2e, git clean, branch)
+  -> ALL pass: git push -> Zeabur (or GCP Cloud Run)
+  -> Health check: curl /api/health -> 200
 ```
 
 ### Phase 5 — CHECKPOINT
@@ -74,11 +75,11 @@ spec-log       PostToolUse         review-log +     deploy-log
 
 | Command | Agent | Purpose |
 |---|---|---|
-| `/athena:spec <feature>` | @spec-writer | Design OpenAPI spec |
+| `/athena:spec <feature>` | @spec-writer | Design the feature spec (Server Actions / Route Handlers + Zod) |
 | `/athena:implement` | main Claude | TDD: RED -> GREEN -> REFACTOR |
 | `/athena:qa` | @qa | Code review + test suite + 80% gate |
 | `/athena:pr` | — | Pre-PR pipeline (merge, build, test, lint, create PR) |
-| `/athena:deploy [env]` | @deployer | 6-gate Zeabur deploy |
+| `/athena:deploy [env]` | @deployer | Multi-gate Zeabur / Cloud Run deploy |
 | `/athena:load` | — | Read all context docs, restore state |
 | `/athena:save` | all agents | Checkpoint all write-backs |
 | `/athena:promote` | @memory-curator | Extract wisdom -> template tier |

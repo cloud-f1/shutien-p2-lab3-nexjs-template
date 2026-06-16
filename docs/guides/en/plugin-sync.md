@@ -83,7 +83,7 @@ must never be overwritten by the one-way port:
 | Excluded file | Pair | Reason |
 |---|---|---|
 | `stop-verifier.sh` | `hooks/` | athena-core has a modular version in `scripts/hooks/` that delegates to `scripts/stop-rules/`; the template's 497-line monolith must not land there |
-| All template-specific hook scripts | `hooks/` | Hooks referencing FastAPI/React/OpenAPI rules belong in a profile pack, not the universal core |
+| All template-specific hook scripts | `hooks/` | Hooks referencing Next.js/React/shadcn rules belong in a profile pack, not the universal core |
 | `lesson-tags.json` | `scripts/memory/` | E203-sanitized: references `~/.claude/athena-memory/` and strips template framework domains (`server/`, `client/`, etc.) |
 | `score.sh` | `scripts/memory/` | E203-owned: sources `scripts/lib/common.sh` + uses `$ATHENA_MEMORY_DIR`; template version uses hardcoded `template-memory/` path |
 | `inject.sh` | `scripts/memory/` | Same reason as `score.sh` |

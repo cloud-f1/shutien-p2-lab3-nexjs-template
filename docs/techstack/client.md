@@ -1,168 +1,148 @@
-# Client — React 18 Tech Stack
+# Client Layer — Next.js App Router Tech Stack
+
+> There is no separate SPA. The "client" is the browser-facing half of the same
+> Next.js app: `app/` routes rendered as Server Components by default, with
+> `"use client"` islands only where the browser needs them.
 
 ## Packages
 
-| Layer | Package | Version | Purpose |
-|---|---|---|---|
-| Language | `TypeScript` | 5.x | Types auto-generated from openapi.yaml |
-| Build | `Vite` | 7.x | Fast HMR, optimized production bundles |
-| Framework | `React` | 18.x | Concurrent features, Suspense |
-| HTTP | `axios` | 1.7 | Request/response interceptors for JWT |
-| Global State | `zustand` | 4.x | Auth identity only, not tokens |
-| Server State | `@tanstack/react-query` | 5.x | Cache tiers, background sync |
-| Forms | `react-hook-form + zod` | -- | Schema-validated forms |
-| Routing | `react-router-dom` | 6.x | Client-side navigation, protected routes |
-| Testing | `vitest` | 4.x | Jest-compatible, Vite-native |
-| Testing | `@testing-library/react` | 16.x | Component rendering + queries |
-| Testing | `@testing-library/user-event` | 14.x | Real browser event simulation (not fireEvent) |
-| Testing | `msw` | 2.x | Network-level API mocking |
-| E2E | `playwright` | -- | Full browser automation |
-
-**State responsibility split:**
-- Zustand -> who is logged in (user identity)
-- React Query -> API data cache (server state)
-- `api/client.ts` -> access token (in-memory, never in any store)
-
-## Auth Flow & Token Strategy
-
-### Current Implementation (Adapter Pattern)
-
-The client schemas are designed for a richer auth contract (refresh tokens, sessions).
-The current fastapi-users backend returns simpler responses. An **adapter layer** in
-`api/auth.ts` bridges the gap:
-
-| Client Shape | Backend Reality |
-|---|---|
-| `AuthResponse { user, tokens }` | Login returns `BearerResponse`, register returns `UserRead` |
-| `TokenPair { access_token, refresh_token }` | Only `access_token` + `token_type` |
-| `login()` -> AuthResponse | POST form-data -> get token -> GET /users/me -> compose |
-| `register()` -> AuthResponse | POST JSON -> get UserRead -> auto-login -> compose |
-
-When the backend adds refresh token support, the adapter shims are removed and the client
-works unchanged.
-
-### Token Storage
-
-| Token | Storage | Purpose |
+| Layer | Package | Purpose |
 |---|---|---|
-| Access Token (JWT) | `api/client.ts` in-memory | Attached to every API request |
-| Refresh Token | In-memory (placeholder `""`) | Ready for future backend support |
+| Framework | `next` (16, App Router) | Routing, RSC streaming, layouts |
+| Language | `TypeScript` 5.x | Shared types with the server half (no codegen) |
+| UI runtime | `React` 19 | Server Components + Client Components |
+| Components | `shadcn/ui` | Generated into `components/ui/` via the CLI |
+| Styling | `Tailwind CSS` v4 | `dark:` variants, `globals.css` directives |
+| Theme | `next-themes` | Class-strategy dark mode (`components/theme-provider.tsx`) |
+| Forms | `react-hook-form` + `zod` | Schema-validated forms (shared `lib/validations/*`) |
+| Tables | `@tanstack/react-table` | Powers the reusable `<DataTable>` |
+| Class merge | `clsx` + `tailwind-merge` | `cn()` helper in `lib/utils.ts` |
+| Testing | `vitest` | Unit tests |
+| E2E | `@playwright/test` | Browser flows |
 
-> **NEVER** store access tokens in `localStorage`. The `setAccessToken()` / `getAccessToken()` functions in `api/client.ts` use module-level variables -- cleared on page refresh by design.
+> No Vite, no Axios, no Zustand, no React Query, no MSW, no react-router. Data
+> comes from Server Components / Server Actions, so there's no client-side HTTP
+> cache layer to manage and no network mocking library.
+
+## RSC vs Client Boundary
+
+- **Default to Server Components.** Pages and layouts are `async` server functions
+  that fetch from Drizzle and render HTML on the server.
+- Add `"use client"` **only** when you need browser APIs, event handlers, or React
+  state/hooks. Keep client components small and pushed to the leaves.
+- Data flows **down** as props (server → client). Mutations flow **up** by calling
+  a Server Action directly from a client form/button — no fetch client, no
+  interceptors.
+
+```tsx
+// Server Component (default) — fetches and renders on the server
+export default async function ItemsPage() {
+  const items = await getItems()            // Drizzle, runs on server
+  return <ItemsTable items={items} />       // passes data to a client island
+}
+```
+
+## App Router Structure
+
+Route groups isolate layouts without affecting the URL:
+
+```
+app/
+  layout.tsx              Root layout: fonts + ThemeProvider
+  page.tsx                Homepage
+  globals.css             Tailwind v4 directives + theme tokens
+  (auth)/                 Public auth area (own layout.tsx)
+    login/
+    register/
+    verify-email/
+  (dashboard)/            Protected area (own layout.tsx, error.tsx, loading.tsx)
+    dashboard/
+      items/              CRUD reference: modal create/edit + <DataTable>
+  api/                    Route Handlers (auth, health, billing webhooks)
+  invite/                 Invitation accept flow
+```
+
+## Auth on the Client
+
+The session is managed by Auth.js (JWT cookie), not a client token store.
+
+- **Route guarding** happens at the edge in `proxy.ts` — unauthenticated requests
+  to protected routes are redirected before the page renders.
+- **Server-side reads** call `auth()` (from `lib/auth.ts`) inside Server Components
+  to get the session and the user's role.
+- **Client-side conditional UI** uses the client-safe `isAdmin(role)` / `canEdit(role)`
+  helpers from `lib/is-admin.ts` (pure booleans, no server imports). Never trust
+  these for security — they only hide/show UI; the Server Action re-checks the role.
 
 ### Login Flow
-```
-1. User submits email + password on /signin
-2. authApi.login() -> POST form-data to /auth/jwt/login (username=email)
-3. Backend returns { access_token, token_type: "bearer" }
-4. setAccessToken(token) -> stored in memory
-5. GET /users/me -> fetch user profile
-6. Compose AuthResponse { user, tokens } -> return to hook
-7. useLogin() hook sets authStore.user via setUser()
-8. Page shows success banner (hooks don't navigate)
-```
 
-### Social Login Flow (Google/GitHub)
 ```
-1. User clicks "Login with Google" / "Login with GitHub"
-2. SocialButtons component calls authApi.getGoogleAuthUrl()
-3. Backend returns { authorization_url }
-4. window.location.href = authorization_url (full redirect)
-5. OAuth provider -> GET /auth/google/callback?code=...
-6. FastAPI exchanges code, creates/finds user, returns JWT
-7. Client receives token (callback handling TBD)
+1. User submits email + password on /login (Client Component form)
+2. signIn("credentials", ...) (Auth.js) posts to app/api/auth/[...nextauth]
+3. authorize() looks up the user, compares bcrypt hash, snapshots role into JWT
+4. Auth.js sets the httpOnly session cookie
+5. proxy.ts now allows the request through to /dashboard
+6. Dashboard Server Components call auth() -> get session -> query DB as that user
 ```
 
-## Cache Strategy
+> **NEVER** store the session in `localStorage`. Auth.js keeps it in an `httpOnly`
+> cookie, unreadable by JavaScript — the XSS protection is structural.
 
-All React Query hooks MUST use tiers from `cacheConfig.ts`. **Never** hardcode `staleTime` inline.
+## Forms & Mutations
 
-```typescript
-// cacheConfig.ts
-export const CACHE_TIERS = {
-  STATIC:   { staleTime: 5 * 60_000, gcTime: 30 * 60_000 },  // 5 min
-  STANDARD: { staleTime: 30_000,     gcTime: 5 * 60_000 },    // 30s
-  REALTIME: { staleTime: 5_000,      gcTime: 60_000,          // 5s
-              refetchInterval: 10_000 },
-} as const;
-```
+Forms use `react-hook-form` with a `zod` resolver against the **same** schema the
+Server Action validates with (`lib/validations/*`), so client and server agree by
+construction. On submit, the handler calls the Server Action directly:
 
-```typescript
-// hooks/useAuth.ts -- correct usage
-import { CACHE_TIERS } from '../cacheConfig';
-
-export function useCurrentUser() {
-  return useQuery({
-    queryKey: ["currentUser"],
-    queryFn: () => authApi.getCurrentUser(),
-    enabled: !!getAccessToken(),
-    ...CACHE_TIERS.STATIC,
-  });
+```tsx
+"use client"
+async function onSubmit(values: ItemInput) {
+  const res = await createItem(values)        // Server Action
+  if (res.error) { /* show inline error */ }
+  else { onSuccess(); router.refresh() }       // close modal, refresh list
 }
 ```
 
-## React Query Hook Design
+### CRUD convention (E273)
 
-**Data vs UI side-effects:**
-- Hooks own **data** side-effects: `setUser()`, `invalidateQueries()`
-- Pages own **UI** side-effects: `navigate()`, show banners
+- Create/edit open a shadcn `Dialog` (a form with an `onSuccess` callback); delete
+  uses `components/confirm-dialog.tsx`.
+- The Server Action **returns success (no `redirect`)** so the modal closes and the
+  list refreshes via `revalidatePath` + `router.refresh()`.
+- Deep-link a modal open with a query param (`?new=1`, `?edit=<id>`).
+- Reference implementation: `app/(dashboard)/dashboard/items/`.
 
-```typescript
-// hooks/useAuth.ts -- hook sets user, does NOT navigate
-export function useLogin() {
-  return useMutation({
-    mutationFn: authApi.login,
-    onSuccess: (res) => {
-      setUser(res.user);
-      queryClient.invalidateQueries({ queryKey: ["currentUser"] });
-    },
-  });
-}
+### List/table views
 
-// pages/auth/SignInPage.tsx -- page handles navigation + banners
-loginMutation.mutate(data, {
-  onSuccess: () => setBanner({ type: "success", message: "Signed in!" }),
-  onError: (err) => setBanner({ type: "error", message: "Bad credentials" }),
-});
-```
+Record lists use the reusable `<DataTable>` (`components/data-table-generic.tsx`,
+built on `@tanstack/react-table`) with built-in filter + pagination + page-size —
+never a hand-rolled `<table>`.
 
-## Auth Pages Structure
+## Theming (Tailwind v4 + next-themes)
 
-```
-client/src/pages/auth/
-  AuthLayout.tsx          Split-panel (left branding + right form)
-  AuthPages.css           Full design system (Amber/Archivo)
-  SignInPage.tsx           /signin
-  SignUpPage.tsx           /signup
-  ForgotPasswordPage.tsx  /forgot-password
-  ResetPasswordPage.tsx   /reset-password
-  components/
-    SocialButtons.tsx     Google + GitHub OAuth buttons
-    PasswordField.tsx     Show/hide toggle + strength meter
-    FormBanner.tsx        Success/error notification
-```
+- `next-themes` class strategy toggles `dark` on `<html>`; the toggle lives in
+  `components/theme-provider.tsx` (keyboard `d` toggles dark).
+- Color is expressed only through Tailwind `dark:` variants and theme tokens in
+  `globals.css`. **No inline `style=` color overrides** (a Stop hook blocks them).
+- All conditional classes go through `cn()` (`lib/utils.ts`) — never raw string
+  concatenation.
 
-## Testing (Vitest + MSW)
+## shadcn/ui
 
-**MSW** intercepts at network level. Handlers must use **full URLs** matching `baseURL`:
+- Components are generated into `components/ui/` via `npx shadcn@latest add <name>`
+  (run from `next-app/`). **Never hand-author files there** — a Stop hook enforces
+  this. The blue preset is applied repo-wide.
 
-```typescript
-const BASE = "http://localhost:8080";
-http.post(`${BASE}/auth/jwt/login`, async ({ request }) => { ... });
-```
-
-**`userEvent`** (not `fireEvent`) for all user interactions:
-
-```typescript
-const user = userEvent.setup();
-await user.type(screen.getByLabelText(/email/i), "test@example.com");
-await user.click(screen.getByRole("button", { name: /sign in/i }));
-```
+## Testing
 
 ```bash
-cd client
-pnpm run test:run          # one-shot
-pnpm run test              # watch mode
-pnpm run test:coverage     # coverage report (gate: >= 80%)
-pnpm run test:e2e          # Playwright E2E
+cd next-app
+pnpm test            # vitest run (unit)
+pnpm test:coverage   # v8 coverage (80% gate)
+pnpm test:e2e        # playwright, chromium project
 ```
+
+Component/logic units are tested with Vitest; full UI flows
+(`e2e/auth-flow.spec.ts`, `e2e/items-crud.spec.ts`, `e2e/dashboard-smoke.spec.ts`)
+run under Playwright against a seeded DB. There is no MSW network mocking — e2e
+talks to a real seeded database.

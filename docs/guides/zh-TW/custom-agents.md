@@ -511,5 +511,4 @@ hooks:
 
 - **[AI Agent 團隊指南](ai-agent-team-guide.md)** — 了解內建 Agent 團隊的序列與並行執行模式
 - **[第一個 Epic 實戰](first-epic-walkthrough.md)** — 完整體驗 Epic Pipeline，包含 Agent 指令的使用
-- **[OpenAPI 設計模式](openapi-patterns.md)** — 了解你的領域 Agent 將會諮詢的 API 模式
 - **[學習路徑](learning-path.md)** — 查看所有指南的推薦閱讀順序

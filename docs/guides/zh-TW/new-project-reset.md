@@ -8,7 +8,7 @@
 
 - 測試金字塔 × 覆蓋率防線 × Stop verifier 規則
 - Agent team 架構 × Epic pipeline × QA gate
-- Schemathesis 契約檢查 × Alembic 遷移審查 × Autopilot 信心分數
+- Playwright e2e 檢查 × Drizzle 遷移審查 × Autopilot 信心分數
 
 這些不是「雜訊」，是你未來做技術決策時可以直接翻閱的案例庫。刪掉就沒了；封存後你隨時能 `grep` 查詢、複製模式、學習為什麼當初這麼設計。
 

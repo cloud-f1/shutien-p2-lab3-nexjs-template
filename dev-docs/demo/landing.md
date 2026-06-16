@@ -20,12 +20,13 @@ The `@saas/landing` module provides a public marketing landing page with Hero, F
 | CTA | `cta.tsx` | Bottom call-to-action banner |
 | Footer | `marketing-footer.tsx` | Links + copyright |
 
-## API Demo
+## Live App
 
-The landing module includes a demo route handler at `/api/demo/landing`:
+The landing page is a static marketing surface — no API calls of its own. Use the playground to
+hit the app's health probe against your deployed URL:
 
 <ApiPlayground
-  defaultEndpoint="/api/demo/landing"
+  defaultEndpoint="/api/health"
   defaultMethod="GET"
   liveAppPath="/"
 />

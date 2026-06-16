@@ -1,130 +1,102 @@
 # Getting Started
 
+This is a single Next.js 16 app under `next-app/` — no separate backend to run.
+
 ## Prerequisites
 
 | Tool | Version | Install |
 |---|---|---|
-| Python | 3.12+ | `pyenv install 3.12` |
 | Node.js | 22+ | `nvm install 22` |
 | pnpm | 9+ | `npm i -g pnpm` |
 | Docker | 24+ | [docs.docker.com](https://docs.docker.com/get-docker/) |
-| Claude Code | latest | `npm i -g @anthropic-ai/claude-code` |
+| PostgreSQL | 15+ | via Docker (recommended) |
+| Claude Code | latest | `npm i -g @anthropic-ai/claude-code` (optional, for AI agents) |
 
-## Option A — Docker (Recommended)
+## Option A — `make local` (Recommended)
 
-The fastest way to get everything running. A single `docker-compose.yml` drives both local dev and production.
+One command brings up Docker infra (Postgres + Mailpit) and the Next.js dev server. It also
+generates `next-app/.env.local` with a fresh `AUTH_SECRET` if one is missing.
 
 ```bash
-# 1. Copy local env template
-cp .env.local .env
+# First time only — install deps, migrate, seed demo users
+make local-setup
 
-# 2. Start all services (db, mailpit, server, client, dev-docs)
-docker compose up --build
+# Start: Docker infra + Next.js on http://localhost:3000
+make local
 ```
 
 | Service | URL |
 |---|---|
-| Client | http://localhost:3000 |
-| Server | http://localhost:8080 |
-| Dev Docs | http://localhost:4000 |
-| Mailpit | http://localhost:8025 |
+| App | http://localhost:3000 |
+| Mailpit (email inbox) | http://localhost:8025 |
 | PostgreSQL | localhost:5432 |
 
-**How it works:** Dev-only services (db, mailpit) use `profiles: [local]`. Setting `COMPOSE_PROFILES=local` in `.env` activates them. In production, that variable is absent so only server and client start.
+Stop the infra with `make local-down`.
 
-## Option B — Manual Setup
+## Option B — Full Docker
 
-### Server Setup
+A root `docker-compose.yml` runs the whole stack (Postgres, Mailpit, and the Next.js app) in containers.
 
 ```bash
-cd server
-
-# Virtual environment
-python -m venv .venv && source .venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Environment variables
-cp .env.example .env
-# Fill in: DATABASE_URL, SECRET_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
-
-# Run migrations
-alembic upgrade head
-
-# Start dev server (port 8080)
-uvicorn app.main:app --reload
+docker compose up --build -d   # app on http://localhost:3000, Mailpit on http://localhost:8025
+docker compose down            # stop
 ```
 
-### Client Setup
+## Option C — Manual Setup
 
 ```bash
-cd client
+cd next-app
 
 pnpm install
 
-# Environment variables
+# Environment variables (or let `make local-env` generate one for you)
 cp .env.example .env.local
-# Fill in: VITE_API_URL=http://localhost:8080
+# Fill in: DATABASE_URL, AUTH_SECRET, AUTH_URL, (optional) AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET
 
-# Generate TypeScript types (run after every openapi.yaml update)
-npx openapi-typescript ../docs/openapi.yaml --output src/api/types.ts
+# Database — generate + apply migrations, then seed demo users
+pnpm db:generate     # generate Drizzle migrations from lib/schema/*
+pnpm db:migrate      # apply migrations (drizzle/migrations/*.sql)
+pnpm db:seed         # seed admin/editor/viewer demo users (dev only)
 
-# Start dev server (port 5173)
-pnpm run dev
+# Start dev server (port 3000)
+pnpm dev
 ```
 
-### Dev Docs Site
+Open [http://localhost:3000](http://localhost:3000).
 
-```bash
-cd dev-docs
-
-pnpm install
-
-# Start dev server (port 4000)
-pnpm run dev
-```
-
-> **Order matters:** Always update `docs/openapi.yaml` first, then run `openapi-typescript`, then write client or server code.
+**Demo logins (after seeding):**
+- Admin: `admin@example.com` / `Admin123!`
+- Editor: `editor@example.com` / `Editor123!`
+- Viewer: `viewer@example.com` / `Viewer123!`
 
 ## Environment Variables
 
-### Server (`server/.env`)
+Set these in `next-app/.env.local` (server-only secrets are read at runtime; `NEXT_PUBLIC_*` are
+baked at build time).
 
 | Variable | Example | Required |
 |---|---|---|
-| `DATABASE_URL` | `postgresql+asyncpg://user:pass@localhost/db` | Yes |
-| `SECRET_KEY` | `openssl rand -hex 32` | Yes |
-| `GOOGLE_CLIENT_ID` | `xxx.apps.googleusercontent.com` | Yes |
-| `GOOGLE_CLIENT_SECRET` | `GOCSPX-xxx` | Yes |
-| `ALLOWED_ORIGINS` | `http://localhost:5173` | Yes |
-| `DEBUG` | `true` (dev) / `false` (prod) | Yes |
-| `SMTP_HOST` | `smtp.resend.com` | Email features |
-| `SMTP_USER` | `resend` | Email features |
-| `SMTP_PASSWORD` | `re_xxx` | Email features |
-| `SMTP_FROM` | `noreply@yourdomain.com` | Email features |
+| `DATABASE_URL` | `postgresql://saas_user:saas_pass@localhost:5432/saas_dev` | Yes |
+| `AUTH_SECRET` | `openssl rand -base64 32` | Yes |
+| `AUTH_URL` | `http://localhost:3000` | Yes |
+| `AUTH_TRUST_HOST` | `true` (behind a proxy) | Local/proxy |
+| `AUTH_GOOGLE_ID` | `xxx.apps.googleusercontent.com` | Google OAuth |
+| `AUTH_GOOGLE_SECRET` | `GOCSPX-xxx` | Google OAuth |
+| `SMTP_HOST` / `SMTP_PORT` | `localhost` / `1025` (Mailpit) | Email features |
+| `EMAIL_FROM` | `noreply@yourdomain.com` | Email features |
+| `NEXT_PUBLIC_APP_URL` | `http://localhost:3000` | Build-time |
 
-### Client (`client/.env.local`)
+## Database Workflow
 
-| Variable | Example | Note |
-|---|---|---|
-| `VITE_API_URL` | `http://localhost:8080` | Baked at **build time** |
-
-## Environment Switching
+Schema is defined in TypeScript under `next-app/lib/schema/*`. The Drizzle workflow:
 
 ```bash
-# Local development (all services including db + mailpit)
-cp .env.local .env
-docker compose up --build
-
-# Production (server + client only, external db)
-cp .env.production .env
-# Edit .env with real credentials
-docker compose up --build
+pnpm db:generate      # diff lib/schema/* → write a new migration to drizzle/migrations/
+pnpm db:migrate       # apply pending migrations
+pnpm db:seed          # seed demo data
+pnpm db:test-migrate  # apply migrations against the test database
+pnpm db:studio        # open Drizzle Studio
 ```
 
-| File | Purpose | Committed? |
-|---|---|---|
-| `.env.local` | Dev defaults, ready to use | Yes |
-| `.env.production` | Prod template with placeholders | Yes |
-| `.env` | Active config (copy from above) | No (.gitignored) |
+> **Order matters:** edit `lib/schema/*` first, then `db:generate`, then `db:migrate` — never
+> hand-write SQL migrations.

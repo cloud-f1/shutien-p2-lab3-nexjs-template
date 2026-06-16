@@ -5,16 +5,15 @@
 
 ## Contents
 
-| File | Covers | Lines |
-|---|---|---|
-| [architecture.md](architecture.md) | System diagram, project structure, design principles | ~80 |
-| [server.md](server.md) | FastAPI, SQLAlchemy, endpoints, DB design, security, testing | ~150 |
-| [client.md](client.md) | React 18, auth flow, cache tiers, API client, testing | ~185 |
-| [openapi-workflow.md](openapi-workflow.md) | OpenAPI contract, SDD + TDD cycle, slash commands | ~80 |
-| [deployment.md](deployment.md) | Env vars, Zeabur, pre-deploy gates, rollback | ~80 |
-| [agents-memory.md](agents-memory.md) | Agent team, memory system, track roadmap | ~70 |
-| [agent-teams.md](agent-teams.md) | Full agent team spec (reference) | ~90 |
-| [ai-dev-pipeline.md](ai-dev-pipeline.md) | Full pipeline spec (reference) | ~150 |
+| File | Covers |
+|---|---|
+| [architecture.md](architecture.md) | System diagram, project structure, design principles |
+| [server.md](server.md) | Next.js server layer — Server Components/Actions, Route Handlers, Drizzle, Auth.js (JWT), RBAC, testing |
+| [client.md](client.md) | Next.js App Router client — RSC vs `"use client"`, shadcn/ui, Tailwind v4 theming, forms, testing |
+| [deployment.md](deployment.md) | Env vars (build-time vs runtime), Zeabur / GCP Cloud Run, pre-deploy gates, rollback |
+| [agents-memory.md](agents-memory.md) | Agent team, memory system, domain architecture |
+| [agent-teams.md](agent-teams.md) | Full agent team spec (reference) |
+| [ai-dev-pipeline.md](ai-dev-pipeline.md) | Full pipeline spec (reference) |
 
 ## Rules
 

@@ -1,99 +1,102 @@
 # 認證流程圖
 
-> 本專案的認證系統基於 JWT + Refresh Token 輪替機制。
-> 以下三張時序圖涵蓋登入、token 刷新與 OAuth 登入流程。
+> 本專案的認證系統基於 Auth.js v5（next-auth）+ **JWT session**。
+> 以下三張時序圖涵蓋登入、受保護路由的存取，以及 OAuth 登入流程。
 
 ---
 
-## 流程 A：登入 + Token 發行
+## 流程 A：登入（Credentials + JWT session）
 
 ```mermaid
 sequenceDiagram
     actor 使用者
-    participant Client as 客戶端應用
-    participant Server as FastAPI Server
-    participant DB as PostgreSQL
+    participant Client as Client Component<br/>（/login 表單）
+    participant NextAuth as Auth.js Handler<br/>app/api/auth/[...nextauth]
+    participant DB as PostgreSQL（Drizzle）
 
     使用者->>Client: 輸入 email / password
-    Client->>Server: POST /auth/jwt/login<br/>（form-data, username = email）
-    Server->>DB: 查詢使用者 + 驗證密碼
+    Client->>NextAuth: signIn("credentials", { email, password })
+    NextAuth->>DB: getUserByEmail（查 users）
+    NextAuth->>NextAuth: bcryptjs 比對 password_hash（lib/password.ts）
     alt 驗證失敗
-        Server-->>Client: 400 LOGIN_BAD_CREDENTIALS
+        NextAuth-->>Client: null → 顯示錯誤
     else 驗證成功
-        Server->>Server: 發行 access token（15 min）
-        Server->>Server: 發行 refresh token（30 days）
-        Server->>DB: 建立 Session（token_hash + device_info）
-        Server-->>Client: { access_token, refresh_token }
-        Client->>Client: access token → tokenCache.ts（in-memory）
-        Client->>Client: refresh token → httpOnly cookie
+        NextAuth->>NextAuth: 簽發 JWT（用 AUTH_SECRET）<br/>把 role 快照進 token
+        NextAuth-->>Client: Set-Cookie（httpOnly session cookie）
+        Client->>Client: router 導向 /dashboard
     end
 ```
 
-## 流程 B：Token 刷新（Refresh Rotation）
-
-```mermaid
-sequenceDiagram
-    actor Client as 客戶端應用
-    participant Server as FastAPI Server
-    participant DB as PostgreSQL
-
-    Client->>Client: 偵測 access token 即將過期
-    Client->>Server: POST /auth/refresh<br/>（帶 refresh_token）
-    Server->>Server: 驗證 refresh token 簽章
-    Server->>DB: 查詢 Session（by token_hash）
-
-    alt Session 不存在或已撤銷
-        Server->>DB: 撤銷該使用者所有 Session（重播偵測）
-        Server-->>Client: 401 INVALID_REFRESH_TOKEN
-    else Session 有效
-        Server->>Server: 發行新 access token
-        Server->>Server: 發行新 refresh token
-        Server->>DB: 更新 Session（新 token_hash + expires_at）
-        Note over DB: 舊 refresh token 自動作廢
-        Server-->>Client: { access_token, refresh_token }
-        Client->>Client: 更新 tokenCache.ts + cookie
-    end
-```
-
-## 流程 C：OAuth 登入（Google / GitHub）
+## 流程 B：存取受保護路由 + RBAC
 
 ```mermaid
 sequenceDiagram
     actor 使用者
-    participant Client as 客戶端應用
-    participant Provider as OAuth Provider<br/>（Google / GitHub）
-    participant Server as FastAPI Server
-    participant DB as PostgreSQL
+    participant Edge as Edge 中介層（proxy.ts）
+    participant RSC as Server Component<br/>app/(dashboard)/...
+    participant Perm as RBAC（lib/permissions.ts）
+    participant DB as PostgreSQL（Drizzle）
 
-    使用者->>Client: 點擊 OAuth 登入按鈕
-    Client->>Provider: redirect 至 OAuth authorize URL
+    使用者->>Edge: GET /dashboard/...（帶 session cookie）
+    Edge->>Edge: auth()（輕量 config，無 DrizzleAdapter）
+    alt 無有效 session
+        Edge-->>使用者: redirect /login
+    else 有 session
+        Edge->>RSC: 放行
+        RSC->>RSC: auth() → 取得 session（含 JWT 內的 role 快照）
+        RSC->>Perm: requireAuth() / requireAdmin()
+        Perm->>DB: getUserById → 重讀「即時 role」
+        Note over Perm,DB: 不信任 JWT 內的 role 快照——<br/>降權後立即生效
+        alt role 不符
+            Perm-->>使用者: redirect /dashboard 或 /login
+        else role 通過
+            RSC->>DB: 以該使用者身分查詢資料
+            RSC-->>使用者: 渲染頁面
+        end
+    end
+```
+
+## 流程 C：OAuth 登入（Google）
+
+```mermaid
+sequenceDiagram
+    actor 使用者
+    participant Client as Client Component
+    participant NextAuth as Auth.js Handler<br/>app/api/auth/[...nextauth]
+    participant Provider as Google OAuth
+    participant DB as PostgreSQL（Drizzle）
+
+    使用者->>Client: 點擊「以 Google 登入」
+    Client->>NextAuth: signIn("google")
+    NextAuth->>Provider: redirect 至 OAuth authorize URL
     Provider->>使用者: 授權確認頁面
     使用者->>Provider: 同意授權
-    Provider->>Client: callback 帶 authorization code
-    Client->>Server: POST /auth/social/{provider}/callback
-    Server->>Provider: 用 code 交換 access token
-    Provider-->>Server: 回傳 user info
-    Server->>DB: 查詢/建立使用者（同 email 自動關聯）
-    Server->>Server: 發行 access + refresh tokens
-    Server->>DB: 建立 Session
-    Server-->>Client: { access_token, refresh_token }
+    Provider->>NextAuth: callback 帶 authorization code
+    NextAuth->>Provider: 用 code 交換 token + 取 user info
+    NextAuth->>DB: DrizzleAdapter upsert users + accounts（同 email 自動關聯）
+    NextAuth->>NextAuth: 簽發 JWT session
+    NextAuth-->>Client: Set-Cookie（httpOnly）→ 導向 /dashboard
 ```
 
 ## 安全設計說明
 
-### 為什麼 access token 不存 localStorage？
+### 為什麼採 JWT session 而非 DB session？
 
-- **XSS 防護** — localStorage 可被任何注入的 JavaScript 讀取
-- `tokenCache.ts` 使用 in-memory 變數，頁面重整後 token 消失
-- 配合 refresh token 的 httpOnly cookie，重新取得 access token
+- Auth.js v5 的 **Credentials provider 需要 JWT session**——DrizzleAdapter 預設的
+  DB session 在 Credentials 流程下不適用。
+- `sessions` 等 adapter 資料表仍保留，供 OAuth 帳號關聯使用。
+- session 存於 **httpOnly cookie**，JavaScript 讀不到，從結構上防 XSS 竊取——
+  不需要把 token 存進任何前端 store。
 
-### Refresh Token 輪替的意義
+### RBAC 為何要從 DB 重讀 role？
 
-- **單次使用** — 每次 refresh 都會發行新的 refresh token，舊的立即作廢
-- **洩漏偵測** — 如果已撤銷的 token 被重複使用，server 會撤銷該使用者的所有 session
-- **伺服端追蹤** — Session 表記錄 `token_hash`、`device_info`、`ip_address`
+- role 在登入當下被「快照」進 JWT；若直接信任 JWT，降權要等使用者重新登入才生效。
+- `lib/permissions.ts` 的 `requireAuth` / `requireAdmin` 每次都用 `getUserById`
+  重讀**即時 role**——`setUserRole` 後下一個 request 立即生效。
+- `lib/is-admin.ts` 提供 client-safe 的 `isAdmin` / `canEdit` 純布林，只用於
+  條件式顯示 UI，**不可**當作安全邊界（Server Action 會再檢查一次）。
 
-### OAuth 帳號合併
+### AUTH_SECRET 的意義
 
-- 如果 OAuth provider 回傳的 email 與現有帳號相同，會自動關聯（不建立新帳號）
-- 使用 `fastapi-users` 的 `SQLAlchemyBaseOAuthAccountTableUUID` 管理 OAuth 關係
+- JWT session 用 `AUTH_SECRET` 簽章；缺少或輪替 `AUTH_SECRET` 會讓所有既有 session
+  失效並導致登入失敗。設定一次後保持穩定。

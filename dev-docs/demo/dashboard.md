@@ -27,7 +27,7 @@ app/(dashboard)/
 
 ## Navigation
 
-The sidebar is configured in `components/ui/app-sidebar.tsx`. After installing modules, wire them into the nav:
+The sidebar is configured in `components/app-sidebar.tsx`. After installing modules, wire them into the nav:
 
 ```ts
 // app-sidebar.tsx — add to navMain items

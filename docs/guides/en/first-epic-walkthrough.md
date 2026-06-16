@@ -7,8 +7,8 @@
 After completing this guide, you will have learned:
 
 - The full **Epic-Driven Development** workflow
-- **SDD (Spec-Driven Development)** in practice: OpenAPI spec first
-- The **Domain Registry** auto-discovery mechanism (E22)
+- **Spec-first development** in practice: a shared Zod validation schema as the contract
+- The **App Router** file-system routing model (the folder *is* the route)
 - How to use the **`/athena:domain`** generator (E23)
 - When to use **Athena commands** in the development workflow
 
@@ -31,16 +31,16 @@ spec -> implement -> qa -> commit -> merge
 
 Each Epic is an independent feature unit, tracked centrally in [EPIC_INDEX.md](../../epics/EPIC_INDEX.md). No ad-hoc development outside of Epics is allowed.
 
-### SDD — Spec-Driven Development
+### Spec-First Development
 
-**Core Rule**: Always edit `docs/openapi/` BEFORE writing code.
+**Core Rule**: Define the **contract** before writing the implementation. In this stack there is no OpenAPI YAML — the contract is a shared **Zod validation schema** in `next-app/lib/validations/*.ts`, the single source of truth that both Server Actions and client forms import.
 
 Workflow order:
 
-1. Define the OpenAPI spec (schemas + paths)
-2. Generate TypeScript types (`pnpm generate:types`)
-3. Implement the backend (FastAPI endpoints)
-4. Implement the frontend (React pages + hooks)
+1. Design the feature with `/athena:spec` — produces the epic/spec markdown (`docs/epics/` + `docs/specs/`) plus the shared Zod schema and inferred types in `next-app/lib/validations/`
+2. Add the database schema (a Drizzle table in `next-app/db/schema.ts`)
+3. Implement the server layer (Server Actions in `next-app/actions/` and/or Route Handlers in `next-app/app/api/`)
+4. Implement the UI (async Server Components + client forms)
 
 ### Athena Commands Overview
 
@@ -48,7 +48,7 @@ Here are the most commonly used commands in the development workflow:
 
 | Command | Purpose | When to Use |
 |---------|---------|-------------|
-| `/athena:spec <feature>` | Design a feature spec | Starting a new Epic, defining OpenAPI spec |
+| `/athena:spec <feature>` | Design a feature spec | Starting a new Epic, defining the shared Zod schema + spec |
 | `/athena:domain <name>` | Generate complete domain scaffold | Creating a new data domain (model + API + pages) |
 | `/athena:implement` | TDD development cycle | Moving from spec to implementation |
 | `/athena:qa` | Code review + testing | After implementation, running quality checks |
@@ -116,7 +116,7 @@ git checkout -b feat/E99-bookmark-domain
 
 ## Step 2: Generate the Scaffold with `/athena:domain`
 
-This is the most critical step. `/athena:domain` is the domain generator created in E23, which follows the SDD workflow — **generating the OpenAPI spec first, then all code**.
+This is the most critical step. `/athena:domain` is the domain generator created in E23, which follows the spec-first workflow — **generating the shared Zod contract and DB schema first, then the server and UI code**.
 
 Run in Claude Code:
 
@@ -126,134 +126,118 @@ Run in Claude Code:
 
 ### Generated File List
 
-After execution, the generator automatically creates all files in 10 steps:
+After execution, the generator automatically creates all files, following the spec-first order:
 
-**OpenAPI Spec** (Step 2 — generated first, SDD compliant):
-
-```
-docs/openapi/schemas/bookmark.yaml     # Data structure definitions
-docs/openapi/paths/bookmarks.yaml      # API path definitions
-docs/openapi/openapi.yaml              # Main file (adds $ref references)
-```
-
-**TypeScript Types** (Step 3):
+**Spec + shared Zod contract** (generated first):
 
 ```
-client/src/api/types.ts                # Auto-regenerated
+docs/epics/e99-bookmark-domain.md            # Epic + acceptance criteria
+docs/specs/bookmark.md                        # Feature spec
+next-app/lib/validations/bookmark.ts          # Shared Zod schema + z.infer types (server + client)
 ```
 
-**Backend Domain Package** (Step 4):
+> Types are **inferred**, not generated from YAML — they come from Drizzle's `$inferSelect`/`$inferInsert` and Zod's `z.infer<typeof bookmarkSchema>`.
+
+**Database schema (Drizzle):**
 
 ```
-server/app/domains/bookmarks/__init__.py    # DomainConfig export
-server/app/domains/bookmarks/models.py      # SQLAlchemy model
-server/app/domains/bookmarks/schemas.py     # Pydantic schemas
-server/app/domains/bookmarks/endpoints.py   # FastAPI router
-server/app/models/bookmark.py               # Backward compatibility shim
-server/app/schemas/bookmark.py              # Backward compatibility shim
+next-app/db/schema.ts                          # Adds the `bookmarks` table definition
 ```
 
-**Backend Tests** (Step 6):
+**Server layer:**
 
 ```
-server/tests/integration/test_bookmarks.py  # Integration tests
+next-app/actions/bookmarks.ts                  # Server Actions ("use server") — create/update/delete
+next-app/app/api/bookmarks/route.ts            # Route Handler (optional, for read endpoints)
 ```
 
-**Frontend Schemas + Service + Hooks** (Step 7):
+**Tests:**
 
 ```
-client/src/schemas/bookmark.ts              # Zod schema
-client/src/api/services/bookmarks.ts        # CRUD service
-client/src/hooks/useBookmarks.ts            # React Query hooks
+next-app/actions/bookmarks.test.ts             # Vitest unit tests (actions + validations)
+next-app/e2e/bookmarks.spec.ts                 # Playwright e2e (real seeded DB)
 ```
 
-**Frontend Pages + Tests** (Step 8):
+**UI (App Router route + modals):**
 
 ```
-client/src/pages/bookmarks/BookmarksPage.tsx       # Page component
-client/src/pages/bookmarks/BookmarksPage.test.tsx  # Page tests
-client/src/pages/bookmarks/Bookmarks.css           # Page styles
+next-app/app/(dashboard)/dashboard/bookmarks/page.tsx   # Async Server Component using <DataTable>
 ```
 
-**Frontend MSW Handlers** (Step 9):
-
-```
-client/src/tests/handlers/bookmarks.ts      # Test mock handlers
-```
+> The route also wires modal-based create/edit (shadcn `Dialog`) and delete (`components/confirm-dialog.tsx`)
+> per this repo's CRUD convention. Styling is Tailwind classes — there is no per-page `.css` file.
 
 > **Expected Output**: Claude Code will execute step by step and report the creation result for each file.
 > The entire process takes about 2-3 minutes.
 
 ---
 
-## Step 3: Inspect the Domain Registry
+## Step 3: Understand App Router File-System Routing
 
-The **Domain Registry** created in E22 uses an auto-discovery mechanism — you don't need to manually register routes in `main.py`.
+There is no central route table and no router registration in this stack. **The App Router is file-system routing — the folder you create under `app/` *is* the route.** Server Actions are plain modules you import where you use them; no registry, no `main.py`.
 
 ### Directory Structure
 
-After generation, the `server/app/domains/` directory looks like this:
+After generation, the dashboard route tree looks like this:
 
 ```
-server/app/domains/
-  __init__.py          # DomainConfig + discover_domains()
-  places/              # Existing domain
-    __init__.py
-    models.py
-    schemas.py
-    endpoints.py
-  portfolios/          # Existing domain
-    __init__.py
-    models.py
-    schemas.py
-    endpoints.py
-  bookmarks/           # Your newly created domain
-    __init__.py
-    models.py
-    schemas.py
-    endpoints.py
+next-app/app/(dashboard)/dashboard/
+  items/               # Existing route (CRUD reference pattern)
+    page.tsx
+  bookmarks/           # Your newly created route
+    page.tsx           # Async Server Component — fetches + renders <DataTable>
 ```
 
-### Auto-Discovery Mechanism
+And the server layer lives alongside the rest of the app:
 
-The `discover_domains()` function in `server/app/domains/__init__.py`:
-
-1. Scans all subdirectories under `app/domains/`
-2. Attempts to import each sub-package
-3. Looks for a module-level `domain_config` attribute (`DomainConfig` type)
-4. Automatically registers the router with the FastAPI app
-
-Your `bookmarks/__init__.py` will export a configuration like this:
-
-```python
-from app.domains import DomainConfig
-from app.domains.bookmarks.endpoints import router
-from app.domains.bookmarks.models import Bookmark
-
-domain_config = DomainConfig(
-    router=router,
-    prefix="/bookmarks",
-    tags=["bookmarks"],
-    models=[Bookmark],
-)
+```
+next-app/
+  db/schema.ts                   # Drizzle `bookmarks` table
+  lib/validations/bookmark.ts    # Shared Zod schema
+  actions/bookmarks.ts           # Server Actions ("use server")
+  app/api/bookmarks/route.ts     # Optional Route Handler
 ```
 
-> **Key Point**: As long as `domain_config` is correctly exported, the entire domain is automatically loaded.
-> Deleting the domain directory = zero broken imports, no need to modify any other files.
+### Why There's No Registration Step
+
+1. Creating the folder `app/(dashboard)/dashboard/bookmarks/` with a `page.tsx` instantly makes `/dashboard/bookmarks` a live route — Next.js discovers it from the file system.
+2. Server Actions are imported directly by the components that call them (`import { createBookmark } from "@/actions/bookmarks"`).
+3. Route Handlers (`app/api/bookmarks/route.ts`) become the `/api/bookmarks` endpoint just by existing.
+
+Your `actions/bookmarks.ts` will export Server Actions like this:
+
+```ts
+"use server";
+
+import { db } from "@/db";
+import { bookmarks } from "@/db/schema";
+import { bookmarkSchema } from "@/lib/validations/bookmark";
+import { revalidatePath } from "next/cache";
+
+export async function createBookmark(input: unknown) {
+  const data = bookmarkSchema.parse(input);
+  await db.insert(bookmarks).values(data);
+  revalidatePath("/dashboard/bookmarks");
+  return { ok: true };
+}
+```
+
+> **Key Point**: The folder *is* the route — no manual wiring. Deleting the `bookmarks/` folder and its
+> action/schema files removes the feature cleanly, with no central registry to clean up.
 
 ---
 
 ## Step 4: Run Migration
 
-The generator executes `alembic revision --autogenerate` in Step 5, but you need to verify the migration is correct:
+The generator adds the `bookmarks` table to `db/schema.ts`, but you need to generate and apply the SQL migration. All commands run from `next-app/`:
 
 ```bash
-# Generate migration file (if the generator hasn't already done so)
-cd server
-uv run alembic revision --autogenerate -m "add bookmarks table"
+# Generate the SQL migration by diffing db/schema.ts against the DB
+cd next-app
+pnpm db:generate
 ```
 
-Check the migration file contents (the latest `.py` file in `server/alembic/versions/`) and verify it includes:
+Check the generated migration file (the latest `.sql` file in `next-app/drizzle/`) and verify it includes:
 
 - `bookmarks` table creation
 - `id` field (UUID primary key)
@@ -261,16 +245,16 @@ Check the migration file contents (the latest `.py` file in `server/alembic/vers
 - `url`, `title`, `notes` fields
 - `created_at`, `updated_at` timestamps
 
-Once verified, run the migration:
+Once verified, apply the migration:
 
 ```bash
-uv run alembic upgrade head
+pnpm db:migrate
 ```
 
 > **Expected Output**:
 >
 > ```
-> INFO  [alembic.runtime.migration] Running upgrade xxx -> yyy, add bookmarks table
+> [✓] migrations applied successfully — added bookmarks table
 > ```
 
 Return to the project root:
@@ -283,39 +267,37 @@ cd ..
 
 ## Step 5: Run Tests (RED -> GREEN)
 
-TDD spirit: tests first. The generator has already created test files; now let's verify they pass.
+TDD spirit: tests first. The generator has already created test files; now let's verify they pass. All commands run from `next-app/`.
 
-### Backend Integration Tests
+### Unit Tests (Vitest)
+
+These cover the Server Actions and the shared Zod validations:
 
 ```bash
-cd server
-uv run pytest tests/integration/test_bookmarks.py -v
+cd next-app
+pnpm test
 ```
 
-> **Expected Output**: All CRUD tests (create, read, update, delete, paginated list) should be PASSED.
+> **Expected Output**: All CRUD tests (create, read, update, delete, list) should pass.
 >
 > ```
-> tests/integration/test_bookmarks.py::test_create_bookmark PASSED
-> tests/integration/test_bookmarks.py::test_get_bookmark PASSED
-> tests/integration/test_bookmarks.py::test_list_bookmarks PASSED
-> tests/integration/test_bookmarks.py::test_update_bookmark PASSED
-> tests/integration/test_bookmarks.py::test_delete_bookmark PASSED
+> ✓ actions/bookmarks.test.ts > createBookmark inserts a row
+> ✓ actions/bookmarks.test.ts > getBookmark returns a row
+> ✓ actions/bookmarks.test.ts > listBookmarks returns rows
+> ✓ actions/bookmarks.test.ts > updateBookmark updates a row
+> ✓ actions/bookmarks.test.ts > deleteBookmark removes a row
 > ```
 
-Return to the project root:
+### End-to-End Tests (Playwright)
+
+The e2e suite drives the real UI against a real seeded database, so seed it first:
 
 ```bash
-cd ..
+pnpm db:seed
+pnpm test:e2e
 ```
 
-### Frontend Component Tests
-
-```bash
-cd client
-pnpm test -- --run src/pages/bookmarks/
-```
-
-> **Expected Output**: Page component rendering, data loading, and interaction tests should all pass.
+> **Expected Output**: The bookmarks route renders, the create/edit modals work, and delete is confirmed via the dialog — all green.
 
 Return to the project root:
 
@@ -337,35 +319,23 @@ The generator provides a complete CRUD scaffold that you can further customise a
 
 For example, to add an `is_favorite` (boolean) field:
 
-1. **OpenAPI Spec** — Add the field definition in `docs/openapi/schemas/bookmark.yaml`
-2. **Regenerate types** — `cd client && pnpm generate:types`
-3. **Model** — Add a `mapped_column` in `server/app/domains/bookmarks/models.py`
-4. **Pydantic Schema** — Add the field in `server/app/domains/bookmarks/schemas.py`
-5. **Zod Schema** — Add the field in `client/src/schemas/bookmark.ts`
-6. **Migration** — `cd server && uv run alembic revision --autogenerate -m "add is_favorite to bookmarks"`
-7. **Tests** — Update test cases to verify the new field works correctly
+1. **Zod Schema** — Add the field to the shared schema in `next-app/lib/validations/bookmark.ts` (this is the contract — update it first)
+2. **Drizzle Column** — Add a `boolean("is_favorite")` column to the `bookmarks` table in `next-app/db/schema.ts`
+3. **Migration** — `cd next-app && pnpm db:generate && pnpm db:migrate`
+4. **Server Action + Form** — Update the Server Action in `actions/bookmarks.ts` and the create/edit form to include the new field
+5. **Tests** — Update test cases to verify the new field works correctly
 
-> Remember the SDD order: **OpenAPI -> Server -> Client**.
-
-### Adding a Route to App.tsx
-
-The generator will remind you to manually add the frontend route. In `client/src/App.tsx`, add:
-
-```tsx
-import BookmarksPage from './pages/bookmarks/BookmarksPage';
-
-// Add inside <Routes>
-<Route path="/bookmarks" element={<ProtectedRoute><BookmarksPage /></ProtectedRoute>} />
-```
+> Remember the spec-first order: **Zod schema (contract) -> Drizzle DB schema -> Server Action -> UI**.
+> The Zod schema is the shared contract — keeping it in sync keeps the server and the form honest.
 
 ### Adding a Sidebar Link
 
-Add a bookmark link in the sidebar navigation of `client/src/components/DashboardLayout.tsx`.
+The App Router has no central route table, so the only manual wiring is the navigation link. Add a bookmarks entry to the dashboard sidebar nav (the shadcn `sidebar-01` nav component used by the dashboard layout) so users can reach `/dashboard/bookmarks`.
 
 ### Adjusting Page Styles
 
-Edit `client/src/pages/bookmarks/Bookmarks.css`. This project uses CSS custom properties (design tokens).
-All available colour and spacing variables are defined in the theme system (see [TECHSTACK.md](../../../TECHSTACK.md)).
+Styling is done with Tailwind utility classes directly in the `page.tsx` and form components — there is no per-page `.css` file.
+Use the theme's `dark:` variants and design tokens; never add inline `style=` colour overrides (see [TECHSTACK.md](../../../TECHSTACK.md)).
 
 ---
 
@@ -403,10 +373,10 @@ git add -A
 # Create a conventional commit
 git commit -m "feat(E99): Bookmark domain CRUD
 
-- OpenAPI spec for bookmarks endpoints
-- Server domain: model, schemas, endpoints
-- Client: page, hooks, service, MSW handlers
-- Integration + component tests"
+- Shared Zod schema + Drizzle bookmarks table
+- Server Actions + optional Route Handler
+- App Router page with <DataTable> + modal CRUD
+- Vitest unit tests + Playwright e2e"
 
 # Push and create PR
 git push -u origin feat/E99-bookmark-domain
@@ -432,9 +402,9 @@ Congratulations! You've completed a full run through the Epic Pipeline. Let's re
 
 | Concept | Practice |
 |---------|----------|
-| **SDD Workflow** | OpenAPI spec first -> TypeScript types -> Backend -> Frontend |
-| **Domain Registry** | `discover_domains()` auto-discovery, zero manual registration |
-| **Domain Generator** | `/athena:domain` generates 15+ files with one command |
+| **Spec-first** | Shared Zod schema -> Drizzle DB schema -> Server Actions/Route Handlers -> UI |
+| **App Router routing** | The folder *is* the route — file-system routing, zero manual registration |
+| **Domain Generator** | `/athena:domain` generates the full stack with one command |
 | **Epic Pipeline** | spec -> implement -> qa -> commit -> merge |
 | **TDD Spirit** | Tests generated alongside implementation, ensuring quality |
 | **Athena Commands** | Each development phase has a corresponding automation command |
@@ -452,7 +422,6 @@ Congratulations! You've completed a full run through the Epic Pipeline. Let's re
 ## Next Steps
 
 - **[AI Agent Team Guide](ai-agent-team-guide.md)** — Learn serial and parallel execution modes for running multiple epics
-- **[OpenAPI Design Patterns](openapi-patterns.md)** — Master the 4 OpenAPI patterns used in this project (CRUD, pagination, nested resources, file upload)
 - **[Building Domain Expert Agents](custom-agents.md)** — Create custom AI agents for your business domain
 - **[Learning Path](learning-path.md)** — See the full recommended reading order for all guides
 
@@ -464,7 +433,7 @@ Congratulations! You've completed a full run through the Epic Pipeline. Let's re
 |----------|-------------|
 | [CLAUDE.md](../../../CLAUDE.md) | Project rules, Agent team, Memory system |
 | [TECHSTACK.md](../../../TECHSTACK.md) | Full technical architecture (uploadable to any Claude conversation to restore context) |
-| [E22 — Domain Registry](../../epics/EPIC_INDEX.md) | Design and implementation of the domain auto-discovery mechanism |
+| [CRUD modal + DataTable convention](../../../CLAUDE.md) | The repo's CRUD pattern: modals (Dialog) + reusable `<DataTable>`, reference at `app/(dashboard)/dashboard/items/` |
 | [E23 — Starter Domain Generator](../../epics/e23-starter-domain-generator.md) | Full spec for the `/athena:domain` generator |
 | [Domain Template Directory](../../templates/domain/) | All domain generator template files |
 | [Example Domain Configs](../../templates/domain/examples/) | blog.yaml, todo.yaml, crm.yaml examples |

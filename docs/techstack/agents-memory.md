@@ -4,28 +4,28 @@
 
 | Agent | Model | Trigger | Role |
 |---|---|---|---|
-| `@spec-writer` | opus | `/athena:spec` | OpenAPI-first feature spec |
+| `@spec-writer` | opus | `/athena:spec` | Feature spec (Server Actions / Route Handlers + Zod) |
 | `@qa` | sonnet | `/athena:qa`, auto | Security review + test suite + 80% gate |
 | `@best-practice` | opus | Architecture questions | Deep architecture advice, decision log |
 | `@debugger` | sonnet | On errors (auto) | 5-phase root cause analysis |
-| `@deployer` | sonnet | `/athena:deploy` | 6-gate protocol, Zeabur |
+| `@deployer` | sonnet | `/athena:deploy` | Multi-gate protocol, Zeabur / Cloud Run |
 | `@memory-curator` | opus | `/athena:promote` | Extract wisdom -> template tier |
 
 ### QA Review Levels
 
 ```
 RED Critical (must fix before merge)
-   - import jwt (PyJWT), not python-jose
-   - import bcrypt, not passlib
-   - Access token only in tokenCache.ts
-   - Protected routes have Depends(get_current_user)
+   - Session is JWT; AUTH_SECRET set; no token in JS-readable storage
+   - Password hashing via bcryptjs (lib/password.ts)
+   - Protected routes guarded by proxy.ts + requireAuth/requireAdmin
+   - RBAC re-reads role from DB (lib/permissions.ts), not just the JWT
    - No hardcoded secrets
 
 YELLOW Warning (should fix)
-   - openapi.yaml edited first?
-   - React Query cache tier correct?
-   - MSW handler for new endpoint?
-   - Alembic migration if models changed?
+   - Server Action validates with shared Zod (lib/validations/*)?
+   - Default to Server Component; "use client" only where needed?
+   - Drizzle migration generated if schema/* changed?
+   - CRUD uses modal + <DataTable>, action returns success (no redirect)?
 
 GREEN Suggestion (nice to have)
    - Naming clarity
@@ -59,7 +59,10 @@ GREEN Suggestion (nice to have)
 
 | Layer | Content | Status |
 |---|---|---|
-| Auth & Identity | users, sessions, JWT, OAuth | Built-in |
-| Domain Modules | Auto-discovered from server/app/domains/ | Customizable |
+| Auth & Identity | users, accounts, JWT sessions, RBAC (admin/editor/viewer) | Built-in |
+| Domain Modules | Drizzle schema (lib/schema/*) + Server Actions (actions/*) + app/ routes | Customizable |
 
-Domain modules share the Auth layer's JWT middleware. They only add new Alembic migrations and FastAPI routers -- no auth core changes.
+Domain modules share the Auth layer: routes are gated by `proxy.ts` (edge) and
+`requireAuth`/`requireAdmin` (`lib/permissions.ts`), and mutations run through
+Server Actions. A new domain adds a Drizzle table (+ generated SQL migration), a
+Server Action file, and its `app/` pages -- no auth core changes.

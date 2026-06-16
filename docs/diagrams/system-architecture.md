@@ -1,6 +1,7 @@
 # 系統架構圖
 
-> 四層架構 + 外部服務的全貌圖。適合新使用者快速理解系統組成。
+> 單一 Next.js App + 資料層 + 外部服務的全貌圖。適合新使用者快速理解系統組成。
+> 沒有獨立的 server/client 拆分——整個應用就是 `next-app/` 這一個 Next.js 服務。
 
 ---
 
@@ -11,74 +12,62 @@ graph TD
         E2E["Playwright E2E 測試"]
     end
 
-    subgraph 客戶端層["客戶端層（Client）"]
-        React["React 18 + Vite + TypeScript"]
-        Zustand["Zustand 狀態管理"]
-        RQ["快取層（React Query 4 tiers）"]
-        Axios["apiClient（Axios）"]
-        TokenCache["tokenCache.ts（in-memory）"]
-    end
-
-    subgraph 伺服器層["伺服器層（Server）"]
-        FastAPI["FastAPI + Uvicorn"]
-        Auth["認證模組（JWT + OAuth）"]
-        CoreAPI["核心端點（auth / users / health）"]
-        DomainAPI["Domain 端點（Places, Portfolios …）"]
-        Registry["Domain Registry（discover_domains）"]
-        Middleware["中介層（CORS / Security / Logging / Correlation ID）"]
-        Alembic["Alembic 遷移"]
+    subgraph 應用層["Next.js App（next-app/）"]
+        Edge["Edge 中介層（proxy.ts）<br/>路由守衛 / 重導"]
+        RSC["Server Components<br/>app/（預設，直接讀資料）"]
+        Client["Client Components<br/>'use client' + shadcn/ui + Tailwind v4"]
+        Actions["Server Actions（actions/*.ts）<br/>'use server' 變更操作"]
+        Routes["Route Handlers（app/api/**）<br/>auth / health / billing webhooks"]
+        Auth["Auth.js v5（lib/auth.ts）<br/>Credentials + Google · JWT session"]
+        RBAC["RBAC（lib/permissions.ts）<br/>從 DB 重讀 role"]
+        Drizzle["Drizzle ORM（postgres-js）<br/>lib/schema/*"]
     end
 
     subgraph 資料層["資料層（Data）"]
         PG["PostgreSQL"]
-        SQLAlchemy["SQLAlchemy 2.x async"]
     end
 
     subgraph 外部服務
-        Zeabur["Zeabur 部署平台"]
-        OAuth["Google / GitHub OAuth"]
-        Email["Resend / Mailgun 郵件"]
-        Sentry["Sentry 錯誤追蹤"]
+        Zeabur["Zeabur / GCP Cloud Run 部署"]
+        OAuth["Google OAuth"]
+        Email["SMTP 郵件（驗證 / 邀請）"]
+        Billing["Stripe / ECPay 金流"]
     end
 
-    Browser -->|HTTPS| React
-    E2E -->|HTTPS| React
-    React --> Zustand
-    React --> RQ
-    RQ --> Axios
-    Axios -->|"REST API + JWT Bearer"| FastAPI
-    TokenCache -.->|存取 token| Axios
+    Browser -->|HTTPS| Edge
+    E2E -->|HTTPS| Edge
+    Edge --> RSC
+    RSC --> Client
+    Client -->|呼叫| Actions
+    Browser -->|HTTP| Routes
 
-    FastAPI --> Middleware
-    Middleware --> Auth
-    Middleware --> CoreAPI
-    Middleware --> DomainAPI
-    Registry -->|動態註冊| DomainAPI
-    CoreAPI --> SQLAlchemy
-    DomainAPI --> SQLAlchemy
-    Alembic --> PG
-    SQLAlchemy -->|async SQL| PG
+    RSC --> Drizzle
+    Actions --> RBAC
+    Actions --> Drizzle
+    Routes --> Auth
+    Auth --> Drizzle
+    RBAC --> Drizzle
+    Drizzle -->|SQL| PG
 
     Auth -->|OAuth redirect| OAuth
-    Auth -->|寄送驗證信| Email
-    FastAPI -->|錯誤回報| Sentry
-    Zeabur -.->|部署| FastAPI
-    Zeabur -.->|部署| React
+    Routes -->|簽章驗證 webhook| Billing
+    Actions -->|寄送驗證 / 邀請信| Email
+    Zeabur -.->|部署單一服務| RSC
 ```
 
 ## 各層職責
 
 | 層級 | 說明 |
 |------|------|
-| **使用者層** | 瀏覽器或 E2E 測試透過 HTTPS 存取客戶端 |
-| **客戶端層** | React SPA 負責 UI 渲染、狀態管理、快取策略與 token 儲存 |
-| **伺服器層** | FastAPI 處理 REST API、認證、domain 路由註冊與中介層 |
-| **資料層** | PostgreSQL 為核心資料庫，透過 SQLAlchemy async ORM 存取 |
-| **外部服務** | Zeabur 部署、Google/GitHub OAuth、郵件服務、Sentry 監控 |
+| **使用者層** | 瀏覽器或 E2E 測試透過 HTTPS 存取 Next.js App |
+| **應用層** | 單一 Next.js App：Server Components 預設負責讀資料與渲染；Client Components 只在需要瀏覽器能力時用 `'use client'`；Server Actions 處理變更；Route Handlers 提供少數 HTTP 端點；Auth.js + RBAC 處理認證授權 |
+| **資料層** | PostgreSQL 為核心資料庫，透過 Drizzle ORM（postgres-js）存取 |
+| **外部服務** | Zeabur / GCP Cloud Run 部署、Google OAuth、SMTP 郵件、Stripe/ECPay 金流 |
 
 ## 關鍵連線說明
 
-- **Client to Server** — REST API + JWT Bearer token 認證
-- **Server to DB** — async SQLAlchemy，非同步連線池
-- **Token 儲存** — Access token 僅存於 `tokenCache.ts` in-memory（防 XSS）
-- **Domain 註冊** — `discover_domains()` 啟動時自動掃描 `server/app/domains/` 子目錄
+- **Browser to App** — 先經 Edge 中介層 `proxy.ts` 做路由守衛，再進入 App Router
+- **讀資料** — Server Components 直接透過 Drizzle 查 PostgreSQL，無 HTTP 來回
+- **變更操作** — Client 直接呼叫 Server Action（`'use server'`），驗證 Zod 後寫 Drizzle，再 `revalidatePath`
+- **認證** — Auth.js v5（Credentials + Google）採 **JWT session**；RBAC（`lib/permissions.ts`）從 DB 重讀 role
+- **HTTP 端點** — 只有 Auth.js callback、health、billing webhook 需要 Route Handler

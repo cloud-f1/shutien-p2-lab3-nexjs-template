@@ -10,22 +10,22 @@
 │  Server Components (default) + Client Components             │
 │                                                              │
 │  ┌───────────────┐    ┌─────────────────────────────────┐   │
-│  │ Server Actions │    │ Route Handlers (api/)           │   │
-│  │ actions/*.ts  │    │ app/api/auth/[...nextauth]/      │   │
+│  │ Server Actions │    │ Route Handlers (app/api/)       │   │
+│  │ actions/*.ts  │    │ auth · health · billing webhooks │   │
 │  └───────┬───────┘    └───────────────┬─────────────────┘   │
 │          │                            │                       │
 │          └──────────┬─────────────────┘                      │
-│                     │ Drizzle ORM                            │
+│                     │ Drizzle ORM (postgres-js)              │
 ├─────────────────────┼──────────────────────────────────────-─┤
 │                     ▼                                        │
-│                PostgreSQL 15                                 │
-│   Auth.js sessions · users · accounts · domain tables        │
+│                  PostgreSQL                                  │
+│   users · accounts · items · billing · system tables         │
 └──────────────────────────────────────────────────────────────┘
 
-Edge: middleware.ts → auth check → redirect / allow
+Edge: proxy.ts → auth check → redirect / allow
 ```
 
-**Design Principle:** Next.js is the full-stack boundary. Server Components and Server Actions talk directly to PostgreSQL via Drizzle. No separate API server; Auth.js handles authentication.
+**Design Principle:** Next.js is the full-stack boundary. There is no FastAPI/Vite split — Server Components and Server Actions talk directly to PostgreSQL via Drizzle. No separate API server; Auth.js v5 (JWT sessions) handles authentication.
 
 ---
 
@@ -67,13 +67,16 @@ ai-coding-nexjs-template/
 │   │   ├── ui/                  ← shadcn/ui (generated via CLI)
 │   │   └── *.tsx                ← Shared components
 │   ├── lib/
-│   │   ├── auth.ts              ← Auth.js config + session helper
-│   │   ├── db.ts                ← Drizzle client singleton
-│   │   ├── schema.ts            ← Drizzle table definitions
+│   │   ├── auth.ts              ← Auth.js config (JWT) + session helper
+│   │   ├── permissions.ts      ← requireAuth/requireAdmin (re-reads role from DB)
+│   │   ├── is-admin.ts         ← client-safe role booleans
+│   │   ├── db.ts                ← Drizzle client (lazy-init, postgres-js)
+│   │   ├── schema/             ← Drizzle tables (auth/items/billing/system + index.ts)
+│   │   ├── validations/        ← shared Zod schemas
 │   │   └── utils.ts             ← cn() helper
 │   ├── drizzle/migrations/      ← Generated SQL migrations
 │   ├── drizzle.config.ts
-│   └── middleware.ts            ← Edge route guard
+│   └── proxy.ts                 ← Edge middleware (route guard)
 │
 ├── .claude/
 │   ├── agents/                  ← AI subagent definitions
@@ -90,12 +93,14 @@ ai-coding-nexjs-template/
 
 ```
 1. User visits /dashboard/*
-2. middleware.ts (edge) → auth() → no session → redirect /login
+2. proxy.ts (edge) → auth() → no session → redirect /login
 3. User submits login form
 4. Auth.js handler (app/api/auth/[...nextauth]/route.ts) validates credentials
-5. Session created in DB (Auth.js Drizzle adapter)
-6. Cookie set; middleware allows through
+   (Credentials provider: bcrypt compare via lib/password.ts)
+5. JWT session minted (role snapshotted into the token); httpOnly cookie set
+6. Edge middleware allows the request through
 7. Server Component calls auth() → gets session → queries DB as that user
+8. RBAC guards (lib/permissions.ts) re-read the live role from the DB
 ```
 
 ---
@@ -104,7 +109,7 @@ ai-coding-nexjs-template/
 
 ```
 Browser Request
-  → middleware.ts (edge: auth guard, redirects)
+  → proxy.ts (edge: auth guard, redirects)
   → Next.js router matches segment
   → layout.tsx (Server Component: session, nav data)
   → page.tsx (Server Component: page-specific data via Drizzle)

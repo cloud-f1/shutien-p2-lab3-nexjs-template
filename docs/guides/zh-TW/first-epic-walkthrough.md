@@ -7,8 +7,8 @@
 完成本指南後，你將學會：
 
 - **Epic-Driven Development** 的完整流程
-- **SDD（Spec-Driven Development）** 的實踐：OpenAPI 規格先行
-- **Domain Registry** 自動發現機制（E22）
+- **規格先行（spec-first）** 的實踐：以共用 Zod 驗證 schema 作為契約
+- **App Router** 檔案系統路由模型（資料夾*即*路由）
 - **`/athena:domain`** 產生器的使用方式（E23）
 - **Athena 指令** 在開發流程中的運用時機
 
@@ -31,16 +31,16 @@ spec → implement → qa → commit → merge
 
 每個 Epic 是一個獨立的功能單元，由 [EPIC_INDEX.md](../../epics/EPIC_INDEX.md) 統一追蹤進度。不允許脫離 Epic 的臨時開發。
 
-### SDD — Spec-Driven Development
+### 規格先行（Spec-First Development）
 
-**核心規則**：永遠先編輯 `docs/openapi/` 再寫程式碼。
+**核心規則**：在寫實作前，先定義**契約**。本技術棧沒有 OpenAPI YAML — 契約是位於 `next-app/lib/validations/*.ts` 的共用 **Zod 驗證 schema**，作為單一真實來源（single source of truth），由 Server Actions 與前端表單共同 import。
 
 流程順序：
 
-1. 定義 OpenAPI 規格（schemas + paths）
-2. 產生 TypeScript 類型（`pnpm generate:types`）
-3. 實作後端（FastAPI endpoints）
-4. 實作前端（React pages + hooks）
+1. 用 `/athena:spec` 設計功能 — 產生 epic/spec markdown（`docs/epics/` + `docs/specs/`），以及位於 `next-app/lib/validations/` 的共用 Zod schema 與推導出的型別
+2. 加入資料庫 schema（`next-app/db/schema.ts` 中的 Drizzle 資料表）
+3. 實作伺服器層（`next-app/actions/` 的 Server Actions 與／或 `next-app/app/api/` 的 Route Handlers）
+4. 實作 UI（async Server Components + 前端表單）
 
 ### Athena 指令概覽
 
@@ -48,7 +48,7 @@ spec → implement → qa → commit → merge
 
 | 指令 | 用途 | 何時使用 |
 |------|------|----------|
-| `/athena:spec <feature>` | 設計功能規格 | 開始新 Epic 時，定義 OpenAPI 規格 |
+| `/athena:spec <feature>` | 設計功能規格 | 開始新 Epic 時，定義共用 Zod schema + spec |
 | `/athena:domain <name>` | 產生完整 domain 骨架 | 建立新的資料 domain（模型+API+頁面） |
 | `/athena:implement` | TDD 開發循環 | 從 spec 進入實作階段 |
 | `/athena:qa` | 程式碼審查 + 測試 | 實作完成後，執行品質檢查 |
@@ -116,7 +116,7 @@ git checkout -b feat/E99-bookmark-domain
 
 ## Step 2：用 `/athena:domain` 產生骨架
 
-這是最關鍵的一步。`/athena:domain` 是 E23 建立的 domain 產生器，會依照 SDD 流程，**先產生 OpenAPI 規格，再產生所有程式碼**。
+這是最關鍵的一步。`/athena:domain` 是 E23 建立的 domain 產生器，會依照規格先行流程，**先產生共用 Zod 契約與 DB schema，再產生伺服器與 UI 程式碼**。
 
 在 Claude Code 中執行：
 
@@ -126,134 +126,118 @@ git checkout -b feat/E99-bookmark-domain
 
 ### 產生的檔案清單
 
-執行後，產生器會按照以下 10 個步驟自動建立所有檔案：
+執行後，產生器會依照規格先行的順序自動建立所有檔案：
 
-**OpenAPI 規格**（Step 2 — 最先產生，SDD 合規）：
-
-```
-docs/openapi/schemas/bookmark.yaml     # 資料結構定義
-docs/openapi/paths/bookmarks.yaml      # API 路徑定義
-docs/openapi/openapi.yaml              # 主檔案（新增 $ref 參照）
-```
-
-**TypeScript 類型**（Step 3）：
+**規格 + 共用 Zod 契約**（最先產生）：
 
 ```
-client/src/api/types.ts                # 自動重新產生
+docs/epics/e99-bookmark-domain.md            # Epic + 驗收條件
+docs/specs/bookmark.md                        # 功能規格
+next-app/lib/validations/bookmark.ts          # 共用 Zod schema + z.infer 型別（server + client）
 ```
 
-**後端 Domain 套件**（Step 4）：
+> 型別是**推導**而來，不是從 YAML 產生 — 它們來自 Drizzle 的 `$inferSelect`/`$inferInsert` 與 Zod 的 `z.infer<typeof bookmarkSchema>`。
+
+**資料庫 schema（Drizzle）：**
 
 ```
-server/app/domains/bookmarks/__init__.py    # DomainConfig 匯出
-server/app/domains/bookmarks/models.py      # SQLAlchemy 模型
-server/app/domains/bookmarks/schemas.py     # Pydantic schemas
-server/app/domains/bookmarks/endpoints.py   # FastAPI router
-server/app/models/bookmark.py               # 向後相容 shim
-server/app/schemas/bookmark.py              # 向後相容 shim
+next-app/db/schema.ts                          # 新增 `bookmarks` 資料表定義
 ```
 
-**後端測試**（Step 6）：
+**伺服器層：**
 
 ```
-server/tests/integration/test_bookmarks.py  # 整合測試
+next-app/actions/bookmarks.ts                  # Server Actions（"use server"）— create/update/delete
+next-app/app/api/bookmarks/route.ts            # Route Handler（選用，用於讀取端點）
 ```
 
-**前端 Schemas + Service + Hooks**（Step 7）：
+**測試：**
 
 ```
-client/src/schemas/bookmark.ts              # Zod schema
-client/src/api/services/bookmarks.ts        # CRUD service
-client/src/hooks/useBookmarks.ts            # React Query hooks
+next-app/actions/bookmarks.test.ts             # Vitest 單元測試（actions + validations）
+next-app/e2e/bookmarks.spec.ts                 # Playwright e2e（真實 seed 過的 DB）
 ```
 
-**前端頁面 + 測試**（Step 8）：
+**UI（App Router 路由 + modal）：**
 
 ```
-client/src/pages/bookmarks/BookmarksPage.tsx       # 頁面元件
-client/src/pages/bookmarks/BookmarksPage.test.tsx  # 頁面測試
-client/src/pages/bookmarks/Bookmarks.css           # 頁面樣式
+next-app/app/(dashboard)/dashboard/bookmarks/page.tsx   # 使用 <DataTable> 的 async Server Component
 ```
 
-**前端 MSW Handlers**（Step 9）：
-
-```
-client/src/tests/handlers/bookmarks.ts      # 測試用 Mock 處理器
-```
+> 此路由同時依本 repo 的 CRUD 慣例接上 modal 形式的 create/edit（shadcn `Dialog`）與 delete（`components/confirm-dialog.tsx`）。
+> 樣式使用 Tailwind classes — 沒有 per-page `.css` 檔案。
 
 > **預期輸出**：Claude Code 會逐步執行並報告每個檔案的建立結果。
 > 整個過程約 2-3 分鐘。
 
 ---
 
-## Step 3：檢視 Domain Registry
+## Step 3：理解 App Router 檔案系統路由
 
-E22 建立的 **Domain Registry** 採用自動發現機制 — 你不需要在 `main.py` 中手動註冊路由。
+本技術棧沒有中央路由表，也沒有 router 註冊。**App Router 是檔案系統路由 — 你在 `app/` 底下建立的資料夾*即*路由。** Server Actions 是你在使用處直接 import 的一般模組；沒有 registry，也沒有 `main.py`。
 
 ### 目錄結構
 
-產生完成後，`server/app/domains/` 目錄會長這樣：
+產生完成後，dashboard 的路由樹會長這樣：
 
 ```
-server/app/domains/
-  __init__.py          # DomainConfig + discover_domains()
-  places/              # 既有 domain
-    __init__.py
-    models.py
-    schemas.py
-    endpoints.py
-  portfolios/          # 既有 domain
-    __init__.py
-    models.py
-    schemas.py
-    endpoints.py
-  bookmarks/           # 你剛建立的 domain
-    __init__.py
-    models.py
-    schemas.py
-    endpoints.py
+next-app/app/(dashboard)/dashboard/
+  items/               # 既有路由（CRUD 參考範式）
+    page.tsx
+  bookmarks/           # 你剛建立的路由
+    page.tsx           # async Server Component — 抓取資料並渲染 <DataTable>
 ```
 
-### 自動發現機制
+伺服器層則與 app 其餘部分並列存放：
 
-`server/app/domains/__init__.py` 中的 `discover_domains()` 函式會：
-
-1. 掃描 `app/domains/` 下所有子目錄
-2. 嘗試匯入每個子套件
-3. 尋找模組層級的 `domain_config` 屬性（`DomainConfig` 型別）
-4. 自動將 router 註冊到 FastAPI app
-
-你的 `bookmarks/__init__.py` 會匯出類似這樣的設定：
-
-```python
-from app.domains import DomainConfig
-from app.domains.bookmarks.endpoints import router
-from app.domains.bookmarks.models import Bookmark
-
-domain_config = DomainConfig(
-    router=router,
-    prefix="/bookmarks",
-    tags=["bookmarks"],
-    models=[Bookmark],
-)
+```
+next-app/
+  db/schema.ts                   # Drizzle `bookmarks` 資料表
+  lib/validations/bookmark.ts    # 共用 Zod schema
+  actions/bookmarks.ts           # Server Actions（"use server"）
+  app/api/bookmarks/route.ts     # 選用的 Route Handler
 ```
 
-> **重點**：只要 `domain_config` 正確匯出，整個 domain 就會被自動載入。
-> 刪除 domain 目錄 = 零破損匯入，不需要修改任何其他檔案。
+### 為什麼沒有註冊步驟
+
+1. 建立資料夾 `app/(dashboard)/dashboard/bookmarks/` 並放入 `page.tsx`，`/dashboard/bookmarks` 立刻成為可用路由 — Next.js 會從檔案系統自動發現。
+2. Server Actions 由呼叫它們的元件直接 import（`import { createBookmark } from "@/actions/bookmarks"`）。
+3. Route Handlers（`app/api/bookmarks/route.ts`）只要存在就會成為 `/api/bookmarks` 端點。
+
+你的 `actions/bookmarks.ts` 會匯出類似這樣的 Server Actions：
+
+```ts
+"use server";
+
+import { db } from "@/db";
+import { bookmarks } from "@/db/schema";
+import { bookmarkSchema } from "@/lib/validations/bookmark";
+import { revalidatePath } from "next/cache";
+
+export async function createBookmark(input: unknown) {
+  const data = bookmarkSchema.parse(input);
+  await db.insert(bookmarks).values(data);
+  revalidatePath("/dashboard/bookmarks");
+  return { ok: true };
+}
+```
+
+> **重點**：資料夾*即*路由 — 不需手動接線。刪除 `bookmarks/` 資料夾及其 action／schema 檔案就能乾淨移除功能，
+> 沒有中央 registry 需要清理。
 
 ---
 
 ## Step 4：執行 Migration
 
-產生器在 Step 5 已執行 `alembic revision --autogenerate`，但你需要確認遷移正確：
+產生器已將 `bookmarks` 資料表加入 `db/schema.ts`，但你需要產生並套用 SQL 遷移。所有指令都在 `next-app/` 執行：
 
 ```bash
-# 產生遷移檔案（如果產生器尚未執行）
-cd server
-uv run alembic revision --autogenerate -m "add bookmarks table"
+# 比對 db/schema.ts 與 DB 的差異，產生 SQL 遷移
+cd next-app
+pnpm db:generate
 ```
 
-檢查遷移檔案內容（位於 `server/alembic/versions/` 最新的 `.py` 檔案），確認包含：
+檢查產生的遷移檔案（位於 `next-app/drizzle/` 最新的 `.sql` 檔案），確認包含：
 
 - `bookmarks` 資料表建立
 - `id` 欄位（UUID 主鍵）
@@ -261,16 +245,16 @@ uv run alembic revision --autogenerate -m "add bookmarks table"
 - `url`、`title`、`notes` 欄位
 - `created_at`、`updated_at` 時間戳記
 
-確認無誤後，執行遷移：
+確認無誤後，套用遷移：
 
 ```bash
-uv run alembic upgrade head
+pnpm db:migrate
 ```
 
 > **預期輸出**：
 >
 > ```
-> INFO  [alembic.runtime.migration] Running upgrade xxx -> yyy, add bookmarks table
+> [✓] migrations applied successfully — added bookmarks table
 > ```
 
 回到專案根目錄：
@@ -283,39 +267,37 @@ cd ..
 
 ## Step 5：跑測試（RED → GREEN）
 
-TDD 精神：測試先行。產生器已建立測試檔案，現在來確認它們通過。
+TDD 精神：測試先行。產生器已建立測試檔案，現在來確認它們通過。所有指令都在 `next-app/` 執行。
 
-### 後端整合測試
+### 單元測試（Vitest）
+
+這些測試涵蓋 Server Actions 與共用的 Zod 驗證：
 
 ```bash
-cd server
-uv run pytest tests/integration/test_bookmarks.py -v
+cd next-app
+pnpm test
 ```
 
-> **預期輸出**：所有 CRUD 測試（建立、讀取、更新、刪除、分頁列表）應為 PASSED。
+> **預期輸出**：所有 CRUD 測試（建立、讀取、更新、刪除、列表）應通過。
 >
 > ```
-> tests/integration/test_bookmarks.py::test_create_bookmark PASSED
-> tests/integration/test_bookmarks.py::test_get_bookmark PASSED
-> tests/integration/test_bookmarks.py::test_list_bookmarks PASSED
-> tests/integration/test_bookmarks.py::test_update_bookmark PASSED
-> tests/integration/test_bookmarks.py::test_delete_bookmark PASSED
+> ✓ actions/bookmarks.test.ts > createBookmark inserts a row
+> ✓ actions/bookmarks.test.ts > getBookmark returns a row
+> ✓ actions/bookmarks.test.ts > listBookmarks returns rows
+> ✓ actions/bookmarks.test.ts > updateBookmark updates a row
+> ✓ actions/bookmarks.test.ts > deleteBookmark removes a row
 > ```
 
-回到專案根目錄：
+### 端對端測試（Playwright）
+
+e2e 測試會以真實 UI 對真實 seed 過的資料庫操作，所以先做 seed：
 
 ```bash
-cd ..
+pnpm db:seed
+pnpm test:e2e
 ```
 
-### 前端元件測試
-
-```bash
-cd client
-pnpm test -- --run src/pages/bookmarks/
-```
-
-> **預期輸出**：頁面元件渲染、資料載入、互動操作等測試應全部通過。
+> **預期輸出**：bookmarks 路由正常渲染、create/edit modal 可運作、delete 經由 dialog 確認 — 全部綠燈。
 
 回到專案根目錄：
 
@@ -337,35 +319,23 @@ cd ..
 
 例如，想加入 `is_favorite`（布林值）欄位：
 
-1. **OpenAPI 規格** — 在 `docs/openapi/schemas/bookmark.yaml` 新增欄位定義
-2. **重新產生類型** — `cd client && pnpm generate:types`
-3. **模型** — 在 `server/app/domains/bookmarks/models.py` 新增 `mapped_column`
-4. **Pydantic Schema** — 在 `server/app/domains/bookmarks/schemas.py` 新增欄位
-5. **Zod Schema** — 在 `client/src/schemas/bookmark.ts` 新增欄位
-6. **Migration** — `cd server && uv run alembic revision --autogenerate -m "add is_favorite to bookmarks"`
-7. **測試** — 更新測試案例，確認新欄位正確運作
+1. **Zod Schema** — 在 `next-app/lib/validations/bookmark.ts` 的共用 schema 新增欄位（這是契約 — 先改它）
+2. **Drizzle 欄位** — 在 `next-app/db/schema.ts` 的 `bookmarks` 資料表新增 `boolean("is_favorite")` 欄位
+3. **Migration** — `cd next-app && pnpm db:generate && pnpm db:migrate`
+4. **Server Action + 表單** — 更新 `actions/bookmarks.ts` 的 Server Action 與 create/edit 表單，納入新欄位
+5. **測試** — 更新測試案例，確認新欄位正確運作
 
-> 記住 SDD 順序：**OpenAPI → Server → Client**。
-
-### 新增路由到 App.tsx
-
-產生器會提醒你手動加入前端路由。在 `client/src/App.tsx` 中新增：
-
-```tsx
-import BookmarksPage from './pages/bookmarks/BookmarksPage';
-
-// 在 <Routes> 內新增
-<Route path="/bookmarks" element={<ProtectedRoute><BookmarksPage /></ProtectedRoute>} />
-```
+> 記住規格先行順序：**Zod schema（契約）→ Drizzle DB schema → Server Action → UI**。
+> Zod schema 是共用契約 — 保持它同步，就能讓 server 與表單保持一致。
 
 ### 新增側邊欄連結
 
-在 `client/src/components/DashboardLayout.tsx` 的側邊欄導航中加入書籤的連結。
+App Router 沒有中央路由表，所以唯一需要手動接線的是導航連結。在 dashboard 側邊欄導航（dashboard layout 所用的 shadcn `sidebar-01` 導航元件）中加入 bookmarks 項目，讓使用者能進入 `/dashboard/bookmarks`。
 
 ### 調整頁面樣式
 
-編輯 `client/src/pages/bookmarks/Bookmarks.css`。本專案使用 CSS 自訂屬性（design tokens），
-所有可用的色彩和間距變數定義在主題系統中（詳見 [TECHSTACK.md](../../../TECHSTACK.md)）。
+樣式直接以 Tailwind utility classes 寫在 `page.tsx` 與表單元件中 — 沒有 per-page `.css` 檔案。
+使用主題的 `dark:` 變體與 design tokens；切勿加入 inline `style=` 色彩覆寫（詳見 [TECHSTACK.md](../../../TECHSTACK.md)）。
 
 ---
 
@@ -403,10 +373,10 @@ git add -A
 # 建立 conventional commit
 git commit -m "feat(E99): Bookmark domain CRUD
 
-- OpenAPI spec for bookmarks endpoints
-- Server domain: model, schemas, endpoints
-- Client: page, hooks, service, MSW handlers
-- Integration + component tests"
+- Shared Zod schema + Drizzle bookmarks table
+- Server Actions + optional Route Handler
+- App Router page with <DataTable> + modal CRUD
+- Vitest unit tests + Playwright e2e"
 
 # 推送並建立 PR
 git push -u origin feat/E99-bookmark-domain
@@ -432,9 +402,9 @@ git push -u origin feat/E99-bookmark-domain
 
 | 概念 | 實踐 |
 |------|------|
-| **SDD 流程** | OpenAPI 規格先行 → TypeScript 類型 → 後端 → 前端 |
-| **Domain Registry** | `discover_domains()` 自動發現，零手動註冊 |
-| **Domain 產生器** | `/athena:domain` 一鍵產生 15+ 檔案 |
+| **規格先行** | 共用 Zod schema → Drizzle DB schema → Server Actions/Route Handlers → UI |
+| **App Router 路由** | 資料夾*即*路由 — 檔案系統路由，零手動註冊 |
+| **Domain 產生器** | `/athena:domain` 一鍵產生整套技術棧檔案 |
 | **Epic Pipeline** | spec → implement → qa → commit → merge |
 | **TDD 精神** | 測試與實作同步產生，確保品質 |
 | **Athena 指令** | 每個開發階段都有對應的自動化指令 |
@@ -452,7 +422,6 @@ git push -u origin feat/E99-bookmark-domain
 ## 下一步
 
 - **[AI Agent 團隊指南](ai-agent-team-guide.md)** — 學習序列與並行執行模式，同時推進多個 Epic
-- **[OpenAPI 設計模式](openapi-patterns.md)** — 掌握本專案使用的 4 種 OpenAPI 模式（CRUD、分頁、巢狀資源、檔案上傳）
 - **[建立領域專家 Agent](custom-agents.md)** — 為你的業務領域建立自訂 AI Agent
 - **[學習路徑](learning-path.md)** — 查看所有指南的推薦閱讀順序
 
@@ -464,7 +433,7 @@ git push -u origin feat/E99-bookmark-domain
 |------|------|
 | [CLAUDE.md](../../../CLAUDE.md) | 專案規則、Agent 團隊、Memory 系統 |
 | [TECHSTACK.md](../../../TECHSTACK.md) | 完整技術架構（可上傳至 Claude 恢復上下文） |
-| [E22 — Domain Registry](../../epics/EPIC_INDEX.md) | Domain 自動發現機制的設計與實作 |
+| [CRUD modal + DataTable 慣例](../../../CLAUDE.md) | 本 repo 的 CRUD 範式：modal（Dialog）+ 可重用 `<DataTable>`，參考 `app/(dashboard)/dashboard/items/` |
 | [E23 — Starter Domain Generator](../../epics/e23-starter-domain-generator.md) | `/athena:domain` 產生器的完整規格 |
 | [Domain 模板目錄](../../templates/domain/) | 所有 domain 產生器的模板檔案 |
 | [範例 Domain 設定](../../templates/domain/examples/) | blog.yaml、todo.yaml、crm.yaml 範例 |

@@ -24,15 +24,25 @@ docker compose up --build -d        # postgres + migrate/seed + web (+ mailpit)
 open http://localhost:3000
 ```
 
+Or use the Makefile helper (Docker for Postgres + `pnpm dev` for the web app):
+
+```bash
+make local          # boots local infra (Postgres) + Next.js dev on http://localhost:3000
+```
+
 Or run the app directly from `next-app/`:
 
 ```bash
 cd next-app
 pnpm install
 # set DATABASE_URL + AUTH_SECRET (see .env.example)
+pnpm db:generate    # regenerate Drizzle migrations after a schema change (optional)
 pnpm db:migrate && pnpm db:seed
 pnpm dev
 ```
+
+Demo logins (after `pnpm db:seed`): `admin@example.com / Admin123!` ·
+`editor@example.com / Editor123!` · `viewer@example.com / Viewer123!`.
 
 **Requirements:** Node.js >= 20 · pnpm >= 9 · PostgreSQL >= 15 (or Docker) · Git.
 
@@ -85,6 +95,28 @@ This project uses **[Conventional Commits](https://www.conventionalcommits.org/)
 Releases are tagged `vMAJOR.MINOR.PATCH` (e.g. `v0.1.0`). Every release adds an entry to
 [`CHANGELOG.md`](CHANGELOG.md) (Keep a Changelog format). Bump `next-app/package.json`
 `version` in the same commit, then tag `main`.
+
+---
+
+## Development Pipeline
+
+Epic-driven work follows the Athena pipeline — each step has an owning agent and command:
+
+```
+spec ──► implement ──► qa ──► commit ──► merge
+ │           │          │
+@spec-writer TDD       @reviewer + @qa + @evaluator
+(Drizzle      (red→green  (review + Vitest/Playwright + coverage gate)
+ schema +     →refactor)
+ Zod + Server
+ Action / Route
+ Handler + RBAC)
+```
+
+- `@spec-writer` designs the **feature spec** (Drizzle table + shared Zod schema +
+  Server Action / Route Handler signatures + RBAC), written to `docs/epics/` — not OpenAPI.
+- `@dba` reviews `drizzle-kit` migrations; `@qa` runs the `next-app/` `pnpm` gates.
+- See [`CLAUDE.md`](CLAUDE.md) § "Slash Commands" for the full command list.
 
 ---
 

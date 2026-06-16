@@ -27,7 +27,7 @@
 
 | Agent | 指令 | 職責 |
 |-------|------|------|
-| `@spec-writer` | `/athena:spec` | OpenAPI-first 功能設計 |
+| `@spec-writer` | `/athena:spec` | Spec-first 功能設計（共享 Zod schema + spec） |
 | `@qa` | `/athena:qa` | 程式碼審查 + 測試執行 + 80% 覆蓋率閘門 |
 | `@best-practice` | 自動諮詢 | 架構決策、技術選型 |
 | `@debugger` | 自動委派 | 錯誤診斷、根因分析 |
@@ -201,20 +201,17 @@ jq 'select(.epic == "E84")' .claude/audit.jsonl
 jq 'select(.duration_ms > 10000)' .claude/audit.jsonl
 ```
 
-### Stop Verifier（8 條規則）
+### Stop Verifier（規則）
 
 每次 Claude 完成時自動檢查：
 
 | # | 規則 | 類型 |
 |---|------|------|
-| 1 | 禁止 localStorage | 阻擋 |
-| 2 | 禁止 fireEvent（改用 userEvent） | 阻擋 |
-| 3 | 禁止內聯 staleTime | 阻擋 |
-| 4 | MSW handler 必須在 tests/ | 阻擋 |
-| 5 | 禁止 backend/frontend 資料夾名 | 阻擋 |
-| 6 | OpenAPI 漂移偵測 | 阻擋 |
-| 7 | console.log 殘留檢查 | 阻擋 |
-| 8 | 大檔案警告（>500 行） | 警告 |
+| 1 | 禁止 components/ui/ 內手刻檔案（改用 `npx shadcn@latest add`） | 阻擋 |
+| 2 | 禁止內聯 `style=` 顏色覆寫（改用 Tailwind + `dark:` variants） | 阻擋 |
+| 3 | console.log 殘留檢查 | 阻擋 |
+| 4 | 驗證紀律（commit 前需有 `verification_check` 稽核事件） | 阻擋 |
+| 5 | 大檔案警告（>500 行） | 警告 |
 
 ---
 
@@ -274,5 +271,4 @@ jq 'select(.duration_ms > 10000)' .claude/audit.jsonl
 
 - **[建立領域專家 Agent](custom-agents.md)** — 為你的業務領域建立自訂 AI Agent
 - **[第一個 Epic 實戰](first-epic-walkthrough.md)** — 手把手教你從零建立完整 Domain
-- **[CI 流程說明](ci-explained.md)** — 了解推送程式碼或開 PR 時會發生什麼
 - **[學習路徑](learning-path.md)** — 查看所有指南的推薦閱讀順序

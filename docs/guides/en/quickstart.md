@@ -14,35 +14,32 @@ make go
 
 `make go` automatically completes all of the following steps:
 
-1. Checks prerequisites (Node >= 22, pnpm, Python >= 3.12, uv, Docker)
-2. Installs all dependencies (pnpm install + uv sync)
-3. Generates `server/.env` (with auto-generated JWT secrets)
+1. Checks prerequisites (Node >= 22, pnpm, Docker)
+2. Installs all dependencies (pnpm install)
+3. Generates `next-app/.env` (with auto-generated JWT/Auth.js secrets)
 4. Starts PostgreSQL + Mailpit (Docker)
-5. Runs database migrations
-6. Generates TypeScript types
-7. Starts frontend and backend dev servers
+5. Runs database migrations (Drizzle)
+6. Seeds the demo accounts
+7. Starts the Next.js dev server
 
 When complete:
 
-- **Getting Started**: `http://localhost:5173/getting-started` (Interactive walkthrough — start here!)
-- **Frontend**: `http://localhost:5173` (Vite dev server)
-- **Backend API**: `http://localhost:8080/docs` (Swagger UI)
+- **App**: `http://localhost:3000` (Next.js dev server — open this and explore the landing page / dashboard)
 - **Mailpit**: `http://localhost:8025` (Development email UI)
 
-> **First time?** Open `/getting-started` for a guided tour of the template's features, or run `make tutorial` for a 5-minute endpoint-building exercise.
+> **First time?** Open `http://localhost:3000` and explore the landing page and dashboard to get a feel for the template's features.
 
-### Docker-Only Start (No Node/Python Installation Required)
+### Docker-Only Start (No Node Installation Required)
 
-If you only have Docker, you can start the entire dev environment with a single command:
+If you only have Docker, you can start the entire dev environment (Postgres + app + mailpit) with a single command:
 
 ```bash
-docker compose --profile dev up
+docker compose up --build -d
 ```
 
-This starts PostgreSQL + backend (with auto-migration) + frontend (with hot-reload), without needing to install Node or Python.
+This starts PostgreSQL + the Next.js app (with auto-migration and hot-reload) + Mailpit, without needing to install Node locally.
 
-- **Frontend**: `http://localhost:5173` (Vite dev server, hot-reload)
-- **Backend API**: `http://localhost:8080/docs`
+- **App**: `http://localhost:3000` (Next.js, hot-reload)
 - **Mailpit**: `http://localhost:8025`
 
 > **macOS Performance Tip**: Docker volume mounts can be slow on macOS. If hot-reload feels sluggish, consider using [mutagen](https://mutagen.io/) for acceleration.
@@ -68,11 +65,9 @@ Make sure the following tools are installed on your system:
 
 | Tool | Minimum Version | Purpose |
 |------|-----------------|---------|
-| Node.js | >= 22 | Frontend build and CLI tools |
-| pnpm | >= 8 | Node package management (workspace monorepo) |
-| Python | >= 3.12 | Backend server |
-| uv | Latest | Python package management (replaces pip) |
-| Docker | Latest | Database (PostgreSQL container) |
+| Node.js | >= 22 | Next.js build and CLI tools |
+| pnpm | >= 8 | Node package management |
+| Docker | Latest | Database (PostgreSQL container) + full local stack |
 | git | >= 2 | Version control |
 
 > Run `make check-prereqs` to verify all tool versions at once.
@@ -89,14 +84,6 @@ nvm use 22
 
 # pnpm
 npm install -g pnpm
-
-# Python (recommended via pyenv for version management)
-brew install pyenv
-pyenv install 3.12
-pyenv global 3.12
-
-# uv — Python package manager
-curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Docker
 brew install --cask docker
@@ -116,14 +103,6 @@ nvm use 22
 # pnpm
 npm install -g pnpm
 
-# Python (via pyenv)
-curl https://pyenv.run | bash
-pyenv install 3.12
-pyenv global 3.12
-
-# uv
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
 # Docker
 # See https://docs.docker.com/engine/install/
 
@@ -136,8 +115,6 @@ sudo apt-get install git
 ```bash
 node --version    # Should show v22.x.x or higher
 pnpm --version    # Should show 8.x.x or higher
-python --version  # Should show 3.12.x or higher
-uv --version      # Should show a version number
 docker --version  # Should show a version number
 git --version     # Should show 2.x.x or higher
 ```
@@ -146,18 +123,15 @@ git --version     # Should show 2.x.x or higher
 
 ### Step 1: Install Dependencies
 
-This project uses a **pnpm workspace monorepo** structure. The root `pnpm-workspace.yaml` manages the `client` and `dev-docs` sub-projects.
+The app lives in `next-app/`. Install its Node dependencies with pnpm.
 
 ```bash
-# Install Node dependencies (run from root — installs all workspace sub-projects)
-pnpm install
-
-# Install Python dependencies (enter the server directory)
-cd server && uv sync && cd ..
+# Install Node dependencies (run from next-app/)
+cd next-app && pnpm install && cd ..
 ```
 
-> `uv sync` installs all dependencies (including dev dependencies) based on `pyproject.toml`
-> and automatically creates a virtual environment at `server/.venv/`.
+> `pnpm install` reads `next-app/package.json` and installs all dependencies
+> (including dev dependencies) into `next-app/node_modules/`.
 
 ---
 
@@ -181,8 +155,8 @@ docker compose up -d db mailpit
 make ensure-env
 
 # Or manually copy:
-cp server/.env.example server/.env
-# Then edit SECRET_KEY and REFRESH_SECRET_KEY (recommended: use openssl rand -hex 32)
+cp next-app/.env.example next-app/.env
+# Then edit AUTH_SECRET (recommended: use openssl rand -hex 32)
 ```
 
 ---
@@ -191,22 +165,30 @@ cp server/.env.example server/.env
 
 ```bash
 make migrate
+
+# Or manually, from next-app/:
+cd next-app && pnpm db:generate && pnpm db:migrate && cd ..
 ```
 
-> **Seed Accounts**: After migration, the system includes two built-in test accounts:
->
-> | Account | Password | Role |
-> |---------|----------|------|
-> | `admin@test.com` | `Admin#Pass1` | Superuser |
-> | `user@test.com` | `User#Pass1` | Regular user |
+> `pnpm db:generate` creates Drizzle migration files from the schema, and
+> `pnpm db:migrate` applies them to PostgreSQL.
 
 ---
 
-### Step 4: Generate TypeScript Types
+### Step 4: Seed Demo Accounts
 
 ```bash
-make generate-types
+# From next-app/:
+cd next-app && pnpm db:seed && cd ..
 ```
+
+> **Seed Accounts**: After seeding, the system includes three built-in test accounts (3-tier RBAC):
+>
+> | Account | Password | Role |
+> |---------|----------|------|
+> | `admin@example.com` | `Admin123!` | Admin |
+> | `editor@example.com` | `Editor123!` | Editor |
+> | `viewer@example.com` | `Viewer123!` | Viewer |
 
 ---
 
@@ -214,26 +196,19 @@ make generate-types
 
 ```bash
 make dev
+
+# Or directly, from next-app/:
+cd next-app && pnpm dev
 ```
 
-Or start separately:
-
-```bash
-# Terminal 1 — Backend
-cd server && uv run uvicorn app.main:app --reload
-
-# Terminal 2 — Frontend
-cd client && pnpm dev
-```
+This serves the entire app — UI, Server Actions, and Route Handlers (`app/api`) — on `http://localhost:3000`.
 
 ### Verification
 
 | Service | URL | Expected Result |
 |---------|-----|-----------------|
-| Frontend | `http://localhost:5173` | Landing Page |
-| Backend API | `http://localhost:8080/health` | `{"status": "healthy"}` |
-| Swagger UI | `http://localhost:8080/docs` | API documentation |
-| Docker deployment | `http://localhost:3000` | Frontend (nginx) |
+| App | `http://localhost:3000` | Landing Page + Dashboard + API routes |
+| Mailpit | `http://localhost:8025` | Development email UI |
 
 ---
 
@@ -241,53 +216,46 @@ cd client && pnpm dev
 
 ```bash
 make test
+
+# Or directly, from next-app/:
+cd next-app && pnpm test
 ```
 
-> **Coverage Gate**: This project requires frontend and backend test coverage of **>= 80%**. Falling below this threshold blocks deployment.
+> **Coverage Gate**: This project requires test coverage of **>= 80%**. Falling below this threshold blocks deployment.
 >
-> View coverage reports:
+> View the coverage report:
 >
 > ```bash
-> # Backend
-> cd server && uv run pytest --cov=app --cov-report=term-missing && cd ..
+> # From next-app/:
+> cd next-app && pnpm test:coverage && cd ..
+> ```
 >
-> # Frontend
-> cd client && pnpm test:coverage && cd ..
+> **End-to-end tests** run with Playwright (seed the DB first):
+>
+> ```bash
+> # From next-app/:
+> cd next-app && pnpm db:seed && pnpm test:e2e && cd ..
 > ```
 >
 > **Test Plan Template**: For a comprehensive testing strategy — including a risk matrix, RBAC compatibility matrix, and "when to stop testing" criteria — see [`docs/templates/test-plan-template.md`](../../templates/test-plan-template.md).
 
-#### Server Test Directory Structure
+#### Test Layout
 
 ```
-server/tests/
-  unit/            # Pure unit tests (no DB, no network)
-  integration/     # Cross-domain, auth, DB flows
-  contract/        # OpenAPI schema validation (E99)
-  domains/         # Per-domain endpoint + schema tests
-  services/        # Business logic tests
-  regression/      # Bug regression tests
-  guardrails/      # Security + permission boundary tests
-  smoke/           # Critical-path quick tests
-  conftest.py      # Shared fixtures
+next-app/
+  lib/**, actions/**   # Vitest unit tests — co-located *.test.ts(x)
+                       #   (covers lib/validations, lib/is-admin, actions/)
+  e2e/                 # Playwright e2e specs — *.spec.ts
 ```
 
-**When to use which directory:**
+**When to use which:**
 
-| Directory | Use when... | Example |
-|-----------|------------|---------|
-| `unit/` | Testing pure functions, no DB or network | Password validator, schema parsing |
-| `integration/` | Testing cross-domain or auth flows end-to-end | Login + create resource + verify ownership |
-| `contract/` | Validating API responses match OpenAPI spec | Response schema drift detection |
-| `domains/<name>/` | Testing a single domain's endpoints + schemas | `POST /notes/` CRUD, pagination |
-| `services/` | Testing business logic services in isolation | Billing calculation, notification dispatch |
-| `regression/` | Preventing a specific bug from recurring | Fix for #42 — duplicate email race condition |
-| `guardrails/` | Verifying security + permission boundaries | No PII in error responses, no tokens in URLs |
-| `smoke/` | Quick critical-path validation for deploys | Health check, auth flow, DB connectivity |
+| Type | Use when... | Example |
+|------|------------|---------|
+| Vitest unit (`*.test.ts(x)`) | Testing pure functions / Server Actions, no real browser | Password validator, `is-admin` RBAC check, action input parsing |
+| Playwright e2e (`e2e/*.spec.ts`) | Testing full user flows end-to-end in a browser | Login + create resource + verify ownership, RBAC redirects |
 
-> **Tip**: `make new-domain NAME=x` automatically creates `tests/domains/x/` with a test template. Existing `unit/` and `integration/` directories remain — the new structure is opt-in for domain-scoped tests.
->
-> Run tests by directory: `cd server && uv run pytest tests/domains/billing/` to run only billing tests.
+> Run a subset: `pnpm test <path-or-pattern>` (Vitest) or `pnpm test:e2e <spec>` (Playwright).
 
 ---
 
@@ -320,25 +288,12 @@ If the database doesn't exist, run `createdb saas_dev` again.
 **Solution**:
 
 ```bash
-# Clear cache and reinstall
+# Clear cache and reinstall (from next-app/)
+cd next-app
 pnpm store prune
-rm -rf node_modules client/node_modules dev-docs/node_modules
+rm -rf node_modules
 pnpm install
-```
-
-### Python Version Mismatch
-
-**Symptom**: `pyproject.toml` requires `>=3.12` but system version is older
-
-**Solution**:
-
-```bash
-# Install the correct version using pyenv
-pyenv install 3.12
-pyenv local 3.12
-
-# Verify uv is using the correct Python
-uv python list
+cd ..
 ```
 
 ### Port Conflict
@@ -349,8 +304,8 @@ uv python list
 
 ```bash
 # Find the process occupying the port
-lsof -i :8000  # Backend
-lsof -i :5173  # Frontend
+lsof -i :3000  # the app
+lsof -i :8025  # Mailpit
 lsof -i :5432  # PostgreSQL
 
 # Kill the process
@@ -360,11 +315,10 @@ kill -9 <PID>
 Or change the startup port:
 
 ```bash
-# Use a different port for the backend
-cd server && uv run uvicorn app.main:app --reload --port 8001
-
-# Use a different port for the frontend
-cd client && pnpm dev --port 3000
+# Run the app on a different port (from next-app/)
+cd next-app && pnpm dev -- -p 3001
+# Or:
+PORT=3001 pnpm dev
 ```
 
 ### Docker Compose Startup Issues
@@ -390,9 +344,8 @@ docker compose up -d db
 Congratulations, you've successfully set up the development environment! Recommended next steps:
 
 1. **Run `make verify`** — Check that all template placeholders are customized
-2. **Open [`/getting-started`](http://localhost:5173/getting-started)** — Interactive in-app walkthrough of the template
-3. **Run `make tutorial`** — Build your first endpoint in 5 minutes
-4. **[First Epic Walkthrough](first-epic-walkthrough.md)** — Step-by-step guide to building a custom domain
-5. **[TECHSTACK.md](../../../TECHSTACK.md)** — Deep dive into the technical architecture
-6. **[EPIC_INDEX.md](../../epics/EPIC_INDEX.md)** — View all Epic development progress
-7. **[Learning Path](learning-path.md)** — See the full recommended reading order for all guides
+2. **Open [`http://localhost:3000`](http://localhost:3000)** — Explore the landing page and dashboard
+3. **[First Epic Walkthrough](first-epic-walkthrough.md)** — Step-by-step guide to building a custom domain
+4. **[TECHSTACK.md](../../../TECHSTACK.md)** — Deep dive into the technical architecture
+5. **[EPIC_INDEX.md](../../epics/EPIC_INDEX.md)** — View all Epic development progress
+6. **[Learning Path](learning-path.md)** — See the full recommended reading order for all guides

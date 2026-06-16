@@ -1,8 +1,8 @@
 # 技能模組 | Skills
 
-> 8 個技能模組（Skills）是**自動載入的上下文注入器**，當 Agent 處理特定類型的任務時自動啟用。
+> Skills 是**自動載入的上下文注入器**，當 Agent 處理特定類型的任務時自動啟用。
 >
-> 8 auto-loaded context injectors — activated when agents work on specific task types.
+> Skills are auto-loaded context injectors — activated when agents work on specific task types.
 
 ---
 
@@ -10,14 +10,15 @@
 
 | 技能 / Skill | 說明 / Description | 觸發時機 / When Triggered |
 |-------------|-------------------|-------------------------|
-| `server-patterns` | FastAPI 端點結構、SQLAlchemy 模型慣例、依賴注入模式、pytest 測試模板 | 編輯 `server/` 目錄時 |
-| `client-patterns` | React Query 4 層快取（STATIC/SEMI/SECURITY/REALTIME）、Token 安全管理、`createService()` 工廠模式 | 編輯 `client/src/` 時 |
-| `openapi-first` | SDD 工作流：先寫 spec → `openapi-typescript` 生成型別 → `satisfies z.ZodType<T>` 編譯時偏移偵測 | 設計 API 或建立新端點時 |
-| `frontend-review` | WCAG a11y 檢查清單、React 反模式偵測（useEffect 濫用、missing deps）、CSS 架構一致性 | `/athena:qa` 前端審查時 |
-| `tdd-workflow` | RED → GREEN → REFACTOR 循環：先寫失敗測試 → 最小實作 → 重構。Server pytest + Client Vitest | `/athena:implement` 時 |
-| `debugging` | 已知故障模式速查（GUID 型別不匹配、async context 錯誤、CORS 設定），診斷指令清單 | @debugger 啟動時 |
-| `upgrade-stripe` | Stripe API 版本升級指引、SDK 版本管理、升級檢查清單、版本測試方法 | 升級 Stripe 或修改帳務功能時 |
-| `dba-migrations` | 資料庫 schema 管理：GUID 雙層設計、Alembic migration 模式、常見情境模板、禁用模式清單 — Database schema management: two-layer UUID design, Alembic migration patterns, common scenario templates, banned pattern list | 建立/編輯 model、產生/審查 migration、新增欄位/資料表、除錯 migration 錯誤時 |
+| `nextjs-saas-patterns` | 本模板的非顯而易見陷阱：Auth.js v5 + JWT、RBAC 從 DB 重讀角色、shadcn blocks、Drizzle seed、Docker、繁中 i18n — Hard-won gotchas for THIS Next.js 16 + Auth.js v5 + Drizzle + shadcn template | 觸碰 auth / login / sessions / RBAC / shadcn blocks / seed / Docker / i18n 時 |
+| `next-best-practices` | Next.js 慣例：file conventions、RSC 邊界、data patterns、async APIs、metadata、route handlers、image/font 優化 | 寫 Next.js 頁面 / route handler / data fetching 時 |
+| `athena-loop-speedups` | 編排實務：把 serial「跑→錯→猜→重跑」變成快速可靠的 loop。平行 subagent / Workflow / QA / model 選擇 / e2e 加速 | 規劃或執行 epic、fan-out agent、跑 `/athena:flow`·`/athena:batch`·`/athena:loop` 時 |
+| `deploy-config` | 設定並執行 production deploy（Road 1 Zeabur 主 / Road 2 GCP Cloud Run + Cloud SQL）：preflight、env 接線、per-road CLI、gotchas | 部署或設定 deploy config 時 |
+| `module-author` | 教 agent scaffold 一個合規的 `@saas` 註冊表模組：檔案佈局、`module.manifest.json` 宣告 deps/env/db、Server Action / Route Handler 位置、配對的 `install-*` skill | 建立新 `@saas` 功能模組時 |
+| `install-*`（landing / stripe-billing / ecpay-billing） | 將對應的 `@saas/*` 模組安裝進專案：接 env、跑 db migration、驗證 route + action | `npx shadcn@latest add @saas/<module>` 之後 |
+| vendor `vercel-*` | Vercel 工程團隊的 React / Next.js 效能與 composition 最佳實務 | 寫 / review / refactor React 元件時 |
+
+> 完整清單：`ls -1d .claude/skills/*/`。
 
 ---
 

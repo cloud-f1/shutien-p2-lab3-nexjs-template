@@ -4,7 +4,7 @@ origin: "distilled from .claude/agents/ + .claude/commands/athena/ + scripts/hoo
 purpose: "純文字 context — 給 LLM / Claude Code session / 想 copy-paste 的讀者"
 audience: "模板使用者 · 要 fork 成新專案的工程師 · 想了解 Athena orchestration 的讀者"
 maintained: "若 agents / commands / hooks 改動，此檔要同步（與 agent-team-mindmap.html 雙檔維護）"
-updated: "2026-04-24（CLAUDE.md 10-agent 版 + Phase 40/41/42 epic 規劃同步）"
+updated: "2026-06-16（E277 Next.js 遷移：12-agent + Drizzle/Zod/Server Action brain 同步）"
 ---
 
 # AI-Coding-Template × Claude Code — 架構文字版
@@ -49,7 +49,7 @@ updated: "2026-04-24（CLAUDE.md 10-agent 版 + Phase 40/41/42 epic 規劃同步
 ```
 /athena:plan           ─► @strategist 提案 epic (→ Learning)
        ↓ 人類批准
-/athena:spec E<N>      ─► @spec-writer openapi-first 契約
+/athena:spec E<N>      ─► @spec-writer feature spec（Drizzle + Zod + Server Action/Route Handler + RBAC）
        ↓
 /athena:implement      ─► TDD red/green（@debugger auto on fail）
        ↓
@@ -76,7 +76,7 @@ updated: "2026-04-24（CLAUDE.md 10-agent 版 + Phase 40/41/42 epic 規劃同步
 
 ```
 Observe：收集信號
-  ├─ /athena:audit    →  OpenAPI ↔ server ↔ client 三源一致性
+  ├─ /athena:audit    →  Drizzle schema ↔ Zod ↔ Server Action/Route Handler/UI 漂移
   ├─ /athena:metrics  →  agent 可靠度 (.claude/audit.jsonl)
   ├─ /athena:qa-report→  bugfix-log.md → bug 模式
   └─ /athena:learn    →  MEMORY.md 是否 drift
@@ -119,9 +119,9 @@ Reflect：回到 /athena:plan
 | `architecture-lessons.md` | 架構判斷累積的教訓 |
 | `architecture-patterns.md` | 可複製的架構模式 |
 | `design-handoff-pattern.md` | 設計 → 程式碼交接慣例（餵 E163 @designer） |
-| `dx-patterns.md` | Developer Experience 模式（make go / doctor / tutorial） |
+| `dx-patterns.md` | Developer Experience 模式（make local / docker compose / pnpm 腳本） |
 | `failure-patterns.md` | 已撞過的失敗模式（餵 @debugger） |
-| `integration-gotchas.md` | 跨層整合踩雷（route / MSW / zod / CSS 等） |
+| `integration-gotchas.md` | 跨層整合踩雷（route / Server Action / zod / CSS 等） |
 | `mockup-contract.md` | Mockup → spec 的契約守則 |
 | `performance-insights.md` | 效能觀察 + 優化優先順序 |
 | `security-learnings.md` | 安全相關教訓（OWASP + SaaS） |
@@ -179,7 +179,7 @@ Tier 0 (Global)                             ~/.claude/template-memory/*.md — 1
   │  ├─ architecture-lessons.md        架構教訓（active）
   │  ├─ architecture-patterns.md       可複製的架構模式
   │  ├─ design-handoff-pattern.md      設計→程式碼交接（餵 @designer）
-  │  ├─ dx-patterns.md                 DX 模式（make go / doctor）
+  │  ├─ dx-patterns.md                 DX 模式（make local / docker compose）
   │  ├─ failure-patterns.md            失敗模式（餵 @debugger）
   │  ├─ integration-gotchas.md         跨層整合踩雷
   │  ├─ mockup-contract.md             Mockup → spec 契約
@@ -269,7 +269,7 @@ E158 hook（計畫）偵測 ≥3 新 tag → 產 promotion-proposals/<ts>.md
 
 | 指令 | 作用 |
 |------|------|
-| `/athena:spec <feature>` | OpenAPI-first 規格設計。spawn `@spec-writer`。|
+| `/athena:spec <feature>` | Feature spec 設計（Drizzle + Zod + Server Action/Route Handler + RBAC）。spawn `@spec-writer`。|
 | `/athena:implement` | TDD 紅綠重構。從 spec → code → `@qa`。|
 | `/athena:qa` | Quality gate — `@reviewer` + `@qa` + `@evaluator` 三相。支援 `--review-only` / `--test-only` / `--eval-only`。|
 | `/athena:loop [status]` | Epic loop — 每次呼叫推進「一步」（spec / impl / qa / commit / merge 擇一）。|
@@ -286,7 +286,7 @@ E158 hook（計畫）偵測 ≥3 新 tag → 產 promotion-proposals/<ts>.md
 | `/athena:domain <name>` | Scaffold 新 domain module（server + client + tests）。|
 | `/athena:dba [cmd]` | 資料庫管理 — inspect, lint, diagnose migrations。|
 | `/athena:dashboard` | Pipeline 進度看板（read-only）。|
-| `/athena:audit` | 三源一致性稽核（OpenAPI ↔ server ↔ client）。|
+| `/athena:audit` | 漂移稽核（Drizzle schema ↔ Zod ↔ Server Action/Route Handler/UI）。|
 | `/athena:metrics` | Agent 可靠度統計（從 `.claude/audit.jsonl`）。|
 | `/athena:qa-report` | Bug-to-Epic pipeline — `bugfix-log.md` → epic 提案。|
 | `/athena:qa-enforcement-pattern` | *（lesson doc，非 runnable）* Batch/loop QA gate 強制化模式。|
@@ -303,7 +303,7 @@ E158 hook（計畫）偵測 ≥3 新 tag → 產 promotion-proposals/<ts>.md
 
 | Agent | 職責 | 模型 | Write-back |
 |------|------|------|-----------|
-| `@spec-writer` | Feature 規格設計，OpenAPI-first | opus | `docs/context/spec-log.md` |
+| `@spec-writer` | Feature 規格設計（Drizzle + Zod + Server Action/Route Handler + RBAC） | opus | `docs/context/spec-log.md` |
 | `@best-practice` | 架構決策、trade-off 諮詢 | opus | `docs/context/decisions.md` + `TECHSTACK.md §12` |
 | `@reviewer` | Code review + 安全稽核（read-only） | opus | `docs/context/review-findings.md` |
 | `@qa` | 測試執行、80% 覆蓋率守門、Test Quality Audit | sonnet | `docs/context/test-status.md` + `docs/context/qa-patterns.md` |
@@ -358,7 +358,7 @@ Skill 不靠使用者主動呼叫、namespace 對 auto-inject 無幫助，flat �
 ```
 /athena:plan       ─► @strategist 提案 epic（人類批准）
        ↓
-/athena:spec       ─► @spec-writer 寫 OpenAPI spec + epic .md
+/athena:spec       ─► @spec-writer 寫 feature spec（Drizzle + Zod + Server Action/Route Handler + RBAC）+ epic .md
        ↓
 /athena:implement  ─► TDD red/green/refactor（@debugger auto on fail）
        ↓
@@ -373,15 +373,15 @@ commit + merge     ─► （人類 PR 批准）
 
 ```
 /athena:qa
-  ├─ Phase 1 · Static checks (ruff, mypy, eslint)           →  自動
-  ├─ Phase 2 · Tests (pytest + vitest) + coverage gate ≥80% →  @qa
-  ├─ Phase 2.5 · Contract Conformance (計畫 E156)           →  @qa
-  ├─ Phase 2.6 · Migration Safety (計畫 E157)               →  @qa → @dba (on red flag)
+  ├─ Phase 1 · Static checks (typecheck + eslint)           →  自動
+  ├─ Phase 2 · Tests (Vitest unit + Playwright e2e) + coverage →  @qa
+  ├─ Phase 2.5 · Schema/Zod/UI drift (/athena:audit)       →  @qa
+  ├─ Phase 2.6 · Migration Safety (drizzle-kit)             →  @qa → @dba (on red flag)
   ├─ Phase 3  · Test Quality Audit                          →  @qa
   └─ Phase 4  · @evaluator 獨立驗收 (E147)                   →  @evaluator
 ```
 
-測試失敗 → **自動 delegate `@debugger`**（不用人喊）。E162 Phase 41 計畫把 `@reviewer` 改成 iterative convergence loop — 跑 ≤4 輪直到收斂或偵測卡住。
+測試失敗 → **自動 delegate `@debugger`**（不用人喊）。`@reviewer` 以 iterative convergence loop 跑 ≤4 輪直到收斂或偵測卡住。
 
 ### Pipeline C · Loop Pipeline（單步推進）
 
@@ -420,12 +420,12 @@ commit + merge     ─► （人類 PR 批准）
   ├─ Gate 3 · On main branch（或 preview flag）
   ├─ Gate 4 · Migration dry-run OK
   ├─ Gate 5 · Pre-deploy guard pass（scripts/hooks/pre-deploy-guard.sh）
-  ├─ Gate 6 · Env vars present（VITE_API_URL build-time baked）
+  ├─ Gate 6 · Env vars present（NEXT_PUBLIC_* build-time baked）
   └─ Gate 7 · Rollback plan recorded（deploy-log.md）
   → @deployer 執行，任一 gate 失敗即 abort
 ```
 
-Phase 40 E159 會加第 8 gate（`GET /admin/sli` baseline check）+ Gate 7（E156 contract conformance 重跑，defense-in-depth）。部署目標 Zeabur 為主、Cloud Run 次（E121–E124 雙向 deploy guide）。
+defense-in-depth 可加 SLI baseline check 與 schema/Zod/UI 漂移重跑為額外 gate。部署目標 Zeabur 為主、GCP Cloud Run + Cloud SQL 次（見 `deploy-config` skill）。
 
 ### Pipeline F · Design Pipeline（計畫中 · Phase 41 E163）
 
@@ -485,18 +485,16 @@ Claude Code 執行 tool **前/後** 或 session **開始/結束** 時的攔截�
 
 完成前守門 — 違規直接拒絕結束 session：
 
-1. localStorage ban · 2. fireEvent ban · 3. staleTime hardcoding · 4. MSW handler 位置
-5. 資料夾命名 · 6. OpenAPI drift · 7. console.log 殘留 · 8. 檔案過大警告
-9. Internal mock assertion · 10. Parametrize nudge · 11. Mock depth limit · 12. Test file size
-13. Orphan route · 14. CSS co-location · 15. MSW factory · 16. Zod schema bridge
-17. CSS var drift · **18. QA gate enforcement**
+代表性規則（Next.js stack）：`console.log` 殘留 · 內聯 `style=` 顏色覆寫 · 手寫
+`components/ui/` 檔案 · QA gate enforcement · 檔案過大警告 · CSS co-location · Zod
+schema bridge · CSS var drift · verification discipline（Rule #23）。
 
-*（Phase 40 計畫加 Rule #19 migration signoff + Rule #20 openapi.yaml contract evidence）*
+> 完整規則清單見 `scripts/hooks/stop-verifier.sh`（23 rules）與 `CLAUDE.md`。
 
 ### 其他 hook 類型
 
 - **PreToolUse guard** — 危險指令攔截（DROP TABLE, rm -rf, dirty deploy 等）
-- **PostToolUse** — 自動格式化（ruff / prettier）、bugfix-log 追加、auto-promote check
+- **PostToolUse** — 自動格式化（Prettier，TS/TSX）、bugfix-log 追加、auto-promote check
 - **SessionStart** — 注入 active epic context（~30 行）
 - **SubagentStop** — 為 write-back 加 timestamp
 - **Webhook** — 任務完成 ping `$AI_CODING_WEBHOOK_URL`（Slack/Discord/n8n）
@@ -605,7 +603,7 @@ E164 autopilot（Phase 41，計畫中）降低 human touch 到每 epic **2 次**
 #### Epic lifecycle（7）
 | # | Command | 簡述 |
 |---|---|---|
-| 1 | `/athena:spec` | OpenAPI-first 規格設計 |
+| 1 | `/athena:spec` | Feature spec 設計（Drizzle + Zod + Server Action/Route Handler + RBAC） |
 | 2 | `/athena:implement` | TDD 紅綠重構 |
 | 3 | `/athena:qa` | QA pipeline（3-phase + 可選 eval） |
 | 4 | `/athena:loop` | Epic 單步推進 |
@@ -638,7 +636,7 @@ E164 autopilot（Phase 41，計畫中）降低 human touch 到每 epic **2 次**
 #### Inspection & Audit（3）
 | # | Command | 簡述 |
 |---|---|---|
-| 18 | `/athena:audit` | OpenAPI ↔ server ↔ client 三源一致性 |
+| 18 | `/athena:audit` | Drizzle schema ↔ Zod ↔ Server Action/Route Handler/UI 漂移 |
 | 19 | `/athena:metrics` | Agent 可靠度統計（從 audit.jsonl） |
 | 20 | `/athena:qa-report` | Bug-to-Epic pipeline（從 bugfix-log.md） |
 
@@ -651,7 +649,7 @@ E164 autopilot（Phase 41，計畫中）降低 human touch 到每 epic **2 次**
 
 分四類觸發時機：
 
-- **PreToolUse**（工具執行前攔截）：`pre-deploy-guard.sh` · `pre-openapi-drift-guard.sh`
+- **PreToolUse**（工具執行前攔截）：`pre-deploy-guard.sh` · `pre-bash-guard.sh`
 - **PostToolUse**（工具執行後）：`post-test-coverage-gate.sh` · `post-bash-failure-inject.sh` · `bugfix-log-append.sh` · `auto-format.sh`（格式化）
 - **Stop**（session 結束前把關）：`stop-verifier.sh`（18 rules，完整清單見 Hub 5）· `stop-notify.sh`
 - **SessionStart / SubagentStop**：`session-start.sh`（context injection）· `subagent-stop-timestamp.sh`

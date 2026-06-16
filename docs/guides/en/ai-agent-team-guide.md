@@ -27,7 +27,7 @@
 
 | Agent | Command | Role |
 |-------|---------|------|
-| `@spec-writer` | `/athena:spec` | OpenAPI-first feature design |
+| `@spec-writer` | `/athena:spec` | Spec-first feature design (shared Zod schema + spec) |
 | `@qa` | `/athena:qa` | Code review + test execution + 80% coverage gate |
 | `@best-practice` | auto-consulted | Architecture decisions, tech choices |
 | `@debugger` | auto-delegated | Error diagnosis, root cause analysis |
@@ -153,9 +153,9 @@ jq 'select(.epic == "E84")' .claude/audit.jsonl       # filter by epic
 jq 'select(.duration_ms > 10000)' .claude/audit.jsonl # slow commands
 ```
 
-### Stop Verifier (8 Rules)
+### Stop Verifier
 
-Auto-checks on every Claude stop: localStorage ban, fireEvent ban, staleTime hardcoding, MSW handler location, folder names, OpenAPI drift, console.log residue, large file warning.
+Auto-checks on every Claude stop for this Next.js stack: no `console.log` residue in committed code, no inline `style=` color overrides (use Tailwind + `dark:` variants), no hand-authored files in `components/ui/` (add via `npx shadcn@latest add`), verification discipline (a `verification_check` audit event must exist before `feat:`/`fix:`/`refactor:` commits), and a large-file warning.
 
 ---
 
@@ -186,5 +186,4 @@ Auto-checks on every Claude stop: localStorage ban, fireEvent ban, staleTime har
 
 - **[Building Domain Expert Agents](custom-agents.md)** — Create custom AI agents tailored to your business domain
 - **[First Epic Walkthrough](first-epic-walkthrough.md)** — Hands-on guide to building a complete domain from scratch
-- **[CI Pipeline Explained](ci-explained.md)** — Understand what happens when you push code or open a PR
 - **[Learning Path](learning-path.md)** — See the full recommended reading order for all guides

@@ -517,5 +517,4 @@ This creates `.claude/agents/inventory.md` and `docs/context/inventory-log.md` a
 
 - **[AI Agent Team Guide](ai-agent-team-guide.md)** — Learn how the built-in agent team works in serial and parallel modes
 - **[First Epic Walkthrough](first-epic-walkthrough.md)** — See the full Epic pipeline in action, including agent commands
-- **[OpenAPI Design Patterns](openapi-patterns.md)** — Understand the API patterns your domain agents will be consulting on
 - **[Learning Path](learning-path.md)** — See the full recommended reading order for all guides

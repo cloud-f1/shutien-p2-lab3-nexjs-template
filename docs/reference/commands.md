@@ -1,8 +1,8 @@
 # Athena 指令系統 | Commands
 
-> 17 個指令涵蓋完整開發生命週期：**設計 → 實作 → 品質 → 發佈 → 部署 → 學習**。
+> 23 個指令涵蓋完整開發生命週期：**設計 → 實作 → 品質 → 發佈 → 部署 → 學習**。
 >
-> 17 commands covering the full lifecycle: **Design → Implement → Quality → Publish → Deploy → Learn**.
+> 23 commands covering the full lifecycle: **Design → Implement → Quality → Publish → Deploy → Learn**.
 
 ---
 
@@ -10,11 +10,12 @@
 
 | 指令 / Command | 說明 / Description |
 |---------------|-------------------|
-| `/athena:spec <feature>` | 設計功能規格（OpenAPI-first）— Design a feature spec |
+| `/athena:spec <feature>` | 設計功能規格（Drizzle schema + Zod + Server Action / Route Handler 簽章 + RBAC，寫入 `docs/epics/`）— Design a feature spec |
 | `/athena:implement` | TDD 循環：spec → 程式碼 → 測試 — TDD cycle: spec → code → tests |
-| `/athena:qa` | 程式碼審查 + 測試執行 — Code review + tests (`--review-only` / `--test-only`) |
-| `/athena:domain <name>` | 一鍵生成新領域模組 — Generate a new domain module (server + client + tests) |
-| `/athena:dba [subcommand]` | 資料庫管理：檢視、lint、診斷、修復 Alembic migration — DBA: inspect, lint, diagnose, fix migrations |
+| `/athena:qa` | 程式碼審查 + 測試執行（`next-app/` pnpm 閘門）— Code review + tests (`--review-only` / `--test-only` / `--eval-only`) |
+| `/athena:design <slug> "<desc>"` | 設計 tokens → React 頁面（TSX + CSS + smoke test）— Design tokens → React page |
+| `/athena:audit` | 漂移稽核：Drizzle schema ↔ Zod ↔ Server Action / Route Handler / UI — Schema/Zod/UI drift check |
+| `/athena:dba [subcommand]` | 資料庫管理：檢視、lint、診斷、修復 drizzle-kit migration — DBA: inspect, lint, diagnose, fix migrations |
 
 ## 發佈與部署指令 | Ship & Deploy
 
@@ -22,7 +23,7 @@
 |---------------|-------------------|
 | `/athena:ship [--draft]` | 快速發佈：審查 → 修復 → commit → PR |
 | `/athena:pr [--draft]` | 完整 PR 管線：merge main → build → test → PR |
-| `/athena:deploy [env]` | 6 道閘門部署至 Zeabur — 6-gate deploy |
+| `/athena:deploy [env]` | 7 道閘門部署至 Zeabur — 7-gate deploy |
 
 ## 自動化管線指令 | Automation
 
@@ -53,9 +54,9 @@ Athena Loop 是自動化開發引擎。每次 `/athena:loop` 只推進一個 epi
 /athena:plan          → 產生 Epic 提案（≤5 個，需人工審核）
 /athena:plan approve  → 批准 Epic → 寫入 EPIC_INDEX.md
 /athena:loop          → 自動逐步推進（每次 1 步）
-  ├─ spec       → @spec-writer 設計 OpenAPI spec
-  ├─ implement  → TDD 循環（worktree 隔離）
-  ├─ qa         → @qa 審查 + 測試 + 覆蓋率門檻
+  ├─ spec       → @spec-writer 設計 feature spec（Drizzle + Zod + Server Action/Route Handler + RBAC）
+  ├─ implement  → TDD 循環（worktree 隔離，@dba 審 migration）
+  ├─ qa         → @reviewer + @qa + @evaluator 審查 + 測試 + 覆蓋率門檻
   ├─ commit     → 建立分支、提交程式碼
   └─ merge      → 推送 + PR + 自動合併
 /athena:batch         → 平行模式：多個 Epic 同時推進（@orchestrator 協調）

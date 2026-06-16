@@ -8,7 +8,7 @@ This template has accumulated 160+ epics (E1–E166 across 42 phases), each a ba
 
 - Testing pyramid × coverage gate × Stop-verifier rules
 - Agent-team architecture × epic pipeline × QA gate
-- Schemathesis contract checks × Alembic migration review × autopilot confidence scoring
+- Playwright e2e checks × Drizzle migration review × autopilot confidence scoring
 
 These aren't noise — they're a case library you'll want to browse when making technical decisions. Delete them and they're gone. Archive them and you can `grep`, copy patterns, and learn why something was designed a certain way.
 

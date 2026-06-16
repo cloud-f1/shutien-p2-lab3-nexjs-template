@@ -12,28 +12,35 @@ The `@saas/admin` module provides a user management admin panel, gated by the `a
 
 ## Features
 
-| Feature | Component | Server Action |
+| Feature | Component | Server Action (`actions/admin.ts`) |
 |---------|-----------|--------------|
-| User Table | `admin-user-table.tsx` | `listUsers()` |
-| Role Selector | `admin-role-selector.tsx` | `updateUserRole()` |
-| Delete User | `admin-delete-user-button.tsx` | `deleteUser()` |
+| User Table | `admin-user-table.tsx` | `getAllUsers()` |
+| Role Selector | `admin-role-selector.tsx` | `setUserRole(userId, role)` |
+| Delete User | `admin-delete-user-button.tsx` | `deleteUser(userId)` |
 
 ## RBAC Gate
 
 The admin panel is protected at three levels:
 
-1. **Middleware** — non-authenticated users are redirected to `/login`
-2. **Page level** — `requireRole('admin')` redirects non-admin users to 404
-3. **Server Action level** — each action calls `requireRole('admin')` independently
+1. **Edge middleware** (`proxy.ts`) — non-authenticated users are redirected to `/login`
+2. **Page level** — the page calls `requireAdmin()`, which re-reads the role from the DB and redirects non-admins to `/dashboard`
+3. **Server Action level** — each action in `actions/admin.ts` calls `requireAdmin()` independently
 
-This defense-in-depth ensures no admin operation can be performed without the correct role, even if the page-level check is bypassed.
+This defense-in-depth ensures no admin operation can be performed without the correct role, even if the page-level check is bypassed. Because the guard re-reads the role from the database (not the JWT snapshot), a demotion takes effect immediately.
 
-## API Demo
+## Server Actions
+
+User management runs entirely through Server Actions in `actions/admin.ts` (`getAllUsers`,
+`setUserRole`, `deleteUser`) — not HTTP endpoints — so there is nothing cross-origin to call.
+Each action re-reads the caller's role from the DB via `requireAdmin()`. See the
+[API Reference](/api/server-actions#admin-actions) for signatures.
+
+## Live App
 
 <ApiPlayground
-  defaultEndpoint="/api/demo/admin/users"
+  defaultEndpoint="/api/health"
   defaultMethod="GET"
   liveAppPath="/dashboard/admin"
 />
 
-> Note: The demo endpoint requires an admin session. Sign in at `/login` first.
+> Note: The admin panel requires an admin session. Sign in as `admin@example.com` first.

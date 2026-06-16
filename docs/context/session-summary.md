@@ -44,3 +44,13 @@ Gates: scripts/smoke.sh [--vrt] · scripts/pre-merge-check.sh [--e2e]
 Skills: nextjs-saas-patterns (stack gotchas) · athena-loop-speedups (orchestration)
 Constraints: agent can't push to main / merge PRs / push tags — user does those; user-facing copy in 繁體中文
 ```
+<!-- last activity:  at 2026-06-16T04:46:14Z -->
+<!-- last activity:  at 2026-06-16T04:47:08Z -->
+<!-- last activity:  at 2026-06-16T04:47:25Z -->
+<!-- last activity:  at 2026-06-16T04:49:25Z -->
+<!-- last activity:  at 2026-06-16T04:52:37Z -->
+<!-- last activity:  at 2026-06-16T04:53:49Z -->
+<!-- last activity:  at 2026-06-16T04:55:38Z -->
+<!-- last activity:  at 2026-06-16T04:59:24Z -->
+<!-- last activity:  at 2026-06-16T05:00:34Z -->
+<!-- last activity:  at 2026-06-16T05:03:07Z -->

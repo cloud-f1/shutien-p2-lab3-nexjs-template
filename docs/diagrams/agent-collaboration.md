@@ -78,7 +78,7 @@ graph LR
 
 | Agent | 觸發方式 | 職責 | 寫入目標 |
 |-------|----------|------|----------|
-| @spec-writer | `/athena:spec` | 設計功能規格與 OpenAPI 契約 | `docs/epics/e{n}-*.md`、`spec-log.md` |
+| @spec-writer | `/athena:spec` | 設計功能規格（Server Actions / Route Handlers + Zod） | `docs/epics/e{n}-*.md`、`spec-log.md` |
 | @qa | `/athena:qa`、自動 | 安全審查 + 測試套件 + 80% 閘門 | `review-log.md`、`test-status.md` |
 | @best-practice | 自動（架構問題時） | 架構決策與取捨分析 | `decisions.md` |
 | @debugger | 自動（測試失敗時） | 錯誤排查與修復 | `debug-log.md` |

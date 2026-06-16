@@ -1,20 +1,25 @@
 # Working Without Claude Code
 
-> This guide covers the full development workflow using only `make` commands and standard CLI tools. Claude Code is a **power-up**, not a requirement.
+> This guide covers the full development workflow using only `pnpm` and standard CLI tools. Claude Code is a **power-up**, not a requirement.
 
 ---
 
 ## Quick Reference
 
+All `pnpm` commands run from `next-app/`.
+
 | Task | Command |
 |------|---------|
-| Start everything | `make go` |
+| Start the full local stack | `docker compose up --build -d` |
+| Start the dev server | `pnpm dev` |
 | Create a domain | `make new-domain NAME=notes` |
-| Run all tests | `make test` |
-| Run server tests | `make test-server` |
-| Run client tests | `make test-client` |
-| Check environment | `make doctor` |
-| Interactive tutorial | `make tutorial` |
+| Run unit tests | `pnpm test` |
+| Run e2e tests | `pnpm test:e2e` |
+| Type-check | `pnpm typecheck` |
+| Lint | `pnpm lint` |
+| Generate a DB migration | `pnpm db:generate` |
+| Apply migrations | `pnpm db:migrate` |
+| Seed demo accounts | `pnpm db:seed` |
 
 ---
 
@@ -25,160 +30,200 @@
 git clone <your-repo-url>
 cd ai-coding-template
 
-# Start everything (installs deps, starts DB, runs migrations, launches dev servers)
-make go
+# Start the full local stack (Postgres + Next.js app + mailpit)
+docker compose up --build -d
 ```
 
-That's it. `make go` handles:
-- Checking prerequisites (Node, pnpm, Python, uv, Docker)
-- Generating `.env` with random secrets
-- Installing Python and Node dependencies
-- Starting PostgreSQL via Docker
-- Running database migrations
-- Generating TypeScript types from the OpenAPI spec
-- Starting both the API server and the client dev server
+That's it. `docker compose up --build -d` brings up:
+- PostgreSQL
+- The Next.js app on http://localhost:3000
+- Mailpit (SMTP capture) on http://localhost:8025
+
+Then seed the demo accounts (run from `next-app/`):
+
+```bash
+cd next-app
+pnpm db:migrate   # apply Drizzle migrations
+pnpm db:seed      # create the demo logins below
+```
+
+Demo logins: `admin@example.com / Admin123!` · `editor@example.com / Editor123!` · `viewer@example.com / Viewer123!`.
+
+> Prefer running the app directly? From `next-app/`: `pnpm install` then `pnpm dev` (point `DATABASE_URL` at any Postgres instance — the Docker one works too).
 
 ## 2. Creating a New Domain
 
-A "domain" is a self-contained feature module with its own model, endpoints, schemas, and tests.
+A "domain" is a self-contained feature module with its own table, validation schema, and Server Actions.
 
 ```bash
-# Create a "notes" domain with default fields (name + description)
+# Create a "notes" domain with a default field (title)
 make new-domain NAME=notes
 ```
 
 This generates:
-- `server/app/domains/notes/models.py` — SQLAlchemy model
-- `server/app/domains/notes/schemas.py` — Pydantic request/response schemas
-- `server/app/domains/notes/endpoints.py` — CRUD endpoints (list, create, read, update, delete)
-- `server/app/domains/notes/__init__.py` — Domain registration (auto-discovered)
-- An Alembic migration for the new database table
+- `next-app/lib/schema/notes.ts` — a Drizzle table (exported from the `lib/schema/index.ts` barrel)
+- `next-app/lib/validations/note.ts` — shared Zod request/response schemas (the contract)
+- `next-app/actions/notes.ts` — Server Actions (`"use server"`) for create / update / delete, and/or a Route Handler at `next-app/app/api/notes/route.ts`
+- A Drizzle SQL migration for the new table (under `next-app/drizzle/migrations/`)
 
-The domain is **auto-registered** — no need to edit `main.py` or any router configuration.
+There's **no central registration**. The App Router is file-system based — the folder under `app/` *is* the route, and Server Actions are imported where they're used. No `main.py`, no router config.
 
 ## 3. Customising Your Domain
 
 ### Adding Fields
 
-Edit `server/app/domains/notes/models.py`:
+Edit the Drizzle table in `next-app/lib/schema/notes.ts`:
 
-```python
-class Note(Base, UUIDMixin, TimestampMixin):
-    __tablename__ = "notes"
+```ts
+import { boolean, index, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
 
-    name: Mapped[str] = mapped_column(String(200))
-    description: Mapped[str | None] = mapped_column(Text, default=None)
-    # Add your fields:
-    priority: Mapped[int] = mapped_column(Integer, default=0)
-    is_pinned: Mapped[bool] = mapped_column(Boolean, default=False)
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        GUID(), ForeignKey("user.id", ondelete="CASCADE"), index=True
-    )
+import { usersTable } from "./auth"
+
+export const notesTable = pgTable(
+  "notes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    title: text("title").notNull(),
+    description: text("description"),
+    // Add your fields:
+    priority: integer("priority").notNull().default(0),
+    isPinned: boolean("is_pinned").notNull().default(false),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [index("notes_user_id_idx").on(t.userId)],
+)
+
+// Types come from Drizzle — no codegen step.
+export type Note = typeof notesTable.$inferSelect
+export type NewNote = typeof notesTable.$inferInsert
 ```
 
-Then update the schemas in `schemas.py` and generate a new migration:
+Then update the Zod schema in `lib/validations/note.ts`, and generate + apply a migration (run from `next-app/`):
 
 ```bash
-cd server
-uv run alembic revision --autogenerate -m "add fields to notes"
-uv run alembic upgrade head
+cd next-app
+pnpm db:generate   # writes a SQL migration to drizzle/migrations/
+pnpm db:migrate    # applies it to the database
 ```
 
-### Updating the OpenAPI Spec
+### Update the Shared Zod Validation (the contract)
 
-For a complete Spec-Driven Development (SDD) workflow, edit `docs/openapi.yaml` **first**, then update the server code to match. This keeps the API contract as the single source of truth.
+There is no OpenAPI spec and no type-gen. The single source of truth is the shared Zod schema in `next-app/lib/validations/note.ts` — it's consumed by both the Server Actions and the client forms. Types come from `z.infer<typeof ...>` and Drizzle's `$inferSelect` / `$inferInsert`.
+
+Edit the Zod schema **first**, then update the Server Action and the form to match:
+
+```ts
+// next-app/lib/validations/note.ts
+import { z } from "zod"
+
+export const createNoteSchema = z.object({
+  title: z.string().min(1, "Title is required").max(200),
+  description: z.string().optional(),
+  priority: z.number().int().default(0),
+})
+
+export type CreateNoteInput = z.infer<typeof createNoteSchema>
+```
 
 ## 4. Testing
 
+All commands run from `next-app/`.
+
 ```bash
-# Run all tests (server + client)
-make test
+# Run all unit tests (Vitest)
+pnpm test
 
-# Run just server tests with coverage
-make test-server
-
-# Run just client tests with coverage
-make test-client
+# Run unit tests with coverage
+pnpm test:coverage
 
 # Run a specific test file
-cd server && uv run pytest tests/integration/test_notes.py -v
+pnpm test actions/notes.test.ts
 
-# Lint everything
-make lint
+# Run e2e tests (Playwright — seed the DB first)
+pnpm db:seed
+pnpm test:e2e
+
+# Lint + type-check
+pnpm lint
+pnpm typecheck
 ```
 
-### Writing Server Tests
+### Writing Unit Tests (Vitest)
 
-Create `server/tests/integration/test_notes.py`:
+Create `next-app/actions/notes.test.ts` (or `lib/validations/note.test.ts`):
 
-```python
-import pytest
-from httpx import AsyncClient
+```ts
+import { describe, it, expect } from "vitest"
 
+import { createNoteSchema } from "@/lib/validations/note"
 
-async def test_create_note(auth_client: AsyncClient):
-    res = await auth_client.post(
-        "/api/v1/notes/",
-        json={"name": "My Note", "description": "Hello world"},
-    )
-    assert res.status_code == 201
-    data = res.json()
-    assert data["name"] == "My Note"
+describe("createNoteSchema", () => {
+  it("accepts a valid note", () => {
+    const result = createNoteSchema.safeParse({ title: "My Note", description: "Hello world" })
+    expect(result.success).toBe(true)
+  })
 
-
-async def test_list_notes(auth_client: AsyncClient):
-    res = await auth_client.get("/api/v1/notes/")
-    assert res.status_code == 200
-    assert "items" in res.json()
+  it("rejects an empty title", () => {
+    const result = createNoteSchema.safeParse({ title: "" })
+    expect(result.success).toBe(false)
+  })
+})
 ```
+
+### Writing e2e Tests (Playwright)
+
+Create `next-app/e2e/notes.spec.ts` and run it with `pnpm test:e2e` (after `pnpm db:seed`). Sign in with one of the demo logins — e.g. `editor@example.com / Editor123!` — to exercise a write path.
 
 ## 5. Development Workflow
 
 ### Daily Development
 
 ```bash
-# Start the dev environment
-make go
+# Start the dev server (from next-app/)
+cd next-app && pnpm dev
 
 # In another terminal, run tests in watch mode
-cd client && pnpm test
+cd next-app && pnpm test:watch
 ```
 
 ### Adding a New Endpoint
 
-1. (Optional) Edit `docs/openapi.yaml` to define the new endpoint
-2. Add the route in your domain's `endpoints.py`
-3. Update schemas if needed
+1. Update the shared Zod schema in `lib/validations/note.ts` (the contract)
+2. Add or extend the Server Action in `actions/notes.ts` (or the Route Handler in `app/api/notes/route.ts`)
+3. Update the Drizzle table in `lib/schema/notes.ts` if the data shape changed
 4. Write tests
-5. Run `make test` to verify
+5. Run `pnpm test` (and `pnpm typecheck`) to verify
 
 ### Database Migrations
 
+All commands run from `next-app/`.
+
 ```bash
-# Generate a migration after model changes
-cd server && uv run alembic revision --autogenerate -m "describe your change"
+# Generate a migration after editing a Drizzle table
+pnpm db:generate   # writes SQL to drizzle/migrations/
 
 # Apply migrations
-cd server && uv run alembic upgrade head
-
-# Check migration status
-cd server && uv run alembic current
+pnpm db:migrate
 ```
+
+> Drizzle has no `alembic current` equivalent — to inspect what's been generated, look in `next-app/drizzle/migrations/` (the SQL files and the `meta/_journal.json`).
 
 ## 6. Deployment
 
 ```bash
-# Run the diagnostics check first
-make doctor
+# Type-check + lint + tests first (from next-app/)
+cd next-app
+pnpm typecheck && pnpm lint && pnpm test
 
-# Run the full test suite
-make test
-
-# Build the client
-cd client && pnpm build
+# Production build
+pnpm build
 ```
 
-The project is configured for Zeabur deployment. Each service (server + client) has its own `zbpack.json` configuration.
+The project is configured for Zeabur deployment — `next-app/` is a single service with its own `zbpack.json`.
 
 ## 7. What Claude Code Adds
 
@@ -187,8 +232,8 @@ Claude Code is not required, but it offers these power-ups:
 | Feature | Without Claude Code | With Claude Code |
 |---------|-------------------|-----------------|
 | Create domain | `make new-domain NAME=x` | `/athena:domain notes --fields "title:string,body:text"` |
-| Run tests | `make test` | `/athena:qa` (reviews + tests + coverage gate) |
-| Deploy | Manual steps | `/athena:deploy` (6-gate protocol) |
+| Run tests | `pnpm test` | `/athena:qa` (reviews + tests + coverage gate) |
+| Deploy | Manual steps | `/athena:deploy` (7-gate protocol) |
 | Code review | Manual | `/athena:qa --review-only` |
 | Strategic planning | Manual | `/athena:plan` |
 | Full dev cycle | Manual steps | `/athena:loop` (advances epic pipeline) |
@@ -200,17 +245,15 @@ The AI agents automate the workflow but never replace understanding. Start witho
 ## Troubleshooting
 
 ```bash
-# Full environment diagnostic
-make doctor
+# Reset the database (drops the Postgres volume, then re-applies + reseeds)
+docker compose down -v
+docker compose up -d
+cd next-app
+pnpm db:migrate   # re-apply Drizzle migrations
+pnpm db:seed      # re-create the demo accounts
 
-# Check prerequisites only
-make check-prereqs
-
-# Reset the database
-make db-stop && make db && cd server && uv run alembic upgrade head
-
-# Regenerate TypeScript types
-cd client && pnpm generate:types
+# Type errors? Run the type-checker from next-app/
+pnpm typecheck
 ```
 
 ---
@@ -218,6 +261,4 @@ cd client && pnpm generate:types
 ## Next Steps
 
 - **[First Epic Walkthrough](first-epic-walkthrough.md)** — Build a complete domain step by step (works with or without Claude Code)
-- **[CI Pipeline Explained](ci-explained.md)** — Understand the automated checks that run on every push
-- **[OpenAPI Design Patterns](openapi-patterns.md)** — Learn the 4 API patterns used in this project
 - **[Learning Path](learning-path.md)** — See the full recommended reading order for all guides

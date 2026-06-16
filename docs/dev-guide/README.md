@@ -3,6 +3,9 @@
 > Step-by-step guides for working with this project.
 > For architecture reference, see [techstack/](../techstack/README.md).
 
+This is a single **Next.js 16** app under `next-app/` (App Router + React 19 + TypeScript +
+Tailwind v4 + shadcn/ui + Drizzle/Postgres + Auth.js v5). There is no separate API server.
+
 ## Contents
 
 | Guide | File |
@@ -17,8 +20,5 @@
 
 See [techstack/](../techstack/README.md) for:
 - [Architecture](../techstack/architecture.md) — system diagram, project structure
-- [Server](../techstack/server.md) — FastAPI, DB, security
-- [Client](../techstack/client.md) — React, cache tiers, auth flow
-- [OpenAPI + Workflow](../techstack/openapi-workflow.md) — SDD/TDD cycle
-- [Deployment Config](../techstack/deployment.md) — env vars, Zeabur
-- [Agents & Memory](../techstack/agents-memory.md) — 6-agent team, memory system
+- [Deployment Config](../techstack/deployment.md) — env vars, Zeabur, GCP
+- [Agents & Memory](../techstack/agents-memory.md) — agent team, memory system

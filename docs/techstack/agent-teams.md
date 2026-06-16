@@ -6,12 +6,12 @@
 
 | Agent | Model | Trigger | Designated Doc | Role |
 |---|---|---|---|---|
-| `@spec-writer` | opus | `/athena:spec` | spec-log.md | OpenAPI-first feature spec |
+| `@spec-writer` | opus | `/athena:spec` | spec-log.md | Feature spec (Server Actions / Route Handlers + Zod) |
 | `@reviewer` | sonnet | `/athena:qa --review-only` | review-log.md | Read-only code review + security audit |
 | `@qa` | sonnet | `/athena:qa --test-only`, auto | test-status.md | Test execution + 80% coverage gate |
 | `@best-practice` | opus | Architecture questions | decisions.md + TECHSTACK.md | Deep architecture advice |
 | `@debugger` | sonnet | Auto on errors | debug-log.md | Root cause analysis |
-| `@deployer` | sonnet | `/athena:deploy` | deploy-log.md | 6-gate Zeabur deploy |
+| `@deployer` | sonnet | `/athena:deploy` | deploy-log.md | Multi-gate Zeabur / Cloud Run deploy |
 | `@memory-curator` | opus | `/athena:promote` | template-memory/ | Cross-project wisdom |
 | `@strategist` | opus | `/athena:plan` | strategy-log.md | Strategic planning, epic proposals |
 | `@orchestrator` | sonnet | `/athena:batch` | epic-progress.md | Parallel epic coordination, dependency waves |
@@ -21,12 +21,13 @@
 ### @spec-writer
 - Reads spec-log before starting — knows what's already specced
 - Spawns parallel research (codebase scan + @best-practice)
-- Edits openapi.yaml -> lint -> generate types -> create spec doc
-- Write-back: feature name, paths added, RED tests pending
+- Defines the API surface (Server Actions / Route Handlers + shared Zod schemas)
+  and any Drizzle schema change -> create spec doc
+- Write-back: feature name, actions/routes added, RED tests pending
 
 ### @qa (merged from @code-reviewer + @test-runner)
 - **Phase 1 — Review:** git diff, RED/YELLOW/GREEN security checks
-- **Phase 2 — Test:** openapi lint -> pytest >= 80% -> vitest >= 80% -> tsc
+- **Phase 2 — Test:** pnpm typecheck -> pnpm lint -> vitest >= 80% -> playwright e2e
 - Same issue twice -> becomes a lint rule or test
 - Never lowers thresholds, never comments out tests
 
@@ -43,7 +44,7 @@
 
 ### @deployer
 - Reads deploy-log for previous migration version and production state
-- All 6 gates must pass — exit 2 on any failure
+- All gates must pass (typecheck, lint, vitest, e2e, git clean, branch) — exit 2 on any failure
 - Monitors pipeline, provides rollback target
 
 ### @memory-curator

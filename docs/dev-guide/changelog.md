@@ -1,8 +1,34 @@
 # Changelog
 
-All notable changes to AI-Coding-Template, organized by version.
+All notable changes to **AI App Template**, organized by version.
 
-## 1.0.0 — 2026-03-15
+> **Stack note:** The current app is a single **Next.js 16** application under `next-app/`
+> (App Router + React 19 + TypeScript + Tailwind v4 + shadcn/ui + Drizzle/Postgres + Auth.js v5).
+> The original FastAPI (`server/`) + Vite (`client/`) two-service stack was **fully migrated to
+> Next.js** (Phases 53–57) and removed. Entries below the `2.0.0` section are the pre-migration
+> history, retained for the record — the technologies they mention (FastAPI, SQLAlchemy/Alembic,
+> pytest, Pydantic, Vite, MSW, OpenAPI) no longer ship.
+
+## 2.0.0 — Next.js migration (Phases 53–57)
+
+The Vite SPA + FastAPI stack was fully migrated to a single Next.js app and hardened. Shipped to
+`main` via PRs #1–#8.
+
+### Features
+
+- **Phase 53** — shared Zod validations, 3-tier RBAC, account settings, admin panel, Playwright
+  e2e, Vitest unit suite.
+- **Phase 54** — shadcn blocks UI (login-01 / signup-01 / sidebar-01 / dashboard-01) + Dockerized
+  local run.
+- **Phase 55** — 3-tier RBAC (admin/editor/viewer) + demo seed; consolidated `docker-compose`
+  (+ Mailpit); `make local` worktree-parallel athena loop.
+- **Phase 56** — shadcn blue preset + full 繁體中文 i18n + VitePress dev-docs + modular registry
+  (`npx shadcn@latest add @saas/<module>`).
+- **Phase 57** — audit-finding remediation + task-tiered model dispatch.
+
+---
+
+## 1.0.0 — 2026-03-15 (pre-migration: FastAPI + Vite)
 
 ### Bug Fixes
 

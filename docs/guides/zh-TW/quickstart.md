@@ -14,35 +14,32 @@ make go
 
 `make go` 會自動完成以下所有步驟：
 
-1. 檢查前置工具（Node >= 22、pnpm、Python >= 3.12、uv、Docker）
-2. 安裝所有依賴（pnpm install + uv sync）
-3. 產生 `server/.env`（含自動產生的 JWT 密鑰）
+1. 檢查前置工具（Node >= 22、pnpm、Docker）
+2. 安裝所有依賴（pnpm install）
+3. 產生 `next-app/.env`（含自動產生的 JWT/Auth.js 密鑰）
 4. 啟動 PostgreSQL + Mailpit（Docker）
-5. 執行資料庫遷移
-6. 產生 TypeScript 類型
-7. 啟動前後端開發伺服器
+5. 執行資料庫遷移（Drizzle）
+6. 建立 demo 帳號（seed）
+7. 啟動 Next.js 開發伺服器
 
 完成後：
 
-- **入門導覽**：`http://localhost:5173/getting-started`（互動式導覽 — 從這裡開始！）
-- **前端**：`http://localhost:5173`（Vite dev server）
-- **後端 API**：`http://localhost:8080/docs`（Swagger UI）
+- **應用程式**：`http://localhost:3000`（Next.js dev server — 打開它，逛逛 landing page 與 dashboard）
 - **Mailpit**：`http://localhost:8025`（開發用郵件 UI）
 
-> **第一次使用？** 打開 `/getting-started` 跟著互動導覽認識模板功能，或執行 `make tutorial` 用 5 分鐘完成第一個 endpoint 練習。
+> **第一次使用？** 打開 `http://localhost:3000`，逛逛 landing page 與 dashboard，感受一下模板的功能。
 
-### 純 Docker 起步（不需安裝 Node/Python）
+### 純 Docker 起步（不需安裝 Node）
 
-如果你只有 Docker，可以用一個指令啟動整個開發環境：
+如果你只有 Docker，可以用一個指令啟動整個開發環境（Postgres + 應用程式 + mailpit）：
 
 ```bash
-docker compose --profile dev up
+docker compose up --build -d
 ```
 
-這會啟動 PostgreSQL + 後端（含自動遷移）+ 前端（含 hot-reload），完全不需安裝 Node 或 Python。
+這會啟動 PostgreSQL + Next.js 應用程式（含自動遷移與 hot-reload）+ Mailpit，完全不需在本機安裝 Node。
 
-- **前端**：`http://localhost:5173`（Vite dev server，hot-reload）
-- **後端 API**：`http://localhost:8080/docs`
+- **應用程式**：`http://localhost:3000`（Next.js，hot-reload）
 - **Mailpit**：`http://localhost:8025`
 
 > **macOS 效能提示**：Docker volume mount 在 macOS 上可能較慢，如果感覺 hot-reload 延遲，可考慮使用 [mutagen](https://mutagen.io/) 加速。
@@ -68,11 +65,9 @@ docker compose --profile dev up
 
 | 工具 | 最低版本 | 用途 |
 |------|----------|------|
-| Node.js | >= 22 | 前端建置與 CLI 工具 |
-| pnpm | >= 8 | Node 套件管理（workspace monorepo） |
-| Python | >= 3.12 | 後端伺服器 |
-| uv | 最新版 | Python 套件管理（取代 pip） |
-| Docker | 最新版 | 資料庫（PostgreSQL 容器） |
+| Node.js | >= 22 | Next.js 建置與 CLI 工具 |
+| pnpm | >= 8 | Node 套件管理 |
+| Docker | 最新版 | 資料庫（PostgreSQL 容器）+ 完整本機環境 |
 | git | >= 2 | 版本控制 |
 
 > 執行 `make check-prereqs` 可一鍵驗證所有工具版本。
@@ -89,14 +84,6 @@ nvm use 22
 
 # pnpm
 npm install -g pnpm
-
-# Python（建議透過 pyenv 管理版本）
-brew install pyenv
-pyenv install 3.12
-pyenv global 3.12
-
-# uv — Python 套件管理工具
-curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Docker
 brew install --cask docker
@@ -116,14 +103,6 @@ nvm use 22
 # pnpm
 npm install -g pnpm
 
-# Python（透過 pyenv）
-curl https://pyenv.run | bash
-pyenv install 3.12
-pyenv global 3.12
-
-# uv
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
 # Docker
 # 參考 https://docs.docker.com/engine/install/
 
@@ -136,8 +115,6 @@ sudo apt-get install git
 ```bash
 node --version    # 應顯示 v22.x.x 以上
 pnpm --version    # 應顯示 8.x.x 以上
-python --version  # 應顯示 3.12.x 以上
-uv --version      # 應顯示版本號
 docker --version  # 應顯示版本號
 git --version     # 應顯示 2.x.x 以上
 ```
@@ -146,18 +123,15 @@ git --version     # 應顯示 2.x.x 以上
 
 ### Step 1：安裝依賴
 
-本專案使用 **pnpm workspace monorepo** 結構，根目錄的 `pnpm-workspace.yaml` 管理 `client` 和 `dev-docs` 兩個子專案。
+應用程式位於 `next-app/`，使用 pnpm 安裝它的 Node 依賴。
 
 ```bash
-# 安裝 Node 依賴（根目錄執行，會一併安裝所有 workspace 子專案）
-pnpm install
-
-# 安裝 Python 依賴（進入 server 目錄）
-cd server && uv sync && cd ..
+# 安裝 Node 依賴（在 next-app/ 執行）
+cd next-app && pnpm install && cd ..
 ```
 
-> `uv sync` 會根據 `pyproject.toml` 安裝所有依賴（含 dev 依賴），
-> 並自動建立虛擬環境在 `server/.venv/`。
+> `pnpm install` 會讀取 `next-app/package.json` 安裝所有依賴（含 dev 依賴），
+> 安裝到 `next-app/node_modules/`。
 
 ---
 
@@ -181,8 +155,8 @@ docker compose up -d db mailpit
 make ensure-env
 
 # 或手動複製：
-cp server/.env.example server/.env
-# 然後編輯 SECRET_KEY 和 REFRESH_SECRET_KEY（建議用 openssl rand -hex 32 產生）
+cp next-app/.env.example next-app/.env
+# 然後編輯 AUTH_SECRET（建議用 openssl rand -hex 32 產生）
 ```
 
 ---
@@ -191,22 +165,30 @@ cp server/.env.example server/.env
 
 ```bash
 make migrate
+
+# 或手動，在 next-app/ 執行：
+cd next-app && pnpm db:generate && pnpm db:migrate && cd ..
 ```
 
-> **Seed 帳號**：遷移完成後，系統內建兩組測試帳號：
->
-> | 帳號 | 密碼 | 角色 |
-> |------|------|------|
-> | `admin@test.com` | `Admin#Pass1` | 超級管理員 |
-> | `user@test.com` | `User#Pass1` | 一般使用者 |
+> `pnpm db:generate` 會從 schema 產生 Drizzle migration 檔案，
+> `pnpm db:migrate` 則把它們套用到 PostgreSQL。
 
 ---
 
-### Step 4：產生 TypeScript 類型
+### Step 4：建立 demo 帳號（seed）
 
 ```bash
-make generate-types
+# 在 next-app/ 執行：
+cd next-app && pnpm db:seed && cd ..
 ```
+
+> **Seed 帳號**：seed 完成後，系統內建三組測試帳號（3 層 RBAC）：
+>
+> | 帳號 | 密碼 | 角色 |
+> |------|------|------|
+> | `admin@example.com` | `Admin123!` | Admin |
+> | `editor@example.com` | `Editor123!` | Editor |
+> | `viewer@example.com` | `Viewer123!` | Viewer |
 
 ---
 
@@ -214,26 +196,19 @@ make generate-types
 
 ```bash
 make dev
+
+# 或直接，在 next-app/ 執行：
+cd next-app && pnpm dev
 ```
 
-或分別啟動：
-
-```bash
-# 終端 1 — 後端
-cd server && uv run uvicorn app.main:app --reload
-
-# 終端 2 — 前端
-cd client && pnpm dev
-```
+這會在 `http://localhost:3000` 提供整個應用程式 — UI、Server Actions 與 Route Handlers（`app/api`）。
 
 ### 驗證
 
 | 服務 | URL | 預期結果 |
 |------|-----|----------|
-| 前端 | `http://localhost:5173` | Landing Page |
-| 後端 API | `http://localhost:8080/health` | `{"status": "healthy"}` |
-| Swagger UI | `http://localhost:8080/docs` | API 文件 |
-| Docker 部署 | `http://localhost:3000` | 前端（nginx） |
+| 應用程式 | `http://localhost:3000` | Landing Page + Dashboard + API routes |
+| Mailpit | `http://localhost:8025` | 開發用郵件 UI |
 
 ---
 
@@ -241,18 +216,25 @@ cd client && pnpm dev
 
 ```bash
 make test
+
+# 或直接，在 next-app/ 執行：
+cd next-app && pnpm test
 ```
 
-> **覆蓋率門檻**：本專案要求前後端測試覆蓋率 **>= 80%**，低於此門檻會阻擋部署。
+> **覆蓋率門檻**：本專案要求測試覆蓋率 **>= 80%**，低於此門檻會阻擋部署。
 >
 > 查看覆蓋率報告：
 >
 > ```bash
-> # 後端
-> cd server && uv run pytest --cov=app --cov-report=term-missing && cd ..
+> # 在 next-app/ 執行：
+> cd next-app && pnpm test:coverage && cd ..
+> ```
 >
-> # 前端
-> cd client && pnpm test:coverage && cd ..
+> **端對端測試**用 Playwright（請先 seed 資料庫）：
+>
+> ```bash
+> # 在 next-app/ 執行：
+> cd next-app && pnpm db:seed && pnpm test:e2e && cd ..
 > ```
 
 ---
@@ -286,25 +268,12 @@ psql -l | grep saas_dev
 **解決方案**：
 
 ```bash
-# 清除快取後重新安裝
+# 清除快取後重新安裝（在 next-app/ 執行）
+cd next-app
 pnpm store prune
-rm -rf node_modules client/node_modules dev-docs/node_modules
+rm -rf node_modules
 pnpm install
-```
-
-### Python 版本不符
-
-**症狀**：`pyproject.toml` 要求 `>=3.12` 但系統版本較舊
-
-**解決方案**：
-
-```bash
-# 使用 pyenv 安裝正確版本
-pyenv install 3.12
-pyenv local 3.12
-
-# 確認 uv 使用正確的 Python
-uv python list
+cd ..
 ```
 
 ### Port 衝突
@@ -315,8 +284,8 @@ uv python list
 
 ```bash
 # 找出佔用 port 的程序
-lsof -i :8000  # 後端
-lsof -i :5173  # 前端
+lsof -i :3000  # 應用程式
+lsof -i :8025  # Mailpit
 lsof -i :5432  # PostgreSQL
 
 # 結束佔用的程序
@@ -326,11 +295,10 @@ kill -9 <PID>
 或修改啟動 port：
 
 ```bash
-# 後端改用其他 port
-cd server && uv run uvicorn app.main:app --reload --port 8001
-
-# 前端改用其他 port
-cd client && pnpm dev --port 3000
+# 應用程式改用其他 port（在 next-app/ 執行）
+cd next-app && pnpm dev -- -p 3001
+# 或：
+PORT=3001 pnpm dev
 ```
 
 ### Docker Compose 啟動問題
@@ -356,9 +324,8 @@ docker compose up -d db
 恭喜你已成功啟動開發環境！接下來推薦的步驟：
 
 1. **執行 `make verify`** — 檢查所有模板佔位符是否已自訂完成
-2. **打開 [`/getting-started`](http://localhost:5173/getting-started)** — 互動式應用內導覽，認識模板功能
-3. **執行 `make tutorial`** — 5 分鐘完成第一個 endpoint
-4. **[第一個 Epic 實戰](first-epic-walkthrough.md)** — 手把手教你建立自訂 domain，完整走過 epic pipeline
-5. **[TECHSTACK.md](../../../TECHSTACK.md)** — 深入了解技術架構
-6. **[EPIC_INDEX.md](../../epics/EPIC_INDEX.md)** — 查看所有 Epic 的開發進度
-7. **[學習路徑](learning-path.md)** — 查看所有指南的推薦閱讀順序
+2. **打開 [`http://localhost:3000`](http://localhost:3000)** — 逛逛 landing page 與 dashboard
+3. **[第一個 Epic 實戰](first-epic-walkthrough.md)** — 手把手教你建立自訂 domain，完整走過 epic pipeline
+4. **[TECHSTACK.md](../../../TECHSTACK.md)** — 深入了解技術架構
+5. **[EPIC_INDEX.md](../../epics/EPIC_INDEX.md)** — 查看所有 Epic 的開發進度
+6. **[學習路徑](learning-path.md)** — 查看所有指南的推薦閱讀順序

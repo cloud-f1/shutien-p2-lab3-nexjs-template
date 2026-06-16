@@ -1,20 +1,25 @@
 # 不使用 Claude Code 的開發工作流程
 
-> 本指南介紹如何僅使用 `make` 指令和標準 CLI 工具進行完整的開發工作流程。Claude Code 是**加速器**，不是必需品。
+> 本指南介紹如何僅使用 `pnpm` 和標準 CLI 工具進行完整的開發工作流程。Claude Code 是**加速器**，不是必需品。
 
 ---
 
 ## 快速參考
 
+所有 `pnpm` 指令都在 `next-app/` 目錄下執行。
+
 | 任務 | 指令 |
 |------|------|
-| 啟動所有服務 | `make go` |
+| 啟動完整本機環境 | `docker compose up --build -d` |
+| 啟動開發伺服器 | `pnpm dev` |
 | 建立新 Domain | `make new-domain NAME=notes` |
-| 執行所有測試 | `make test` |
-| 執行後端測試 | `make test-server` |
-| 執行前端測試 | `make test-client` |
-| 檢查環境狀態 | `make doctor` |
-| 互動式教學 | `make tutorial` |
+| 執行單元測試 | `pnpm test` |
+| 執行 e2e 測試 | `pnpm test:e2e` |
+| 型別檢查 | `pnpm typecheck` |
+| 程式碼風格檢查 | `pnpm lint` |
+| 產生資料庫 migration | `pnpm db:generate` |
+| 套用 migration | `pnpm db:migrate` |
+| 建立示範帳號 | `pnpm db:seed` |
 
 ---
 
@@ -25,160 +30,200 @@
 git clone <your-repo-url>
 cd ai-coding-template
 
-# 一鍵啟動（安裝相依套件、啟動資料庫、執行 migration、啟動開發伺服器）
-make go
+# 啟動完整本機環境（Postgres + Next.js app + mailpit）
+docker compose up --build -d
 ```
 
-`make go` 會自動處理：
-- 檢查前置工具（Node、pnpm、Python、uv、Docker）
-- 產生含隨機密鑰的 `.env` 檔案
-- 安裝 Python 和 Node 相依套件
-- 透過 Docker 啟動 PostgreSQL
-- 執行資料庫 migration
-- 從 OpenAPI 規格產生 TypeScript 型別
-- 啟動 API 伺服器和前端開發伺服器
+`docker compose up --build -d` 會啟動：
+- PostgreSQL
+- Next.js app（http://localhost:3000）
+- Mailpit 郵件攔截（http://localhost:8025）
+
+接著建立示範帳號（在 `next-app/` 目錄下執行）：
+
+```bash
+cd next-app
+pnpm db:migrate   # 套用 Drizzle migration
+pnpm db:seed      # 建立下方的示範帳號
+```
+
+示範登入帳號：`admin@example.com / Admin123!`、`editor@example.com / Editor123!`、`viewer@example.com / Viewer123!`。
+
+> 想直接執行 app？在 `next-app/` 下：`pnpm install` 後 `pnpm dev`（把 `DATABASE_URL` 指向任一 Postgres 即可——用 Docker 那組也行）。
 
 ## 2. 建立新 Domain
 
-「Domain」是一個獨立的功能模組，包含自己的 model、endpoints、schemas 和測試。
+「Domain」是一個獨立的功能模組，包含自己的資料表、驗證 schema 和 Server Actions。
 
 ```bash
-# 建立 "notes" domain，預設欄位為 name + description
+# 建立 "notes" domain，預設欄位為 title
 make new-domain NAME=notes
 ```
 
 這會產生：
-- `server/app/domains/notes/models.py` — SQLAlchemy model
-- `server/app/domains/notes/schemas.py` — Pydantic 請求/回應 schemas
-- `server/app/domains/notes/endpoints.py` — CRUD endpoints（列表、新增、讀取、更新、刪除）
-- `server/app/domains/notes/__init__.py` — Domain 註冊（自動發現）
-- 新資料表的 Alembic migration
+- `next-app/lib/schema/notes.ts` — Drizzle 資料表（由 `lib/schema/index.ts` barrel 匯出）
+- `next-app/lib/validations/note.ts` — 共用的 Zod 請求/回應 schema（契約）
+- `next-app/actions/notes.ts` — Server Actions（`"use server"`）負責新增／更新／刪除，必要時搭配 Route Handler `next-app/app/api/notes/route.ts`
+- 新資料表的 Drizzle SQL migration（位於 `next-app/drizzle/migrations/`）
 
-Domain 會**自動註冊** — 不需要修改 `main.py` 或任何路由設定。
+**不需要任何集中註冊**。App Router 採用檔案系統路由——`app/` 底下的資料夾「就是」路由，Server Actions 在使用處直接 import。沒有 `main.py`，也沒有路由設定。
 
 ## 3. 自訂 Domain
 
 ### 新增欄位
 
-編輯 `server/app/domains/notes/models.py`：
+編輯 `next-app/lib/schema/notes.ts` 中的 Drizzle 資料表：
 
-```python
-class Note(Base, UUIDMixin, TimestampMixin):
-    __tablename__ = "notes"
+```ts
+import { boolean, index, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
 
-    name: Mapped[str] = mapped_column(String(200))
-    description: Mapped[str | None] = mapped_column(Text, default=None)
-    # 新增你的欄位：
-    priority: Mapped[int] = mapped_column(Integer, default=0)
-    is_pinned: Mapped[bool] = mapped_column(Boolean, default=False)
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        GUID(), ForeignKey("user.id", ondelete="CASCADE"), index=True
-    )
+import { usersTable } from "./auth"
+
+export const notesTable = pgTable(
+  "notes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    title: text("title").notNull(),
+    description: text("description"),
+    // 新增你的欄位：
+    priority: integer("priority").notNull().default(0),
+    isPinned: boolean("is_pinned").notNull().default(false),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [index("notes_user_id_idx").on(t.userId)],
+)
+
+// 型別由 Drizzle 推導 — 沒有 codegen 步驟。
+export type Note = typeof notesTable.$inferSelect
+export type NewNote = typeof notesTable.$inferInsert
 ```
 
-然後更新 `schemas.py` 中的 schemas，並產生新的 migration：
+然後更新 `lib/validations/note.ts` 中的 Zod schema，並產生與套用 migration（在 `next-app/` 下執行）：
 
 ```bash
-cd server
-uv run alembic revision --autogenerate -m "add fields to notes"
-uv run alembic upgrade head
+cd next-app
+pnpm db:generate   # 將 SQL migration 寫入 drizzle/migrations/
+pnpm db:migrate    # 套用到資料庫
 ```
 
-### 更新 OpenAPI 規格
+### 更新共用的 Zod 驗證（契約）
 
-若要完整遵循規格驅動開發（SDD）工作流程，請**先**編輯 `docs/openapi.yaml`，再更新伺服器程式碼。這確保 API 契約始終是唯一的真實來源。
+本專案沒有 OpenAPI 規格，也沒有型別產生（type-gen）。唯一的真實來源是 `next-app/lib/validations/note.ts` 中的共用 Zod schema——它同時被 Server Actions 和前端表單使用。型別來自 `z.infer<typeof ...>` 以及 Drizzle 的 `$inferSelect` / `$inferInsert`。
+
+請**先**編輯 Zod schema，再更新 Server Action 和表單以保持一致：
+
+```ts
+// next-app/lib/validations/note.ts
+import { z } from "zod"
+
+export const createNoteSchema = z.object({
+  title: z.string().min(1, "請輸入標題").max(200),
+  description: z.string().optional(),
+  priority: z.number().int().default(0),
+})
+
+export type CreateNoteInput = z.infer<typeof createNoteSchema>
+```
 
 ## 4. 測試
 
+所有指令都在 `next-app/` 目錄下執行。
+
 ```bash
-# 執行所有測試（後端 + 前端）
-make test
+# 執行所有單元測試（Vitest）
+pnpm test
 
-# 僅執行後端測試（含覆蓋率）
-make test-server
-
-# 僅執行前端測試（含覆蓋率）
-make test-client
+# 執行單元測試（含覆蓋率）
+pnpm test:coverage
 
 # 執行特定測試檔案
-cd server && uv run pytest tests/integration/test_notes.py -v
+pnpm test actions/notes.test.ts
 
-# 檢查程式碼風格
-make lint
+# 執行 e2e 測試（Playwright — 先 seed 資料庫）
+pnpm db:seed
+pnpm test:e2e
+
+# 程式碼風格檢查 + 型別檢查
+pnpm lint
+pnpm typecheck
 ```
 
-### 撰寫後端測試
+### 撰寫單元測試（Vitest）
 
-建立 `server/tests/integration/test_notes.py`：
+建立 `next-app/actions/notes.test.ts`（或 `lib/validations/note.test.ts`）：
 
-```python
-import pytest
-from httpx import AsyncClient
+```ts
+import { describe, it, expect } from "vitest"
 
+import { createNoteSchema } from "@/lib/validations/note"
 
-async def test_create_note(auth_client: AsyncClient):
-    res = await auth_client.post(
-        "/api/v1/notes/",
-        json={"name": "My Note", "description": "Hello world"},
-    )
-    assert res.status_code == 201
-    data = res.json()
-    assert data["name"] == "My Note"
+describe("createNoteSchema", () => {
+  it("接受有效的 note", () => {
+    const result = createNoteSchema.safeParse({ title: "My Note", description: "Hello world" })
+    expect(result.success).toBe(true)
+  })
 
-
-async def test_list_notes(auth_client: AsyncClient):
-    res = await auth_client.get("/api/v1/notes/")
-    assert res.status_code == 200
-    assert "items" in res.json()
+  it("拒絕空白標題", () => {
+    const result = createNoteSchema.safeParse({ title: "" })
+    expect(result.success).toBe(false)
+  })
+})
 ```
+
+### 撰寫 e2e 測試（Playwright）
+
+建立 `next-app/e2e/notes.spec.ts`，並以 `pnpm test:e2e` 執行（先跑 `pnpm db:seed`）。用其中一組示範帳號登入——例如 `editor@example.com / Editor123!`——以測試寫入流程。
 
 ## 5. 開發工作流程
 
 ### 日常開發
 
 ```bash
-# 啟動開發環境
-make go
+# 啟動開發伺服器（在 next-app/ 下）
+cd next-app && pnpm dev
 
 # 在另一個終端機中，以 watch 模式執行測試
-cd client && pnpm test
+cd next-app && pnpm test:watch
 ```
 
 ### 新增 Endpoint
 
-1. （選擇性）編輯 `docs/openapi.yaml` 定義新 endpoint
-2. 在 domain 的 `endpoints.py` 中新增路由
-3. 如有需要，更新 schemas
+1. 更新 `lib/validations/note.ts` 中的共用 Zod schema（契約）
+2. 在 `actions/notes.ts` 中新增或擴充 Server Action（或修改 `app/api/notes/route.ts` 的 Route Handler）
+3. 若資料結構有變，更新 `lib/schema/notes.ts` 中的 Drizzle 資料表
 4. 撰寫測試
-5. 執行 `make test` 驗證
+5. 執行 `pnpm test`（與 `pnpm typecheck`）驗證
 
 ### 資料庫 Migration
 
+所有指令都在 `next-app/` 目錄下執行。
+
 ```bash
-# model 變更後產生 migration
-cd server && uv run alembic revision --autogenerate -m "describe your change"
+# 編輯 Drizzle 資料表後產生 migration
+pnpm db:generate   # 將 SQL 寫入 drizzle/migrations/
 
 # 套用 migration
-cd server && uv run alembic upgrade head
-
-# 查看 migration 狀態
-cd server && uv run alembic current
+pnpm db:migrate
 ```
+
+> Drizzle 沒有 `alembic current` 的對應指令——要查看已產生的內容，請看 `next-app/drizzle/migrations/`（SQL 檔案與 `meta/_journal.json`）。
 
 ## 6. 部署
 
 ```bash
-# 先執行診斷檢查
-make doctor
+# 先做型別檢查 + 風格檢查 + 測試（在 next-app/ 下）
+cd next-app
+pnpm typecheck && pnpm lint && pnpm test
 
-# 執行完整測試套件
-make test
-
-# 建置前端
-cd client && pnpm build
+# 產生 production build
+pnpm build
 ```
 
-專案已設定為 Zeabur 部署。每個服務（server + client）都有各自的 `zbpack.json` 設定。
+專案已設定為 Zeabur 部署——`next-app/` 為單一服務，具備自己的 `zbpack.json` 設定。
 
 ## 7. Claude Code 的加值功能
 
@@ -187,8 +232,8 @@ Claude Code 並非必要，但提供以下加速功能：
 | 功能 | 不使用 Claude Code | 使用 Claude Code |
 |------|-------------------|-----------------|
 | 建立 Domain | `make new-domain NAME=x` | `/athena:domain notes --fields "title:string,body:text"` |
-| 執行測試 | `make test` | `/athena:qa`（審查 + 測試 + 覆蓋率門檻） |
-| 部署 | 手動步驟 | `/athena:deploy`（6 道關卡協定） |
+| 執行測試 | `pnpm test` | `/athena:qa`（審查 + 測試 + 覆蓋率門檻） |
+| 部署 | 手動步驟 | `/athena:deploy`（7 道關卡協定） |
 | 程式碼審查 | 手動 | `/athena:qa --review-only` |
 | 策略規劃 | 手動 | `/athena:plan` |
 | 完整開發循環 | 手動步驟 | `/athena:loop`（推進 epic pipeline） |
@@ -200,17 +245,15 @@ AI 代理自動化工作流程，但永遠不會取代理解。先不使用 Clau
 ## 疑難排解
 
 ```bash
-# 完整環境診斷
-make doctor
+# 重設資料庫（移除 Postgres volume，再重新套用 + reseed）
+docker compose down -v
+docker compose up -d
+cd next-app
+pnpm db:migrate   # 重新套用 Drizzle migration
+pnpm db:seed      # 重新建立示範帳號
 
-# 僅檢查前置工具
-make check-prereqs
-
-# 重設資料庫
-make db-stop && make db && cd server && uv run alembic upgrade head
-
-# 重新產生 TypeScript 型別
-cd client && pnpm generate:types
+# 遇到型別錯誤？在 next-app/ 下執行型別檢查
+pnpm typecheck
 ```
 
 ---
@@ -218,6 +261,4 @@ cd client && pnpm generate:types
 ## 下一步
 
 - **[第一個 Epic 實戰](first-epic-walkthrough.md)** — 一步步建立完整 Domain（無論是否使用 Claude Code 都適用）
-- **[CI 流程說明](ci-explained.md)** — 了解每次推送時自動執行的檢查
-- **[OpenAPI 設計模式](openapi-patterns.md)** — 學習本專案使用的 4 種 API 模式
 - **[學習路徑](learning-path.md)** — 查看所有指南的推薦閱讀順序

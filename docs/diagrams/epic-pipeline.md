@@ -35,22 +35,25 @@ graph LR
     style MERGE fill:#8b5cf6,color:#fff
 ```
 
-## SDD 子流程（在 spec 步驟內）
+## 規格子流程（在 spec 步驟內）
 
 ```mermaid
 graph LR
-    OA["openapi.yaml<br/>規格先行"]
-    SC["Server 程式碼"]
-    CC["Client 程式碼"]
+    SPEC["docs/specs/FEATURE.md<br/>規格先行"]
+    ZOD["lib/validations/*<br/>共用 Zod schema"]
+    SRV["Server Actions / Route Handlers<br/>+ Drizzle schema"]
+    UI["app/ 頁面 + components/"]
 
-    OA -->|"型別衍生"| SC
-    SC -->|"API 契約"| CC
+    SPEC -->|"定義 API 介面"| ZOD
+    ZOD -->|"型別共用"| SRV
+    ZOD -->|"型別共用"| UI
 
-    style OA fill:#4a9eff,color:#fff
+    style SPEC fill:#4a9eff,color:#fff
 ```
 
-> **SDD（Spec-Driven Development）**：永遠先編輯 `docs/openapi.yaml`，再撰寫 server/client 程式碼。
-> OpenAPI 為所有型別的唯一真實來源（Single Source of Truth）。
+> **規格先行**：先在 `docs/specs/FEATURE.md` 定義功能與 API 介面（Server Actions /
+> Route Handlers），用共用的 **Zod schema（`lib/validations/*`）**當作 client 與 server
+> 的共同型別來源——本專案沒有 OpenAPI 契約，型別由 TypeScript + Zod 端到端共享。
 
 ## TDD 子流程（在 implement 步驟內）
 

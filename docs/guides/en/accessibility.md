@@ -15,12 +15,13 @@
 
 1. Every new route you add (via `make new-domain` or `/athena:domain`) is
    **not** in the a11y sweep until you add it to the route list in
-   [`client/e2e/a11y.spec.ts`](../../../client/e2e/a11y.spec.ts).
+   [`next-app/e2e/a11y.spec.ts`](../../../next-app/e2e/a11y.spec.ts).
 2. Custom theme tokens must clear **4.5:1** (normal text) / **3:1** (large
    text + non-text UI) contrast. See the [token table in §3](#3-custom-token-contrast-targets).
-3. Icon-only buttons need `aria-label`; dialogs use `<Modal>` / `<Drawer>`;
-   live regions use `role="alert"` / `aria-live`. See [§4](#4-keyboard--aria-authoring-rules).
-4. Run the gate locally with `cd client && pnpm test:e2e --project=a11y`.
+3. Icon-only buttons need `aria-label`; dialogs use shadcn's `<Dialog>` (or
+   `<Sheet>` for drawer-style); live regions use `role="alert"` / `aria-live`.
+   See [§4](#4-keyboard--aria-authoring-rules).
+4. Run the gate locally with `cd next-app && pnpm test:e2e --project=a11y`.
    A single violation fails the run.
 
 ---
@@ -32,11 +33,11 @@ the exact file so you can verify each claim.
 
 | Guarantee | Where it lives |
 |---|---|
-| **WCAG 2.1 Level A + AA**, zero violations | `runAxe()` runs axe with `WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]` in [`client/e2e/helpers/a11y-runner.ts:22`](../../../client/e2e/helpers/a11y-runner.ts) |
-| **14 routes** swept (public + auth + dashboard) | `PUBLIC_PAGES` + `DASHBOARD_PAGES` in [`client/e2e/a11y.spec.ts:37-56`](../../../client/e2e/a11y.spec.ts) |
-| **Primitive interactions** scanned (Modal + Toast) | [`client/e2e/a11y-primitives.spec.ts:50-104`](../../../client/e2e/a11y-primitives.spec.ts) |
-| **Static landmark / ARIA** checks (22 unit assertions) | [`client/src/tests/a11y/accessibility.test.tsx`](../../../client/src/tests/a11y/accessibility.test.tsx) |
-| The **gate** — a single violation fails the PR | Playwright project `[a11y]` in `client/playwright.config.ts` (`name: "a11y"`, `testMatch: /a11y(-[\w-]+)?\.spec\.ts/`) |
+| **WCAG 2.1 Level A + AA**, zero violations | `runAxe()` runs axe with `WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]` in [`next-app/e2e/helpers/a11y-runner.ts`](../../../next-app/e2e/helpers/a11y-runner.ts) |
+| **14 routes** swept (public + auth + dashboard) | `PUBLIC_PAGES` + `DASHBOARD_PAGES` in [`next-app/e2e/a11y.spec.ts`](../../../next-app/e2e/a11y.spec.ts) |
+| **Primitive interactions** scanned (Dialog + toast) | [`next-app/e2e/a11y-primitives.spec.ts`](../../../next-app/e2e/a11y-primitives.spec.ts) |
+| **Static landmark / ARIA** checks (22 unit assertions) | Vitest unit assertions in `next-app` (run with `pnpm test`) |
+| The **gate** — a single violation fails the PR | Playwright project `[a11y]` in `next-app/playwright.config.ts` (`name: "a11y"`, `testMatch: /a11y(-[\w-]+)?\.spec\.ts/`) |
 
 **AAA is intentionally out of scope.** `wcag2aaa` / `wcag21aaa` are excluded
 because AAA blocks too many palette choices (see
@@ -45,8 +46,8 @@ is the bar — for the template and for your fork.
 
 **Important caveat — single-cell coverage.** Every scan today runs at one
 cell: `{ theme: "dark", preset: "default" }` (see
-[`a11y.spec.ts:74`](../../../client/e2e/a11y.spec.ts) and
-[`a11y-primitives.spec.ts:51`](../../../client/e2e/a11y-primitives.spec.ts)).
+[`a11y.spec.ts`](../../../next-app/e2e/a11y.spec.ts) and
+[`a11y-primitives.spec.ts`](../../../next-app/e2e/a11y-primitives.spec.ts)).
 The 6-theme × 2-preset cross-product is **deferred** (tracked as the
 cross-theme a11y matrix; see [§5](#5-the-cross-theme-matrix-e212-and-e177b)).
 This is exactly why §3 matters: if you re-theme or add a page that renders on
@@ -54,12 +55,12 @@ a non-default theme, **no automated scan checks your contrast** — you must
 clear the bars by hand.
 
 ```bash
-# Run the a11y gate locally (needs server on :8080 + client dev on :3100):
-cd client
+# Run the a11y gate locally (needs the Next.js dev server on :3000):
+cd next-app
 pnpm test:e2e --project=a11y
 
 # Static (Vitest) landmark / aria checks — no servers needed:
-pnpm test:run -- src/tests/a11y/
+pnpm test
 ```
 
 ---
@@ -69,19 +70,19 @@ pnpm test:run -- src/tests/a11y/
 When you scaffold a domain with `make new-domain NAME=notes`
 ([`Makefile:297-299`](../../../Makefile) → `scripts/new-domain.sh`) or
 `/athena:domain notes` ([`.claude/commands/athena/domain.md`](../../../.claude/commands/athena/domain.md)),
-the generator creates a page at `client/src/pages/{kebab-plural}/` and reminds
-you to wire its route into `App.tsx`. **That route is invisible to the a11y
-sweep until you add it.** Two edits close the gap.
+the generator creates an App Router route at
+`next-app/app/(dashboard)/dashboard/{kebab-plural}/page.tsx`. **That route is
+invisible to the a11y sweep until you add it.** Two edits close the gap.
 
 ### 2a. Add your route to the page sweep
 
 The dashboard sweep iterates `DASHBOARD_PAGES` in
-[`client/e2e/a11y.spec.ts:51-56`](../../../client/e2e/a11y.spec.ts). Add your
+[`next-app/e2e/a11y.spec.ts`](../../../next-app/e2e/a11y.spec.ts). Add your
 new route to that array (use `PUBLIC_PAGES` instead if the route is
 unauthenticated):
 
 ```ts
-// client/e2e/a11y.spec.ts
+// next-app/e2e/a11y.spec.ts
 const DASHBOARD_PAGES: ReadonlyArray<{ name: string; path: string }> = [
   { name: "dashboard-overview", path: "/dashboard/overview" },
   { name: "dashboard-sessions", path: "/dashboard/sessions" },
@@ -97,15 +98,15 @@ DASHBOARD_PAGES)` loop signs in, navigates, runs `runAxe(page)`, and asserts
 
 ### 2b. Add a custom primitive's interaction scan
 
-Modal, Drawer, and Toast aren't in the DOM until triggered, so the page sweep
+Dialog, Sheet, and toast aren't in the DOM until triggered, so the page sweep
 can't reach them — they get dedicated interaction specs in
-[`client/e2e/a11y-primitives.spec.ts`](../../../client/e2e/a11y-primitives.spec.ts).
+[`next-app/e2e/a11y-primitives.spec.ts`](../../../next-app/e2e/a11y-primitives.spec.ts).
 **If you build a new triggered primitive** (a custom drawer, popover, command
-palette, etc.), mirror the Modal pattern at
-[`a11y-primitives.spec.ts:50-71`](../../../client/e2e/a11y-primitives.spec.ts):
+palette, etc.), mirror the Dialog pattern in
+[`a11y-primitives.spec.ts`](../../../next-app/e2e/a11y-primitives.spec.ts):
 
 ```ts
-// client/e2e/a11y-primitives.spec.ts (inside the existing describe block)
+// next-app/e2e/a11y-primitives.spec.ts (inside the existing describe block)
 test("MyPopover (open state) — zero violations", async ({ page }) => {
   await setThemeAndPreset(page, { theme: "dark", preset: "default" });
 
@@ -128,14 +129,15 @@ test("MyPopover (open state) — zero violations", async ({ page }) => {
 Trigger via a **real production surface** (a real button label), not a test
 harness — that way, if a future refactor breaks the label, the spec fails
 loudly with a locator-not-found error instead of silently passing. This is the
-discipline the existing Modal spec follows (see its comment at
-[`a11y-primitives.spec.ts:44-49`](../../../client/e2e/a11y-primitives.spec.ts)).
+discipline the existing Dialog spec follows (see its comment in
+[`a11y-primitives.spec.ts`](../../../next-app/e2e/a11y-primitives.spec.ts)).
 
 > **Prefer composing the shipped primitives.** Before writing a new triggered
-> primitive, check whether `<Modal>` or `<Drawer>` (in
-> [`client/src/components/ui/`](../../../client/src/components/ui/)) already
-> covers your need. They ship focus-trap + ARIA wiring; a hand-rolled portal
-> does not. The existing Modal/Toast scans then cover you for free.
+> primitive, check whether shadcn's `<Dialog>` or `<Sheet>` (in
+> [`next-app/components/ui/`](../../../next-app/components/ui/)) already
+> covers your need. Built on Radix UI, they ship focus-trap + ARIA wiring out
+> of the box; a hand-rolled portal does not. The existing Dialog/toast scans
+> then cover you for free.
 
 ---
 
@@ -143,9 +145,10 @@ discipline the existing Modal spec follows (see its comment at
 
 Adding a 7th theme or re-skinning an existing one means picking new hex values
 for the text/surface tokens in
-[`client/src/styles/themes.css`](../../../client/src/styles/themes.css). The
-file's header literally invites this ("To create a custom theme: copy any
-block, change the selector and colors"). The catch: with the cross-theme sweep
+[`next-app/app/globals.css`](../../../next-app/app/globals.css), where the
+theme tokens now live (Tailwind CSS v4 directives + CSS custom properties +
+dark-mode variables, applied via Tailwind `dark:` variants and `next-themes`).
+The catch: with the cross-theme sweep
 deferred ([§1](#1-what-the-template-already-guarantees) caveat), **no
 automated test checks a non-default theme's contrast.** You own these bars.
 
@@ -158,12 +161,12 @@ automated test checks a non-default theme's contrast.** You own these bars.
 | **Non-text UI** (icons, borders, focus rings, form-input outlines, the active state of a control) | **3 : 1** | 1.4.11 (AA) |
 
 These are the same bars `runAxe` enforces via the `wcag2aa` + `wcag21aa` tags
-([`a11y-runner.ts:22`](../../../client/e2e/helpers/a11y-runner.ts)) — you're
+([`a11y-runner.ts`](../../../next-app/e2e/helpers/a11y-runner.ts)) — you're
 just checking them by hand for the cells the matrix doesn't reach.
 
 ### The token pairs you must check
 
-Each `[data-theme="..."]` block in `themes.css` defines a text triad over a
+Each theme block in `globals.css` defines a text triad over a
 surface pair. These are the combinations that actually render, so these are
 what you check:
 
@@ -181,8 +184,8 @@ what you check:
 > `#3a3a52` over `--surface: #0e0e1a` — fine for a decorative divider, but if
 > you reuse it for *readable* hint text it can fall under 4.5:1. The
 > `A11Y_BASELINE.md` recipe for this is "bump the `--text-muted` token in
-> `themes.css` for the offending theme." Decide per-theme whether your muted
-> token carries text or only decoration, and pick the value accordingly.
+> `app/globals.css` for the offending theme." Decide per-theme whether your
+> muted token carries text or only decoration, and pick the value accordingly.
 
 ### Check a candidate value before you commit it
 
@@ -216,41 +219,41 @@ For each foreground/background pair above:
 
 When you add a theme, also follow the 6-step "Adding a Theme" recipe in
 [`docs/design/css-architecture.md`](../../design/css-architecture.md) so the
-47-var contract stays complete — a missing var falls back to `:root` (dark)
+token contract stays complete — a missing var falls back to `:root` (dark)
 and silently breaks contrast on a light theme.
 
 ---
 
 ## 4. Keyboard + ARIA authoring rules
 
-The template is primitive-first: pages compose
-[`client/src/components/ui/`](../../../client/src/components/ui/) and inherit
-the ARIA wiring those primitives ship. Follow these DO/DON'T rules for any new
+The template is primitive-first: pages compose shadcn/ui components in
+[`next-app/components/ui/`](../../../next-app/components/ui/) (added via
+`npx shadcn@latest add <name>`, never hand-edited) and inherit the ARIA wiring
+those primitives ship. Follow these DO/DON'T rules for any new
 custom component so you don't re-introduce a violation the primitives already
 solved.
 
 | Topic | ✅ DO | ❌ DON'T |
 |---|---|---|
-| **Icon-only buttons** | Add an `aria-label`. Make it translatable via `useTranslation('primitives')` — keys live in [`client/src/locales/{lang}/primitives.json`](../../../client/src/locales/en/primitives.json) (e.g. `modal.close`, `toast.dismiss`). | Ship a bare `<button><Icon/></button>` — axe flags it `button-name`. |
-| **Dialogs / overlays** | Use `<Modal>` or `<Drawer>`. They ship `role="dialog"`, `aria-labelledby` (auto-wired from the `title` prop — see [`Modal.tsx:77-79`](../../../client/src/components/ui/Modal.tsx)), and a focus trap. | Hand-roll a portal `<div>`. No focus trap = keyboard users escape into the page behind the overlay. |
-| **Live regions** (toasts, async banners) | Use `<Toast>` (it sets `aria-live` — `assertive` for errors, `polite` otherwise, see [`Toast.tsx:58`](../../../client/src/components/ui/Toast.tsx)), or render a `[role="alert"]` banner. | Update on-screen status text with no live-region role — screen readers never announce it. |
-| **Form inputs** | Wrap every input in `<FormField>` (it associates `<label for>` + `aria-describedby` for errors). | Use a raw `<input>` with a floating `<span>` label — axe flags `label`. |
-| **Tab order** | Keep the logical DOM order: **skip-nav → topbar → nav → main**. The app ships `<SkipNav>` ([`client/src/components/SkipNav.tsx`](../../../client/src/components/SkipNav.tsx)) targeting `#main-content`; give your page's main region that id. | Use `tabindex` > 0 to "fix" order — it desyncs visual and keyboard order. Only `0` / `-1` are acceptable. |
+| **Icon-only buttons** | Add an `aria-label`, and expose the label through the app's i18n layer / translation strings so it's translatable (e.g. a close or dismiss label). | Ship a bare `<button><Icon/></button>` — axe flags it `button-name`. |
+| **Dialogs / overlays** | Use shadcn's `<Dialog>` (or `<Sheet>` for drawer-style) from [`next-app/components/ui/dialog.tsx`](../../../next-app/components/ui/dialog.tsx). Built on Radix UI, they ship `role="dialog"`, `aria-labelledby` / `aria-describedby` wiring, and a focus trap out of the box. | Hand-roll a portal `<div>`. No focus trap = keyboard users escape into the page behind the overlay. |
+| **Live regions** (toasts, async banners) | Use the shadcn toast (sonner) in [`next-app/components/ui/`](../../../next-app/components/ui/) — it sets `aria-live` appropriately (`assertive` for errors, `polite` otherwise) — or render a `[role="alert"]` banner. | Update on-screen status text with no live-region role — screen readers never announce it. |
+| **Form inputs** | Wrap every input in shadcn's `<FormField>` (it associates `<label for>` + `aria-describedby` for errors). | Use a raw `<input>` with a floating `<span>` label — axe flags `label`. |
+| **Tab order** | Keep the logical DOM order: **skip-nav → topbar → nav → main**. The app ships a skip-nav link in the root layout ([`next-app/app/layout.tsx`](../../../next-app/app/layout.tsx)) targeting the main content region (`#main-content` / the layout's `<main>`); give your page's main region that id. | Use `tabindex` > 0 to "fix" order — it desyncs visual and keyboard order. Only `0` / `-1` are acceptable. |
 | **Focus visibility** | Let the primitive's focus ring render; if you restyle, keep the ring ≥ 3:1 against its backdrop (non-text contrast, [§3](#3-custom-token-contrast-targets)). | Set `outline: none` without a visible replacement — fails 2.4.7 Focus Visible. |
 | **Color as meaning** | Pair color with a label, icon, or shape (e.g. an error banner has both red **and** the word "Error" / an icon). | Convey state by color alone — fails 1.4.1 Use of Color, which axe can't always catch, so this one's on you. |
 
 ### i18n + `aria-label` best practice
 
 Accessible names are user-facing strings, so they obey the project's
-bilingual rule: every `aria-label` default lives in
-`primitives.json` for both `en/` and `zh-TW/`, accessed via
-`useTranslation('primitives')`. **Consumer-supplied props always win** over
-the i18n default — e.g. a primitive does
-`aria-label={props.label ?? t('search.placeholder')}`. So when you author a
+bilingual rule: every `aria-label` default should be exposed through the app's
+i18n layer (its translation strings), not hard-coded. **Consumer-supplied props
+always win** over the i18n default — e.g. a primitive falls back to a
+translated string when no explicit label is passed. So when you author a
 custom component:
 
-- Put the default accessible name in **both** `locales/en/primitives.json`
-  **and** `locales/zh-TW/primitives.json` (keys identical, values translated).
+- Put the default accessible name in the app's translation strings for **both**
+  languages (`en` **and** `zh-TW`, keys identical, values translated).
 - Never hard-code an English `aria-label` string in TSX — it won't translate
   and breaks the 繁中-mirror rule.
 - Don't duplicate the visible text into the `aria-label` (that double-announces
@@ -313,7 +316,7 @@ your new surfaces.
 - [`fork-security-setup.md`](fork-security-setup.md) — the sibling
   fork-enablement guide (secrets + OWASP) from the same cycle.
 - Source of truth for the machinery this guide describes:
-  [`client/e2e/helpers/a11y-runner.ts`](../../../client/e2e/helpers/a11y-runner.ts),
-  [`client/e2e/a11y.spec.ts`](../../../client/e2e/a11y.spec.ts),
-  [`client/e2e/a11y-primitives.spec.ts`](../../../client/e2e/a11y-primitives.spec.ts),
-  [`client/src/styles/themes.css`](../../../client/src/styles/themes.css).
+  [`next-app/e2e/helpers/a11y-runner.ts`](../../../next-app/e2e/helpers/a11y-runner.ts),
+  [`next-app/e2e/a11y.spec.ts`](../../../next-app/e2e/a11y.spec.ts),
+  [`next-app/e2e/a11y-primitives.spec.ts`](../../../next-app/e2e/a11y-primitives.spec.ts),
+  [`next-app/app/globals.css`](../../../next-app/app/globals.css).

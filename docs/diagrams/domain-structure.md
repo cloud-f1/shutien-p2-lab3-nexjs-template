@@ -1,140 +1,140 @@
 # Domain 結構圖
 
-> E22 引入的 Domain Registry 插件機制，讓新增/移除 domain 不需修改 `main.py`。
-> 以下圖表說明自動發現流程、套件結構與 Client 對應關係。
+> 在這個 Next.js 單一應用裡，一個「domain」不是外掛註冊機制，而是一組約定俗成的檔案：
+> Drizzle schema + Server Actions + `app/` 路由 + 共用 Zod。新增/移除 domain 只是
+> 加減這些檔案，不需要改任何中央註冊表。`items` 是參考實作。
 
 ---
 
-## 圖 A：Domain Registry 運作流程
+## 圖 A：一個 Request 在 domain 內的流向
 
 ```mermaid
 graph TD
-    Start["FastAPI 啟動<br/>main.py"]
-    Call["呼叫 discover_domains()"]
-    Scan["掃描 server/app/domains/<br/>所有子目錄"]
-    Check{"子目錄有<br/>domain_config?"}
-    Load["載入 DomainConfig<br/>（router, prefix, tags, models）"]
-    Skip["略過（靜默跳過）"]
-    Register["app.include_router<br/>（動態註冊路由）"]
-    Ready["API 就緒"]
+    Page["app/(dashboard)/dashboard/{domain}/page.tsx<br/>Server Component（預設）"]
+    Read["呼叫 query（Drizzle 讀）"]
+    Table["<DataTable />（client island）<br/>filter + pagination"]
+    Modal["Dialog 表單（建立 / 編輯）<br/>react-hook-form + Zod"]
+    Action["Server Action（actions/{domain}.ts）<br/>'use server'"]
+    Validate["Zod 驗證（lib/validations/{domain}.ts）"]
+    Write["Drizzle 寫入 → revalidatePath"]
+    DB[("PostgreSQL")]
 
-    Start --> Call
-    Call --> Scan
-    Scan --> Check
-    Check -->|有| Load
-    Check -->|無| Skip
-    Load --> Register
-    Register --> Ready
+    Page --> Read --> DB
+    Page --> Table
+    Table --> Modal
+    Modal -->|提交| Action
+    Action --> Validate --> Write --> DB
+    Write -->|成功（不 redirect）| Modal
 
-    style Start fill:#4a9eff,color:#fff
-    style Ready fill:#22c55e,color:#fff
-    style Skip fill:#6b7280,color:#fff
+    style Page fill:#4a9eff,color:#fff
+    style DB fill:#22c55e,color:#fff
 ```
 
-> **零斷裂刪除（Zero-Import Deletion）**：刪除一個 domain 目錄不會造成任何 import 錯誤，
-> `discover_domains()` 下次啟動時自動忽略不存在的目錄。
+> **CRUD 用 modal、不用頁面跳轉（E273）**：Server Action 成功時**回傳成功（不 `redirect`）**，
+> modal 關閉後靠 `revalidatePath` + `router.refresh()` 重新整理清單。
 
-## 圖 B：DomainConfig 介面
+## 圖 B：一個 domain 的資料形狀（Drizzle + Zod）
 
 ```mermaid
 classDiagram
-    class DomainConfig {
-        +APIRouter router
-        +str prefix
-        +list~str~ tags
-        +list~type~ models
+    class DrizzleTable {
+        +pgTable 定義
+        +欄位 + 型別
+        +關聯（references）
     }
 
-    class PlacesDomain {
-        +router: APIRouter
-        +prefix: "/places"
-        +tags: ["places"]
-        +models: [Place]
+    class ZodSchema {
+        +createSchema
+        +updateSchema
+        +型別 z.infer（client + server 共用）
     }
 
-    class PortfoliosDomain {
-        +router: APIRouter
-        +prefix: "/portfolios"
-        +tags: ["portfolios"]
-        +models: [Portfolio]
+    class ServerAction {
+        +createX / updateX / deleteX
+        +'use server'
+        +回傳 success（不 redirect）
     }
 
-    class NewDomain {
-        +router: APIRouter
-        +prefix: "/new-domain"
-        +tags: ["new-domain"]
-        +models: [...]
+    class ItemsDomain {
+        +schema: lib/schema/items.ts
+        +zod: lib/validations/items.ts
+        +actions: actions/items.ts
+        +ui: app/(dashboard)/dashboard/items/
     }
 
-    DomainConfig <|-- PlacesDomain
-    DomainConfig <|-- PortfoliosDomain
-    DomainConfig <|.. NewDomain
+    DrizzleTable <|-- ItemsDomain
+    ZodSchema <|-- ItemsDomain
+    ServerAction <|-- ItemsDomain
 
-    note for NewDomain "新增 domain 只需建立目錄\n並匯出 domain_config"
+    note for ItemsDomain "新增 domain：加一張 Drizzle 表\n+ 一組 Zod + 一個 actions 檔 + app/ 頁面"
 ```
 
-## 圖 C：Server + Client 對稱結構
+## 圖 C：一個 domain 橫跨的檔案
 
 ```mermaid
 graph LR
-    subgraph Server["Server（server/app/domains/）"]
-        SI["__init__.py<br/>匯出 domain_config"]
-        SM["models.py<br/>SQLAlchemy models"]
-        SS["schemas.py<br/>Pydantic schemas"]
-        SE["endpoints.py<br/>APIRouter"]
-        SV["service.py<br/>商業邏輯（選用）"]
+    subgraph Data["資料層"]
+        SCH["lib/schema/{domain}.ts<br/>Drizzle pgTable"]
+        IDX["lib/schema/index.ts<br/>barrel re-export"]
+        MIG["drizzle/migrations/*.sql<br/>db:generate 產生"]
     end
 
-    subgraph Client["Client（client/src/）"]
-        CS["api/services/{domain}Service.ts<br/>createService() factory"]
-        CH["hooks/use{Domain}.ts<br/>useServiceQuery / useServiceMutation"]
-        CP["pages/{domain}/<br/>頁面元件"]
-        CT["tests/handlers/{domain}.ts<br/>MSW mock handlers"]
+    subgraph Server["伺服器邏輯"]
+        ACT["actions/{domain}.ts<br/>Server Actions（'use server'）"]
+        QRY["lib/queries.ts<br/>Drizzle 讀取輔助"]
     end
 
-    subgraph OpenAPI["契約層"]
-        OA["docs/openapi.yaml<br/>型別唯一真實來源"]
+    subgraph Shared["共用契約"]
+        ZOD["lib/validations/{domain}.ts<br/>Zod（型別唯一真實來源）"]
     end
 
-    OA -->|"型別衍生"| SS
-    OA -->|"型別衍生"| CS
-    SE -->|"REST API"| CS
-    CS --> CH
-    CH --> CP
+    subgraph Client["UI（app/）"]
+        PG["app/(dashboard)/dashboard/{domain}/<br/>page + modal + columns"]
+    end
 
-    style OpenAPI fill:#4a9eff,color:#fff
+    subgraph Test["測試"]
+        UNIT["lib/*.test.ts（Vitest）"]
+        E2E["e2e/{domain}-crud.spec.ts（Playwright）"]
+    end
+
+    SCH --> IDX
+    SCH --> MIG
+    ZOD -->|型別共用| ACT
+    ZOD -->|型別共用| PG
+    ACT --> QRY --> SCH
+    PG -->|呼叫| ACT
+
+    style Shared fill:#4a9eff,color:#fff
 ```
 
-## Domain 套件結構
+## Domain 檔案結構
 
 ```
-server/app/domains/
-├── __init__.py              → DomainConfig dataclass + discover_domains()
-├── places/
-│   ├── __init__.py          → 匯出 domain_config
-│   ├── models.py            → Place SQLAlchemy model
-│   ├── schemas.py           → PlaceCreate / PlaceRead / PlaceUpdate
-│   ├── endpoints.py         → APIRouter（CRUD 端點）
-│   └── service.py           → 商業邏輯（選用）
-├── portfolios/
-│   └── ...（同樣結構）
-└── {new-domain}/
-    └── ...（同樣結構）
+next-app/
+├── lib/schema/{domain}.ts          → Drizzle pgTable（再由 index.ts barrel 匯出）
+├── lib/validations/{domain}.ts     → Zod schema（client + server 共用型別）
+├── actions/{domain}.ts             → Server Actions（'use server'，CRUD 變更）
+├── app/(dashboard)/dashboard/{domain}/
+│   ├── page.tsx                    → Server Component（讀資料 + <DataTable>）
+│   ├── columns.tsx                 → DataTable 欄位定義（client）
+│   └── *-dialog.tsx                → 建立 / 編輯 modal（client）
+└── drizzle/migrations/*.sql        → db:generate 後 db:migrate 套用
 ```
 
 ## 設計理念
 
-1. **零斷裂刪除** — 刪除 domain 目錄不會造成任何 import 錯誤
-2. **慣例優於配置** — 只要匯出 `domain_config`，即可自動註冊
-3. **Server-Client 對稱** — 每個 domain 在 server 和 client 有對應的檔案結構
-4. **OpenAPI 為橋樑** — `docs/openapi.yaml` 是 server schemas 和 client services 的共同來源
+1. **慣例優於配置** — domain 就是一組固定位置的檔案，沒有中央註冊表要維護
+2. **Server-first** — 讀資料用 Server Component 直連 Drizzle；變更走 Server Action
+3. **Zod 為橋樑** — `lib/validations/{domain}.ts` 是 client 表單與 server 驗證的共同型別來源
+4. **CRUD 用 modal** — 參考實作 `app/(dashboard)/dashboard/items/`（E273）
 
 ## 如何新增 Domain
 
-1. 在 `server/app/domains/` 建立新子目錄
-2. 建立 `models.py`、`schemas.py`、`endpoints.py`
-3. 在 `__init__.py` 匯出 `domain_config = DomainConfig(...)`
-4. 在 `client/src/` 建立對應的 service、hook、page、test handler
-5. 重啟 server — `discover_domains()` 會自動發現並註冊
+1. 在 `lib/schema/{domain}.ts` 定義 Drizzle 表，並在 `lib/schema/index.ts` 匯出
+2. 跑 `pnpm db:generate` 產生 SQL migration，再 `pnpm db:migrate` 套用
+3. 在 `lib/validations/{domain}.ts` 定義 Zod schema
+4. 在 `actions/{domain}.ts` 寫 Server Actions（建立 / 編輯 / 刪除，回傳 success）
+5. 在 `app/(dashboard)/dashboard/{domain}/` 建立頁面、`<DataTable>` 與 modal
+6. 加上 Vitest 單元測試與 Playwright e2e
 
-> 詳見 E23 `/athena:domain` 指令可自動化此流程。
+> 詳見 `/athena:domain` 指令可自動化大部分樣板。
