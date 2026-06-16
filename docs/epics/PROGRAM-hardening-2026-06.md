@@ -24,9 +24,20 @@ added per-epic as they merge, to avoid cross-branch conflicts).
 | **E279** | **Delete dead-stack code** — `docs/examples/**` (52 FastAPI+Vite) + `docs/openapi/` + leftover FastAPI templates | ⬜ |
 | **E280** | **Stale scripts/config** — fix/remove `scripts/{new-site,doctor,deploy-cloudrun,tutorial,verify-pg,migration-review}` + hooks + `.pre-commit`/`.husky`/`.dockerignore`; Makefile legacy targets | ✅ done (feat/E280-stale-scripts) |
 
+## Phase 66 — AI-dev trust (Athena namespace)
+
+(From the 2026-06 Athena-namespace audit. E277 reconceived agents/commands; this closes
+the trust gap left in the hooks layer + the domain scaffold.)
+
+| Epic | Scope | Status |
+|---|---|---|
+| **E281** | **Generated OpenAPI contract** — `docs/openapi.yaml` generated from Zod + `/api/openapi` + coverage guard + smoke drift-gate; contract-first enforced by tests | ✅ done (feat/E281-openapi-contract, PR #30) |
+| **E282** | **Hooks layer rewrite** — `stop-verifier.sh` rewritten for `next-app/` (8 Next.js rules; was 23 dead FastAPI/Vite rules); delete dead rules + inert `post-spec-openapi-lint.sh`; refresh `scripts/hooks/CLAUDE.md`; create `dba-migrations.md` | ✅ done (feat/E282-stop-verifier-nextjs) |
+| **E283** | **Fix `/athena:domain`** — restore `scripts/new-domain.sh` as a copy-from-`items` Next.js generator + align the command doc + restore `make new-domain` | ⬜ |
+
 ## Execution order
 
-E275 (done) → **merge open PRs to stabilise `main`** → E274 money-path → E276 → E277 → E278 → E279 → E280.
+E275 (done) → **merge open PRs to stabilise `main`** → E274 money-path → E276 → E277 → E278 → E279 → E280 → E281 → E282 → E283.
 
 > ⚠️ Open PRs awaiting merge: #17 (make), #19 (E274a), #20 (memory-refresh), #21 (P1b skills),
 > + this E275 PR. Merging them first prevents EPIC_INDEX/CLAUDE.md cross-branch conflicts as the

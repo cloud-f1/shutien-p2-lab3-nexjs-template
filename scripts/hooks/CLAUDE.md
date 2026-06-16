@@ -8,7 +8,7 @@ Shell scripts executed automatically by Claude Code at specific lifecycle events
 - **Output**: stdout text becomes `additionalContext` injected into the conversation
 - **Exit 0**: Allow the action (hook is informational)
 - **Exit 2**: **Block the action** (PreToolUse hooks only — prevents tool execution)
-- **Timeout**: Hooks must complete quickly (~5s). Never run pytest/vitest in a hook.
+- **Timeout**: Hooks must complete quickly (~5s). Never run the test suite (`pnpm test` / vitest) in a hook.
 
 ## Parsing Pattern
 
@@ -24,9 +24,9 @@ FILE=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.path // empty
 |---|---|---|
 | SessionStart | `session-start.sh` | Inject branch, session-summary, active epic phase (~30 lines), recent git, **two-block Tier 0 inject** (E182): Block A always-on PRIMER + Block B cued category excerpts (delegates to `scripts/memory/inject.sh`) |
 | UserPromptSubmit | `user-prompt-submit.sh` | Detect write-back phrases |
-| PreToolUse(Bash) | `pre-bash-guard.sh` | Block destructive commands, wrong folder names, warn on alembic |
+| PreToolUse(Bash) | `pre-bash-guard.sh` | Block destructive commands, wrong folder names |
 | PostToolUse(Write,Edit) | `post-edit-lint.sh` | Auto-format Python/TypeScript |
-| Stop | `stop-verifier.sh` | **Block completion** if rule violations in changed files (23 rules, retry verifier) |
+| Stop | `stop-verifier.sh` | **Block completion** if rule violations in changed files (8 Next.js rules, retry verifier) |
 | Stop | `stop-notify.sh` | macOS notification (runs after verifier passes) |
 | SubagentStop | `subagent-stop-writeback.sh` | Timestamp agent docs |
 | PostToolUse(Bash) | `post-bash-log.sh` | JSONL audit log (`.claude/audit.jsonl`) |
@@ -40,42 +40,44 @@ FILE=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.path // empty
 ## Agent-Scoped Hooks (in agent frontmatter, not settings.json)
 
 - `post-test-coverage-gate.sh` — @qa: warn if coverage < 80%
-- `post-spec-openapi-lint.sh` — @spec-writer: validate openapi.yaml
 - `debug-backup-pre-edit.sh` — @debugger: backup before edit
 - `post-debug-verify.sh` — @debugger: log verify result
-- `pre-deploy-guard.sh` — @deployer: block deploy if git dirty or wrong branch
+- `pre-deploy-guard.sh` — @deployer: block deploy if git dirty or wrong branch. (E280: the old Gates 7/7b — schemathesis contract test + alembic offline-SQL re-emit — were removed; Drizzle migration safety is now `pnpm db:test-migrate` + `drizzle-kit check`.)
 
 ## Stop Verifier Rules (`stop-verifier.sh`)
 
-23 rules total. Rules 1-5, 9-12, 14-16 iterate per changed file; rules 6-8, 13, 17-23 run once globally.
+8 rules total (Next.js stack, post-migration — E282). The old 23-rule FastAPI/Vite
+set (`client/src` localStorage, MSW handlers, pytest mock depth, OpenAPI codegen drift,
+alembic migration review, `App.tsx` routeMap, `styles/common` design-system) was removed
+with that stack. The rules now enforce the CLAUDE.md "NEVER DEVIATE" invariants against
+`next-app/`. Per-file rules (1-3) iterate changed files; global rules (4-6, 18, 23) run once.
 
 | # | Rule | Scope | Blocking |
 |---|------|-------|----------|
-| 1 | No `localStorage` in `client/` | Per file | exit 2 |
-| 2 | No `fireEvent` in test files | Per file | exit 2 |
-| 3 | No hardcoded `staleTime` (except `cacheConfig.ts`) | Per file | exit 2 |
-| 4 | MSW handlers must be in `src/tests/handlers/` | Per file | exit 2 |
-| 5 | No files in `backend/` or `frontend/` dirs | Per file | exit 2 |
-| 6 | OpenAPI drift — `docs/openapi.yaml` (canonical SSOT) changed and `client/src/api/types.ts` mtime is older (read-only mtime comparison — verifier never mutates the working tree). Fix: `cd client && pnpm generate:types` | Global | exit 2 |
-| 7 | No `console.log` in `client/src/` production code (excludes tests) | Global | exit 2 |
-| 8 | Large file warning — modified files > 500 lines | Global | warning only |
-| 9 | No internal mock assertions (`assert_called_once_with` on project internals) | Per file | warning only |
-| 10 | Parametrize nudge — 3+ test functions without `parametrize`/`it.each` | Per file | warning only |
-| 11 | Mock depth limit — >5 `mock.patch`/`@patch` in one test file | Per file | warning only |
-| 12 | Test file size — test files exceeding 200 lines | Per file | warning only |
-| 13 | Orphan route — `ROUTE_MAP` key has no corresponding `<Route>` in `App.tsx` | Global | exit 2 |
-| 14 | CSS co-location — `.tsx` has co-located `.css` but doesn't import it | Per file | warning only |
-| 15 | MSW factory — inline `HttpResponse.json({` in `tests/handlers/` (use factory) | Per file | warning only |
-| 16 | Schema bridge — `z.object()` without `satisfies z.ZodType<>` in `schemas/*.ts` | Per file | warning only |
-| 17 | CSS variable drift — `var(--x)` references not defined in themes/globals | Global | warning only |
-| 18 | QA Gate Enforcement — on any epic branch (`is_epic_branch`), refuse Stop when `epic-progress.md` shows `impl=✅` but `qa=⬜`/`❌` (mechanizes batch.md Mandatory Pipeline Order contract) | Global | exit 2 |
-| 19 | Migration Review SQL (E157) — on any epic branch (`is_epic_branch`), refuse Stop when `server/alembic/versions/*.py` changed (vs `origin/main`) but no `<rev>-*-upgrade.sql` artifact exists in `docs/context/migration-review/`. Fix: `scripts/migration-review.sh <rev>`. | Global | exit 2 |
-| 20 | OpenAPI Contract Evidence (E156) — on any epic branch (`is_epic_branch`), refuse Stop when `docs/openapi.yaml` changed (vs `origin/main` or working tree) but no green `qa_contract` event exists in `.claude/audit.jsonl`. Fix: `/athena:qa --contract-only`. | Global | exit 2 |
-| 21 | Design System: no new page-co-located CSS (E176) — block when `git diff --cached --diff-filter=A` adds any file matching `client/src/pages/**/*.css`. Pages must compose `client/src/components/ui/` primitives + Preset/Theme axes. Bypass via `DESIGN_SYSTEM_LEGACY_CSS_OK=1` env var (E170 promotion). | Global | exit 2 |
-| 22 | Design System: no new rules in `styles/common/` (E176) — block when staged diff under `client/src/styles/common/*.css` adds a new selector opening (heuristic: `+`-prefixed line containing `selector ... {`). Trimming/removing rules is allowed. New CSS rules belong in `components/ui/<Name>.tsx` Preset slots. Bypass via `DESIGN_SYSTEM_COMMON_RULES_OK=1`. | Global | exit 2 |
-| 23 | Verification Discipline (E188) — block completion-verb commits (`feat:`, `fix:`, `refactor:`, `perf:`, `test:`, `style:`) when no `verification_check` event with `exit=0` exists in `.claude/audit.jsonl` within the last 10 min. Whitelisted prefixes bypass: `wip:`, `chore(state):`, `docs:`, `chore:`, `chore(memory):`, `chore(roadmap):`, `build:`, `ci:`. Pilot mode: gated behind `STOP_RULE_23_ENABLED=1` env var. Emit: `scripts/hooks/audit-emit-verification.sh <check> 0`. Skill: `.claude/skills/verification-discipline.md`. | Global | exit 2 |
+| 1 | No inline `style=` colour overrides in `next-app/{app,components}/**.tsx` (excludes the generated `next-app/components/ui/`). Detection: `style={{ ... color\|background\|fill\|stroke\|borderColor ... }}`. Fix: Tailwind classes + `dark:` variants + `cn()` for conditionals; tokens live in `app/globals.css`. | Per file | exit 2 |
+| 2 | RBAC guard on mutating Server Actions — a non-test file under `next-app/actions/*.ts` that calls `db.insert/update/delete(` MUST also call a guard (`requireAuth`/`requireEditor`/`requireAdmin`, `lib/permissions.ts`). Server Actions are public POST endpoints; UI hiding is not a control. | Per file | exit 2 |
+| 3 | No raw `<table>` in `next-app/app/**.tsx` pages — use the reusable `<DataTable>` (`components/data-table-generic.tsx`), which ships filter + pagination + page-size. | Per file | warning only |
+| 4 | No `console.log` in next-app RUNTIME code (`next-app/{app,components,hooks,actions,lib}`). Excludes tests AND the CLI tooling dirs `lib/registry` + `lib/openapi` (generators/validators that legitimately print to stdout via `package.json` scripts, not in the browser or a request path). Fix: remove `console.log` before shipping (use a real logger for server logs). | Global | exit 2 |
+| 5 | No new hand-authored files added under `next-app/components/ui/` — shadcn components are generated via `npx shadcn@latest add <name>`; app-specific components belong in `components/` (not `components/ui/`). | Global | warning only |
+| 6 | Large file warning — modified files > 500 lines. | Global | warning only |
+| 18 | QA Gate Enforcement — on an epic branch (`is_epic_branch`), refuse Stop when `epic-progress.md` shows `impl=✅` but `qa≠✅` (mechanizes the batch.md Mandatory Pipeline Order contract). UNCHANGED. | Global | exit 2 |
+| 23 | Verification Discipline (E188) — block completion-verb commits (`feat:`, `fix:`, `refactor:`, `perf:`, `test:`, `style:`) when no `verification_check` event with `exit=0` exists in `.claude/audit.jsonl` within the last 10 min. Whitelisted prefixes bypass: `wip:`, `chore(state):`, `docs:`, `chore:`, `chore(memory):`, `chore(roadmap):`, `build:`, `ci:`. Pilot mode: gated behind `STOP_RULE_23_ENABLED=1` env var. Emit: `scripts/hooks/audit-emit-verification.sh <check> 0`. Skill: `.claude/skills/verification-discipline.md`. UNCHANGED. | Global | exit 2 |
 
-> **E204 — epic-branch detection + fail-open canary.** Rules 18/19/20 share one `is_epic_branch()` matcher in `stop-verifier.sh` (`(^|/)feat/[Ee][0-9]+-`) — matches `feat/e1-`, `feat/E191-`, `feat/E191-`, `claude/feat/E12-`, etc. It replaced three divergent per-rule regexes that silently **failed open** on the real `feat/E{n}` convention (capital `E` + `MH/` prefix), disabling all three epic-safety gates. The fail-open class is now guarded by `scripts/hooks/tests/test-stop-verifier-canary.sh` (run via `make guard-selftest`), which asserts the verifier still BLOCKS (exit 2) on every epic-branch spelling. _A gate that can't prove it still blocks is indistinguishable from a disabled one._ Rule 23's pilot enable/retire decision is deferred to E193 (which fixes the audit-event flow it depends on).
+> **E204 — epic-branch detection + fail-open canary.** Rule 18 (the only remaining
+> epic-safety gate — old Rules 19/20 were removed with the FastAPI/Vite stack) uses the
+> shared `is_epic_branch()` matcher in `stop-verifier.sh` (`(^|/)feat/[Ee][0-9]+-`) —
+> matches `feat/e1-`, `feat/E191-`, `claude/feat/E12-`, etc. It replaced divergent per-rule
+> regexes that silently **failed open** on the real `feat/E{n}` convention (capital `E` +
+> `MH/` prefix), disabling the epic-safety gate. The fail-open class is guarded by
+> `scripts/hooks/tests/test-stop-verifier-canary.sh` (run via `make guard-selftest`), which
+> asserts the verifier still BLOCKS (exit 2) on every epic-branch spelling.
+> _A gate that can't prove it still blocks is indistinguishable from a disabled one._
+>
+> **Test injection (E282):** the per-file rules (1/2/4) honour `CHANGED_OVERRIDE` (a
+> newline-separated path list) so fixtures can drive them deterministically. New fixture
+> `scripts/hooks/tests/test-rule-nextjs-invariants.sh` covers Rules 1/2/4; Rule 18 has
+> `test-rule-18-qa-gate.sh` + the canary; Rule 23 has `test-rule-23.sh`. The obsolete
+> `test-rule-21-22-design-system.sh` was deleted.
 
 ## Exit Validation Rules
 
@@ -96,8 +98,8 @@ FILE=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.path // empty
 | `TELEGRAM_CHAT_ID` | `task-completed.sh` | Required when `AI_CODING_WEBHOOK_URL` points at `api.telegram.org`. Otherwise ignored. |
 | `NOTIFY_DRY_RUN` | `task-completed.sh` | Test-only. When set, prints the formatted payload to stdout instead of POSTing. |
 | `CLAUDE_AGENT` | `post-bash-log.sh` | Agent name for audit attribution (default: `unknown`) |
-| `PR_REVIEWER_BACKEND` | `pr-created.sh` | GitHub username for backend reviewer (server/ changes). Unset = skip. |
-| `PR_REVIEWER_FRONTEND` | `pr-created.sh` | GitHub username for frontend reviewer (client/ changes). Unset = skip. |
+| `PR_REVIEWER_BACKEND` | `pr-created.sh` | GitHub username for a reviewer. Both reviewer vars are optional; the old `server/`→backend, `client/`→frontend path split no longer applies (single Next.js app under `next-app/`). Unset = skip. |
+| `PR_REVIEWER_FRONTEND` | `pr-created.sh` | GitHub username for a reviewer. See note above — path-based split is moot in a single-app repo. Unset = skip. |
 
 ## Webhook Payload (`task-completed.sh`)
 
@@ -267,7 +269,7 @@ Schema fields:
 | `lesson` | string | File basename relative to `~/.claude/template-memory/` (or empty for unmapped rules) |
 | `agent` | string | `tier0_loaded`/`agent_cited` only — the SubagentStop agent name or `session-start` |
 | `epic` | string | `E{n}` from current branch, or `none` |
-| `rule_id` | int\|string | `rule_fired` only — the verifier's 1–22 rule index |
+| `rule_id` | int\|string | `rule_fired` only — the verifier's rule index (Next.js set: 1-6, 18, 23) |
 | `severity` | enum | `rule_fired` only — `block` or `warn` |
 | `context` | string | Optional — `"brainstorm"` on brainstorm retrievals (E189); absent on SessionStart Block A/B injects (E180/E182) |
 
@@ -352,14 +354,14 @@ These events feed `/athena:metrics --memory` (E186): the **Archive churn** secti
 `scripts/hooks/audit-emit-verification.sh` emits one `verification_check` event each time an agent completes a verification command before committing. Stop Rule #23 scans for this event (with `exit=0`, within the last 10 min) before allowing completion-verb commits.
 
 ```json
-{"ts":"2026-05-20T10:00:00Z","event":"verification_check","check":"pytest","exit":0,"agent":"qa","epic":"E188"}
+{"ts":"2026-05-20T10:00:00Z","event":"verification_check","check":"pnpm test","exit":0,"agent":"qa","epic":"E188"}
 ```
 
 | Field | Type | Notes |
 |-------|------|-------|
 | `ts` | ISO 8601 UTC | Override via `CLOCK_TS` env var (test fixtures only) |
 | `event` | string | Always `"verification_check"` |
-| `check` | string | Name of the verification command (e.g. `pytest`, `pnpm test`, `coverage-gate`) |
+| `check` | string | Name of the verification command (e.g. `pnpm test`, `pnpm typecheck`, `coverage-gate`) |
 | `exit` | int | Exit code of the verification command. `0` = pass; non-zero = fail. Only `exit=0` clears Rule #23. |
 | `agent` | string | Agent name from `$CLAUDE_AGENT` env var (default: `unknown`) |
 | `epic` | string | `E{n}` from current branch, or `none` |
@@ -368,8 +370,8 @@ Emit via:
 
 ```bash
 # After running the verification command, pass the name and exit code:
-scripts/hooks/audit-emit-verification.sh pytest 0
-scripts/hooks/audit-emit-verification.sh "pnpm test" $?
+scripts/hooks/audit-emit-verification.sh "pnpm test" 0
+scripts/hooks/audit-emit-verification.sh "pnpm typecheck" $?
 ```
 
 Test injection env vars:
@@ -442,14 +444,6 @@ bash scripts/hooks/audit-emit-pipeline.sh qa_result epic=$EPIC coverage=$COV ver
 | `event` | string | One of the six event names above |
 | `epic` | string | `E{n}` from branch name or explicit argument |
 | (event-specific) | string | See per-event schema rows in the table above |
-
-#### OpenAPI source reconciliation (E193)
-
-Two OpenAPI files exist in this repo:
-- **`docs/openapi.yaml`** (31KB) — the **canonical SSOT**. Assembled by `pnpm openapi:bundle` from the unbundled entry-point. This is what `generate:types` reads. Rule 6 in `stop-verifier.sh` watches ONLY this file.
-- **`docs/openapi/openapi.yaml`** (3.4KB) — the **unbundled entry-point**. References `$ref: 'paths/...'` and `$ref: 'schemas/...'` sub-files. Do NOT pass this directly to `generate:types`.
-
-Workflow: edit `docs/openapi/openapi.yaml` (and its `paths/`/`schemas/` sub-files) → run `pnpm openapi:bundle` → produces `docs/openapi.yaml` → run `pnpm generate:types` → produces `client/src/api/types.ts`.
 
 #### PostToolUse(Bash) hook-firing limitation
 
@@ -816,10 +810,10 @@ PostToolUse(Bash) hook that fires after any `gh pr create` command. Non-blocking
    - Creates labels if they don't exist (`gh label create --force`)
 
 2. **Auto-Assign Reviewer** — based on changed files:
-   - `server/` changes -> `$PR_REVIEWER_BACKEND`
-   - `client/` changes -> `$PR_REVIEWER_FRONTEND`
+   - This is a single Next.js app (`next-app/`), so the old `server/`→backend,
+     `client/`→frontend path split no longer applies. Both `$PR_REVIEWER_BACKEND` and
+     `$PR_REVIEWER_FRONTEND` are optional; set either (or both) to add reviewers.
    - `docs/` only -> skip assignment
-   - Mixed changes -> assign both
    - Skipped silently if env vars not set
 
 3. **Epic Context Comment** — adds a markdown table comment with:
@@ -829,8 +823,8 @@ PostToolUse(Bash) hook that fires after any `gh pr create` command. Non-blocking
 
 | Variable | Required | Default | Purpose |
 |----------|----------|---------|---------|
-| `PR_REVIEWER_BACKEND` | No | (unset) | GitHub username for backend reviewer |
-| `PR_REVIEWER_FRONTEND` | No | (unset) | GitHub username for frontend reviewer |
+| `PR_REVIEWER_BACKEND` | No | (unset) | GitHub username for a reviewer (single-app repo — see note in § Auto-Assign Reviewer; path split no longer applies) |
+| `PR_REVIEWER_FRONTEND` | No | (unset) | GitHub username for a reviewer (optional; same single-app note) |
 
 ### Graceful Degradation
 
@@ -857,7 +851,7 @@ PostToolUse(Bash) hook that fires after any `git commit` command. When the lates
 ```markdown
 ## 2026-04-07T12:00:00+08:00 — abc1234
 **Message:** fix: resolve null pointer in auth flow
-**Files:** server/app/api/v1/endpoints/auth.py, server/tests/test_auth.py
+**Files:** next-app/actions/auth.ts, next-app/actions/__tests__/auth.test.ts
 **Root Cause:** _(pending — enrich during /athena:save)_
 **Test Added:** _(pending)_
 ```
