@@ -102,8 +102,8 @@ gcloud run deploy
 
 **Getting started**:
 ```bash
-# Build and start production stack
-make docker-prod
+# Build and start the full production-style stack (postgres + migrate + web)
+make docker-up      # → http://localhost:3000  (stop with: make docker-down)
 ```
 
 > **Warning**: Local production is for testing only. It lacks SSL, monitoring, backups, and automatic restarts.
@@ -146,4 +146,4 @@ This runs the prerequisites checker which verifies CLI tools, authentication, an
 3. Follow the platform-specific deploy instructions:
    - Zeabur: `make deploy`
    - Cloud Run: See GCP documentation for `gcloud run deploy`
-   - Local: `make docker-prod`
+   - Local: `make docker-up`

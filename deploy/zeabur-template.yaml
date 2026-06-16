@@ -2,40 +2,39 @@
 apiVersion: zeabur.com/v1
 kind: Template
 metadata:
-  name: AI-Coding-Template
+  name: Next.js SaaS Starter
 spec:
   description: |
-    Full-stack SaaS starter — FastAPI + React + PostgreSQL. Auth, OAuth, dashboard, themes.
+    Next.js 16 SaaS starter — App Router + Auth.js v5 + Drizzle ORM + PostgreSQL.
+    A single web service (no API/client split) backed by a managed PostgreSQL.
   icon: null
   variables:
     - key: PUBLIC_DOMAIN
       type: DOMAIN
-      name: Client Domain
-      description: The domain for the web app.
-    - key: API_DOMAIN
-      type: DOMAIN
-      name: API Domain
-      description: The domain for the API server.
+      name: App Domain
+      description: The public domain for the Next.js app.
   tags:
-    - Tool
     - SaaS
+    - Next.js
     - Template
   readme: |-
-    # AI-Coding-Template — SaaS Starter
+    # Next.js SaaS Starter
 
-    Full-stack SaaS starter with auth, OAuth, dashboard, and themes.
+    A single-service Next.js app (App Router + Auth.js v5 + Drizzle ORM)
+    backed by a managed PostgreSQL.
 
     ## Services
 
-    - **Server**: FastAPI + PostgreSQL (auto-runs migrations on startup)
-    - **Client**: React SPA served via Nginx
-    - **PostgreSQL**: Database
+    - **web**: Next.js (node:22-alpine, `.next/standalone` output)
+    - **postgresql**: Managed PostgreSQL database
 
     ## Post-Deploy
 
-    1. Set `SECRET_KEY` and `REFRESH_SECRET_KEY` to random 64-char hex strings
-    2. Set `ALLOWED_ORIGINS_STR` to your client domain
-    3. Set `VITE_API_URL` on the client service to your API domain
+    1. `AUTH_SECRET` — set a strong random value (`openssl rand -base64 32`).
+    2. `AUTH_URL` + `NEXT_PUBLIC_APP_URL` — set to your deploy domain (with `https://`).
+       `NEXT_PUBLIC_APP_URL` is baked at BUILD time — redeploy after changing it.
+    3. Set `NEXT_PUBLIC_ENABLE_DEMO_LOGIN=false` for production.
+    4. Run migrations once: `zeabur exec --service web -- pnpm db:migrate`.
 
   services:
     # ── PostgreSQL ─────────────────────────────────────────────────────
@@ -56,7 +55,7 @@ spec:
           PGDATA:
             default: /var/lib/postgresql/data/pgdata
           POSTGRES_DB:
-            default: coding_template
+            default: saas
           POSTGRES_USER:
             default: saas_user
           POSTGRES_PASSWORD:
@@ -115,101 +114,52 @@ spec:
             content: ${POSTGRES_PASSWORD}
             category: Credentials
 
-    # ── Server (FastAPI) ───────────────────────────────────────────────
-    - name: server
-      icon: https://service-icons.zeabur.com/git/python/fastapi.svg
+    # ── web (Next.js) ──────────────────────────────────────────────────
+    - name: web
+      icon: https://raw.githubusercontent.com/zeabur/service-icons/refs/heads/main/git/nodejs/nextjs.svg
       dependencies:
         - postgresql
-      template: PREBUILT
+      template: GIT
       spec:
         source:
-          image: asia-east1-docker.pkg.dev/common-411213/dev-app/ai-coding-template-server:dev
-          imagePullCredentials:
-            username: _json_key
-            password: ${GCR_JSON_KEY}
-        ports:
-          - id: web
-            port: 8080
-            type: HTTP
-        env:
-          PORT:
-            default: "8080"
-            expose: true
-          DATABASE_URL:
-            default: postgresql+asyncpg://${POSTGRES_USERNAME}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DATABASE}
-          SECRET_KEY:
-            default: ${PASSWORD}
-          REFRESH_SECRET_KEY:
-            default: ${PASSWORD}_refresh
-          ALGORITHM:
-            default: HS256
-          ACCESS_TOKEN_EXPIRE_MINUTES:
-            default: "15"
-          REFRESH_TOKEN_EXPIRE_DAYS:
-            default: "30"
-          ENVIRONMENT:
-            default: production
-            expose: true
-          DEBUG:
-            default: "false"
-          LOG_FORMAT:
-            default: json
-          ALLOWED_ORIGINS_STR:
-            default: https://dev-coding-template.zeabur.app
-          RATE_LIMIT_AUTH:
-            default: 5/minute
-          RATE_LIMIT_GENERAL:
-            default: 200/minute
-          EMAIL_PROVIDER:
-            default: console
-          EMAIL_FROM:
-            default: noreply@coding-template.app
-          STORAGE_BACKEND:
-            default: local
-          SENTRY_DSN:
-            default: ""
-          # OAuth — set these in Zeabur dashboard
-          GOOGLE_CLIENT_ID:
-            default: ""
-          GOOGLE_CLIENT_SECRET:
-            default: ""
-          GITHUB_CLIENT_ID:
-            default: ""
-          GITHUB_CLIENT_SECRET:
-            default: ""
-          # DB pool
-          DB_POOL_SIZE:
-            default: "20"
-          DB_MAX_OVERFLOW:
-            default: "30"
-        healthCheck:
-          type: HTTP
-          port: web
-          http:
-            path: /health
-      domainKey: API_DOMAIN
-
-    # ── Client (React + Nginx) ─────────────────────────────────────────
-    - name: client
-      icon: https://raw.githubusercontent.com/zeabur/service-icons/refs/heads/main/git/nodejs/vite.svg
-      dependencies:
-        - server
-      template: PREBUILT
-      spec:
-        source:
-          image: asia-east1-docker.pkg.dev/common-411213/dev-app/ai-coding-template-client:dev
-          imagePullCredentials:
-            username: _json_key
-            password: ${GCR_JSON_KEY}
+          # Build the Dockerfile in next-app/ directly from the connected Git repo.
+          rootDirectory: next-app
         ports:
           - id: web
             port: 3000
             type: HTTP
         env:
-          PORT:
-            default: "3000"
-          VITE_API_URL:
-            default: https://${API_DOMAIN}
+          # ── Runtime (read on start; restart is enough to update) ──
+          DATABASE_URL:
+            default: postgresql://${POSTGRES_USERNAME}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DATABASE}
+          AUTH_SECRET:
+            default: ${PASSWORD}
+          AUTH_URL:
+            default: https://${PUBLIC_DOMAIN}
+            expose: true
+          AUTH_TRUST_HOST:
+            default: "true"
+          NODE_ENV:
+            default: production
+          NEXT_TELEMETRY_DISABLED:
+            default: "1"
+          # ── Build-time NEXT_PUBLIC_* (baked into the bundle — redeploy to change) ──
+          NEXT_PUBLIC_APP_URL:
+            default: https://${PUBLIC_DOMAIN}
+            expose: true
+          NEXT_PUBLIC_ENABLE_DEMO_LOGIN:
+            default: "false"
+          # ── Email (SMTP) — set in the dashboard ──
+          SMTP_HOST:
+            default: ""
+          SMTP_PORT:
+            default: "587"
+          SMTP_USER:
+            default: ""
+          SMTP_PASS:
+            default: ""
+          EMAIL_FROM:
+            default: noreply@example.com
         healthCheck:
           type: HTTP
           port: web

@@ -244,20 +244,36 @@ echo "Service URL: ${SERVICE_URL}"
 
 ## 6. Run Migrations & Seed as a Cloud Run Job / 以 Cloud Run Job 執行 migrate 與 seed
 
-The same Docker image contains `drizzle-kit` and the seed script (devDependencies are kept in the builder stage). Run them as a one-shot Cloud Run Job.
+> **Critical / 重要**: The deployed service image is the Dockerfile **`runner`** stage (Next.js standalone). It does **NOT** contain `drizzle-kit` or `tsx` — those are devDependencies that only survive in the **`builder`** stage. Running migrate/seed off the runtime image will fail with "command not found". Build a separate **`migrate` image from the `builder` target** for the one-shot jobs.
+>
+> 部署服務使用的是 Dockerfile 的 **`runner`** stage（Next.js standalone），其中**不包含** `drizzle-kit` 或 `tsx`（這些 devDependencies 僅保留於 **`builder`** stage）。若直接用執行期映像跑 migrate/seed 會出現「command not found」。請另外用 **`builder` target 建一個 `migrate` 映像**供一次性 job 使用。
 
-同一個 Docker 映像已包含 `drizzle-kit` 與 seed 腳本（devDependencies 保留於 builder stage）。以一次性 Cloud Run Job 執行。
+This mirrors how `docker-compose.yml`'s `migrate` service builds from `target: builder` and runs `pnpm db:migrate && pnpm db:seed`.
+
+此做法與 `docker-compose.yml` 的 `migrate` 服務一致 —— 從 `target: builder` 建置，並執行 `pnpm db:migrate && pnpm db:seed`。
+
+```bash
+# Build + push the builder-stage migrate image (has drizzle-kit + tsx + source)
+# 建置並推送 builder-stage migrate 映像（含 drizzle-kit + tsx + 原始碼）
+export MIGRATE_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/next-app-migrate:${IMAGE_TAG}"
+
+docker build \
+  --target builder \
+  -t "${MIGRATE_IMAGE}" \
+  next-app/
+docker push "${MIGRATE_IMAGE}"
+```
 
 ```bash
 # Create the migrate job (one-time) / 建立 migrate job（一次性）
 gcloud run jobs create migrate-job \
-  --image "${IMAGE}" \
+  --image "${MIGRATE_IMAGE}" \
   --region "${REGION}" \
   --add-cloudsql-instances "${SQL_CONN}" \
   --set-secrets "DATABASE_URL=DATABASE_URL:latest" \
   --set-env-vars "NODE_ENV=production" \
-  --command "node_modules/.bin/drizzle-kit" \
-  --args "migrate"
+  --command "pnpm" \
+  --args "db:migrate"
 
 # Execute the migrate job / 執行 migrate job
 gcloud run jobs execute migrate-job \
@@ -265,23 +281,26 @@ gcloud run jobs execute migrate-job \
   --wait
 
 # Create and run the seed job (optional / 可選) / 建立並執行 seed job
+# Note: db:seed (drizzle/seed.ts) refuses to run when NODE_ENV=production, so the
+# seed job omits NODE_ENV=production. Seeding is dev/demo only — skip it in prod.
+# 注意：db:seed（drizzle/seed.ts）在 NODE_ENV=production 時會拒絕執行，故 seed job
+# 不帶 NODE_ENV=production。seed 僅供 dev/demo 使用，正式環境請略過。
 gcloud run jobs create seed-job \
-  --image "${IMAGE}" \
+  --image "${MIGRATE_IMAGE}" \
   --region "${REGION}" \
   --add-cloudsql-instances "${SQL_CONN}" \
   --set-secrets "DATABASE_URL=DATABASE_URL:latest" \
-  --set-env-vars "NODE_ENV=production" \
-  --command "node_modules/.bin/tsx" \
-  --args "db/seed.ts"
+  --command "pnpm" \
+  --args "db:seed"
 
 gcloud run jobs execute seed-job \
   --region "${REGION}" \
   --wait
 ```
 
-> **Re-run on schema changes / 結構變更時重新執行**: After pushing a new image with new Drizzle migrations, re-run `migrate-job` before (or immediately after) deploying the updated service.
+> **Re-run on schema changes / 結構變更時重新執行**: After pushing a new `migrate` image with new Drizzle migrations, re-run `migrate-job` before (or immediately after) deploying the updated service. Update the job image first: `gcloud run jobs update migrate-job --image "${MIGRATE_IMAGE}"`.
 >
-> 部署包含新 Drizzle migration 的映像後，請在更新服務前（或立即之後）重新執行 `migrate-job`。
+> 部署包含新 Drizzle migration 的映像後，請在更新服務前（或立即之後）重新執行 `migrate-job`。先更新 job 映像：`gcloud run jobs update migrate-job --image "${MIGRATE_IMAGE}"`。
 
 ---
 
@@ -361,8 +380,16 @@ gcloud secrets create DATABASE_URL \
 
 # ─── Deploy (repeat on each release) / 每次發佈執行 ──────────────────────
 
-docker build --build-arg NEXT_PUBLIC_ENABLE_DEMO_LOGIN=false -t "${IMAGE}" next-app/
+# Runtime image (runner stage). NEXT_PUBLIC_* are baked here at build time.
+docker build \
+  --build-arg NEXT_PUBLIC_ENABLE_DEMO_LOGIN=false \
+  --build-arg NEXT_PUBLIC_APP_URL="${SERVICE_URL}" \
+  -t "${IMAGE}" next-app/
 docker push "${IMAGE}"
+
+# Migrate image (builder stage — has drizzle-kit + tsx). Rebuild when migrations change.
+docker build --target builder -t "${MIGRATE_IMAGE}" next-app/
+docker push "${MIGRATE_IMAGE}"
 
 gcloud run deploy "${SERVICE_NAME}" \
   --image "${IMAGE}" --region "${REGION}" \
@@ -371,6 +398,7 @@ gcloud run deploy "${SERVICE_NAME}" \
   --set-env-vars "AUTH_TRUST_HOST=true,NODE_ENV=production" \
   --port 3000
 
+gcloud run jobs update migrate-job --image "${MIGRATE_IMAGE}" --region "${REGION}"
 gcloud run jobs execute migrate-job --region "${REGION}" --wait
 ```
 
@@ -385,7 +413,8 @@ gcloud run jobs execute migrate-job --region "${REGION}" --wait
 | `NEXT_PUBLIC_*` undefined at runtime | Variable not passed at build time | Use `--build-arg` or Cloud Build substitutions; redeploy |
 | Secret not found | SA lacks `secretAccessor` role | Re-run `gcloud secrets add-iam-policy-binding` |
 | Cold start > 5s | `--min-instances 0` + large image | Set `--min-instances 1` or use `--cpu-boost` |
-| Migration fails on deploy | Job using stale image | Update job image: `gcloud run jobs update migrate-job --image "${IMAGE}"` |
+| `drizzle-kit: not found` in job | Job uses the `runner` image (no devDeps) | Build the `migrate` image from `--target builder` and point the job at `${MIGRATE_IMAGE}` (§6) |
+| Migration fails on deploy | Job using stale image | Update job image: `gcloud run jobs update migrate-job --image "${MIGRATE_IMAGE}"` |
 
 ---
 

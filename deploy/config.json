@@ -1,40 +1,27 @@
 {
   "project": {
-    "name": "ai-coding-template",
-    "display_name": "AI-Coding-Template",
-    "github_repo": "cloud-f1/ai-coding-template"
+    "name": "my-saas",
+    "display_name": "My SaaS",
+    "github_repo": "your-org/your-repo"
   },
-  "gcr": {
-    "registry": "asia-east1-docker.pkg.dev/common-411213",
-    "server_image": "ai-coding-template-server",
-    "client_image": "ai-coding-template-client"
+  "service": {
+    "name": "web",
+    "root": "next-app",
+    "port": 3000,
+    "dockerfile": "next-app/Dockerfile"
   },
   "zeabur": {
-    "template_id": "N8Y5Q5",
-    "template_url": "https://zeabur.com/templates/N8Y5Q5"
+    "service": "web",
+    "postgres_service": "postgres"
   },
-  "environments": {
-    "dev": {
-      "repo": "dev-app",
-      "tag": "dev",
-      "client_domain": "dev-coding-template.zeabur.app",
-      "api_domain": "dev-coding-template-api.zeabur.app",
-      "vite_api_url": "https://dev-coding-template-api.zeabur.app"
-    },
-    "prd": {
-      "repo": "prd-app",
-      "tag": "prd",
-      "client_domain": "coding-template.zeabur.app",
-      "api_domain": "coding-template-api.zeabur.app",
-      "vite_api_url": "https://coding-template-api.zeabur.app"
-    }
+  "build_args": {
+    "NEXT_PUBLIC_ENABLE_DEMO_LOGIN": "false",
+    "NEXT_PUBLIC_APP_URL": "https://your-app.zeabur.app"
   },
-  "ports": {
-    "server": 8080,
-    "client": 3000
-  },
-  "db": {
-    "name": "coding_template",
-    "user": "saas_user"
-  }
+  "runtime_env": [
+    "DATABASE_URL",
+    "AUTH_SECRET",
+    "AUTH_URL",
+    "AUTH_TRUST_HOST"
+  ]
 }

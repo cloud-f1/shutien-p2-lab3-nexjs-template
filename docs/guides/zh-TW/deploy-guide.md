@@ -102,8 +102,8 @@ gcloud run deploy
 
 **開始使用**：
 ```bash
-# 建置並啟動生產環境
-make docker-prod
+# 建置並啟動完整生產風格環境（postgres + migrate + web）
+make docker-up      # → http://localhost:3000（停止：make docker-down）
 ```
 
 > **注意**：本地生產環境僅供測試使用。缺少 SSL、監控、備份和自動重啟功能。
@@ -146,4 +146,4 @@ make doctor-deploy PLATFORM=cloudrun
 3. 依照平台的部署說明操作：
    - Zeabur：`make deploy`
    - Cloud Run：參考 GCP 文件執行 `gcloud run deploy`
-   - 本地：`make docker-prod`
+   - 本地：`make docker-up`

@@ -163,13 +163,17 @@ zeabur env set \
 | 變數 | 功能 | 注意 |
 |------|------|------|
 | `NEXT_PUBLIC_ENABLE_DEMO_LOGIN` | 顯示 Admin/Editor/Viewer 快速登入按鈕 | 正式環境設 `false` 移除演示帳號入口 |
+| `NEXT_PUBLIC_APP_URL` | 公開站台 base URL（email 驗證/重設連結、ECPay 金流 callback） | **必須設為部署網域**，否則 email 連結與付款 callback 會指向 `localhost:3000`。`next-app/Dockerfile` 以 `ARG NEXT_PUBLIC_APP_URL` 接收。/ Must be the deploy domain or email links + payment callbacks bake `localhost:3000`. |
 
 ```bash
 # 設定範例 / Example
-# 正式環境：關閉 demo 登入 / Production: disable demo login
-zeabur env set NEXT_PUBLIC_ENABLE_DEMO_LOGIN="false" --service next-app
+# 正式環境：關閉 demo 登入 + 設定公開 URL / Production: disable demo login + set public URL
+zeabur env set \
+  NEXT_PUBLIC_ENABLE_DEMO_LOGIN="false" \
+  NEXT_PUBLIC_APP_URL="https://your-app.zeabur.app" \
+  --service next-app
 
-# 設定完成後，重新觸發建置 / After setting, trigger a rebuild:
+# 設定完成後，重新觸發建置（NEXT_PUBLIC_* 在建置時燒入）/ After setting, trigger a rebuild:
 zeabur service redeploy --service next-app
 ```
 
@@ -195,6 +199,11 @@ zeabur service redeploy --service next-app
 
 應用程式啟動前需要先建立資料庫 schema。  
 The database schema must be created before the app can start.
+
+> **⚠️ 映像 devDeps 注意 / Image devDeps caveat:** `pnpm db:migrate` 需要 `drizzle-kit`、`pnpm db:seed` 需要 `tsx` —— 兩者都是 **devDependencies**。如果 Zeabur 直接用 `next-app/Dockerfile` 建置，執行期映像是 `runner` stage（Next.js standalone），**不含** devDependencies，`zeabur exec ... pnpm db:migrate` 會出現 `drizzle-kit: not found`。
+> 若使用 Dockerfile 建置，請改用 **方式 A 的 Pre-deploy Command**（在 build context 中跑，仍有 devDeps），或先用 zbpack（Node build，保留 devDeps）；GCP 路線的對應做法是用 `--target builder` 另建 migrate 映像（見 `deployment-gcp.md` §6）。
+>
+> `pnpm db:migrate` needs `drizzle-kit` and `pnpm db:seed` needs `tsx` — both are **devDependencies**. If Zeabur builds from `next-app/Dockerfile`, the runtime image is the `runner` stage (Next.js standalone) which does **NOT** ship devDependencies, so `zeabur exec ... pnpm db:migrate` fails with `drizzle-kit: not found`. Use the **Pre-deploy Command (方式 A)** which runs in the build context (devDeps still present), or a zbpack build. The GCP equivalent is a separate `--target builder` migrate image (see `deployment-gcp.md` §6).
 
 ### 方式 A：Zeabur 一次性任務（推薦 / Recommended）
 
@@ -311,11 +320,13 @@ DB_URL=$(zeabur env get DATABASE_URL --service postgres)
 zeabur deploy --name next-app --root ./next-app
 
 # 6. 設定環境變數 / Set env vars
+APP_DOMAIN="https://$(zeabur service domain --service next-app)"
 zeabur env set \
   DATABASE_URL="$DB_URL" \
   AUTH_SECRET="$(openssl rand -base64 32)" \
-  AUTH_URL="https://$(zeabur service domain --service next-app)" \
+  AUTH_URL="$APP_DOMAIN" \
   AUTH_TRUST_HOST="true" \
+  NEXT_PUBLIC_APP_URL="$APP_DOMAIN" \
   NEXT_PUBLIC_ENABLE_DEMO_LOGIN="false" \
   --service next-app
 

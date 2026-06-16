@@ -46,6 +46,13 @@ ENV AUTH_TRUST_HOST=true
 ARG NEXT_PUBLIC_ENABLE_DEMO_LOGIN=true
 ENV NEXT_PUBLIC_ENABLE_DEMO_LOGIN=$NEXT_PUBLIC_ENABLE_DEMO_LOGIN
 
+# Public base URL — baked at build time (NEXT_PUBLIC_*). Consumed by lib/email.ts
+# (verification / reset links) and the ECPay billing callbacks. A prod image MUST
+# pass --build-arg NEXT_PUBLIC_APP_URL=https://your-domain or every email link +
+# payment callback will point at localhost. Default is the local dev URL.
+ARG NEXT_PUBLIC_APP_URL=http://localhost:3000
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+
 RUN pnpm build
 
 # ─── runner ────────────────────────────────────────────────────────────────────
