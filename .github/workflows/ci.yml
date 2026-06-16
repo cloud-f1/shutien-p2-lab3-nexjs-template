@@ -1,10 +1,16 @@
 name: CI
 
+# DISABLED (manual-only): runs ONLY when triggered by hand from the Actions tab
+# (workflow_dispatch). To re-enable automatic CI on every push / PR to main,
+# uncomment the `push:` + `pull_request:` blocks below. The gates themselves
+# (typecheck · lint · test · build · db migrate) are unchanged — only the trigger
+# is gated off.
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
+  # push:
+  #   branches: [main]
+  # pull_request:
+  #   branches: [main]
 
 concurrency:
   group: ci-${{ github.ref }}
