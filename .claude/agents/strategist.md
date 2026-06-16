@@ -48,7 +48,7 @@ Analyze the product landscape for feature gaps and opportunities.
 Scan codebase for technical debt, security issues, and architectural gaps.
 
 **Checklist**:
-1. OpenAPI spec vs. actual endpoint implementation drift
+1. Drizzle schema vs. Zod validation vs. Server Action / Route Handler / UI drift
 2. Product requirements vs. shipped features gap
 3. Business rule test coverage (not just line coverage)
 4. Architecture smells: N+1 queries, missing indexes, inconsistent patterns
@@ -73,11 +73,11 @@ Check against security standards + accessibility requirements.
 Check for outdated dependencies, CVEs, and deprecations.
 
 **Scans**:
-1. `cd client && pnpm audit` — client vulnerabilities
-2. `cd server && uv run pip list --outdated` — server dependency freshness
+1. `cd next-app && pnpm audit` — dependency vulnerabilities
+2. `cd next-app && pnpm outdated` — dependency freshness
 3. GitHub Advisory Database — CVEs for our stack
 4. Deprecation warnings from test output
-5. Node.js / Python version EOL tracking
+5. Node.js / Next.js / React version EOL tracking
 
 **Output**: Vulnerability report + maintenance epics with upgrade paths.
 

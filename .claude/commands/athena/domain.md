@@ -1,23 +1,42 @@
 ---
-description: "(ops) Scaffold new domain → server endpoints + 6 client files from templates. Usage: `NAME=x`."
+description: "(ops) Scaffold a new domain → Drizzle table + Zod validation + Server Actions + dashboard page + unit test. Usage: `NAME=x`."
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 
-Read the domain generator spec at `docs/epics/e23-starter-domain-generator.md`.
+Drive the existing Next.js domain scaffold. This command does **not** generate
+OpenAPI specs, SQLAlchemy models, Alembic migrations, Axios services, React
+Query hooks, or MSW handlers — that stack was fully removed. A "domain" here is
+the Next.js App Router pattern: a Drizzle table, shared Zod validation, Server
+Actions, and a dashboard page using modals + `<DataTable>`.
 
-Read the template files in `docs/templates/domain/`.
+Read the canonical reference domain before scaffolding — the **items** domain is
+the exact pattern every new domain mirrors:
+
+- `next-app/lib/schema/items.ts` — Drizzle `pgTable` (user-owned, ownership FK + index)
+- `next-app/lib/schema/index.ts` — the barrel that drizzle-kit reads (`export * from "./<domain>"`)
+- `next-app/lib/validations/items.ts` — shared Zod create/update schemas + inferred types
+- `next-app/actions/items.ts` — `"use server"` Server Actions (RBAC-gated, ownership-scoped, `revalidatePath`)
+- `next-app/app/(dashboard)/dashboard/items/` — `page.tsx` (Server Component) + `_items-table.tsx` + `_item-dialog.tsx` + `_item-form.tsx` (CRUD via modals)
+
+Also read the scaffold entry point and naming templates:
+
+- `scripts/new-domain.sh` — the generator script
+- `docs/templates/domain/domain.config.yaml` and `docs/templates/domain/agent.md.tmpl`
 
 Parse the user's input: $ARGUMENTS
 
-The first argument is the domain name (singular, lowercase, e.g. "note").
-Optional --fields flag provides comma-separated field definitions (e.g. "title:string,body:text").
-Optional --agent flag generates a domain expert agent alongside the CRUD code.
+The first argument (or `NAME=x`) is the domain name (singular, lowercase
+letters/underscores, e.g. `note`, `blog_post`). Optional `--fields` provides
+comma-separated field definitions (e.g. `title:string,body:text`). Optional
+`--agent` generates a domain expert agent alongside the CRUD code.
 
-If --fields is omitted, use default fields: name (string, required) + description (text, optional).
+If `--fields` is omitted, use the default field: `title` (string, required) —
+matching the items domain.
 
 ## Naming Derivation
 
-Given the input name, derive ALL naming variants:
+`scripts/new-domain.sh` derives these variants from the input name (mirror them
+when you edit the barrel / page yourself):
 
 | Variable | Rule | Example (input: `blog_post`) |
 |----------|------|------------------------------|
@@ -37,107 +56,126 @@ Given the input name, derive ALL naming variants:
 
 ## Field Type Mapping
 
-| Short | Python type | SQLAlchemy | Zod | OpenAPI |
-|-------|-------------|------------|-----|---------|
-| string | `str` | `String(200)` | `z.string()` | `type: string` |
-| text | `str \| None` | `Text` | `z.string()` | `type: string` |
-| int | `int` | `Integer` | `z.number().int()` | `type: integer` |
-| float | `float` | `Float` | `z.number()` | `type: number` |
-| bool | `bool` | `Boolean` | `z.boolean()` | `type: boolean` |
-| date | `datetime` | `DateTime` | `z.string()` | `type: string, format: date-time` |
-| decimal | `Decimal` | `Numeric(12,2)` | `z.number()` | `type: number` |
+Map each `--fields` entry to a Drizzle column + a Zod rule. Table names are
+plural snake_case; the table is user-owned (FK to `usersTable` with an index)
+exactly like `lib/schema/items.ts`.
 
-## 10-Step Workflow
+| Short | TypeScript | Drizzle column | Zod |
+|-------|------------|----------------|-----|
+| string | `string` | `text("col").notNull()` | `z.string().min(1).max(255)` |
+| text | `string \| null` | `text("col")` | `z.string().max(2000).optional()` |
+| int | `number` | `integer("col")` | `z.coerce.number().int()` |
+| float | `number` | `doublePrecision("col")` | `z.coerce.number()` |
+| bool | `boolean` | `boolean("col").notNull().default(false)` | `z.coerce.boolean()` |
+| date | `Date` | `timestamp("col", { mode: "date" })` | `z.coerce.date()` |
+| decimal | `string` | `numeric("col", { precision: 12, scale: 2 })` | `z.coerce.number()` |
+| uuid (owner) | `string` | `uuid("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" })` | (server-set, not user input) |
 
-Follow this exact sequence:
+Every table also gets `id: uuid().primaryKey().defaultRandom()`,
+`createdAt`/`updatedAt` `timestamp(..., { mode: "date" }).notNull().defaultNow()`,
+and an `index("<plural>_user_id_idx").on(t.userId)`.
+
+## Workflow
 
 ### Step 1 — Parse input
-Parse the domain name and fields. Derive all naming variants.
+Parse the domain name and fields. Derive all naming variants (table above).
 
-### Step 2 — Generate OpenAPI spec FIRST (SDD compliance)
-1. Read `docs/templates/domain/openapi/schemas.yaml.tmpl`
-2. Replace variables + expand `{{#FIELDS}}` blocks
-3. Write to `docs/openapi/schemas/{{SNAKE}}.yaml`
-4. Read `docs/templates/domain/openapi/paths.yaml.tmpl`
-5. Replace variables + expand fields
-6. Write to `docs/openapi/paths/{{SNAKE_PLURAL}}.yaml`
-7. Update `docs/openapi/openapi.yaml`:
-   - Add path `$ref` entries for `/{{KEBAB_PLURAL}}` and `/{{KEBAB_PLURAL}}/{{{SNAKE}}_id}`
-   - Add tag entry for `{{KEBAB_PLURAL}}`
-   - Add schema `$ref` entries for `{{PASCAL}}Create`, `{{PASCAL}}Read`, `{{PASCAL}}Update`, `Paginated{{PASCAL}}Response`
+### Step 2 — Run the scaffold script
+Execute:
 
-### Step 3 — Run type generation
-Execute `cd client && pnpm generate:types`
+```bash
+./scripts/new-domain.sh <NAME>
+```
 
-### Step 4 — Generate server domain package
-1. Read each server template from `docs/templates/domain/server/`
-2. Replace all variables + expand field blocks
-3. Write files to `server/app/domains/{{SNAKE_PLURAL}}/`
-   - `__init__.py`, `models.py`, `schemas.py`, `endpoints.py`
-4. Write backward-compat shims:
-   - `server/app/models/{{SNAKE}}.py` (from `model_shim.py.tmpl`)
-   - `server/app/schemas/{{SNAKE}}.py` (from `schema_shim.py.tmpl`)
+This generates the domain skeleton. **Read its actual output** and reconcile to
+the Next.js layout below — do not assume the script's printed file list is
+correct (it predates the migration in places). The authoritative target shape
+is the **items** domain. The files a Next.js domain must end with are:
 
-### Step 5 — Generate Alembic migration
-Execute: `cd server && uv run alembic revision --autogenerate -m "add {{SNAKE_PLURAL}} table"`
-Then: `cd server && uv run alembic upgrade head`
+- `next-app/lib/schema/<plural>.ts` — Drizzle `pgTable` (model on `lib/schema/items.ts`)
+- `next-app/lib/validations/<plural>.ts` — Zod `create<Pascal>Schema` / `update<Pascal>Schema` + inferred types
+- `next-app/actions/<plural>.ts` — `"use server"` Server Actions: `create`, `update`, `delete` — each calls `requireEditor()` (or `requireAuth()`/`requireAdmin()` as appropriate from `@/lib/permissions`), scopes every query by `userId`, and ends success with `revalidatePath(...)` returning `null` (no `redirect` — modals close on success)
+- `next-app/app/(dashboard)/dashboard/<plural>/page.tsx` — async Server Component that `requireAuth()`s, fetches via Drizzle scoped to `session.user.id`, and renders `<DataTable>` + modal affordances
+- `next-app/app/(dashboard)/dashboard/<plural>/_<singular>-table.tsx` + `_<singular>-dialog.tsx` + `_<singular>-form.tsx` — the client CRUD-via-modal trio (copy + rename from the items domain)
+- `next-app/lib/validations/<plural>.test.ts` — a Vitest unit test for the pure Zod validation logic (model on `lib/validations/auth.test.ts`)
 
-### Step 6 — Generate server integration tests
-Read `docs/templates/domain/server/test_integration.py.tmpl`
-Write to `server/tests/integration/test_{{SNAKE_PLURAL}}.py`
+If the script writes anything under `server/`, `client/src/`, or as a `.css`
+file, that is stale FastAPI/Vite output — delete it and produce the Next.js
+files above by copying + renaming from the items domain instead.
 
-### Step 7 — Generate client schemas + service + hooks
-1. Read client templates and write:
-   - `client/src/schemas/{{SNAKE}}.ts` (from `schema.ts.tmpl`)
-   - `client/src/api/services/{{SNAKE_PLURAL}}.ts` (from `service.ts.tmpl`)
-   - `client/src/hooks/use{{PASCAL_PLURAL}}.ts` (from `hooks.ts.tmpl`)
+### Step 3 — Register the table in the schema barrel
+Append `export * from "./<plural>"` to `next-app/lib/schema/index.ts` so
+drizzle-kit unions the new table (it reads the barrel — see `drizzle.config.ts`).
 
-### Step 8 — Generate client page + tests
-1. Create directory `client/src/pages/{{KEBAB_PLURAL}}/`
-2. Write:
-   - `{{PASCAL_PLURAL}}Page.tsx` (from `page.tsx.tmpl`) — style via Tailwind
-     utility classes + `components/ui/` primitives. Example pattern:
-     `<div className="flex flex-col gap-4 p-6">`. Do NOT import a CSS file.
-   - `{{PASCAL_PLURAL}}Page.test.tsx` (from `page.test.tsx.tmpl`)
-   - **Do NOT emit a `{{PASCAL_PLURAL}}.css` file** — page-co-located CSS is
-     banned by Stop-verifier Rule #21. Use Tailwind + `components/ui/` + Preset
-     slots (`components/ui/preset.ts`) for all visual styling.
+### Step 4 — Generate + apply the migration
+From `next-app/`:
 
-### Step 9 — Generate client MSW handlers
-Write `client/src/tests/handlers/{{SNAKE_PLURAL}}.ts` (from `handlers.ts.tmpl`)
+```bash
+pnpm db:generate     # drizzle-kit generate → drizzle/migrations/*.sql + meta/_journal.json
+pnpm db:migrate      # apply to the database
+```
 
-### Step 10 — Update scaffold + verify
-1. Add entry in `scripts/new-site/scaffold.ts` `DOMAIN_REMOVAL_MAP` for the new domain
-2. Remind user to add route to `App.tsx` and sidebar link in `DashboardLayout`
-3. Run: `cd server && uv run pytest tests/integration/test_{{SNAKE_PLURAL}}.py -v`
-4. Run: `cd client && pnpm test -- --run src/pages/{{KEBAB_PLURAL}}/`
-5. Output the full list of generated files
+There is no Alembic and no autogenerate-vs-handwrite split — Drizzle diffs the
+schema against the journal and writes the SQL.
 
-### Step 11（Optional）— Generate Domain Agent
+### Step 5 — Write / confirm the dashboard page + modals
+Ensure `app/(dashboard)/dashboard/<plural>/page.tsx` and its `_*` client
+components follow the items pattern: list via `<DataTable>`
+(`components/data-table-generic.tsx`), create/edit via a shadcn `Dialog`,
+delete via `components/confirm-dialog.tsx`. Deep-link modals with `?new=1` /
+`?edit=<id>`. The route auto-registers (filesystem routing) — there is **no**
+`routeMap.ts` / `App.tsx` edit. Add a sidebar link in
+`components/app-sidebar.tsx` if the domain should appear in nav.
 
-If --agent flag is provided:
+### Step 6 — Verify
+From `next-app/`:
+
+```bash
+pnpm typecheck && pnpm lint && pnpm test
+```
+
+`pnpm test` runs the Vitest unit suite (including the new
+`lib/validations/<plural>.test.ts`). Optionally add a Playwright e2e spec under
+`next-app/e2e/<plural>.spec.ts` (model on `e2e/items-crud.spec.ts`) and run
+`pnpm test:e2e`. Output the full list of files created / edited.
+
+### Step 7 (Optional) — Generate Domain Agent
+If `--agent` is provided:
 1. Read `docs/templates/domain/agent.md.tmpl`
-2. Replace variables:
-   - `{{SNAKE}}` → snake_case singular name
-   - `{{SNAKE_PLURAL}}` → snake_case plural name
-   - `{{PASCAL}}` → PascalCase singular name
-   - `{{PASCAL_PLURAL}}` → PascalCase plural name
-3. Write to `.claude/agents/{{SNAKE}}.md`
-4. Create `docs/context/{{SNAKE}}-log.md` with header:
+2. Replace variables (`{{SNAKE}}`, `{{SNAKE_PLURAL}}`, `{{PASCAL}}`, `{{PASCAL_PLURAL}}`)
+3. Write to `.claude/agents/<singular>.md`
+4. Create `docs/context/<singular>-log.md` with header:
    ```markdown
    # {{PASCAL}} — 諮詢紀錄
 
    > 由 @{{SNAKE}} 自動維護。記錄所有領域諮詢的問題、建議與參考來源。
    ```
-5. Report: "Created @{{SNAKE}} domain agent"
+5. Report: "Created @<singular> domain agent"
 
 ## Important Rules
 
-- OpenAPI spec is generated FIRST — this is SDD (Spec-Driven Development)
-- All endpoints include `@limiter.limit(settings.RATE_LIMIT_GENERAL)` and `current_active_user`
-- All queries filter by `user_id` for data isolation
-- Model uses `GUID` PK, `user_id` FK, and `TimestampMixin`
-- Zod schemas use `satisfies z.ZodType<ApiType>` for drift detection
-- Services use `createService()` factory
-- Domain registry auto-discovers — no `main.py` edits needed
-- When --agent flag is used, generate from `docs/templates/domain/agent.md.tmpl` (see Step 11)
+- **Mirror the items domain.** `lib/schema/items.ts`, `lib/validations/items.ts`,
+  `actions/items.ts`, and `app/(dashboard)/dashboard/items/` are the canonical
+  shape every new domain copies.
+- **Drizzle table is user-owned** — `id` UUID PK, `user_id` FK to `usersTable`
+  with `onDelete: "cascade"`, a `user_id` index, and `created_at`/`updated_at`
+  timestamps.
+- **Register the table in the barrel** — `export * from "./<plural>"` in
+  `lib/schema/index.ts`; drizzle-kit reads the barrel, not individual files.
+- **Server Actions are RBAC-gated and ownership-scoped** — call `requireEditor`
+  / `requireAuth` / `requireAdmin` from `@/lib/permissions`, scope every
+  query by `userId`, and check `result.count === 0` to surface
+  not-found/forbidden instead of silently succeeding.
+- **Mutations return success (no `redirect`)** — actions `revalidatePath` and
+  return `null` so the modal closes and the list refreshes via
+  `router.refresh()`. CRUD uses modals, never page redirects.
+- **Filesystem routing** — the dashboard page file IS the route; no
+  `routeMap.ts` / `App.tsx`. Add a nav link in `components/app-sidebar.tsx` if
+  desired.
+- **Migrations via Drizzle** — `pnpm db:generate` then `pnpm db:migrate`. No
+  Alembic, no autogenerate.
+- **No OpenAPI / SQLAlchemy / Pydantic / Axios / MSW / pytest** — those belong
+  to the removed FastAPI+Vite stack. If the scaffold script emits them, treat
+  the output as stale and produce the Next.js equivalents from the items domain.
+- When `--agent` is used, generate from `docs/templates/domain/agent.md.tmpl`
+  (see Step 7).

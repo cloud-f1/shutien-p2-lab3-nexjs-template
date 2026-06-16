@@ -47,9 +47,9 @@ allowed-tools: Agent, Read, Write, Edit, Bash, Grep, Glob, TaskCreate, TaskUpdat
 After each wave's branches merge to main (and before starting the next wave), run a full integration test unless `--skip-integration-test` was passed:
 
 1. **Checkout and pull main** to include all wave merges
-2. **Run server tests**: `cd server && uv run pytest --cov --cov-report=term-missing -q`
-3. **Run client tests**: `cd client && pnpm test:run --coverage`
-4. **Verify coverage >= 80%** for both suites (parse percentages from output)
+2. **Run tests**: `cd next-app && pnpm test` (+ `pnpm test:coverage` for the coverage gate)
+3. **Run quality gates**: `cd next-app && pnpm typecheck && pnpm lint`
+4. **Verify coverage >= 80%** (db-free Vitest layer — parse percentage from `pnpm test:coverage` output)
 5. **On PASS**: log result to orchestration-log.md, proceed to next wave
 6. **On FAIL**: halt the pipeline immediately — do NOT retry integration failures
    - Perform regression detection: identify which merge(s) in this wave likely caused the failure
@@ -80,7 +80,7 @@ After each wave's branches merge to main (and before starting the next wave), ru
 | E{n} | {w}  | agent-{id} | ✅/❌/⏸️ | {Xm Ys} | feat/E{n}-{slug} | {0-2} |
 
 ### Integration Test (E91)
-| Integration | Wave {N} | ✅ PASS / ❌ FAIL | server: {X}% ({+/-delta}), client: {Y}% ({+/-delta}) |
+| Integration | Wave {N} | ✅ PASS / ❌ FAIL | coverage: {X}% ({+/-delta}), typecheck/lint: ✅/❌ |
 
 _(Omit this section if `--skip-integration-test` was used)_
 
@@ -99,7 +99,7 @@ Next wave: {wave number or "complete"}
 - Use `⏸️` status for epics blocked by merge conflicts awaiting human resolution
 
 ## Safety Rules (NEVER violate)
-- CANNOT write implementation code (no source files in `server/` or `client/`)
+- CANNOT write implementation code (no source files under `next-app/`)
 - CANNOT modify agent definitions (`.claude/agents/`)
 - CANNOT modify slash commands (`.claude/commands/`)
 - CANNOT modify `CLAUDE.md` or hook scripts (`scripts/hooks/`)

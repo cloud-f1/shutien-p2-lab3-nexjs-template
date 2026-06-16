@@ -1,54 +1,80 @@
 ---
-description: "(planning) Three-source drift check → OpenAPI ↔ server ↔ client type consistency."
+description: "(planning) Drift check → Drizzle schema ↔ Zod validation ↔ Server Action / Route Handler / UI consistency."
 allowed-tools: Read, Bash, Grep, Glob
 ---
 
-# /athena:audit — Three-Source Consistency Audit
+# /athena:audit — Schema ↔ Validation ↔ Surface Drift Audit
 
-Perform a three-source alignment check across the API contract.
+Perform a consistency check across the data layer of the Next.js app. There is no
+OpenAPI contract — the alignment that matters now is **Drizzle schema ↔ shared Zod
+validation ↔ the Server Actions / Route Handlers / UI that consume them**.
 
 ## Sources
-1. **OpenAPI spec** (`docs/openapi.yaml`) — declared endpoints and schemas
-2. **Server routes** (`server/app/main.py` + `server/app/api/` + `server/app/domains/`) — registered FastAPI routes
-3. **Client API calls** (`client/src/api/`) — Axios calls and service definitions
+
+1. **Drizzle schema** (`next-app/lib/schema/{auth,items,billing,system}.ts`, barrel
+   `lib/schema/index.ts`) — the tables, columns, `pgEnum`s, and constraints.
+2. **Shared Zod validation** (`next-app/lib/validations/*.ts`) — the schemas used by
+   both the client (RHF) and the server (Server Actions) to validate input.
+3. **Surfaces** — `next-app/actions/*.ts` (Server Actions, `"use server"`),
+   `next-app/app/api/**/route.ts` (Route Handlers), and the forms/pages under
+   `app/` + `components/` that submit to them.
 
 ## Audit Steps
 
-### Step 1: Extract OpenAPI endpoints
-Read `docs/openapi.yaml` and list all paths with their methods (GET /health, POST /auth/register, etc.).
+### Step 1: Extract the schema
+Read `lib/schema/*.ts`. List every table, its columns (name + Drizzle type +
+nullable/default), every `pgEnum` with its allowed values, and the constraints
+(PK / UNIQUE / FK / index).
 
-### Step 2: Extract server routes
-Read `server/app/main.py` to find all `include_router` calls. Then read each router file to extract route decorators (@router.get, @router.post, etc.) with their paths. Combine prefix + path to get full endpoint paths.
+### Step 2: Extract the validation
+Read `lib/validations/*.ts`. List every exported Zod schema, its fields, and any
+enum allowlists (e.g. `VALID_ROLES`). Note which Drizzle table each maps to.
 
-### Step 3: Extract client API calls
-Search `client/src/api/` for all Axios method calls (apiClient.get, apiClient.post, etc.) and extract the URL paths.
+### Step 3: Extract the surfaces
+- Grep `actions/*.ts` for exported Server Actions and the tables they mutate
+  (`db.insert/update/delete(...)`), plus the RBAC guard on the first line
+  (`requireAuth` / `requireEditor` / `requireAdmin`).
+- Grep `app/api/**/route.ts` for Route Handlers and their methods.
+- Note which UI forms (`app/`, `components/`) post to each action.
 
 ### Step 4: Cross-reference
 Produce a gap report as a markdown table:
 
-| Endpoint | OpenAPI | Server | Client | Status |
-|----------|---------|--------|--------|--------|
-| GET /health | ✅ | ✅ | ✅ | Aligned |
-| POST /auth/register | ✅ | ✅ | ✅ | Aligned |
-| GET /admin/stats | ✅ | ❌ | ❌ | MISSING from server+client |
-| DELETE /users/me | ❌ | ✅ | ❌ | NOT in spec |
+| Table / Field | Schema | Zod | Surface | Status |
+|---------------|--------|-----|---------|--------|
+| `items.title` | ✅ | ✅ | ✅ action+form | Aligned |
+| `invitations.role` | ✅ (enum) | ✅ `VALID_ROLES` | ✅ | Aligned |
+| `webhooks.secret` | ✅ | ❌ | ✅ action | NO validation |
+| (zod `legacyField`) | ❌ | ✅ | — | Zod field with no column |
 
-### Step 5: Schema drift check
-For each endpoint in OpenAPI, verify the response schema name exists as a Pydantic model in the server code. Report any schemas referenced in OpenAPI but missing from server models.
+### Step 5: Drift checks
+Flag each of these:
+- **Unvalidated input** — a Server Action writes a table column with no corresponding
+  Zod field (input reaches the DB unchecked).
+- **Orphan validation** — a Zod field with no matching DB column (stale schema).
+- **Enum drift** — a `pgEnum`'s values disagree with the Zod enum allowlist and/or the
+  TS union type (e.g. `roleEnum ["admin","editor","viewer"]` vs `VALID_ROLES`).
+- **RBAC gap** — a mutating Server Action (`db.insert/update/delete`) whose first line
+  is NOT a `requireAuth`/`requireEditor`/`requireAdmin` guard (defense-in-depth; UI
+  hiding is not a control — Server Actions are public POST endpoints).
+- **Untested surface** — a Route Handler or Server Action with no test under `lib/**`,
+  `e2e/`, or a co-located `*.test.ts`.
 
 ### Step 6: Summary
 Report:
-- Total endpoints: {count}
+- Tables: {count} · Zod schemas: {count} · Server Actions: {count} · Route Handlers: {count}
 - Fully aligned: {count}
-- Missing from server: {list}
-- Missing from client: {list}
-- Missing from OpenAPI: {list}
-- Schema drift: {list}
+- Unvalidated inputs: {list}
+- Orphan validations: {list}
+- Enum drift: {list}
+- RBAC gaps: {list}
+- Untested surfaces: {list}
 
 ## Output
 Write the audit report to stdout (not to a file). The user decides what to do with the findings.
 
 ## Rules
-- This is a **read-only** audit — do NOT modify any source files
-- Do NOT write the report to a file unless the user explicitly asks
-- If `$ARGUMENTS` is provided, use it to filter (e.g., `auth` audits only auth endpoints)
+- This is a **read-only** audit — do NOT modify any source files.
+- Do NOT write the report to a file unless the user explicitly asks.
+- If `$ARGUMENTS` is provided, use it to filter (e.g., `billing` audits only the
+  billing schema/validation/actions; `auth` only the auth surface).

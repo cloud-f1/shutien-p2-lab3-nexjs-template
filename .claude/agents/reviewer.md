@@ -31,12 +31,12 @@ cannot run tests, cannot execute commands. Output is written exclusively to
 
 ### Red — Block on any violation
 
-**Backend security:**
-- `import jwt` (PyJWT) — NOT `from jose import`
-- `import bcrypt` direct — NOT `from passlib`
-- Access token: `tokenCache.ts` only, never `localStorage`
-- Protected routes: `Depends(get_current_user)` present
-- No secrets hardcoded anywhere
+**Server / auth security:**
+- Auth uses JWT sessions (`lib/auth.ts` `strategy: "jwt"`) — Credentials is incompatible with DrizzleAdapter DB sessions
+- RBAC guards re-read the role from the DB (`lib/permissions.ts` `requireAuth`/`requireAdmin`/`requireEditor`) — never trust a stale session claim
+- Protected Server Actions / Route Handlers call a `lib/permissions.ts` guard before any mutation
+- Every Server Action that mutates is marked `"use server"`
+- No secrets hardcoded anywhere (env vars only; `NEXT_PUBLIC_*` is build-time public)
 
 **Frontend accessibility:**
 - `<div onClick>` or `<span onClick>` without `role="button"` → must be `<button>`
@@ -47,17 +47,16 @@ cannot run tests, cannot execute commands. Output is written exclusively to
 ### Yellow — Warn, must fix before merge
 
 **Architecture:**
-- `docs/openapi.yaml` changed before server/client code?
-- React Query cache tier matches data volatility?
-- MSW handler added for any new endpoint?
-- Alembic migration present if models changed?
-- `onSettled: qc.invalidateQueries(...)` on every mutation?
+- `test added for any new Server Action / Route Handler?`
+- Drizzle migration generated (`pnpm db:generate`) + present in `drizzle/migrations/meta/_journal.json` if `lib/schema/*` changed?
+- `revalidatePath(...)` + `router.refresh()` on every mutation so the list refreshes?
 
 **Frontend quality:**
-- Duplicate CSS `:root` tokens across multiple `.css` files? (should be in `globals.css`)
-- Auth guard uses reactive store (`useAuthStore`) not raw `getAccessToken()`?
-- Buttons with side-effects (logout, delete) guarded with `disabled={isPending}`?
-- Forms with `readOnly` inputs still showing active "Save" buttons?
+- Duplicate CSS `:root` tokens across multiple `.css` files? (should be in `app/globals.css`)
+- `"use client"` only where browser APIs / event handlers / state are actually needed (default to Server Components)?
+- Buttons with side-effects (logout, delete) guarded with `disabled={isPending}` (`useTransition`)?
+- CRUD via modals (Dialog / ConfirmDialog), not page redirects? List views use the reusable `<DataTable>`?
+- Conditional Tailwind classes via `cn()`, no inline `style=` color overrides, no hand-edited `components/ui/*`?
 
 ### Green — Suggest
 - Naming clarity, duplication, error handling, TypeScript strictness
@@ -82,7 +81,7 @@ nothing else.
 ## Round N — [ISO timestamp]
 Verdict: CLEAN / ISSUES / BLOCKED
 Security: [any auth/token/injection findings, or "none"]
-Architecture: SDD / TDD / Cache tiers [pass/fail]
+Architecture: SDD / TDD / RSC boundaries / Drizzle-Zod consistency [pass/fail]
 Accessibility: [any a11y violations found, or "none"]
 Recurring: [pattern name if seen before — increment counter]
 
@@ -106,7 +105,7 @@ Rules:
 With 1M context available, load ALL relevant files in your first tool call batch:
 - `docs/context/review-findings.md` (designated doc)
 - `docs/context/qa-patterns.md` (recurring patterns to check)
-- `docs/openapi.yaml` (API contract — check for spec drift)
+- `lib/schema/*` (Drizzle schema) + `lib/validations/*` (Zod) — check for drift between them
 - All changed files: `git diff --name-only main...HEAD` → Read each
 - Corresponding test files for each changed source file
 

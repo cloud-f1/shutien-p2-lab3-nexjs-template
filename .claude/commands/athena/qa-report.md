@@ -34,7 +34,7 @@ For each unresolved entry, classify:
 - **Low** — typos, cosmetic, logging issues
 
 ### Domain (from files changed)
-- Map file paths to domains: `server/app/api/` → API, `server/app/domains/{name}/` → that domain, `client/src/pages/` → UI, `client/src/api/` → Client API, etc.
+- Map file paths to domains: `actions/*.ts` → Server Actions, `app/api/**/route.ts` → Route Handlers, `app/(dashboard)/**` + `components/**` → UI, `lib/schema/*` → DB schema, `lib/validations/*` → validation, etc.
 - Group related bugs (same domain + similar root area) into a single proposed epic
 
 ## Phase 3 — Generate Epic Proposals

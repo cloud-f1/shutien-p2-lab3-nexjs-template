@@ -529,12 +529,12 @@ When an agent fails AND `--max-retries` > 0 (default: 2):
 
 1. **Extract failure info**: Capture the agent's error output (last 50 lines) and exit code
 2. **Pattern match**: Check if the error matches a known failure pattern from `docs/context/debug-log.md`:
-   - JWT library import → suggest PyJWT
-   - asyncio event loop → suggest await
-   - Alembic drift → suggest upgrade head
-   - MSW handler missing → suggest handler addition
-   - Pydantic v2 syntax → suggest field_validator
-   - (See `scripts/hooks/post-bash-failure-inject.sh` for full 12-pattern list)
+   - Auth.js returns null session → suggest JWT session strategy (`lib/auth.ts` `strategy: "jwt"`)
+   - RBAC guard sees stale role → re-read role from DB in `lib/permissions.ts`
+   - Drizzle migration not in `_journal.json` → suggest `pnpm db:generate`
+   - Server Action missing `"use server"` → suggest adding the directive
+   - Zod message i18n drift → update the test assertion to the current message
+   - (See `scripts/hooks/post-bash-failure-inject.sh` for full pattern list)
 
 3. **Circuit breaker check**: Compare current error pattern with previous attempt (if any):
    - If **same root cause** (same pattern ID or same error substring in first 200 chars): **STOP retrying**

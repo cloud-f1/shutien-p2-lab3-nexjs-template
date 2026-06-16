@@ -1,5 +1,5 @@
 ---
-description: "(ui) Generate a React page → design tokens + @designer → TSX + smoke test. Usage: `<slug> "<description>"`."
+description: "(ui) Generate a Next.js page → design tokens + @designer → page.tsx + smoke test. Usage: `<slug> \"<description>\"`."
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Task
 ---
 
@@ -11,7 +11,9 @@ the **description** — usually quoted.
 
 Optional flags:
 
-- `--layout=dashboard|auth|none` — which layout to wrap with (default: `dashboard`)
+- `--layout=dashboard|auth|none` — which route group to place the page in
+  (default: `dashboard`). `dashboard` → `app/(dashboard)/<slug>/page.tsx`,
+  `auth` → `app/(auth)/<slug>/page.tsx`, `none` → `app/<slug>/page.tsx`.
 - `--blueprint=<path>` — optional path to an HTML blueprint under `docs/blueprints/`
 - `--ref=<path>` — optional path to a reference image (treated as guidance only;
   this command does not require multi-modal input)
@@ -19,7 +21,7 @@ Optional flags:
 Examples:
 
 ```
-/athena:design user-settings "Tab-based settings page with profile, notifications, billing tabs; reuse DashboardLayout"
+/athena:design user-settings "Tab-based settings page with profile, notifications, billing tabs; place under the dashboard layout"
 /athena:design billing-portal "Stripe-style invoice list with status pills" --layout=dashboard
 /athena:design hero-cta "Marketing hero with CTA button" --layout=none --blueprint=docs/blueprints/hero.html
 ```
@@ -46,19 +48,31 @@ Inputs:
 
 @designer will:
 
-1. Read the canonical design tokens (`docs/design/design-system.css` +
-   `client/src/styles/themes.css`) — do NOT read or reference `client/src/styles/common/`
+1. Read the canonical design tokens (`next-app/app/globals.css` Tailwind v4
+   `@theme` block; `app/cobalt-fx.css` for optional effect layers) and the
+   installed shadcn primitive set (`ls next-app/components/ui/` — there is no
+   `index.ts` barrel and no `preset.ts`)
 2. Ask one batched clarifying question if critical info is missing, then
    proceed
-3. Write `Page.tsx` and `Page.test.tsx` under `client/src/pages/<slug>/`
-   — **NO `Page.css` or `<slug>.css` file** (Stop-verifier Rule #21 blocks
-   new page-co-located CSS). Style exclusively via:
-   - Tailwind utility classes inline on JSX elements
-   - Composing `components/ui/` primitives (`Card`, `Stack`, `PageHeader`, etc.)
-   - Preset slots in `components/ui/preset.ts` (defaultPreset / compactPreset /
-     editorialPreset / densePreset) for variant-driven visual control
-   - Theme CSS vars from `themes.css` via Tailwind `[var(--token)]` syntax when needed
-4. Register the route in `client/src/config/routeMap.ts` + `client/src/App.tsx`
+3. Write `page.tsx` at the layout-derived route path (e.g.
+   `next-app/app/(dashboard)/<slug>/page.tsx`) as a **Server Component by
+   default** — **NO co-located `.css` file**. Style exclusively via:
+   - shadcn `components/ui/` primitives (`Card`, `Button`, `Table`, `Tabs`,
+     `Input`, `Dialog`, …) and app components (`<DataTable>` from
+     `components/data-table-generic.tsx`, `<ConfirmDialog>`)
+   - Tailwind utility classes bound to `app/globals.css` tokens
+     (`bg-background`, `text-muted-foreground`, `border-border`, `bg-primary`)
+   - `cn()` from `@/lib/utils` for conditional class composition
+   - `"use client"` only when the page needs state/effects/handlers — pushed
+     into a co-located `_component.tsx` so the page shell stays server-rendered
+     (mirror `app/(dashboard)/dashboard/items/`)
+4. Write a Playwright smoke spec at `next-app/e2e/<slug>.spec.ts` asserting the
+   route loads, a heading landmark is visible, and at least one expected
+   primitive renders (follow `e2e/dashboard-smoke.spec.ts`)
+
+   > **No route registration.** App Router is filesystem-based — creating
+   > `app/<slug>/page.tsx` *is* the route. There is no `routeMap.ts` and no
+   > `App.tsx` to edit.
 5. Write the design review artifact at
    `docs/context/design-review/<slug>.md`
 6. Append one `design_generated` event to `.claude/audit.jsonl`
@@ -67,13 +81,18 @@ Inputs:
 
 Report to the user:
 
-- Files created (with line counts) and files edited
-- Tokens used, tokens flagged as missing
-- The Stop-verifier will automatically run rules #13 (orphan route),
-  #14 (CSS co-location), and #17 (CSS variable drift) against the new files
-- Suggested next step: `pnpm --filter client test -- --run src/pages/<slug>/`
-  to confirm the smoke test passes
+- Files created (with line counts); files edited (normally none — filesystem
+  routing means no route registration)
+- The route URL the new page is reachable at
+- Tokens used, primitives flagged as missing (need
+  `npx shadcn@latest add <name>`)
+- The Stop-verifier will automatically check the new files for `console.log`
+  residue, inline `style=` color overrides, and hand-authored
+  `components/ui/` files
+- Suggested next step (from `next-app/`): `pnpm typecheck && pnpm lint`, then
+  `pnpm test:e2e` (needs the DB seeded + dev server, which `webServer`
+  auto-boots locally) to confirm the smoke spec passes
 
-If @designer flags missing tokens, surface them prominently — the human
-needs to decide whether to extend `docs/design/design-system.css` or adjust
-the design.
+If @designer flags missing tokens or primitives, surface them prominently — the
+human needs to decide whether to extend the `@theme` token block in
+`app/globals.css` or install the missing shadcn primitive.

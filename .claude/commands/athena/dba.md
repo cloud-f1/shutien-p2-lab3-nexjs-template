@@ -1,11 +1,19 @@
 ---
-description: "(ops) Database admin → inspect migrations → lint SQL → diagnose errors → fix suggestions."
+description: "(ops) Database admin → inspect Drizzle migrations → lint SQL → diagnose errors → fix suggestions."
 allowed-tools: Read, Bash, Grep, Glob, Edit, Write
 ---
 
 # /athena:dba — Database Administration Command
 
-Inspect, lint, and manage Alembic migration files. Subcommand-driven.
+Inspect, lint, and manage **Drizzle / drizzle-kit** migrations. Subcommand-driven.
+
+> Stack: Drizzle ORM + postgres-js + drizzle-kit. Migrations are **plain `.sql`**
+> files in `next-app/drizzle/migrations/` indexed by `meta/_journal.json` — NOT
+> Alembic Python revisions. The schema source is `next-app/lib/schema/{auth,items,
+> billing,system}.ts` (barrel `lib/schema/index.ts`, wired in `drizzle.config.ts`).
+> drizzle-kit `generate` does **not** emit a downgrade — reverse SQL is hand-authored
+> at review time. Deep migration patterns live in the `nextjs-saas-patterns` skill (§5).
+> All commands run from `next-app/`.
 
 ## Parse Arguments
 
@@ -13,15 +21,15 @@ Parse `$ARGUMENTS` for the subcommand:
 
 | Subcommand | Action |
 |------------|--------|
-| `inspect` (default) | Read and summarize all migration files |
-| `inspect NNN` | Deep-inspect a specific migration (e.g., `inspect 005`) |
-| `lint` | Run migration linter + report violations |
-| `history` | Show migration chain with dependencies |
-| `diagnose <error>` | Analyze a migration error and suggest fix |
-| `fix NNN` | Auto-fix banned patterns in migration NNN |
-| `status` | Current head + pending changes + linter status |
-| `new <description>` | Generate migration with autogenerate + lint + review |
-| `review <rev>` | Emit offline SQL for `<rev>`, scan red flags, delegate to @dba on hit (E157) |
+| `inspect` (default) | Read and summarize all `.sql` migration files |
+| `inspect NNNN` | Deep-inspect a specific migration (e.g., `inspect 0006`) |
+| `lint` | Scan migrations for risky patterns + fresh-DB apply check |
+| `history` | Show the migration chain from `_journal.json` |
+| `diagnose <error>` | Analyze a migration/DB error and suggest a fix |
+| `fix NNNN` | Propose fixes for risky patterns in migration NNNN |
+| `status` | Journal head + drift check (`drizzle-kit check`) + apply check |
+| `new <description>` | Generate a migration (`db:generate`) + lint + review |
+| `review <rev>` | Read the migration SQL, scan red flags, delegate to @dba on hit (E157) |
 
 If no argument: run `inspect`.
 
@@ -33,189 +41,185 @@ Scan all migration files and produce a summary report.
 
 1. **List all migrations**:
    ```bash
-   cd server && ls -1 alembic/versions/*.py | sort
+   cd next-app && ls -1 drizzle/migrations/*.sql | sort
    ```
 
-2. **For each migration file**, extract:
-   - Revision ID and down_revision (dependency chain)
-   - Tables created (`op.create_table`)
-   - Columns added (`op.add_column`)
-   - Indexes created (`op.create_index`)
-   - Constraints added (`UniqueConstraint`, `ForeignKey`)
+2. **For each `.sql` file**, extract:
+   - The journal entry (`idx`, `tag`, `when`) from `drizzle/migrations/meta/_journal.json`
+   - Tables created (`CREATE TABLE`)
+   - Columns added (`ALTER TABLE ... ADD COLUMN`)
+   - Indexes created (`CREATE INDEX` / `CREATE UNIQUE INDEX`)
+   - Constraints added (`ADD CONSTRAINT ... PRIMARY KEY | UNIQUE | FOREIGN KEY`)
+   - Enums (`CREATE TYPE ... AS ENUM`)
 
-3. **Scan for issues** using the DBA skill patterns:
-   - `sa.CHAR(36)` or `sa.String(36)` (should be `sa.Uuid()`)
-   - `server_default="0"` or `"1"` on Boolean columns
-   - `ForeignKey` without `ondelete`
-   - Missing downgrade functions
+3. **Scan for issues** using the `nextjs-saas-patterns` §5 patterns:
+   - `ALTER COLUMN ... SET DATA TYPE` without an explicit `USING` cast (PG 42804 on a fresh DB)
+   - Enum value changes that drop/rename in place (must recreate the type)
+   - A `.sql` file present on disk but **missing from `_journal.json`** (won't apply)
+   - `DROP COLUMN` / `DROP TABLE` / `DROP INDEX` (destructive — needs @dba sign-off)
+   - FK columns with no covering index (lookup perf)
 
 4. **Output format**:
    ```
    ## Migration Inventory (N files)
 
-   | # | Tables | Columns | Indexes | Issues |
-   |---|--------|---------|---------|--------|
-   | 001 | user, oauth_account | 12 | 2 | ✅ |
-   | 002 | sessions | 6 | 1 | ✅ |
+   | idx | tag | Tables | Columns | Indexes | Issues |
+   |-----|-----|--------|---------|---------|--------|
+   | 0000 | bright_mandarin | users, accounts, … | 12 | 2 | ✅ |
+   | 0006 | spooky_rachel_grey | — | — | 9 | ✅ |
    ...
 
    ### Issues Found
-   - 006:20 — Boolean server_default needs sa.text()
+   - 0005:14 — ALTER COLUMN TYPE without USING cast (will fail on fresh DB)
    ...
 
    ### Statistics
-   - Total tables created: N
-   - Total columns added: N
-   - Total indexes: N
-   - Clean migrations: N/M
+   - Total tables: N · columns added: N · indexes: N · enums: N
+   - Clean migrations: N/M · journal entries: N
    ```
 
-## Subcommand: `inspect NNN`
+## Subcommand: `inspect NNNN`
 
 Deep-inspect a single migration file.
 
-1. **Read** `server/alembic/versions/NNN_*.py` (glob for the file matching the number)
-2. **Show**: full upgrade() content with annotations
+1. **Read** `drizzle/migrations/NNNN_*.sql` (glob for the file matching the number).
+2. **Show**: the full SQL with annotations (statement-breakpoint boundaries).
 3. **Analyze**:
-   - Every `sa.Column` call — type, nullable, default, FK
-   - Every `op.create_index` — columns, uniqueness
-   - Every `ForeignKey` — ondelete policy
-   - Downgrade completeness (does it undo everything?)
-4. **Lint check** against DBA skill rules
-5. **Report** issues with exact line numbers and suggested fixes
+   - Every `CREATE TABLE` / `ADD COLUMN` — type, nullable, default, FK
+   - Every `CREATE INDEX` — columns, uniqueness, whether it covers an FK
+   - Every `ADD CONSTRAINT` — PK / UNIQUE / FK (and `ON DELETE` policy if present)
+   - Any destructive or type-changing statement (flag for review)
+4. **Lint check** against `nextjs-saas-patterns` §5 rules.
+5. **Report** issues with exact line numbers and suggested fixes.
 
 ## Subcommand: `lint`
 
-Run the migration linter and report results.
+Scan migrations for risky patterns, then verify they apply cleanly to a fresh DB.
 
 ```bash
-cd server && uv run pytest tests/test_migration_lint.py -v
+cd next-app && pnpm db:test-migrate   # drizzle/test-migrate.ts — applies ALL migrations
+                                      # to a throwaway DB and asserts the tables exist
 ```
 
-If failures found, read the failing migration files and suggest exact fixes.
+Also grep the `.sql` files for the §5 red flags (`ALTER COLUMN ... TYPE` without
+`USING`, in-place enum edits, `DROP COLUMN|TABLE|INDEX`). If `pnpm db:test-migrate`
+fails or a red flag fires, read the offending `.sql` and suggest exact fixes.
 
 ## Subcommand: `history`
 
-Show the migration dependency chain.
+Show the migration chain.
 
-1. **Read** all migration files, extract `revision` and `down_revision`
-2. **Build** the chain: `base → 001 → 002 → ... → head`
+1. **Read** `drizzle/migrations/meta/_journal.json` — the ordered `entries[]`.
+2. **Build** the chain: `0000 → 0001 → … → head` (idx order).
 3. **Show** as a table:
    ```
-   | Rev | Description | Tables | Down |
-   |-----|-------------|--------|------|
-   | 001 | fastapi_users_initial | user, oauth_account | base |
-   | 002 | add_sessions_table | sessions | 001 |
-   ...
+   | idx | tag | When (UTC) | Tables touched |
+   |-----|-----|------------|----------------|
+   | 0000 | bright_mandarin | 2026-… | users, accounts, sessions, … |
+   | 0006 | spooky_rachel_grey | 2026-… | composite PKs + UNIQUEs + indexes |
    ```
-4. **Check** for gaps, branches, or broken chain links
+4. **Check** for gaps (a `.sql` on disk with no journal entry, or vice versa) and
+   that the on-disk numbering is contiguous.
 
 ## Subcommand: `diagnose <error>`
 
-Analyze a migration error message and suggest a fix.
+Analyze a migration/DB error message and suggest a fix.
 
-1. **Parse** the error text from `$ARGUMENTS` (everything after "diagnose")
-2. **Match** against known error patterns:
+1. **Parse** the error text from `$ARGUMENTS` (everything after "diagnose").
+2. **Match** against known patterns (from `nextjs-saas-patterns` §5):
 
    | Error pattern | Cause | Fix |
    |--------------|-------|-----|
-   | `DatatypeMismatchError: character and uuid` | `sa.CHAR(36)` FK → `uuid` PK | Change FK column to `sa.Uuid()` |
-   | `DatatypeMismatchError: boolean but default...integer` | `server_default="0"` on Boolean | Change to `sa.text("false")` |
-   | `UndefinedColumnError: column X does not exist` | Model column not migrated | Run `--autogenerate` |
-   | `UndefinedTableError` | Table not created yet | Check migration order |
-   | `DuplicateTableError` | Table already exists | Check if migration already applied |
-   | `constraint...does not exist` | Downgrade references non-existent constraint | Use `try/except` in downgrade |
+   | `42804 ... cannot be cast automatically to type integer` | `ALTER COLUMN ... SET DATA TYPE` from timestamp/text without a cast | Add `USING extract(epoch from "<col>")::integer` (or the right `USING` expr) |
+   | `cannot drop ... because other objects depend on it` (enum) | Editing a `pgEnum`'s values in place | Recreate the type: drop default → cast column to `text` → drop old enum → create new enum → cast back with `USING CASE …` → restore default |
+   | `relation "X" already exists` | Migration already applied, or a re-run | Check `_journal.json` + the DB's `__drizzle_migrations` table |
+   | `column "X" does not exist` | Schema edited but no migration generated | Run `pnpm db:generate` then `pnpm db:migrate` |
+   | migration `.sql` ignored / not applied | File not registered in `_journal.json` | Regenerate via `pnpm db:generate`, or add the journal entry |
+   | `DATABASE_URL` undefined at generate/migrate | drizzle-kit / tsx don't read `.env.local` | Source the env first (see the `make local-db` target / Makefile) |
 
-3. **If error matches**: show the fix with exact code
-4. **If no match**: read recent migration files and the error traceback to diagnose
+3. **If error matches**: show the fix with exact SQL/TS.
+4. **If no match**: read the recent `.sql` files + the schema and diagnose from the traceback.
 
-## Subcommand: `fix NNN`
+## Subcommand: `fix NNNN`
 
-Auto-fix banned patterns in a specific migration file.
+Propose fixes for risky patterns in a specific migration file.
 
-1. **Read** the migration file
-2. **Find** all violations (CHAR(36), bad Boolean defaults, missing ondelete)
-3. **Show** proposed changes as a diff
-4. **Apply** fixes using Edit tool
-5. **Run linter** to verify fixes:
+1. **Read** the migration `.sql`.
+2. **Find** violations (`ALTER COLUMN TYPE` without `USING`, in-place enum edits,
+   unguarded destructive statements).
+3. **Show** proposed changes as a diff.
+4. **Apply** fixes using the Edit tool — and if the schema is the real source of the
+   change, fix `lib/schema/*.ts` and regenerate rather than hand-patching SQL.
+5. **Verify** with the fresh-DB apply:
    ```bash
-   cd server && uv run pytest tests/test_migration_lint.py -v
+   cd next-app && pnpm db:test-migrate
    ```
 
 ## Subcommand: `status`
 
 Quick health check of the migration system.
 
-1. **Current head**:
+1. **Drift check** (schema vs. migrations):
    ```bash
-   cd server && uv run python -m alembic current
+   cd next-app && npx drizzle-kit check
    ```
-2. **Pending changes**:
+2. **Journal head**: read the last entry of `drizzle/migrations/meta/_journal.json`.
+3. **Fresh-DB apply**:
    ```bash
-   cd server && uv run python -m alembic check 2>&1
-   ```
-3. **Linter**:
-   ```bash
-   cd server && uv run pytest tests/test_migration_lint.py -v
+   cd next-app && pnpm db:test-migrate
    ```
 4. **Report** in one block:
    ```
    ## DBA Status
-   - Head: 008
-   - Pending model changes: none
-   - Linter: N/N pass ✅
-   - PG smoke test: run `make test-migrations` to verify
+   - Journal head: 0006 (spooky_rachel_grey)
+   - Drift (drizzle-kit check): clean ✅ / N collisions
+   - Fresh-DB apply (db:test-migrate): pass ✅
+   - Pending schema changes: run `pnpm db:generate` to see if a new migration is due
    ```
 
 ## Subcommand: `new <description>`
 
-Generate a new migration with full safety checks.
+Generate a new migration with safety checks.
 
-1. **Pre-check**: verify model imports in `server/app/models/__init__.py`
+1. **Pre-check**: the schema edit landed in `lib/schema/*.ts` and is re-exported by
+   `lib/schema/index.ts` (drizzle.config reads the barrel).
 2. **Generate**:
    ```bash
-   cd server && uv run python -m alembic revision --autogenerate -m "<description>"
+   cd next-app && pnpm db:generate   # drizzle-kit generate — diffs schema → new NNNN_*.sql + updates _journal.json
    ```
-3. **Read** the generated file
-4. **Lint** it:
+3. **Read** the generated `.sql`.
+4. **Lint** it (§5 red flags) and verify it applies:
    ```bash
-   cd server && uv run pytest tests/test_migration_lint.py -v
+   cd next-app && pnpm db:test-migrate
    ```
-5. **Show** the generated migration content for review
-6. **Suggest** applying with `uv run python -m alembic upgrade head`
+5. **Show** the generated migration for review.
+6. **Suggest** applying with `pnpm db:migrate` (and re-seeding via `pnpm db:seed` if needed).
 
 ## Subcommand: `review <rev>` (E157)
 
-Ad-hoc migration review. Emits offline SQL, scans for red flags, and on
-red-flag hit auto-delegates to the `@dba` agent for sign-off. This is the
-manual entry point to the same path that `@qa` Phase 2.6 takes
-automatically when alembic versions changed in the PR.
+Ad-hoc migration review. Drizzle migrations are already plain `.sql`, so there is no
+"emit offline SQL" step — read the file directly, scan for red flags, and on a hit
+auto-delegate to the `@dba` agent for sign-off. This is the manual entry point to the
+same path `@qa` takes automatically when `drizzle/migrations/` changed in the PR.
 
-1. **Parse** `<rev>` from `$ARGUMENTS` (defaults to `head` if omitted).
-2. **Run the review script**:
-   ```bash
-   scripts/migration-review.sh "<rev>"
-   ```
-   This writes:
-   - `docs/context/migration-review/<rev>-<ts>-upgrade.sql`
-   - `docs/context/migration-review/<rev>-<ts>-downgrade.sql`
-   And prints any red flags (`DROP COLUMN`, `DROP TABLE`, `DROP INDEX`,
-   `ALTER COLUMN ... TYPE`) to stderr.
-3. **If red flags fired** — spawn the `@dba` agent with:
-   - The generated SQL artifact paths
-   - The red-flag stderr summary
-   - The instruction: "Write
-     `docs/context/migration-review/<rev>-signoff.md` per the template in
-     `.claude/agents/dba.md`. Decide GO or NOGO and provide a concrete
-     rollback plan."
-4. **If no red flags** — print "No red flags. Sign-off optional." and
-   exit. The SQL artifacts are still written and version-controlled.
-5. **Always** show a summary table at the end:
+1. **Resolve** `<rev>` from `$ARGUMENTS` (a migration number like `0006`, or `head`
+   = the last journal entry).
+2. **Read** the migration `.sql` (and, if a downgrade exists, it; otherwise note that
+   Drizzle has none and a reverse plan must be authored).
+3. **Scan** for red flags: `DROP COLUMN`, `DROP TABLE`, `DROP INDEX`,
+   `ALTER COLUMN ... TYPE`, in-place enum edits.
+4. **If red flags fired** — spawn the `@dba` agent with:
+   - The migration `.sql` path
+   - The red-flag summary
+   - The instruction: "Write `docs/context/migration-review/<rev>-signoff.md` per the
+     template in `.claude/agents/dba.md`. Decide GO or NOGO and provide a concrete
+     reverse-SQL rollback plan (Drizzle has no auto-downgrade)."
+5. **If no red flags** — print "No red flags. Sign-off optional." and exit.
+6. **Always** show a summary table at the end:
    ```
    ## Migration Review — <rev>
-   - Upgrade SQL:   docs/context/migration-review/<rev>-<ts>-upgrade.sql
-   - Downgrade SQL: docs/context/migration-review/<rev>-<ts>-downgrade.sql
-   - Red flags:     N
-   - Sign-off:      docs/context/migration-review/<rev>-signoff.md (or "not required")
-   - Decision:      GO | NOGO | not required
+   - Migration:  drizzle/migrations/<rev>_*.sql
+   - Red flags:  N
+   - Sign-off:   docs/context/migration-review/<rev>-signoff.md (or "not required")
+   - Decision:   GO | NOGO | not required
    ```

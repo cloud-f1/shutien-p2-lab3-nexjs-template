@@ -35,12 +35,12 @@ lessons [GENERALIZABLE] for @memory-curator to promote to template tier.
 1. **Read** `docs/context/debug-log.md` — known pattern?
 2. **CAPTURE**: full error + `git log --oneline -10` + library versions
 3. **ISOLATE**: narrow by error class
-   - Pydantic validation? → check schema vs openapi.yaml
-   - SQLAlchemy? → check model + migration applied
-   - JWT? → check PyJWT import (not python-jose)
-   - Async? → check all DB calls use `await`
-   - React Query? → check cache tier + invalidation
-   - MSW? → check handler covers endpoint
+   - Auth/session? → check `lib/auth.ts` uses `strategy: "jwt"` (Credentials breaks with DrizzleAdapter DB sessions)
+   - RBAC denied/leaked? → check `lib/permissions.ts` re-reads role from DB, not a stale session claim
+   - Drizzle/DB? → check schema in `lib/schema/*` matches the migration + migration is in `drizzle/migrations/meta/_journal.json`
+   - Server Action no-op / "use server" error? → check the file/function is marked `"use server"`
+   - Zod validation? → check `lib/validations/*` schema + i18n message matches the test assertion
+   - React 19? → check `"use client"` boundary on any component using state/effects/event handlers
 4. **HYPOTHESIZE**: ONE hypothesis per cycle (evidence for + against + test)
 5. **FIX**: minimum change addressing root cause
 6. **VERIFY**: run original failing command again
@@ -50,12 +50,15 @@ lessons [GENERALIZABLE] for @memory-curator to promote to template tier.
 
 | Symptom | Root Cause | Fix |
 |---|---|---|
-| `from jose import jwt` | python-jose still referenced | `import jwt` (PyJWT) |
-| `RuntimeError: event loop already running` | `asyncio.run()` in async function | Use `await` |
-| Stale UI after mutation | Missing `onSettled` invalidation | Add `qc.invalidateQueries(...)` |
-| `[MSW] Warning: no handler` | New endpoint has no MSW mock | Add to `src/tests/handlers/` |
-| `alembic: not up to date` | Migration not applied | `alembic upgrade head` |
-| `tokenCache.get()` always null | `tokenCache.set()` never called | Check login + refresh both set it |
+| Login succeeds but `auth()` returns null → dashboard crash | Auth.js Credentials with DrizzleAdapter's default DB sessions | Set `strategy: "jwt"` in `lib/auth.ts` session config |
+| RBAC guard allows/denies wrong user after a role change | Role read from a stale session claim | Re-read the role from the DB in `lib/permissions.ts` |
+| Stale list after a create/edit/delete | Missing revalidation | Add `revalidatePath(...)` in the Server Action + `router.refresh()` in the modal `onSuccess` |
+| Migration file ignored / "no migrations to run" | Migration not registered in `_journal.json` | Run `pnpm db:generate` (drizzle-kit) so the migration + journal entry are created |
+| `drizzle-kit` errors dropping/altering an enum | Postgres can't ALTER an enum in place | Recreate the enum (drop dependents → recreate type → re-add) |
+| Server Action silently does nothing | Function/file not marked `"use server"` | Add the `"use server"` directive |
+| Mutation "affected 0 rows" check always false | postgres-js returns the row count on `.count`, not `.rowCount` | Read the result's `.count` |
+| `Error: ... only works in a Client Component` | Component uses state/effects/handlers without the boundary | Add `"use client"` at the top of the file |
+| Zod-related test asserts an old message | i18n message text drifted | Update the test assertion to the current `lib/validations/*` message |
 
 ## Write-Back Format
 
@@ -66,7 +69,7 @@ Root cause: [exact explanation]
 Fix: [file:line — before → after]
 Verified: [command run + result]
 Prevention: [test to add / rule to enforce]
-[GENERALIZABLE] — [why any FastAPI/React project could hit this]
+[GENERALIZABLE] — [why any Next.js/Drizzle project could hit this]
 ```
 
 ## Auto-Retry Awareness (E88)
@@ -100,10 +103,15 @@ When the failure hook provides a "Known pattern:" match:
 
 ### Pattern Categories
 
-- **Server (9 patterns)**: JWT library, asyncio loop, Alembic drift, bcrypt import,
-  Pydantic v2 syntax, module not found, port conflict, passlib deprecation, GUID type
-- **Client (7 patterns)**: Stale UI, MSW handler missing, tokenCache null, fireEvent
-  (banned), localStorage (banned), React Query cache tier, import path errors
+- **Auth/RBAC**: Auth.js DB-session-vs-JWT login bug, RBAC role read from a stale
+  session claim (must re-read from DB), middleware (`proxy.ts`) auth-only scope
+- **Drizzle/DB**: migration not in `_journal.json` (run `pnpm db:generate`),
+  drizzle-kit enum-drop needs recreate, postgres-js mutation count is `.count`,
+  schema (`lib/schema/*`) ↔ migration drift
+- **Next.js/React**: missing `"use client"` boundary (React 19), Server Action not
+  marked `"use server"`, stale list missing `revalidatePath` + `router.refresh()`
+- **Build/tooling**: Zod message i18n drift breaking tests, module not found / path
+  alias (`@/*`) errors, port 3000 conflict, env var missing at build vs runtime
 
 ## Round Mode (E162 — Iterative Reviewer Convergence Loop)
 

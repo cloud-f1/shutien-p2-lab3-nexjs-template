@@ -36,7 +36,7 @@ If `$ARGUMENTS` contains `--batch`:
 
 6. **Group by category**: Organize findings into these categories:
    - **Architecture**: structural patterns, domain design, API conventions
-   - **Testing**: coverage strategies, test patterns, MSW/mock approaches
+   - **Testing**: coverage strategies, Vitest/Playwright patterns, mock approaches
    - **DX**: tooling improvements, workflow optimizations, script enhancements
    - **Documentation**: doc structure, bilingual patterns, spec quality
    - **Security**: auth patterns, input validation, vulnerability prevention

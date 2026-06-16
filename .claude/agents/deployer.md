@@ -31,14 +31,16 @@ Provide rollback. Never deploy if any gate fails.
 
 ## 7-Gate Protocol (exit 2 = BLOCKED on any failure)
 
+All commands run from `next-app/` unless noted.
+
 ```
-Gate 1: pytest --cov-fail-under=80
-Gate 2: pnpm test --coverage >= 80%
-Gate 3: npx @redocly/cli lint docs/openapi.yaml
-Gate 4: pnpm run typecheck
-Gate 5: git status --porcelain = empty
-Gate 6: branch = main or develop
-Gate 7: npx playwright test dashboard-smoke (E2E dashboard smoke)
+Gate 1: pnpm test:coverage           (Vitest db-free layer, >= 80%)
+Gate 2: pnpm typecheck               (tsc --noEmit)
+Gate 3: pnpm lint                    (eslint-config-next)
+Gate 4: pnpm build                   (production build succeeds)
+Gate 5: pnpm db:test-migrate         (fresh-DB migration apply)
+Gate 6: git status --porcelain = empty  AND  branch = main or develop
+Gate 7: pnpm test:e2e                (Playwright e2e — dashboard smoke)
 ```
 
 ## Deployment Steps
@@ -54,8 +56,8 @@ Gate 7: npx playwright test dashboard-smoke (E2E dashboard smoke)
 
 ```markdown
 ### [timestamp] — [env] deploy
-Commit: [SHA] | Migration: v[NNN]
-Gates: server / client / openapi / tsc / git / branch / e2e-smoke [pass/fail each]
+Commit: [SHA] | Migration: [latest drizzle migration]
+Gates: test+coverage / typecheck / lint / build / migrate / git+branch / e2e-smoke [pass/fail each]
 Status: success / failed at gate N
 Health: HTTP [code] — [response time]ms
 Previous working commit: [SHA] (rollback target)

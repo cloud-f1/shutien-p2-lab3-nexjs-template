@@ -7,7 +7,7 @@ Parse $ARGUMENTS for flags:
 - `--review-only`   → dispatch only to @reviewer (read-only code review)
 - `--test-only`     → dispatch only to @qa (test execution + coverage)
 - `--eval-only`     → dispatch only to @evaluator (independent acceptance tester)
-- `--contract-only` → run ONLY Phase 2.5 schemathesis contract sweep (E156)
+- `--contract-only` → run ONLY a targeted route/action conformance check — a focused Playwright pass against the affected route (Next.js equivalent of the removed schemathesis sweep, E156)
 - `--plan`          → Phase 0 only (generate test plan document)
 - `--effort <tier>` → `quick|standard|thorough|ultra` — scales fan-out, verification depth, and model tier (default: standard)
 - (no flag)         → all phases sequentially: @reviewer → @qa → @evaluator
@@ -257,7 +257,7 @@ Test Quality Report:
 ├── Behavior Tests: X% ✅/🟡/❌ (target: >70%)
 ├── Mock Depth: X.X avg ✅/🟡/❌ (target: <5)
 ├── Parametrize Rate: X% ✅/🟡/❌ (target: >50%)
-└── Contract Coverage: X% ✅/🟡/❌ (target: 100%)
+└── Route/Action Coverage: X% ✅/🟡/❌ (target: 100%)
 
 Overall: ✅ All targets met / 🟡 1-2 below target / ❌ 3+ below target
 
@@ -268,10 +268,10 @@ Suggestions:
 ```
 
 Metric definitions:
-- **Behavior Tests**: % of assertions on outputs (status codes, response JSON, DOM) vs mock assertions
-- **Mock Depth**: average `mock.patch`/`@patch` count per test file
-- **Parametrize Rate**: % of test files (with 3+ tests) using `parametrize`/`it.each`
-- **Contract Coverage**: % of OpenAPI endpoints with corresponding test coverage
+- **Behavior Tests**: % of assertions on outputs (returned values, response JSON, DOM) vs mock assertions
+- **Mock Depth**: average `vi.mock`/`vi.fn` count per test file
+- **Parametrize Rate**: % of test files (with 3+ tests) using `it.each`/`test.each`
+- **Route/Action Coverage**: % of Server Actions + Route Handlers with corresponding test coverage
 
 Status thresholds: ✅ = meets target, 🟡 = within 20% of target, ❌ = below 20% of target
 
