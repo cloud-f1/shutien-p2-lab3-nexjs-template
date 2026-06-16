@@ -1,10 +1,13 @@
 ---
 name: install-landing
 description: >
-  Install the @saas/landing module into this project. Reads module.manifest.json,
-  removes the placeholder app/page.tsx, and walks through branding customisation
-  and pricing tier wiring. No env vars or DB migrations required.
-  Use after: npx shadcn@latest add @saas/landing
+  Install the @saas/landing module into a project that does NOT already have a
+  landing page (e.g. a fresh `create-next-app`). Reads module.manifest.json,
+  replaces the bare Next.js starter app/page.tsx ONLY if it is the default
+  placeholder, and walks through branding customisation and pricing tier wiring.
+  No env vars or DB migrations required. NOTE: in THIS template the landing is
+  already baked in (app/page.tsx + components/marketing/*) — do NOT re-install or
+  delete it here. Use after: npx shadcn@latest add @saas/landing
 user-invocable: true
 metadata:
   author: saas-template
@@ -13,7 +16,23 @@ metadata:
 
 # Install Landing Module
 
-Installs the `@saas/landing` marketing landing page module after running:
+> ⚠️ **READ FIRST — this template already ships a landing page.**
+> In THIS repo the landing is **baked in**: `app/page.tsx` is the *real* composed
+> homepage (it renders `components/marketing/*` — Hero, SocialProof, Features,
+> UseCases, Testimonials, Pricing, FAQ, CTA), and it is **newer and richer** than
+> the `registry/landing/**` copy. The registry copy is a simpler, English,
+> static-pricing snapshot meant for installing into a **different** project.
+>
+> - **In THIS template:** the landing is **already installed — do nothing.**
+>   Do **NOT** run `npx shadcn@latest add @saas/landing` here, and do **NOT**
+>   delete `app/page.tsx`. Re-installing would **overwrite the live homepage with
+>   the older static registry copy** and drop the extra sections (SocialProof,
+>   UseCases, Testimonials) — a route-collision + regression footgun.
+> - **In a fresh project** (`create-next-app` with the bare starter `app/page.tsx`):
+>   follow the phases below to install the landing.
+
+Installs the `@saas/landing` marketing landing page module into a project that
+does not already have one, after running:
 
 ```bash
 npx shadcn@latest add @saas/landing
@@ -21,7 +40,15 @@ npx shadcn@latest add @saas/landing
 
 ## Prerequisites
 
-Ensure the registry files have been installed:
+The `@saas` registry is served by the template app itself at `/r/*`. Before
+`npx shadcn add @saas/landing` can fetch anything, set `SAAS_REGISTRY_URL` and have
+a running registry origin:
+
+- **Local:** `SAAS_REGISTRY_URL=http://localhost:3000` (default in `.env.example`)
+  with `pnpm dev` (or `pnpm build && pnpm start`) running.
+- **Deployed registry:** `SAAS_REGISTRY_URL=https://your-app.example.com`.
+
+Then install the registry files:
 
 ```bash
 npx shadcn@latest add @saas/landing
@@ -55,22 +82,37 @@ cat registry/landing/module.manifest.json | jq .
 
 Confirm `envVars` is empty (no secrets needed) and `dbTables` is empty (no migrations).
 
-## Phase 2 — Remove the placeholder root page
+## Phase 2 — Resolve the `/` route collision (GUARDED)
 
-The `@saas/landing` module owns the `/` route via `app/(marketing)/page.tsx`.
-The default `app/page.tsx` placeholder conflicts with this route.
-
-```bash
-# Remove the placeholder (it is safe to delete — the marketing page replaces it)
-rm -f next-app/app/page.tsx
-echo "Removed placeholder app/page.tsx. The / route is now handled by app/(marketing)/page.tsx."
-```
-
-If you want to keep the placeholder for reference, rename it instead:
+The `@saas/landing` module owns the `/` route via `app/(marketing)/page.tsx`. If
+the project also has an `app/page.tsx`, Next.js sees **two pages resolving to `/`**
+and the build fails with a route-collision error. How to resolve it depends on
+what `app/page.tsx` actually is — **never blindly `rm` it**:
 
 ```bash
-mv next-app/app/page.tsx next-app/app/page.tsx.bak
+cd next-app   # run from the next-app/ root
+
+if [ ! -f app/page.tsx ]; then
+  echo "No app/page.tsx — nothing to do. app/(marketing)/page.tsx now owns /."
+elif grep -q "Get started by editing" app/page.tsx; then
+  # This is the bare create-next-app starter placeholder — safe to remove.
+  mv app/page.tsx app/page.tsx.bak
+  echo "Archived the bare Next.js starter placeholder to app/page.tsx.bak."
+  echo "The / route is now handled by app/(marketing)/page.tsx."
+else
+  echo "STOP: app/page.tsx is NOT the bare Next.js starter — it is a REAL page."
+  echo "Do NOT delete it. (In the @saas template this IS the live composed landing.)"
+  echo "If you intended to install the landing into THIS template: it is already"
+  echo "installed — abort this skill. Otherwise reconcile the two / routes by hand."
+fi
 ```
+
+**Why the guard:** in the `@saas` template, `app/page.tsx` is the real composed
+homepage (renders `components/marketing/*`), not a placeholder — deleting it
+removes the working site. The detection above only archives a file containing the
+literal create-next-app marker (`Get started by editing`); anything else is
+treated as a real page and left untouched. Resolve any remaining collision
+deliberately, never by reflex deletion.
 
 ## Phase 3 — Customise branding
 
@@ -122,7 +164,7 @@ pnpm dev
 
 ## Post-install checklist
 
-- [ ] `app/page.tsx` placeholder removed or archived
+- [ ] No `/` route collision — bare starter `app/page.tsx` archived (NOT a real page)
 - [ ] Branding updated in nav + footer
 - [ ] Hero copy reflects your product
 - [ ] Pricing tiers reflect your actual plans (or noted as placeholder)

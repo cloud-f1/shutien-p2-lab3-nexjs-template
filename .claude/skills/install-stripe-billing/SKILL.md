@@ -15,11 +15,33 @@ metadata:
 
 # Install Stripe Billing Module
 
+> ⚠️ **READ FIRST — billing is pre-installed in THIS template, and the registry
+> copy is OLDER.** In this repo the *live* billing code already exists at
+> `lib/billing/providers/stripe.ts`, `actions/billing.ts`, and
+> `app/api/billing/stripe/webhook/route.ts` — and it has **diverged from and is
+> newer than** the `registry/billing-stripe/**` copy (the live code carries the
+> E274 plan-identity FK fix, `fetchGatewayStates` reconcile support, audit
+> logging, and depends on `lib/billing/{pricing,plans,period-utils,reconcile-utils}.ts`
+> and `lib/permissions`/`lib/audit`, which the standalone registry copy does NOT ship).
+>
+> - **In THIS template:** billing is **already installed — do NOT run
+>   `npx shadcn@latest add @saas/billing-stripe` here.** Doing so **overwrites the
+>   newer live files with the older self-contained registry copy**, dropping the
+>   E274 fix and breaking imports. Skip straight to env wiring / migrations
+>   (Phases 1–4) against the existing code.
+> - **In a fresh project:** the registry copy is the intentionally self-contained
+>   starting point — install it and follow all phases.
+
 Installs the `@saas/billing-stripe` module after `npx shadcn@latest add @saas/billing-stripe`.
 
 ## Prerequisites
 
-Run first:
+The `@saas` registry is served by the template app at `/r/*`, so installs require
+`SAAS_REGISTRY_URL` to point at a running origin: `http://localhost:3000` (with
+`pnpm dev` running; the default in `.env.example`) for local installs, or your
+deployed domain for a hosted registry.
+
+Run first (fresh projects only — see the warning above):
 
 ```bash
 npx shadcn@latest add @saas/billing-stripe

@@ -7,7 +7,7 @@
         "@shadcn/mcp-server@latest"
       ],
       "env": {
-        "REGISTRY_URL": "http://localhost:3000/r",
+        "REGISTRY_URL": "${SAAS_REGISTRY_URL:-http://localhost:3000}/r",
         "REGISTRY_NAME": "saas"
       }
     }

@@ -22,7 +22,7 @@
     {
       "step": 1,
       "action": "manual",
-      "description": "Remove or archive the existing app/page.tsx placeholder — the landing module owns the / route via app/(marketing)/page.tsx."
+      "description": "Resolve the / route collision: the landing owns / via app/(marketing)/page.tsx. Archive app/page.tsx ONLY if it is the bare create-next-app starter (contains 'Get started by editing'); NEVER delete a real app/page.tsx (in the @saas template that IS the live landing — the module is already installed there, do not re-install)."
     },
     {
       "step": 2,

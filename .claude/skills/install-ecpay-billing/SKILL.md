@@ -20,6 +20,22 @@ triggers:
 
 # Install ECPay Billing Module (@saas/billing-ecpay)
 
+> ⚠️ **READ FIRST — ECPay billing is pre-installed in THIS template, and the
+> registry copy is OLDER.** In this repo the *live* code already exists at
+> `lib/billing/providers/ecpay.ts`, `app/api/billing/ecpay/return/route.ts`, and
+> `app/api/billing/ecpay/period/route.ts` — and it has **diverged from and is
+> newer than** the `registry/billing-ecpay/**` copy. The live provider is wired
+> into the full template billing stack (`resolver.ts`, `period-utils.ts`,
+> `reconcile-utils.ts`, audit logging) that the standalone registry copy does NOT ship.
+>
+> - **In THIS template:** ECPay billing is **already installed — do NOT run
+>   `npx shadcn@latest add @saas/billing-ecpay` here.** Doing so **overwrites the
+>   newer live files with the older registry copy** and can break imports. Skip the
+>   install and go straight to env wiring + notify-URL setup (Steps 2–9) against
+>   the existing code.
+> - **In a fresh project:** the registry copy is the self-contained starting
+>   point — install it and follow all steps.
+
 This skill installs and verifies the ECPay 綠界科技 billing module for Taiwan-local recurring billing (定期定額).
 
 ## Prerequisites
@@ -29,6 +45,12 @@ This skill installs and verifies the ECPay 綠界科技 billing module for Taiwa
 - DB tables `plans`, `subscriptions`, `payment_events` exist (from E231)
 
 ## Step 1: Install via shadcn registry
+
+The `@saas` registry is served by the template app at `/r/*`, so set
+`SAAS_REGISTRY_URL` to a running origin first (`http://localhost:3000` with
+`pnpm dev` running — the `.env.example` default — for local installs, or your
+deployed domain for a hosted registry). Then, **in a fresh project only** (see the
+warning above — skip this in THIS template):
 
 ```bash
 cd next-app

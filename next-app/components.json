@@ -23,7 +23,7 @@
   "menuAccent": "subtle",
   "registries": {
     "@saas": {
-      "url": "http://localhost:3000/r"
+      "url": "${SAAS_REGISTRY_URL}/r"
     }
   }
 }

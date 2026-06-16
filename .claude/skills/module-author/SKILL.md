@@ -32,6 +32,46 @@ See [install-skill-guide.md](./install-skill-guide.md) for how to write the pair
 
 ---
 
+## How the `@saas` Registry Is Served (read before testing installs)
+
+The `@saas` registry is **served by THIS app itself** — `pnpm registry:build`
+writes `public/r/*.json`, which Next serves at `/r/*`. There is no separate
+registry server. So `npx shadcn add @saas/<module>` only works against a
+**running origin**:
+
+- **Local:** `pnpm dev` (or `pnpm build && pnpm start`) with
+  `SAAS_REGISTRY_URL=http://localhost:3000` (the default in `.env.example`).
+- **Deployed registry:** set `SAAS_REGISTRY_URL` to your deployed domain.
+
+`components.json` uses the env token `"${SAAS_REGISTRY_URL}/r"` (shadcn ≥ 4.x
+expands `${VAR}` from `.env.local`/`.env`). shadcn's token does **not** support
+`${VAR:-default}` shell defaults — if `SAAS_REGISTRY_URL` is unset, shadcn fails
+fast with a "Missing environment variables" error (intentional: better than the
+old silent-localhost-after-deploy footgun). Document this in each install-* skill.
+
+### Pre-installed modules drift from their registry copies
+
+Some modules (`landing`, `billing-stripe`, `billing-ecpay`) are **also baked
+directly into this template** (`app/page.tsx`, `components/marketing/*`,
+`lib/billing/*`, `actions/billing.ts`). The live baked-in code evolves and can
+become **newer than** the `registry/<module>/**` copy distributed by the registry.
+
+Consequences for module authors:
+
+1. **The registry copy is for installing into OTHER projects** — it is an
+   intentionally self-contained snapshot, not a re-install target for this repo.
+2. **Re-installing a pre-installed module HERE overwrites newer live files with
+   the older registry copy** (route collisions, dropped fixes, broken imports).
+3. Every install-* skill for a pre-installed module MUST carry a **drift/overwrite
+   warning** at the top: state that the module is already baked in, that the live
+   files may be newer, and that re-installing overwrites them.
+4. If you keep a registry copy in sync with live code, ensure the copy stays
+   **standalone** — it may only import files that the module's own `files[]`
+   ships (or shadcn `registryDependencies`); it must not depend on template-only
+   modules the install would not bring along.
+
+---
+
 ## File Layout
 
 Every module lives under `next-app/registry/<module-id>/` and mirrors the install targets:
