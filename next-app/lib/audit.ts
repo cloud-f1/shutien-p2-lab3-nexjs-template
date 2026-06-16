@@ -1,6 +1,7 @@
 import { desc, eq } from "drizzle-orm"
 
 import { db } from "@/lib/db"
+import { logger } from "@/lib/logger"
 import { auditLogTable, usersTable, type AuditLog } from "@/lib/schema"
 
 /**
@@ -22,8 +23,9 @@ export async function logAudit(entry: {
       targetId: entry.targetId,
       metadata: entry.metadata ?? {},
     })
-  } catch {
-    // swallow — auditing is best-effort
+  } catch (e) {
+    // 審計失敗不應阻斷呼叫端，但必須記錄以便觀測
+    logger.error("audit write failed", e)
   }
 }
 
