@@ -1,5 +1,6 @@
 # AI Coding Template (Next.js)
 
+[![CI](https://github.com/cloud-f1/ai-coding-nexjs-template/actions/workflows/ci.yml/badge.svg)](https://github.com/cloud-f1/ai-coding-nexjs-template/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org)
 [![Dev Docs](https://img.shields.io/badge/dev--docs-live-orange?style=flat-square)](https://ai-coding-nexjs-template-docs.pages.dev/)
