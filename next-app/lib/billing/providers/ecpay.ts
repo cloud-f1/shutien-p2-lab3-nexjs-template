@@ -403,6 +403,9 @@ export class EcpayProvider {
       // Store metadata in CustomField1-4 (50 chars each)
       CustomField1: args.userId.slice(0, 50),
       CustomField2: args.planId.slice(0, 50),
+      // E274 plan-identity FK fix: carry the plans.id UUID so the ReturnURL
+      // webhook writes the UUID (not the planId encoding) into subscriptions.planId.
+      CustomField3: (args.planUuid ?? "").slice(0, 50),
       // ClientBackURL for browser redirect after payment
       ClientBackURL: args.cancelUrl,
     }

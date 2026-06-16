@@ -28,6 +28,7 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import { getEcpayProvider, EXEC_STATUS, DEFAULT_RENEWAL_THRESHOLD } from "@/lib/billing/providers/ecpay"
+import { ecpayNextChargeDate, type EcpayPeriodType } from "@/lib/billing/period-utils"
 
 // ---------------------------------------------------------------------------
 // POST /api/billing/ecpay/period
@@ -56,14 +57,7 @@ export async function POST(request: NextRequest) {
   // 3. Idempotency + processing
   try {
     await processPeriodNotification(params, rawBody)
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error"
-
-    // Duplicate event — idempotency; silently succeed
-    if (message.includes("duplicate") || message.includes("unique")) {
-      return new NextResponse("1|OK")
-    }
-
+  } catch {
     return new NextResponse("0|Error", { status: 500 })
   }
 
@@ -93,14 +87,23 @@ async function processPeriodNotification(
   // Gwsr (授權交易單號) is unique per authorization
   const providerEventId = `period:${merchantTradeNo}:${gwsr}`
 
-  // 3a. Idempotency
-  await db.insert(paymentEventsTable).values({
-    provider: "ecpay",
-    providerEventId,
-    type: "ecpay.period.payment",
-    payload: { rawBody, params } as unknown as Record<string, unknown>,
-    processedAt: null,
-  })
+  // 3a. Idempotency — onConflictDoNothing on the UNIQUE provider_event_id.
+  // Empty returning() => this Gwsr was already processed → skip.
+  const inserted = await db
+    .insert(paymentEventsTable)
+    .values({
+      provider: "ecpay",
+      providerEventId,
+      type: "ecpay.period.payment",
+      payload: { rawBody, params } as unknown as Record<string, unknown>,
+      processedAt: null,
+    })
+    .onConflictDoNothing({ target: paymentEventsTable.providerEventId })
+    .returning({ id: paymentEventsTable.id })
+
+  if (inserted.length === 0) {
+    return
+  }
 
   // 3b. Update subscription provider_meta with latest state
   const existing = await db
@@ -120,6 +123,13 @@ async function processPeriodNotification(
     const newStatus = rtnCode === "1" ? "active" : "past_due"
     const needsRenewal = remaining < renewalThreshold
 
+    // E274: advance currentPeriodEnd by one cycle from the successful charge.
+    const periodType = (typeof currentMeta["period_type"] === "string"
+      ? currentMeta["period_type"]
+      : "M") as EcpayPeriodType
+    const nextChargeAt =
+      rtnCode === "1" ? ecpayNextChargeDate(new Date(), periodType, 1) : sub.currentPeriodEnd
+
     const updatedMeta: Record<string, unknown> = {
       ...currentMeta,
       total_success_times: totalSuccessTimes,
@@ -129,12 +139,14 @@ async function processPeriodNotification(
       last_period_gwsr: gwsr,
       last_period_at: new Date().toISOString(),
       needs_renewal: needsRenewal,
+      current_period_end: nextChargeAt ? Math.floor(nextChargeAt.getTime() / 1000) : null,
     }
 
     await db
       .update(subscriptionsTable)
       .set({
         status: newStatus,
+        currentPeriodEnd: nextChargeAt,
         providerMeta: updatedMeta,
         updatedAt: new Date(),
       })

@@ -89,7 +89,16 @@ export interface Subscription {
 
 /** Arguments to open a hosted-checkout session. */
 export interface CreateCheckoutArgs {
+  /** The gateway's own price identifier (Stripe price_xxx / ECPay plan encoding). */
   planId: string
+  /**
+   * The `plans.id` UUID (FK target for `subscriptions.planId`). Carried into the
+   * gateway session metadata so the webhook can write the UUID — NOT the
+   * providerPriceId — into `subscriptions.planId`. (E274 plan-identity FK fix.)
+   * Optional for backward-compat; when omitted, `planId` is used as the metadata
+   * value (legacy behavior).
+   */
+  planUuid?: string
   userId: string
   /** URL to redirect to after successful payment. */
   successUrl: string

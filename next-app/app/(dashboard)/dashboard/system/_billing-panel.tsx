@@ -6,7 +6,14 @@ import { formatAmount, subscriptionStatusLabel } from "@/lib/billing/billing-uti
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/status-badge"
 
+import { CancelSubscriptionButton } from "./_cancel-subscription-button"
+
 export function BillingPanel({ active }: { active: ActiveSubscription }) {
+  const periodEndLabel = active?.subscription.currentPeriodEnd
+    ? active.subscription.currentPeriodEnd.toLocaleDateString("zh-TW")
+    : null
+  const cancelScheduled = Boolean(active?.subscription.cancelAt)
+
   return (
     <div className="space-y-6">
       <div>
@@ -29,10 +36,21 @@ export function BillingPanel({ active }: { active: ActiveSubscription }) {
               {subscriptionStatusLabel(active.subscription.status).label}
             </StatusBadge>
           </div>
-          {active.subscription.currentPeriodEnd && (
+          {periodEndLabel && (
             <p className="text-muted-foreground mt-3 text-xs">
-              本期至 {active.subscription.currentPeriodEnd.toLocaleDateString()}
+              {cancelScheduled ? "存取至" : "下次續訂"} {periodEndLabel}
             </p>
+          )}
+          {cancelScheduled && (
+            <p className="text-warning mt-1 text-xs">此訂閱已排定於本期結束後取消。</p>
+          )}
+          {active.subscription.status !== "canceled" && !cancelScheduled && (
+            <div className="mt-4">
+              <CancelSubscriptionButton
+                subscriptionId={active.subscription.id}
+                periodEndLabel={periodEndLabel}
+              />
+            </div>
           )}
         </div>
       ) : (

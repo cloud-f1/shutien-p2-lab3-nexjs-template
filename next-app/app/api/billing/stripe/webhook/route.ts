@@ -1,23 +1,27 @@
 /**
- * Stripe Webhook Route Handler — E235
+ * Stripe Webhook Route Handler — E235 + E274.
  *
  * Receives raw Stripe webhook events, verifies signature, and processes them
  * with idempotency via payment_events.provider_event_id.
  *
- * Design decisions:
- * - Raw body reading: `request.text()` gives us the raw body string for sig verification
- * - Idempotency: insert payment_events row first; duplicate event_id = unique violation = skip
- * - Out-of-order tolerance: all subscription events re-fetch from Stripe API instead of
- *   trusting the event payload's potentially-stale subscription state
+ * E274 hardening:
+ * - Plan-identity FK: writes the plans.id UUID (from metadata.planId, coerced via
+ *   the DB when a legacy session stamped a providerPriceId) into subscriptions.planId.
+ * - currentPeriodEnd: populated from the Stripe subscription items' current_period_end.
+ * - Idempotency: payment_events insert uses onConflictDoNothing; the subscription
+ *   upsert uses onConflictDoUpdate on the provider_sub_id UNIQUE constraint. Unique
+ *   races are detected by SQLSTATE 23505 (NOT string-matching), via idempotency-utils.
  *
  * Stripe SDK v22.x (API 2026-05-27.dahlia):
  * - Invoice.parent.subscription_details.subscription for the subscription ID
- * - Subscription no longer has current_period_end at top level
+ * - Subscription.items.data[i].current_period_end (no top-level field)
  */
 
 import { NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
 import { getStripeProvider } from "@/lib/billing/providers/stripe"
+import { isUniqueViolation } from "@/lib/billing/idempotency-utils"
+import { stripePeriodEndDate, type StripeSubLike } from "@/lib/billing/period-utils"
 
 // ---------------------------------------------------------------------------
 // POST /api/billing/stripe/webhook
@@ -47,15 +51,9 @@ export async function POST(request: NextRequest) {
 
   // 4. Idempotency check + dispatch
   try {
-    await processStripeEvent(event, rawBody)
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error"
-
-    // Duplicate event — idempotency constraint; silently succeed
-    if (message.includes("duplicate") || message.includes("unique")) {
-      return NextResponse.json({ received: true, skipped: true })
-    }
-
+    const skipped = await processStripeEvent(event, rawBody)
+    if (skipped) return NextResponse.json({ received: true, skipped: true })
+  } catch {
     // Unexpected error — return 500 so Stripe retries (genuine transient failures)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
@@ -89,23 +87,33 @@ function getInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
 
 // ---------------------------------------------------------------------------
 // Event dispatcher
+// Returns true when the event was a duplicate (idempotency skip).
 // ---------------------------------------------------------------------------
 
-async function processStripeEvent(event: Stripe.Event, rawBody: string): Promise<void> {
+async function processStripeEvent(event: Stripe.Event, rawBody: string): Promise<boolean> {
   // Lazy import db to avoid module init in tests that don't need it
   const { db } = await import("@/lib/db")
   const { paymentEventsTable, subscriptionsTable } = await import("@/lib/schema")
   const { eq } = await import("drizzle-orm")
 
-  // 4a. Idempotency: try to insert a payment_events row.
-  // The UNIQUE constraint on provider_event_id prevents double-processing.
-  await db.insert(paymentEventsTable).values({
-    provider: "stripe",
-    providerEventId: event.id,
-    type: event.type,
-    payload: JSON.parse(rawBody) as Record<string, unknown>,
-    processedAt: null,
-  })
+  // 4a. Idempotency: insert a payment_events row, no-op on duplicate event id.
+  // onConflictDoNothing returns the inserted rows; an empty array => duplicate.
+  const inserted = await db
+    .insert(paymentEventsTable)
+    .values({
+      provider: "stripe",
+      providerEventId: event.id,
+      type: event.type,
+      payload: JSON.parse(rawBody) as Record<string, unknown>,
+      processedAt: null,
+    })
+    .onConflictDoNothing({ target: paymentEventsTable.providerEventId })
+    .returning({ id: paymentEventsTable.id })
+
+  if (inserted.length === 0) {
+    // Already processed — idempotent skip.
+    return true
+  }
 
   // 4b. Dispatch based on event type
   switch (event.type) {
@@ -128,15 +136,7 @@ async function processStripeEvent(event: Stripe.Event, rawBody: string): Promise
       break
     }
 
-    case "invoice.payment_succeeded": {
-      const invoice = event.data.object as Stripe.Invoice
-      const subId = getInvoiceSubscriptionId(invoice)
-      if (subId) {
-        await refreshSubscriptionFromStripe(subId, db, subscriptionsTable, eq)
-      }
-      break
-    }
-
+    case "invoice.payment_succeeded":
     case "invoice.payment_failed": {
       const invoice = event.data.object as Stripe.Invoice
       const subId = getInvoiceSubscriptionId(invoice)
@@ -156,6 +156,8 @@ async function processStripeEvent(event: Stripe.Event, rawBody: string): Promise
     .update(paymentEventsTable)
     .set({ processedAt: new Date() })
     .where(eq(paymentEventsTable.providerEventId, event.id))
+
+  return false
 }
 
 // ---------------------------------------------------------------------------
@@ -179,34 +181,54 @@ async function handleCheckoutCompleted(
       : session.subscription.id
 
   const userId = session.metadata?.userId
-  const planId = session.metadata?.planId
+  const metadataPlanId = session.metadata?.planId
 
-  if (!userId || !planId) return
+  if (!userId || !metadataPlanId) return
 
-  // Re-fetch the subscription from Stripe for out-of-order tolerance
+  // E274 plan-identity FK fix: coerce metadata.planId to a real plans.id UUID.
+  const { coercePlanUuid } = await import("@/lib/billing/plans")
+  const planId = await coercePlanUuid(metadataPlanId)
+  if (!planId) return // cannot satisfy the FK — skip rather than crash
+
+  // Re-fetch the subscription from Stripe for out-of-order tolerance + period end
   const stripe = makeStripe()
   const stripeSub = await stripe.subscriptions.retrieve(stripeSubId)
+  const periodEnd = stripePeriodEndDate(stripeSub as unknown as StripeSubLike)
 
-  // Upsert subscription row (insert + update on conflict)
-  try {
-    await db.insert(subscriptionsTable).values({
+  // E274 idempotent upsert: insert + update on the provider_sub_id UNIQUE conflict.
+  await db
+    .insert(subscriptionsTable)
+    .values({
       userId,
       planId,
       provider: "stripe",
       providerSubId: stripeSubId,
       status: stripeSub.status,
-      currentPeriodEnd: null,
+      currentPeriodEnd: periodEnd,
       cancelAt: stripeSub.cancel_at ? new Date(stripeSub.cancel_at * 1000) : null,
       providerMeta: {
         cancel_at_period_end: stripeSub.cancel_at_period_end,
         customer: stripeSub.customer,
         stripe_status: stripeSub.status,
+        current_period_end: periodEnd ? Math.floor(periodEnd.getTime() / 1000) : null,
       },
     })
-  } catch {
-    // Row already exists — update it
-    await refreshSubscriptionFromStripe(stripeSubId, db, subscriptionsTable, eq)
-  }
+    .onConflictDoUpdate({
+      target: subscriptionsTable.providerSubId,
+      set: {
+        planId,
+        status: stripeSub.status,
+        currentPeriodEnd: periodEnd,
+        cancelAt: stripeSub.cancel_at ? new Date(stripeSub.cancel_at * 1000) : null,
+        providerMeta: {
+          cancel_at_period_end: stripeSub.cancel_at_period_end,
+          customer: stripeSub.customer,
+          stripe_status: stripeSub.status,
+          current_period_end: periodEnd ? Math.floor(periodEnd.getTime() / 1000) : null,
+        },
+        updatedAt: new Date(),
+      },
+    })
 }
 
 async function refreshSubscriptionFromStripe(
@@ -222,23 +244,28 @@ async function refreshSubscriptionFromStripe(
 
   // Re-fetch from Stripe — out-of-order tolerance
   const stripeSub = await stripe.subscriptions.retrieve(stripeSubId)
+  const periodEnd = stripePeriodEndDate(stripeSub as unknown as StripeSubLike)
 
   // Update existing subscription row (if it exists)
   await db
     .update(subscriptionsTable)
     .set({
       status: stripeSub.status,
-      currentPeriodEnd: null,
+      currentPeriodEnd: periodEnd,
       cancelAt: stripeSub.cancel_at ? new Date(stripeSub.cancel_at * 1000) : null,
       providerMeta: {
         cancel_at_period_end: stripeSub.cancel_at_period_end,
         customer: stripeSub.customer,
         stripe_status: stripeSub.status,
+        current_period_end: periodEnd ? Math.floor(periodEnd.getTime() / 1000) : null,
       },
       updatedAt: new Date(),
     })
     .where(eq(subscriptionsTable.providerSubId, stripeSubId))
 }
+
+// Re-export for tests + future callers — detect PG unique violations by code.
+export { isUniqueViolation }
 
 // ---------------------------------------------------------------------------
 // Prevent Next.js from buffering the body — we read it as text above

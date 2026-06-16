@@ -31,14 +31,24 @@ plan-identity model: `providerPriceId` is the join key (config ↔ `plans` ↔ g
   seed derives `plans` from `PAID_TIERS`; test moved to `lib/billing/pricing.test.ts`.
 - [x] **(E274a) Wire checkout (#1)** — paid-tier CTA → `createCheckoutSession(providerPriceId,…)` →
   redirect to `checkoutUrl`. Free tier → `/register`.
-- [ ] **Plan-identity FK fix (#2)** — checkout resolves the `plans` row by `providerPriceId`, carries
-  the **plan UUID** in `metadata.planId`; webhooks write the UUID into `subscriptions.planId`.
-- [ ] **`currentPeriodEnd`** — populate from Stripe sub + ECPay meta; show renewal date in BillingPanel.
-- [ ] **Cancel subscription** — `actions/billing.ts::cancelSubscription` + BillingPanel button (ConfirmDialog).
-- [ ] **`reconcile()`** — real diff gateway ↔ `subscriptions`; wire to a recovery route/job.
-- [ ] **ECPay renewal scheduler** — `app/api/billing/ecpay/renew/route.ts` (cron) → `queryAndCheckRenewal`.
-- [ ] **Idempotency robustness** — dedup on the PG unique-violation code, not string-match.
-- [ ] **Tests** — route-handler + checkout-action integration tests; billing e2e (CTA reachable, cancel).
+- [x] **Plan-identity FK fix (#2)** — checkout resolves the `plans` row by `providerPriceId`
+  (`lib/billing/plans.ts::resolveOrCreatePlanId`, creating from config if missing), carries the
+  **plan UUID** in `metadata.planId` (Stripe) / `CustomField3` (ECPay) via new `CreateCheckoutArgs.planUuid`;
+  webhooks `coercePlanUuid` → write the UUID into `subscriptions.planId`. Pure logic in
+  `lib/billing/plan-resolver-utils.ts`.
+- [x] **`currentPeriodEnd`** — populated from Stripe sub items' `current_period_end` (v22+ per-item) +
+  ECPay next-charge derivation (`lib/billing/period-utils.ts`); BillingPanel shows next-renewal / access-until date.
+- [x] **Cancel subscription** — `actions/billing.ts::cancelSubscription` (requireAuth, owner-scoped, logAudit) +
+  `_cancel-subscription-button.tsx` gated behind ConfirmDialog; at-period-end by default.
+- [x] **`reconcile()`** — real diff gateway ↔ `subscriptions` (`lib/billing/reconcile-utils.ts` +
+  `StripeProvider.fetchGatewayStates`); wired to `app/api/billing/reconcile/route.ts` (CRON_SECRET-gated).
+- [x] **ECPay renewal scheduler** — `app/api/billing/ecpay/renew/route.ts` (cron) → `queryAndCheckRenewal`,
+  flags `needs_renewal` before `ExecTimes` exhausts.
+- [x] **Idempotency robustness** — dedup via `onConflictDoNothing` (payment_events) / `onConflictDoUpdate`
+  (subscriptions on provider_sub_id UNIQUE); PG unique-violation detected by SQLSTATE **23505**
+  (`lib/billing/idempotency-utils.ts`), not string-match.
+- [x] **Tests** — route-handler (stripe webhook, reconcile, ecpay renew) + checkout/cancel action
+  integration tests; unit tests for all new `*-utils`. (billing e2e deferred — env-gated.)
 
 ## Acceptance Criteria
 

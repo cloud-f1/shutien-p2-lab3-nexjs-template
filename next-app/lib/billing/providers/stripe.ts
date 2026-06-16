@@ -29,6 +29,8 @@ import type {
   WebhookVerifyResult,
 } from "../provider"
 import { PaymentProviderError } from "../provider"
+import { stripePeriodEndEpoch, type StripeSubLike } from "../period-utils"
+import type { GatewaySubState } from "../reconcile-utils"
 
 // ---------------------------------------------------------------------------
 // Stripe singleton — initialized lazily so tests can mock env vars
@@ -129,6 +131,9 @@ export class StripeProvider {
     const stripe = getStripe()
 
     const providerPriceId = args.planId // planId is used as provider price ID at checkout
+    // E274 plan-identity FK fix: carry the plans.id UUID in metadata so the
+    // webhook writes the UUID (not the providerPriceId) into subscriptions.planId.
+    const metadataPlanId = args.planUuid ?? args.planId
 
     try {
       const session = await stripe.checkout.sessions.create({
@@ -144,12 +149,12 @@ export class StripeProvider {
         ...(args.customerEmail ? { customer_email: args.customerEmail } : {}),
         metadata: {
           userId: args.userId,
-          planId: args.planId,
+          planId: metadataPlanId,
         },
         subscription_data: {
           metadata: {
             userId: args.userId,
-            planId: args.planId,
+            planId: metadataPlanId,
           },
         },
       })
@@ -378,6 +383,38 @@ export class StripeProvider {
         "reconcile_failed",
       )
     }
+  }
+
+  /**
+   * Fetch the gateway's ground-truth state for a list of stored providerSubIds.
+   * Used by the recovery route to diff against the `subscriptions` table (the
+   * diffing itself is pure — see reconcile-utils.ts). Missing/deleted Stripe
+   * subscriptions are skipped (not returned).
+   */
+  async fetchGatewayStates(
+    providerSubIds: string[],
+  ): Promise<GatewaySubState[]> {
+    const stripe = getStripe()
+    const out: GatewaySubState[] = []
+
+    for (const id of providerSubIds) {
+      try {
+        const sub = await stripe.subscriptions.retrieve(id)
+        out.push({
+          providerSubId: sub.id,
+          status: mapStripeStatus(sub.status),
+          currentPeriodEnd: stripePeriodEndEpoch(sub as unknown as StripeSubLike),
+          cancelAt:
+            sub.cancel_at !== null && typeof sub.cancel_at === "number"
+              ? sub.cancel_at
+              : null,
+        })
+      } catch {
+        // Subscription not found on Stripe — skip (caller treats as not-in-snapshot)
+      }
+    }
+
+    return out
   }
 }
 
