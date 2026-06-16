@@ -20,12 +20,18 @@ tags:
     description: Payment provider callbacks + cron jobs
   - name: cron
     description: CRON_SECRET-protected scheduled jobs
+  - name: items
+    description: Public REST API — API-key authenticated
 components:
   securitySchemes:
     cronBearer:
       type: http
       scheme: bearer
       description: "CRON_SECRET bearer token. Fails closed (401) when the secret is unset. Sent as `Authorization: Bearer <CRON_SECRET>`."
+    apiKey:
+      type: http
+      scheme: bearer
+      description: "E267 API key. Sent as `Authorization: Bearer sk_<prefix>_<secret>`. Resolves to the owning user; the key's scopes gate access (read → GET, write → POST). 401 if missing/invalid/revoked, 403 if the scope is absent."
   schemas:
     RegisterInput:
       type: object
@@ -192,6 +198,41 @@ components:
       required:
         - ok
         - error
+    Item:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - createdAt
+        - updatedAt
+    ItemListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Item"
+      required:
+        - items
+    ItemCreateResponse:
+      type: object
+      properties:
+        item:
+          $ref: "#/components/schemas/Item"
+      required:
+        - item
   parameters: {}
 paths:
   /api/health:
@@ -363,4 +404,69 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ReconcileErrorResponse"
+  /api/v1/items:
+    get:
+      summary: List the API key owner's items
+      description: Lists the items owned by the user the API key resolves to (newest first). Requires the `read` scope. Bumps the key's lastUsedAt on success.
+      tags:
+        - items
+      security:
+        - apiKey: []
+      responses:
+        "200":
+          description: The key owner's items.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemListResponse"
+        "401":
+          description: Missing, malformed, invalid, or revoked API key.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: The API key lacks the required `read` scope.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      summary: Create an item
+      description: Creates an item owned by the user the API key resolves to. Requires the `write` scope. The body is validated by the shared CreateItemInput Zod schema. Bumps the key's lastUsedAt on success.
+      tags:
+        - items
+      security:
+        - apiKey: []
+      requestBody:
+        description: The item to create.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateItemInput"
+      responses:
+        "201":
+          description: The created item.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemCreateResponse"
+        "400":
+          description: Invalid JSON body or schema validation failure.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing, malformed, invalid, or revoked API key.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: The API key lacks the required `write` scope.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 webhooks: {}

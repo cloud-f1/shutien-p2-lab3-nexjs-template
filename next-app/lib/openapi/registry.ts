@@ -70,7 +70,7 @@ export function buildOpenApiDocument() {
     "ChangePasswordInput",
     changePasswordSchema.openapi("ChangePasswordInput"),
   )
-  registry.register(
+  const CreateItemInput = registry.register(
     "CreateItemInput",
     createItemSchema.openapi("CreateItemInput"),
   )
@@ -102,6 +102,14 @@ export function buildOpenApiDocument() {
     scheme: "bearer",
     description:
       "CRON_SECRET bearer token. Fails closed (401) when the secret is unset. Sent as `Authorization: Bearer <CRON_SECRET>`.",
+  })
+
+  // ── Security scheme — API-key bearer for the public REST API (E291) ──────────
+  const apiKey = registry.registerComponent("securitySchemes", "apiKey", {
+    type: "http",
+    scheme: "bearer",
+    description:
+      "E267 API key. Sent as `Authorization: Bearer sk_<prefix>_<secret>`. Resolves to the owning user; the key's scopes gate access (read → GET, write → POST). 401 if missing/invalid/revoked, 403 if the scope is absent.",
   })
 
   // ── Real HTTP route handlers (app/api/**) ────────────────────────────────────
@@ -307,6 +315,87 @@ export function buildOpenApiDocument() {
     },
   })
 
+  // ── Public REST API — app/api/v1/items (E291) ────────────────────────────────
+  // The first real consumer of E267 API keys. Auth: `Authorization: Bearer sk_...`.
+  const Item = z
+    .object({
+      id: z.string().uuid(),
+      title: z.string(),
+      createdAt: z.string().datetime(),
+      updatedAt: z.string().datetime(),
+    })
+    .openapi("Item")
+
+  // GET /api/v1/items → app/api/v1/items/route.ts
+  registry.registerPath({
+    method: "get",
+    path: "/api/v1/items",
+    summary: "List the API key owner's items",
+    description:
+      "Lists the items owned by the user the API key resolves to (newest first). Requires the `read` scope. Bumps the key's lastUsedAt on success.",
+    tags: ["items"],
+    security: [{ [apiKey.name]: [] }],
+    responses: {
+      200: {
+        description: "The key owner's items.",
+        content: {
+          "application/json": {
+            schema: z.object({ items: z.array(Item) }).openapi("ItemListResponse"),
+          },
+        },
+      },
+      401: {
+        description: "Missing, malformed, invalid, or revoked API key.",
+        content: { "application/json": { schema: ErrorResponse } },
+      },
+      403: {
+        description: "The API key lacks the required `read` scope.",
+        content: { "application/json": { schema: ErrorResponse } },
+      },
+    },
+  })
+
+  // POST /api/v1/items → app/api/v1/items/route.ts
+  registry.registerPath({
+    method: "post",
+    path: "/api/v1/items",
+    summary: "Create an item",
+    description:
+      "Creates an item owned by the user the API key resolves to. Requires the `write` scope. The body is validated by the shared CreateItemInput Zod schema. Bumps the key's lastUsedAt on success.",
+    tags: ["items"],
+    security: [{ [apiKey.name]: [] }],
+    request: {
+      body: {
+        description: "The item to create.",
+        content: {
+          "application/json": { schema: CreateItemInput },
+        },
+      },
+    },
+    responses: {
+      201: {
+        description: "The created item.",
+        content: {
+          "application/json": {
+            schema: z.object({ item: Item }).openapi("ItemCreateResponse"),
+          },
+        },
+      },
+      400: {
+        description: "Invalid JSON body or schema validation failure.",
+        content: { "application/json": { schema: ErrorResponse } },
+      },
+      401: {
+        description: "Missing, malformed, invalid, or revoked API key.",
+        content: { "application/json": { schema: ErrorResponse } },
+      },
+      403: {
+        description: "The API key lacks the required `write` scope.",
+        content: { "application/json": { schema: ErrorResponse } },
+      },
+    },
+  })
+
   // ── Generate the 3.1 document ────────────────────────────────────────────────
   const generator = new OpenApiGeneratorV31(registry.definitions)
 
@@ -326,6 +415,7 @@ export function buildOpenApiDocument() {
       { name: "health", description: "Health checks" },
       { name: "billing", description: "Payment provider callbacks + cron jobs" },
       { name: "cron", description: "CRON_SECRET-protected scheduled jobs" },
+      { name: "items", description: "Public REST API — API-key authenticated" },
     ],
   })
 }

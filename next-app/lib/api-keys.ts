@@ -25,12 +25,16 @@ export async function listApiKeys(userId: string): Promise<Omit<ApiKey, "hashedK
 }
 
 /**
- * Verify a bearer API key. Returns the owning user (id+role) or null.
- * Bumps lastUsedAt on success.
+ * Verify a bearer API key. Returns the owning user (id+role) plus the key's
+ * granted scopes, or null when the key is missing / malformed / revoked /
+ * unknown. Bumps lastUsedAt on success.
+ *
+ * The returned `scopes` are the key's own grants (not the user's role) — the
+ * public REST API (E291) enforces them per-request via lib/api-auth-utils.
  */
 export async function verifyApiKey(
   bearer: string | null | undefined,
-): Promise<{ userId: string; role: Role } | null> {
+): Promise<{ userId: string; role: Role; scopes: string[] } | null> {
   const parsed = parseApiKey(bearer)
   if (!parsed) return null
 
@@ -47,5 +51,5 @@ export async function verifyApiKey(
     .from(usersTable)
     .where(eq(usersTable.id, row.userId))
     .limit(1)
-  return user ? { userId: row.userId, role: user.role } : null
+  return user ? { userId: row.userId, role: user.role, scopes: row.scopes } : null
 }
