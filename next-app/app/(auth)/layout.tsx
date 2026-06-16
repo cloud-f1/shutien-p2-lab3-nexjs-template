@@ -1,6 +1,8 @@
 import Link from "next/link"
 import { Sparkles } from "lucide-react"
 
+import { APP_NAME } from "@/lib/branding"
+
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="grid min-h-svh lg:grid-cols-2">
@@ -11,7 +13,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             <span className="bg-primary text-primary-foreground flex size-7 items-center justify-center rounded-lg">
               <Sparkles className="size-4" />
             </span>
-            AI App Template
+            {APP_NAME}
           </Link>
           <Link href="/" className="text-muted-foreground hover:text-foreground text-sm">
             ← 回首頁

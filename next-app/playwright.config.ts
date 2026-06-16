@@ -45,6 +45,12 @@ export default defineConfig({
         env: {
           DATABASE_URL: process.env.DATABASE_URL ?? "postgresql://saas_user:saas_pass@localhost:5432/saas_dev",
           AUTH_SECRET: process.env.AUTH_SECRET ?? "e2e-test-secret",
+          // Surface the seeded quick-login buttons for e2e. The demo-login gate
+          // is now STRICT (only NEXT_PUBLIC_ENABLE_DEMO_LOGIN==="true"), so this
+          // keeps the demo path available under test. (loginAs() fills the form
+          // directly, but this guarantees parity with the dev/Docker stack.)
+          NEXT_PUBLIC_ENABLE_DEMO_LOGIN:
+            process.env.NEXT_PUBLIC_ENABLE_DEMO_LOGIN ?? "true",
         },
       },
 })

@@ -1,6 +1,7 @@
 import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
+import { APP_NAME } from "@/lib/branding"
 
 const NAV_LINKS = [
   { href: "#features", label: "功能" },
@@ -17,7 +18,7 @@ export function MarketingNav() {
           href="/"
           className="text-lg font-semibold tracking-tight hover:opacity-80"
         >
-          AI App Template
+          {APP_NAME}
         </Link>
         <nav className="hidden items-center gap-6 text-sm md:flex">
           {NAV_LINKS.map(({ href, label }) => (

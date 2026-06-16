@@ -173,11 +173,6 @@ copy_template "$TEMPLATE_SCAFFOLD/roadmap.md.tmpl" "$ROOT/docs/roadmap.md" "road
 echo -e "${CYAN}Cleaning project-specific files...${NC}"
 delete_if_exists "$ROOT/.claude/skills/upgrade-stripe.md" ".claude/skills/upgrade-stripe.md"
 
-# ─── S1f: Remove backward-compat shims ──────────────────────
-delete_if_exists "$ROOT/server/app/models/portfolio.py" "server/app/models/portfolio.py"
-delete_if_exists "$ROOT/server/app/schemas/portfolio.py" "server/app/schemas/portfolio.py"
-delete_if_exists "$ROOT/server/app/api/v1/endpoints/portfolios.py" "server/app/api/v1/endpoints/portfolios.py"
-
 # ─── Summary ────────────────────────────────────────────────
 echo ""
 echo -e "${CYAN}╔══════════════════════════════════════════════════════════╗${NC}"

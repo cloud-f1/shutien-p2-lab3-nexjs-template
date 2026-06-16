@@ -29,11 +29,11 @@ interface LoginFormProps {
   urlError?: string
 }
 
-// Gate demo-login so the hardcoded credentials are tree-shaken out of production
-// bundles when the flag is unset.
-const SHOW_DEMO_LOGIN =
-  process.env.NEXT_PUBLIC_ENABLE_DEMO_LOGIN === "true" ||
-  process.env.NODE_ENV !== "production"
+// Gate demo-login STRICTLY on an explicit opt-in flag so the seeded credential
+// literals tree-shake out of every build that doesn't set it (staging/preview
+// included — not just NODE_ENV==="production"). Local dev + e2e enable it via
+// NEXT_PUBLIC_ENABLE_DEMO_LOGIN=true (Makefile local-env + playwright webServer).
+const SHOW_DEMO_LOGIN = process.env.NEXT_PUBLIC_ENABLE_DEMO_LOGIN === "true"
 
 export function LoginForm({ verified, urlError }: LoginFormProps) {
   const [state, formAction, isPending] = useActionState(loginAction, null)

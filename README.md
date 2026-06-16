@@ -117,15 +117,14 @@ npx shadcn add @saas/landing          # 落地頁（hero/features/pricing/FAQ/CT
 
 ### Fork 後 30 分鐘上手
 
-詳細步驟見 [`docs/zh-tw/getting-started.md`](docs/zh-tw/getting-started.md)。摘要：
+繁中 fork 導讀見 [`docs/zh-tw/getting-started.md`](docs/zh-tw/getting-started.md)。摘要：
 
 1. `gh repo fork cloud-f1/ai-coding-nexjs-template my-project`
-2. 客製 `CLAUDE.md`（你的 stack + Architecture Invariants）
-3. 客製 `.claude/agents/` 關鍵 agent persona
-4. `docker compose up --build -d` → http://localhost:3000
-5. 開第一個 PR → 跑 `/athena:qa` 驗證 sub-agent pipeline
+2. `make local-setup`（裝依賴 + Docker 起 Postgres/Mailpit + migrate + seed）→ `make local` → http://localhost:3000，用 demo 帳號登入
+3. 客製 `CLAUDE.md`（你的 stack + Architecture Invariants，見其中「Fork 後客製化」段）+ 換品牌 + 從 `.env.example` 設環境變數
+4. 跑第一個 epic：`/athena:plan` → `/athena:loop`（品質閘走 `/athena:qa`）
 
-詳細 Track B 5 模組對應導讀：[`docs/zh-tw/track-b-integration.md`](docs/zh-tw/track-b-integration.md)。
+**維護中的權威深入指南**（en + 繁中，跟 code 同步）在 [`docs/guides/`](docs/guides/)——建議從 [quickstart](docs/guides/zh-TW/quickstart.md) + [第一個 epic walkthrough](docs/guides/zh-TW/first-epic-walkthrough.md) 開始。Track B 5 模組對應導讀：[`docs/zh-tw/track-b-integration.md`](docs/zh-tw/track-b-integration.md)。
 
 ### 不是 Track B 學員也歡迎用
 
@@ -170,7 +169,8 @@ jq 'select(.exit != 0)' .claude/audit.jsonl      # 失敗命令
 | [TECHSTACK.md](TECHSTACK.md) | 完整技術架構文件 |
 | [Epic 進度](docs/epics/EPIC_INDEX.md) | 所有 Epic 的開發進度追蹤 |
 | [Agent 代理](docs/reference/agents.md) ｜ [Athena 指令](docs/reference/commands.md) ｜ [技能](docs/reference/skills.md) | AI Agent 團隊參考 |
-| [快速上手（fork 流程）](docs/zh-tw/getting-started.md) | Track B 學員 / 新 fork 者導讀 |
+| [快速上手（fork 流程）](docs/zh-tw/getting-started.md) | Track B 學員 / 新 fork 者 30 分鐘導讀 |
+| [深入指南 `docs/guides/`](docs/guides/) — [quickstart](docs/guides/zh-TW/quickstart.md) ｜ [第一個 epic walkthrough](docs/guides/zh-TW/first-epic-walkthrough.md) | 維護中、與 code 同步的權威指南（en + 繁中） |
 
 ---
 
@@ -190,15 +190,21 @@ A production-ready **Next.js SaaS starter kit**. Built-in authentication, 3-tier
 
 ### Quick Start
 
+**Start here** — clone, do the one-time local setup (installs deps + a Dockerized Postgres/Mailpit + migrate + seed), then run the dev server:
+
 ```bash
 git clone https://github.com/cloud-f1/ai-coding-nexjs-template.git && cd ai-coding-nexjs-template
-docker compose up --build -d        # postgres + migrate/seed + web (+ mailpit)
-open http://localhost:3000           # mailpit inbox on :8025
+make local-setup                     # first time: install deps + Docker Postgres/Mailpit + migrate + seed
+make local                           # run Next.js dev server → http://localhost:3000 (Mailpit inbox on :8025)
 ```
 
 Demo logins (seeded): `admin@example.com / Admin123!` · `editor@example.com / Editor123!` · `viewer@example.com / Viewer123!`.
 
-> Prefer running without Docker? In `next-app/`, set `DATABASE_URL` + `AUTH_SECRET`, then `pnpm install && pnpm db:migrate && pnpm db:seed && pnpm dev`.
+> One-shot alternative (everything in Docker, no local dev server): `docker compose up --build -d` → http://localhost:3000.
+>
+> Prefer running fully without Docker? In `next-app/`, set `DATABASE_URL` + `AUTH_SECRET`, then `pnpm install && pnpm db:migrate && pnpm db:seed && pnpm dev`.
+
+Next steps live in the maintained, code-synced guides under [`docs/guides/`](docs/guides/) — start with [quickstart](docs/guides/en/quickstart.md) and the [first-epic walkthrough](docs/guides/en/first-epic-walkthrough.md).
 
 ### Tech Stack
 

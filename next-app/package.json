@@ -3,6 +3,10 @@
   "version": "0.2.0",
   "type": "module",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@11.5.2",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

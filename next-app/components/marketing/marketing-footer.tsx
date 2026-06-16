@@ -1,5 +1,7 @@
 import Link from "next/link"
 
+import { APP_NAME } from "@/lib/branding"
+
 const FOOTER_LINKS = [
   { href: "#features", label: "功能" },
   { href: "#pricing", label: "定價" },
@@ -14,7 +16,7 @@ export function MarketingFooter() {
       <div className="mx-auto max-w-5xl px-4">
         <div className="flex flex-col items-center gap-4 md:flex-row md:justify-between">
           <p className="text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} AI App Template. 版權所有。
+            &copy; {new Date().getFullYear()} {APP_NAME}. 版權所有。
           </p>
           <nav className="flex flex-wrap justify-center gap-4 text-sm text-muted-foreground">
             {FOOTER_LINKS.map(({ href, label }) => (

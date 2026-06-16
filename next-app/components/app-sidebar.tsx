@@ -14,6 +14,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { isAdmin, canEdit } from "@/lib/is-admin"
+import { APP_NAME } from "@/lib/branding"
 import { Logo } from "@/components/logo"
 import Link from "next/link"
 import {
@@ -56,7 +57,7 @@ export function AppSidebar({
             >
               <Link href="/dashboard">
                 <Logo className="size-6!" />
-                <span className="text-base font-semibold">AI App Template</span>
+                <span className="text-base font-semibold">{APP_NAME}</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
