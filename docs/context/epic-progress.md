@@ -317,7 +317,27 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E270 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 62 — Team invites + member status + permission matrix |
 | E271 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 62 — Billing UI over plans/subscriptions/payment_events |
 | E272 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 62 — Notifications (table + mark-read; wires E263 dropdown) |
-| E273 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 63 — CRUD modals + reusable DataTable (filter/pagination/page-size); actions return success (no redirect); ?new/?edit deep-links; CLAUDE.md + nextjs-saas-patterns convention |
+| E273 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 63 — CRUD modals + reusable DataTable (filter/pagination/page-size); actions return success (no redirect); ?new/?edit deep-links; CLAUDE.md + nextjs-saas-patterns convention |
+| E274 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 64 — DONE PR#27 — billing money-path: plan-id→UUID FK fix, currentPeriodEnd, cancel-subscription UI, real reconcile(), ECPay renewal cron, 23505 idempotent upsert (E274a JSON pricing+checkout PR#19) |
+| E275 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 64 — DONE PR#22 — schema split lib/schema/{auth,items,billing,system} + barrel; migration 0006 composite PKs/UNIQUEs/indexes |
+| E276 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 64 — DONE PR#24 — API consistency: deleteUser audit log, billing requireAuth+繁中, https-only webhooks, transactional acceptInvitation, shared billing-enum source |
+| E277 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 65 — DONE PR#26 — agent brain reconceive: /athena:dba→drizzle-kit, /athena:audit→Drizzle/Zod/UI drift, de-staled 9 agents + 9 commands |
+| E278 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 65 — DONE PR#28 — onboarding/dev docs rewritten to Next.js; deleted removed-subsystem docs |
+| E279 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 65 — DONE PR#25 — deleted dead FastAPI+Vite worked examples + templates |
+| E280 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 65 — DONE PR#29 — removed 33 dead-stack files, Next.js-only Makefile, fixed .pre-commit/.dockerignore/pre-deploy-guard |
+| E281 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 66 — DONE PR#30 — generated OpenAPI contract from Zod (zod-to-openapi) + /api/openapi + coverage guard + smoke drift-gate |
+| E282 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 66 — DONE PR#31 — stop-verifier.sh rewritten for next-app/ (8 Next.js rules; was 23 dead) + scripts/hooks/CLAUDE.md + dba-migrations.md |
+| E283 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 66 — DONE PR#32 — /athena:domain restored as copy-from-items generator (scripts/new-domain.sh + make new-domain) |
+| E284 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 67 — DONE PR#38 — de-footgun @saas registry install: guarded install-landing, SAAS_REGISTRY_URL, drift warnings; homepage → cloud-f1 |
+| E285 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 67 — DONE PR#39 — one-knob rebrand (NEXT_PUBLIC_APP_NAME / lib/branding.ts) + root metadata + logo fix + demo-login hardening + engines pin |
+| E286 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 67 — DONE PR#33 — fork guide rewritten to Next.js; README → docs/guides/ |
+| E287 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 67 — DONE PR#42 — single-service deploy-zeabur.sh, Dockerfile NEXT_PUBLIC_APP_URL ARG, GCP migrate/seed via builder image + correct seed path |
+| E288 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 68 — DONE PR#34 — GitHub Actions CI (.github/workflows/ci.yml). Follow-up PR #43 disables auto-trigger to manual-only |
+| E289 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 68 — DONE PR#35 — HTTP security headers + CSP on all routes (lib/security-headers.ts + next.config.ts) |
+| E290 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 68 — DONE PR#40 — password-reset flow + invite emails; migration 0007 password_reset_tokens |
+| E291 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 68 — DONE PR#36 — public REST API via api_keys (app/api/v1/items, verifyApiKey + scopes), registered in E281 OpenAPI contract |
+| E292 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 68 — DONE PR#37 — billing e2e + Stripe Customer Portal (createPortalSession + Manage-billing button) |
+| E293 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 68 — DONE PR#41 — baseline observability: instrumentation.ts + env-gated Sentry + lib/logger.ts; lib/audit.ts logs failures |
 
 
 ## Dependency Rules
@@ -646,6 +666,10 @@ Phase 62: E267 + E268 + E269 + E271 + E272 (parallel, independent tables) → E2
 ```
 
 ## Next Action
+
+**✅ Phases 63–68 (E273–E293) COMPLETE — all merged to `main` @ `25dabef` (2026-06-16).** Data/billing hardening (Phase 64: E274–E276) + FastAPI→Next.js cleanup (Phase 65: E277–E280) + AI-dev trust (Phase 66: E281–E283) + fork-ability (Phase 67: E284–E287) + production hardening (Phase 68: E288–E293). PRs #19/#22/#24–#42. ~327 unit tests green; migrations through 0007. **Program done — next: tag a release (suggest `v0.3.0`) and disable CI auto-trigger via PR #43 (or the Actions UI).**
+
+---
 
 **⬜ Phase 61 PLANNED + Phase 62 QUEUED — Cobalt UI surfaces + backend (Cycle 30/31, 2026-06-15).** Phase 61 (E263–E266, branch `feat/phase-61-app-shell`): ⌘K palette + notifications + breadcrumb (E263), settings expansion (E264), auth split-screen + component reference (E265), marketing gaps (E266) — UI-leaning. Phase 62 (E267–E272, queued): real-backend SaaS surfaces — API keys, webhooks, audit log, team invites + permission matrix, billing UI, notifications (new Drizzle tables + actions + RBAC + tests). Cobalt product pages (workflows/analytics/AI-models/integrations) **intentionally skipped** (domain-specific). Scope user-confirmed; awaiting greenlight to implement.
 

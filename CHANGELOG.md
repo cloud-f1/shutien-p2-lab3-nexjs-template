@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+<!-- Suggested next tag: 0.3.0 — the E274–E293 hardening + fork-ability + production program below is a minor release. -->
+
+The **E274–E293 program** (Phases 63–68) hardened the data/billing money-path, finished the
+FastAPI→Next.js cleanup of the Athena tooling, made the template fork-able and production-ready,
+and added a generated OpenAPI contract, a public REST API, security headers, password-reset/invite
+emails, a Stripe billing portal, CI, and baseline observability. All merged to `main`.
+Unit tests now ~327 green; migrations through 0007.
+
+### Added
+
+- **Generated OpenAPI contract** (E281) — `@asteasolutions/zod-to-openapi` derives the contract from the Zod validation layer, served at `/api/openapi`, with a coverage guard and a smoke drift-gate so the spec can't silently diverge from the schemas.
+- **Public REST API** (E291) — `app/api/v1/items` authenticated by `api_keys` (`verifyApiKey` + scopes), registered in the E281 OpenAPI contract.
+- **Stripe Customer Portal** (E292) — `createPortalSession` + a Manage-billing button, plus billing e2e coverage.
+- **Password-reset flow + invite emails** (E290) — migration 0007 adds `password_reset_tokens`.
+- **HTTP security headers + CSP** (E289) — `lib/security-headers.ts` applied to all routes via `next.config.ts`.
+- **GitHub Actions CI** (E288) — `.github/workflows/ci.yml` (a follow-up, PR #43, switches its auto-trigger to manual-only).
+- **Baseline observability** (E293) — `instrumentation.ts` + env-gated Sentry + `lib/logger.ts`; `lib/audit.ts` now logs failures.
+- **`/athena:domain` scaffold restored** (E283) — a copy-from-items domain generator (`scripts/new-domain.sh` + `make new-domain`).
+- **One-knob rebrand** (E285) — `NEXT_PUBLIC_APP_NAME` / `lib/branding.ts` wired through root metadata; demo-login hardened; `engines` pinned.
+- **Env-driven `@saas` registry install** (E284) — `SAAS_REGISTRY_URL` + guarded install-landing + drift warnings; homepage repointed to cloud-f1.
+
+### Changed
+
+- **Athena tooling made Next.js-native** (E277) — `/athena:dba` → drizzle-kit, `/athena:audit` → Drizzle/Zod/UI drift; 9 agents + 9 commands de-staled of FastAPI/Vite assumptions.
+- **Stop-verifier rewritten for `next-app/`** (E282) — 8 Next.js rules replace the 23 dead FastAPI/Vite rules; `scripts/hooks/CLAUDE.md` refreshed; `dba-migrations.md` added.
+- **Schema split** (E275) — `lib/schema.ts` → `lib/schema/{auth,items,billing,system}` + a barrel; migration 0006 adds composite PKs / UNIQUEs / indexes.
+- **API consistency/correctness** (E276) — `deleteUser` writes an audit log, billing actions `requireAuth` + 繁中, webhooks are https-only, `acceptInvitation` is transactional, and the billing enum has a single shared source.
+- **Onboarding + dev docs rewritten to Next.js** (E278, E286) — removed-subsystem docs deleted; the fork guide is Next.js-native; README moved to `docs/guides/`.
+- **Single-service deploy** (E287) — `deploy-zeabur.sh` consolidated; Dockerfile takes a `NEXT_PUBLIC_APP_URL` ARG; GCP migrate/seed runs via the builder image with the correct seed path.
+
+### Removed
+
+- **Dead FastAPI + Vite stack** (E279, E280) — deleted the FastAPI/Vite worked examples + templates and 33 dead-stack scripts/config files; the Makefile is now Next.js-only; `.pre-commit` / `.dockerignore` / pre-deploy-guard fixed.
+
+### Fixed
+
+- **Billing money-path** (E274) — corrected the plan-id → UUID FK, persist `currentPeriodEnd`, added a cancel-subscription UI and a real `reconcile()`, an ECPay renewal cron, and a SQLSTATE-23505 idempotent upsert. (E274a JSON-configurable pricing + checkout shipped earlier, PR #19.)
+
 _Planned: Account & Admin modules packaged as `@saas` registry modules; TapPay / NewebPay (藍新) providers; usage-based billing; teams._
 
 ## [0.2.0] - 2026-06-15

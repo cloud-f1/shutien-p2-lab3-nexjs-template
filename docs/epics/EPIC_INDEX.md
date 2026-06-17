@@ -75,7 +75,12 @@
 | Phase 60 | E259, E260, E261, E262 | ✅ Done on branch feat/cobalt-design (Cycle 29, 2026-06-15) — Cobalt Design Integration: foundation tokens (E259) · premium FX utilities (E260) · landing redesign wired to / (E261) · dashboard polish + StatusBadge (E262). Brand-neutral, additive. Full smoke PASS 11/FAIL 0. Merged via PR #14 (PR #13 superseded) |
 | Phase 61 | E263, E264, E265, E266 | ✅ Done + merged (PR #14) — App Shell & Settings & Auth & Marketing (Cobalt UI surfaces, domain-neutral): ⌘K palette + notifications + breadcrumb (E263) · settings expansion (E264) · auth split-screen + component reference (E265) · marketing gaps — use-cases/testimonials/pricing toggle+comparison/video modal (E266). UI-leaning; real backend deferred to Phase 62 |
 | Phase 62 | E267, E268, E269, E270, E271, E272 | ✅ Done + merged (PR #15) — Backend-backed SaaS surfaces (real Drizzle tables + actions + RBAC + tests): API keys (E267) · webhooks + deliveries (E268) · audit log + viewer (E269) · team invites + permission matrix + member status (E270) · billing UI over plans/subscriptions/payment_events (E271) · notifications (E272, wires E263). All 6 add to lib/schema.ts → ONE migration after the schema additions. Cobalt product pages intentionally SKIPPED |
-| Phase 63 | E273 | ✅ Done — CRUD modals + reusable DataTable (UX convention): create/edit Dialog + ConfirmDialog delete + generic `<DataTable>` (filter/pagination/page-size); actions return success (no redirect); `?new`/`?edit` deep-links; codified in CLAUDE.md + nextjs-saas-patterns skill. Branch feat/E273-crud-modals-datatable. Merge ⬜ |
+| Phase 63 | E273 | ✅ Complete — CRUD modals + reusable DataTable (UX convention): create/edit Dialog + ConfirmDialog delete + generic `<DataTable>` (filter/pagination/page-size); actions return success (no redirect); `?new`/`?edit` deep-links; codified in CLAUDE.md + nextjs-saas-patterns skill |
+| Phase 64 | E274, E275, E276 | ✅ Complete (Data/billing hardening) — E274 billing money-path (plan-id→UUID FK, currentPeriodEnd, cancel UI, real reconcile(), ECPay renewal cron, 23505 idempotent upsert; #27) + E275 schema split lib/schema/{auth,items,billing,system} + migration 0006 (#22) + E276 API consistency/correctness (#24) |
+| Phase 65 | E277, E278, E279, E280 | ✅ Complete (FastAPI→Next.js cleanup) — E277 agent-brain reconceive (drizzle-kit dba + Drizzle/Zod/UI audit, de-staled 9 agents + 9 commands; #26) + E278 onboarding/dev docs rewritten (#28) + E279 deleted dead FastAPI+Vite examples/templates (#25) + E280 removed 33 dead-stack files + Next.js-only Makefile (#29) |
+| Phase 66 | E281, E282, E283 | ✅ Complete (AI-dev trust) — E281 generated OpenAPI contract from Zod + /api/openapi + coverage guard + smoke drift-gate (#30) + E282 stop-verifier.sh rewritten for next-app/ (8 Next.js rules; #31) + E283 /athena:domain restored as copy-from-items generator (#32) |
+| Phase 67 | E284, E285, E286, E287 | ✅ Complete (Fork-ability) — E284 de-footgun @saas registry install + SAAS_REGISTRY_URL (#38) + E285 one-knob rebrand NEXT_PUBLIC_APP_NAME/lib/branding.ts (#39) + E286 fork guide rewritten to Next.js (#33) + E287 single-service deploy-zeabur.sh + Dockerfile ARG + GCP migrate/seed fix (#42) |
+| Phase 68 | E288, E289, E290, E291, E292, E293 | ✅ Complete (Production hardening) — E288 GitHub Actions CI (#34; PR #43 makes it manual-only) + E289 security headers + CSP (#35) + E290 password-reset + invite emails, migration 0007 (#40) + E291 public REST API via api_keys (#36) + E292 billing e2e + Stripe Customer Portal (#37) + E293 observability instrumentation + Sentry + lib/logger (#41) |
 <!-- PHASE_STATUS_END -->
 
 <!-- EPIC_MATRIX_START -->
@@ -353,7 +358,27 @@ Phase 46+ epics: enriched template — epic files include Implementation Phases,
 | E270 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 62 — Team: invitations table + member status (active/invited/suspended) + invite/accept flow + permission matrix UI (extends RBAC admin) |
 | E271 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 62 — Billing UI: plan summary + usage meters + payment method + invoice history over Phase 58 plans/subscriptions/payment_events |
 | E272 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 62 — Notifications: notifications table + mark-read actions + wires the E263 dropdown to real data |
-| E273 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 63 — CRUD modals + reusable DataTable: create/edit Dialog + ConfirmDialog delete + generic <DataTable> (filter/pagination/page-size); actions return success (no redirect); ?new/?edit deep-links; convention in CLAUDE.md + nextjs-saas-patterns. Branch feat/E273-crud-modals-datatable |
+| E273 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 63 — DONE — CRUD modals + reusable DataTable: create/edit Dialog + ConfirmDialog delete + generic <DataTable> (filter/pagination/page-size); actions return success (no redirect); ?new/?edit deep-links; convention in CLAUDE.md + nextjs-saas-patterns |
+| E274 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 64 — DONE PR#27 — billing money-path: plan-id→UUID FK fix, currentPeriodEnd, cancel-subscription UI, real reconcile(), ECPay renewal cron, SQLSTATE-23505 idempotent upsert (E274a JSON pricing + checkout shipped earlier PR#19) |
+| E275 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 64 — DONE PR#22 — schema hardening: split lib/schema.ts → lib/schema/{auth,items,billing,system} + barrel; migration 0006 composite PKs/UNIQUEs/indexes |
+| E276 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 64 — DONE PR#24 — API consistency/correctness: deleteUser audit log, billing requireAuth+繁中, https-only webhooks, transactional acceptInvitation, shared billing-enum source |
+| E277 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 65 — DONE PR#26 — agent brain reconceive: /athena:dba→drizzle-kit, /athena:audit→Drizzle/Zod/UI drift, de-staled 9 agents + 9 commands |
+| E278 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 65 — DONE PR#28 — onboarding/dev docs rewritten to Next.js; deleted removed-subsystem docs |
+| E279 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 65 — DONE PR#25 — deleted dead FastAPI+Vite worked examples + templates |
+| E280 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 65 — DONE PR#29 — stale scripts/config: removed 33 dead-stack files, rewrote Makefile Next.js-only, fixed .pre-commit/.dockerignore/pre-deploy-guard |
+| E281 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 66 — DONE PR#30 — generated OpenAPI contract from Zod (@asteasolutions/zod-to-openapi) + /api/openapi + coverage guard + smoke drift-gate |
+| E282 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 66 — DONE PR#31 — rewrote stop-verifier.sh for next-app/ (8 Next.js rules; was 23 dead FastAPI/Vite rules); refreshed scripts/hooks/CLAUDE.md; created dba-migrations.md |
+| E283 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 66 — DONE PR#32 — restored /athena:domain scaffold as a copy-from-items generator (scripts/new-domain.sh + make new-domain) |
+| E284 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 67 — DONE PR#38 — de-footgun @saas registry install: guarded install-landing, env-driven registry URL (SAAS_REGISTRY_URL), drift warnings; homepage → cloud-f1 |
+| E285 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 67 — DONE PR#39 — one-knob rebrand (NEXT_PUBLIC_APP_NAME / lib/branding.ts) + root metadata + logo inline-style fix + demo-login hardening + engines pin |
+| E286 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 67 — DONE PR#33 — onboarding repoint: fork guide rewritten to Next.js; README → docs/guides/ |
+| E287 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 67 — DONE PR#42 — deploy path fix: single-service deploy-zeabur.sh, Dockerfile NEXT_PUBLIC_APP_URL ARG, GCP migrate/seed via builder image + correct seed path |
+| E288 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 68 — DONE PR#34 — GitHub Actions CI (.github/workflows/ci.yml). Follow-up PR #43 disables its auto-trigger to manual-only |
+| E289 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 68 — DONE PR#35 — HTTP security headers + CSP on all routes (lib/security-headers.ts + next.config.ts) |
+| E290 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 68 — DONE PR#40 — password-reset flow + invite emails; migration 0007 password_reset_tokens |
+| E291 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 68 — DONE PR#36 — public REST API via api_keys (app/api/v1/items, verifyApiKey + scopes), registered in the E281 OpenAPI contract |
+| E292 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 68 — DONE PR#37 — billing e2e + Stripe Customer Portal (createPortalSession + Manage-billing button) |
+| E293 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 68 — DONE PR#41 — baseline observability: instrumentation.ts + env-gated Sentry + lib/logger.ts; lib/audit.ts logs failures |
 <!-- EPIC_MATRIX_END -->
 
 ## Dependency Rules
@@ -610,7 +635,7 @@ Phase 62: E267 + E268 + E269 + E271 + E272 (parallel, independent tables) → E2
 
 ---
 
-**Next Action:** Phase 61 (E263–E266, App Shell & Settings & Auth & Marketing) PLANNED on branch `feat/phase-61-app-shell` — domain-neutral Cobalt UI surfaces, UI-leaning (real backend deferred to Phase 62 = E267–E272, queued). Cobalt product pages (workflows/analytics/AI-models/integrations) intentionally SKIPPED. **Awaiting greenlight to implement** (then via direct/`/athena:flow`). **Standing: PRs #12 (deploy+v0.1.0), #13 (Cobalt) stack on the unpushed local `main` — `git push origin main` to narrow.**
+**Next Action:** ✅ **Phases 63–68 (E273–E293) COMPLETE — all merged to `main` @ `25dabef`.** Data/billing hardening (64) + FastAPI→Next.js cleanup (65) + AI-dev trust (66) + fork-ability (67) + production hardening (68). ~327 unit tests green; migrations through 0007. **Program done — next: tag a release (suggest `v0.3.0`) and disable CI auto-trigger via PR #43 (or the Actions UI).**
 
 - **Phase 43 (Universal Adoption)** — E167 already landed in PR #142 (Tailwind + 8 primitives + Preset axis + 9 dashboard views migrated). Remaining: `/athena:batch --phase 43` will dispatch E168 (public) + E169 (auth) in parallel after E167's PR merges; E170 (cleanup) + E171 (Playwright VRT) follow as a second wave.
 - **Phase 44 (Completion & Validation)** — 8 epics. After Phase 43's PRs merge: `/athena:batch --phase 44` dispatches the 7-epic parallel wave (E172 + E173 + E174 + E175 + E176 + E178 + E179). Then E177 (a11y sweep) closes the phase once every surface is stable.

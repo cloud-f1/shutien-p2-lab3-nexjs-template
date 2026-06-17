@@ -3,6 +3,26 @@
 
 ---
 
+## Latest Session — 2026-06-16 (Phases 63–68 — hardening + fork-ability + production)
+Branch: `main` @ `25dabef`. The E274–E293 program is fully merged (PRs #19/#22/#24–#42 across the phases; see EPIC_INDEX).
+
+### Shipped
+- **Phase 63–64 — Data/billing hardening**: E274 billing money-path (plan-id→UUID FK fix, `currentPeriodEnd`, cancel-subscription UI, real `reconcile()`, ECPay renewal cron, SQLSTATE-23505 idempotent upsert; #27 — E274a JSON-configurable pricing + checkout shipped earlier #19) · E275 schema split `lib/schema.ts` → `lib/schema/{auth,items,billing,system}` + barrel, migration 0006 composite PKs/UNIQUEs/indexes (#22) · E276 API consistency: deleteUser audit log, billing requireAuth+繁中, https-only webhooks, transactional acceptInvitation, shared billing-enum source (#24).
+- **Phase 65 — FastAPI→Next.js cleanup**: E277 agent-brain reconceive (`/athena:dba`→drizzle-kit, `/athena:audit`→Drizzle/Zod/UI drift, de-staled 9 agents + 9 commands; #26) · E278 onboarding/dev docs rewritten to Next.js (#28) · E279 deleted dead FastAPI+Vite worked examples + templates (#25) · E280 removed 33 dead-stack files, rewrote Makefile Next.js-only, fixed `.pre-commit`/`.dockerignore`/pre-deploy-guard (#29).
+- **Phase 66 — AI-dev trust**: E281 generated OpenAPI contract from Zod (`@asteasolutions/zod-to-openapi`) + `/api/openapi` + coverage guard + smoke drift-gate (#30) · E282 rewrote `stop-verifier.sh` for `next-app/` (8 Next.js rules, was 23 dead FastAPI/Vite rules) + refreshed `scripts/hooks/CLAUDE.md` + `dba-migrations.md` (#31) · E283 restored `/athena:domain` as a copy-from-items generator (`scripts/new-domain.sh` + `make new-domain`; #32).
+- **Phase 67 — Fork-ability**: E284 de-footgun `@saas` registry install (guarded install-landing, `SAAS_REGISTRY_URL`, drift warnings, homepage → cloud-f1; #38) · E285 one-knob rebrand (`NEXT_PUBLIC_APP_NAME`/`lib/branding.ts`) + root metadata + logo inline-style fix + demo-login hardening + engines pin (#39) · E286 fork guide rewritten to Next.js, README → `docs/guides/` (#33) · E287 single-service `deploy-zeabur.sh`, Dockerfile `NEXT_PUBLIC_APP_URL` ARG, GCP migrate/seed via builder image + correct seed path (#42).
+- **Phase 68 — Production hardening**: E288 GitHub Actions CI (`.github/workflows/ci.yml`; #34) · E289 HTTP security headers + CSP on all routes (`lib/security-headers.ts` + `next.config.ts`; #35) · E290 password-reset flow + invite emails, migration 0007 `password_reset_tokens` (#40) · E291 public REST API via `api_keys` (`app/api/v1/items`, `verifyApiKey` + scopes), registered in the E281 OpenAPI contract (#36) · E292 billing e2e + Stripe Customer Portal (`createPortalSession` + Manage-billing button; #37) · E293 baseline observability — `instrumentation.ts` + env-gated Sentry + `lib/logger.ts`, `lib/audit.ts` logs failures (#41).
+
+### Current state
+- **~327 unit tests green** · migrations through **0007** · `main` @ **25dabef**. typecheck + lint + build green.
+- **Run locally:** `docker compose up --build -d` → http://localhost:3000 (Mailpit :8025). Logins: admin@/editor@/viewer@example.com (Admin123!/Editor123!/Viewer123!).
+
+### Open / next
+- **CI auto-trigger** — a follow-up (PR #43) disables `.github/workflows/ci.yml`'s auto-trigger to manual-only; merge #43 or disable the workflow via the Actions UI.
+- **Release tag** — program complete; suggest tagging `v0.3.0` (agent can't push tags/main).
+
+---
+
 ## Latest Session — 2026-06-15 (Phases 58–62 shipped → v0.2.0 + polish)
 Branch: `main` @ `488a034` (#16). Merge order on main: #11 (P58) → #12 (P59) → #14 (P60+P61) → #15 (P62) → #16 (polish).
 
@@ -44,13 +64,4 @@ Gates: scripts/smoke.sh [--vrt] · scripts/pre-merge-check.sh [--e2e]
 Skills: nextjs-saas-patterns (stack gotchas) · athena-loop-speedups (orchestration)
 Constraints: agent can't push to main / merge PRs / push tags — user does those; user-facing copy in 繁體中文
 ```
-<!-- last activity:  at 2026-06-16T04:46:14Z -->
-<!-- last activity:  at 2026-06-16T04:47:08Z -->
-<!-- last activity:  at 2026-06-16T04:47:25Z -->
-<!-- last activity:  at 2026-06-16T04:49:25Z -->
-<!-- last activity:  at 2026-06-16T04:52:37Z -->
-<!-- last activity:  at 2026-06-16T04:53:49Z -->
-<!-- last activity:  at 2026-06-16T04:55:38Z -->
-<!-- last activity:  at 2026-06-16T04:59:24Z -->
-<!-- last activity:  at 2026-06-16T05:00:34Z -->
-<!-- last activity:  at 2026-06-16T05:03:07Z -->
+<!-- last activity:  at 2026-06-16T13:04:17Z -->
