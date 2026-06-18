@@ -1,10 +1,12 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { type ColumnDef } from "@tanstack/react-table"
 import { KeyRound } from "lucide-react"
 
 import { createApiKey, revokeApiKey } from "@/actions/api-keys"
 import type { ApiKey } from "@/lib/schema"
+import { DataTable } from "@/components/data-table-generic"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { StatusBadge } from "@/components/status-badge"
@@ -29,11 +31,68 @@ export function ApiKeysPanel({ keys }: { keys: KeyRow[] }) {
     })
   }
 
+  const columns: ColumnDef<KeyRow>[] = [
+    {
+      id: "name",
+      accessorKey: "name",
+      header: "名稱",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <KeyRound className="text-muted-foreground size-4 shrink-0" />
+          <span className="truncate text-sm font-medium">{row.original.name}</span>
+        </div>
+      ),
+    },
+    {
+      id: "prefix",
+      accessorFn: (row) => `sk_${row.prefix}…`,
+      header: "前綴",
+      cell: ({ row }) => (
+        <span className="text-muted-foreground mono text-xs">
+          sk_{row.original.prefix}… · 建立於 {row.original.createdAt.toLocaleDateString()}
+        </span>
+      ),
+    },
+    {
+      id: "status",
+      accessorFn: (row) => (row.revokedAt ? "已撤銷" : "使用中"),
+      header: "狀態",
+      cell: ({ row }) =>
+        row.original.revokedAt ? (
+          <StatusBadge tone="danger">已撤銷</StatusBadge>
+        ) : (
+          <StatusBadge tone="success" dot>
+            使用中
+          </StatusBadge>
+        ),
+    },
+    {
+      id: "actions",
+      header: () => <span className="sr-only">操作</span>,
+      enableGlobalFilter: false,
+      cell: ({ row }) =>
+        !row.original.revokedAt ? (
+          <div className="flex justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={pending}
+              onClick={() => startTransition(() => void revokeApiKey(row.original.id))}
+            >
+              撤銷
+            </Button>
+          </div>
+        ) : null,
+    },
+  ]
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-base font-medium">API 金鑰</h2>
-        <p className="text-muted-foreground text-sm">以程式存取你的帳戶。金鑰只會在建立時顯示一次。</p>
+        <p className="text-muted-foreground text-sm">
+          以程式存取你的帳戶。金鑰只會在建立時顯示一次。
+        </p>
       </div>
 
       <div className="flex gap-2">
@@ -55,42 +114,12 @@ export function ApiKeysPanel({ keys }: { keys: KeyRow[] }) {
         </div>
       )}
 
-      <div className="rounded-xl border">
-        {keys.length === 0 ? (
-          <p className="text-muted-foreground p-6 text-center text-sm">尚無 API 金鑰。</p>
-        ) : (
-          <ul className="divide-y">
-            {keys.map((k) => (
-              <li key={k.id} className="flex items-center gap-3 p-3">
-                <KeyRound className="text-muted-foreground size-4" />
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{k.name}</p>
-                  <p className="text-muted-foreground mono text-xs">
-                    sk_{k.prefix}…· 建立於 {k.createdAt.toLocaleDateString()}
-                  </p>
-                </div>
-                <div className="ml-auto flex items-center gap-2">
-                  {k.revokedAt ? (
-                    <StatusBadge tone="danger">已撤銷</StatusBadge>
-                  ) : (
-                    <StatusBadge tone="success" dot>使用中</StatusBadge>
-                  )}
-                  {!k.revokedAt && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={pending}
-                      onClick={() => startTransition(() => void revokeApiKey(k.id))}
-                    >
-                      撤銷
-                    </Button>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      <DataTable
+        columns={columns}
+        data={keys}
+        filterPlaceholder="搜尋金鑰…"
+        emptyLabel="尚無 API 金鑰。"
+      />
     </div>
   )
 }

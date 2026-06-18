@@ -9,6 +9,7 @@ import { unstable_update } from "@/lib/auth"
 import { comparePassword, hashPassword } from "@/lib/password"
 import { updateProfileSchema, changePasswordSchema } from "@/lib/validations/user"
 import type { FormState } from "@/lib/validations/types"
+import { assertHasPassword, assertCurrentPasswordValid } from "@/lib/user-utils"
 
 export async function updateProfile(prevState: FormState, formData: FormData): Promise<FormState> {
   const session = await requireAuth()
@@ -47,12 +48,12 @@ export async function changePassword(prevState: FormState, formData: FormData): 
   const { currentPassword, newPassword } = result.data
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, session.user.id))
-  if (!user?.passwordHash) {
-    return { error: "OAuth 帳戶無法變更密碼。" }
-  }
+  const oauthErr = assertHasPassword(user?.passwordHash)
+  if (oauthErr) return { error: oauthErr }
 
-  const isValid = await comparePassword(currentPassword, user.passwordHash)
-  if (!isValid) return { error: "目前密碼錯誤。" }
+  const isValid = await comparePassword(currentPassword, user!.passwordHash!)
+  const pwErr = assertCurrentPasswordValid(isValid)
+  if (pwErr) return { error: pwErr }
 
   const newHash = await hashPassword(newPassword)
   await db

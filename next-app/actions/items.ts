@@ -5,6 +5,7 @@ import { itemsTable } from "@/lib/schema"
 import { eq, and } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
 import { requireEditor } from "@/lib/permissions"
+import { validateItemTitle } from "@/lib/items-utils"
 
 type State = { error?: string } | null
 
@@ -12,15 +13,12 @@ export async function createItem(prevState: State, formData: FormData): Promise<
   // Viewers are read-only — requireEditor() redirects them away.
   const session = await requireEditor()
 
-  const title = formData.get("title")
-  if (!title || typeof title !== "string" || title.trim().length === 0) {
-    return { error: "請輸入標題" }
-  }
-  if (title.trim().length > 255) {
-    return { error: "標題過長（最多 255 個字元）。" }
+  const validated = validateItemTitle(formData.get("title"))
+  if ("error" in validated) {
+    return { error: validated.error }
   }
 
-  await db.insert(itemsTable).values({ title: title.trim(), userId: session.user.id })
+  await db.insert(itemsTable).values({ title: validated.title, userId: session.user.id })
 
   revalidatePath("/dashboard")
   revalidatePath("/dashboard/items")
@@ -49,17 +47,14 @@ export async function deleteItem(id: string): Promise<State> {
 export async function updateItem(id: string, prevState: State, formData: FormData): Promise<State> {
   const session = await requireEditor()
 
-  const title = formData.get("title")
-  if (!title || typeof title !== "string" || title.trim().length === 0) {
-    return { error: "請輸入標題" }
-  }
-  if (title.trim().length > 255) {
-    return { error: "標題過長（最多 255 個字元）。" }
+  const validated = validateItemTitle(formData.get("title"))
+  if ("error" in validated) {
+    return { error: validated.error }
   }
 
   const result = await db
     .update(itemsTable)
-    .set({ title: title.trim(), updatedAt: new Date() })
+    .set({ title: validated.title, updatedAt: new Date() })
     .where(and(eq(itemsTable.id, id), eq(itemsTable.userId, session.user.id)))
 
   if (result.count === 0) {

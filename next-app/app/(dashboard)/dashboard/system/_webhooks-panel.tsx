@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { type ColumnDef } from "@tanstack/react-table"
 import { Webhook } from "lucide-react"
 
 import {
@@ -10,6 +11,7 @@ import {
   setWebhookActive,
 } from "@/actions/webhooks"
 import type { SafeWebhook } from "@/lib/webhooks"
+import { DataTable } from "@/components/data-table-generic"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { StatusBadge } from "@/components/status-badge"
@@ -32,6 +34,77 @@ export function WebhooksPanel({ webhooks }: { webhooks: SafeWebhook[] }) {
       }
     })
   }
+
+  const columns: ColumnDef<SafeWebhook>[] = [
+    {
+      accessorKey: "url",
+      header: "端點 URL",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <Webhook className="text-muted-foreground size-4 shrink-0" />
+          <span className="truncate text-sm font-medium">{row.original.url}</span>
+        </div>
+      ),
+    },
+    {
+      id: "events",
+      accessorFn: (row) => row.events.join(", "),
+      header: "事件",
+      cell: ({ row }) => (
+        <span className="text-muted-foreground mono text-xs">
+          {row.original.events.join(", ")} · 建立於 {row.original.createdAt.toLocaleDateString()}
+        </span>
+      ),
+    },
+    {
+      id: "status",
+      accessorFn: (row) => (row.active ? "使用中" : "已停用"),
+      header: "狀態",
+      cell: ({ row }) =>
+        row.original.active ? (
+          <StatusBadge tone="success" dot>
+            使用中
+          </StatusBadge>
+        ) : (
+          <StatusBadge tone="muted">已停用</StatusBadge>
+        ),
+    },
+    {
+      id: "actions",
+      header: () => <span className="sr-only">操作</span>,
+      enableGlobalFilter: false,
+      cell: ({ row }) => (
+        <div className="flex justify-end gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={pending}
+            onClick={() => startTransition(() => void sendTestEvent(row.original.id))}
+          >
+            測試
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={pending}
+            onClick={() =>
+              startTransition(() => void setWebhookActive(row.original.id, !row.original.active))
+            }
+          >
+            {row.original.active ? "停用" : "啟用"}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={pending}
+            onClick={() => startTransition(() => void deleteWebhook(row.original.id))}
+          >
+            刪除
+          </Button>
+        </div>
+      ),
+    },
+  ]
 
   return (
     <div className="space-y-6">
@@ -63,58 +136,12 @@ export function WebhooksPanel({ webhooks }: { webhooks: SafeWebhook[] }) {
         </div>
       )}
 
-      <div className="rounded-xl border">
-        {webhooks.length === 0 ? (
-          <p className="text-muted-foreground p-6 text-center text-sm">尚無 Webhook 端點。</p>
-        ) : (
-          <ul className="divide-y">
-            {webhooks.map((w) => (
-              <li key={w.id} className="flex items-center gap-3 p-3">
-                <Webhook className="text-muted-foreground size-4 shrink-0" />
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{w.url}</p>
-                  <p className="text-muted-foreground mono text-xs">
-                    {w.events.join(", ")} · 建立於 {w.createdAt.toLocaleDateString()}
-                  </p>
-                </div>
-                <div className="ml-auto flex items-center gap-2">
-                  {w.active ? (
-                    <StatusBadge tone="success" dot>
-                      使用中
-                    </StatusBadge>
-                  ) : (
-                    <StatusBadge tone="muted">已停用</StatusBadge>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={pending}
-                    onClick={() => startTransition(() => void sendTestEvent(w.id))}
-                  >
-                    測試
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={pending}
-                    onClick={() => startTransition(() => void setWebhookActive(w.id, !w.active))}
-                  >
-                    {w.active ? "停用" : "啟用"}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={pending}
-                    onClick={() => startTransition(() => void deleteWebhook(w.id))}
-                  >
-                    刪除
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      <DataTable
+        columns={columns}
+        data={webhooks}
+        filterPlaceholder="搜尋端點…"
+        emptyLabel="尚無 Webhook 端點。"
+      />
     </div>
   )
 }

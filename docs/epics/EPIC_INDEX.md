@@ -81,6 +81,9 @@
 | Phase 66 | E281, E282, E283 | ✅ Complete (AI-dev trust) — E281 generated OpenAPI contract from Zod + /api/openapi + coverage guard + smoke drift-gate (#30) + E282 stop-verifier.sh rewritten for next-app/ (8 Next.js rules; #31) + E283 /athena:domain restored as copy-from-items generator (#32) |
 | Phase 67 | E284, E285, E286, E287 | ✅ Complete (Fork-ability) — E284 de-footgun @saas registry install + SAAS_REGISTRY_URL (#38) + E285 one-knob rebrand NEXT_PUBLIC_APP_NAME/lib/branding.ts (#39) + E286 fork guide rewritten to Next.js (#33) + E287 single-service deploy-zeabur.sh + Dockerfile ARG + GCP migrate/seed fix (#42) |
 | Phase 68 | E288, E289, E290, E291, E292, E293 | ✅ Complete (Production hardening) — E288 GitHub Actions CI (#34; PR #43 makes it manual-only) + E289 security headers + CSP (#35) + E290 password-reset + invite emails, migration 0007 (#40) + E291 public REST API via api_keys (#36) + E292 billing e2e + Stripe Customer Portal (#37) + E293 observability instrumentation + Sentry + lib/logger (#41) |
+| Phase 69 | E294, E295, E296, E297, E298 | ⬜ Pending (SaaS Hardening — sourced from ai-rc-engineer-pm research 2026-06-18) — E294 server action unit tests (admin/items/user, ~18–24 new db-free test cases) · E295 system surface DataTable migration (audit/api-keys/webhooks panels) · E296 GitHub social login (second OAuth provider) · E297 TOTP 2FA with QR + backup codes (deps E296) · E298 rate limiting extension (5 unguarded action files) |
+| Phase 70 | E299, E300, E301 | ⬜ Pending (Data & UX — sourced from ai-rc-engineer-pm research 2026-06-18) — E299 CSV/JSON data export (GDPR baseline: audit log + items + /api/v1/export route) · E300 dashboard onboarding checklist (Getting Started card, localStorage-backed) · E301 usage metering foundation (usage_events table + billing panel wiring) |
+| Phase 71 | E302, E303, E304, E305, E306 | ⬜ Pending (Athena Toolchain Enrichment — backport from ai-rc-engineer-pm 2026-06-18) — E302 rebrand skill + dev-docs logo/VitePress guide · E303 mockup-to-epics skill + /athena:plan mockup + scripts/mockup/{shot,tour-app}.cjs · E304 alignment-audit skill + /athena:align command + scripts/align/surface-check.cjs · E305 user-guide-builder skill + VitePress audience-split pattern · E306 zeabur-deploy skill (headless CLI, 5 gotchas) |
 <!-- PHASE_STATUS_END -->
 
 <!-- EPIC_MATRIX_START -->
@@ -631,16 +634,19 @@ Phase 59: E254 + E258 (parallel, no deps) → E255 + E256 (parallel after E254) 
 Phase 60: E259 (no deps) → E260 (after E259) + E262 (after E259, parallel) → E261 (after E259+E260)
 Phase 61: E263 + E264 + E265 (parallel after E259/E260) → E266 (after E261) — all UI, parallel-safe if each owns its files
 Phase 62: E267 + E268 + E269 + E271 + E272 (parallel, independent tables) → E270 (after E269 audit) — real backend; each epic = own table + actions + UI
+Phase 69: E294 + E295 + E296 + E298 (parallel, no deps) → E297 (after E296 Connected Accounts tab shape)
+Phase 70: E299 + E300 + E301 (all parallel, no deps) — independent surfaces
+Phase 71: E302 + E303 + E304 + E305 + E306 (all parallel, no deps) — each skill/command owns its own files
 ```
 
 ---
 
-**Next Action:** ✅ **Phases 63–68 (E273–E293) COMPLETE — all merged to `main` @ `25dabef`.** Data/billing hardening (64) + FastAPI→Next.js cleanup (65) + AI-dev trust (66) + fork-ability (67) + production hardening (68). ~327 unit tests green; migrations through 0007. **Program done — next: tag a release (suggest `v0.3.0`) and disable CI auto-trigger via PR #43 (or the Actions UI).**
+**Next Action:** ⬜ **Phases 69–71 (E294–E306) READY — sourced from ai-rc-engineer-pm research (2026-06-18).** Three programs queued:
+- **Phase 69 (SaaS Hardening)**: E294 + E295 + E296 + E298 in parallel → E297 (after E296). Start with `/athena:batch --phase 69`.
+- **Phase 70 (Data & UX)**: E299 + E300 + E301 all parallel. Start with `/athena:batch --phase 70`.
+- **Phase 71 (Athena Toolchain)**: E302 + E303 + E304 + E305 + E306 all parallel. Start with `/athena:batch --phase 71`.
 
-- **Phase 43 (Universal Adoption)** — E167 already landed in PR #142 (Tailwind + 8 primitives + Preset axis + 9 dashboard views migrated). Remaining: `/athena:batch --phase 43` will dispatch E168 (public) + E169 (auth) in parallel after E167's PR merges; E170 (cleanup) + E171 (Playwright VRT) follow as a second wave.
-- **Phase 44 (Completion & Validation)** — 8 epics. After Phase 43's PRs merge: `/athena:batch --phase 44` dispatches the 7-epic parallel wave (E172 + E173 + E174 + E175 + E176 + E178 + E179). Then E177 (a11y sweep) closes the phase once every surface is stable.
-- **Phase 42** residual: `/athena:qa` on E165 to close the spike, then `/athena:spec E166` for the talk-deck diagrams.
-- **Phase 40 / 41** remain in `🔄` (commits landed, merges pending) — not blocking Phases 43/44.
+Prerequisite: tag `v0.3.0` release first (Phases 63–68 are complete at `main` @ `25dabef`; agent cannot push tags).
 
 ---
 

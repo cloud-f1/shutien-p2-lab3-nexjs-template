@@ -338,6 +338,19 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E291 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 68 — DONE PR#36 — public REST API via api_keys (app/api/v1/items, verifyApiKey + scopes), registered in E281 OpenAPI contract |
 | E292 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 68 — DONE PR#37 — billing e2e + Stripe Customer Portal (createPortalSession + Manage-billing button) |
 | E293 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 68 — DONE PR#41 — baseline observability: instrumentation.ts + env-gated Sentry + lib/logger.ts; lib/audit.ts logs failures |
+| E294 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 69 — server action unit tests. DONE on feat/E294 → PR #48 (base chore/phase-69-71-epics): 3 utils + 4 test files, 24 cases, 429 tests, 100% util cov. Merge pending (user). |
+| E295 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 69 — DataTable migration. DONE on feat/E295 → PR #47: 3 panels → DataTable, 383 tests, build clean. Merge pending (user). |
+| E296 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 69 — GitHub social login. DONE on feat/E296 → PR #49 (opus): provider + login/register buttons + connected-accounts tab + optional env. Merge pending (user). |
+| E297 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 69 — TOTP 2FA. SIZE L · complex (auth+migration) · IN-REPO (new deps otplib/qrcode + migration 0008) · dep E296 |
+| E298 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 69 — rate limiting extension (5 action files). SIZE M · complex (security) · WORKTREE-SAFE |
+| E299 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 70 — CSV/JSON data export. SIZE M · simple · WORKTREE-SAFE (new utils/route, no shadcn) |
+| E300 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 70 — onboarding checklist. DONE on feat/E300 → PR #50: hook + client card + dashboard wire, 383 tests, build clean. Merge pending (user). Ran early (disjoint from open PRs). |
+| E301 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 70 — usage metering. SIZE M · complex (migration) · IN-REPO (needs `npx shadcn add progress` + migration 0008) |
+| E302 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 71 — rebrand skill + dev-docs guide. SIZE M · IN-REPO (writes .claude/skills/) |
+| E303 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 71 — mockup-to-epics skill + /athena:plan mockup + scripts/mockup/. SIZE M · IN-REPO (writes .claude/) |
+| E304 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 71 — alignment-audit skill + /athena:align + scripts/align/. SIZE M · IN-REPO (writes .claude/) |
+| E305 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 71 — user-guide-builder skill + VitePress pattern. SIZE M · IN-REPO (writes .claude/) |
+| E306 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 71 — zeabur-deploy skill. SIZE S · IN-REPO (writes .claude/skills/) |
 
 
 ## Dependency Rules
@@ -605,6 +618,25 @@ E215: no deps
 # Phase 52 — Native Workflow Orchestration (Cycle 24)
 # (single epic; soft-deps already complete)
 E216: soft-deps E198 (effort tiers), E201 (AgentReport schema)
+
+# Phase 69 — SaaS Hardening (sourced from ai-rc-engineer-pm, 2026-06-18)
+E294: no deps
+E295: no deps
+E296: no deps
+E297: E296
+E298: no deps
+
+# Phase 70 — Data & UX
+E299: no deps
+E300: no deps
+E301: no deps
+
+# Phase 71 — Athena Toolchain Enrichment (all IN-REPO — write .claude/, NOT worktree-safe)
+E302: no deps
+E303: no deps
+E304: no deps
+E305: no deps
+E306: no deps
 ```
 
 ## Phase Parallelism

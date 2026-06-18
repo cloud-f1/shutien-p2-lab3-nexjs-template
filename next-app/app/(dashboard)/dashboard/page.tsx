@@ -1,5 +1,6 @@
 import { ChartAreaInteractiveLazy } from "@/components/chart-area-interactive-lazy"
 import { DataTable, type DataTableItem } from "@/components/data-table"
+import { OnboardingChecklist } from "@/components/onboarding-checklist"
 import { SectionCards } from "@/components/section-cards"
 import { Button } from "@/components/ui/button"
 import { db } from "@/lib/db"
@@ -60,6 +61,7 @@ export default async function DashboardPage() {
                 </Button>
               )}
             </div>
+            <OnboardingChecklist />
             <SectionCards
               totalItems={totalItems}
               totalUsers={totalUsers}

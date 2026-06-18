@@ -7,21 +7,21 @@ import { revalidatePath } from "next/cache"
 import { requireAdmin } from "@/lib/permissions"
 import { logAudit } from "@/lib/audit"
 import type { Role } from "@/lib/schema"
-
-const VALID_ROLES: Role[] = ["admin", "editor", "viewer"]
+import { isValidRole, assertNotSelf, assertNotSelfDelete } from "@/lib/admin-utils"
 
 export async function setUserRole(userId: string, role: Role) {
   const session = await requireAdmin()
 
   // Runtime allowlist: TS types are erased, and Server Actions are public
   // POST endpoints — a crafted request could pass an arbitrary string.
-  if (!VALID_ROLES.includes(role)) {
+  if (!isValidRole(role)) {
     return { error: "無效的角色。" }
   }
 
   // Prevent admin from demoting themselves
-  if (userId === session.user.id) {
-    return { error: "您無法變更自己的角色。" }
+  const selfErr = assertNotSelf(session.user.id, userId)
+  if (selfErr) {
+    return { error: selfErr }
   }
 
   await db.update(usersTable).set({ role, updatedAt: new Date() }).where(eq(usersTable.id, userId))
@@ -40,8 +40,9 @@ export async function setUserRole(userId: string, role: Role) {
 export async function deleteUser(userId: string) {
   const session = await requireAdmin()
 
-  if (userId === session.user.id) {
-    return { error: "您無法刪除自己的帳戶。" }
+  const selfDeleteErr = assertNotSelfDelete(session.user.id, userId)
+  if (selfDeleteErr) {
+    return { error: selfDeleteErr }
   }
 
   await db.delete(usersTable).where(eq(usersTable.id, userId))
