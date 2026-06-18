@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-<!-- Suggested next tag: 0.3.0 — the E274–E293 hardening + fork-ability + production program below is a minor release. -->
+_Planned: Account & Admin modules packaged as `@saas` registry modules; TapPay / NewebPay (藍新) providers; usage-based billing; teams._
+
+## [0.3.0] - 2026-06-16
 
 The **E274–E293 program** (Phases 63–68) hardened the data/billing money-path, finished the
 FastAPI→Next.js cleanup of the Athena tooling, made the template fork-able and production-ready,
@@ -44,8 +46,6 @@ Unit tests now ~327 green; migrations through 0007.
 ### Fixed
 
 - **Billing money-path** (E274) — corrected the plan-id → UUID FK, persist `currentPeriodEnd`, added a cancel-subscription UI and a real `reconcile()`, an ECPay renewal cron, and a SQLSTATE-23505 idempotent upsert. (E274a JSON-configurable pricing + checkout shipped earlier, PR #19.)
-
-_Planned: Account & Admin modules packaged as `@saas` registry modules; TapPay / NewebPay (藍新) providers; usage-based billing; teams._
 
 ## [0.2.0] - 2026-06-15
 
@@ -103,6 +103,7 @@ stack to **Next.js 16**, then hardened into an **AI-Ready, modular SaaS starter*
 
 - Account & Admin settings ship in-app today but are **not yet packaged** as `@saas` registry modules (deferred to a later release).
 
-[Unreleased]: https://github.com/cloud-f1/ai-coding-nexjs-template/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/cloud-f1/ai-coding-nexjs-template/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/cloud-f1/ai-coding-nexjs-template/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/cloud-f1/ai-coding-nexjs-template/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/cloud-f1/ai-coding-nexjs-template/releases/tag/v0.1.0
