@@ -96,9 +96,39 @@ export const paymentEventsTable = pgTable(
   (t) => [unique("payment_events_provider_event_id_unique").on(t.providerEventId)],
 )
 
+/**
+ * usage_events — append-only metering log (E301). One row per metered event;
+ * `delta` lets a single row count for >1 unit. Aggregation (current-month usage
+ * by metric) sums `delta` over rows in the period — see lib/db/queries/usage.ts.
+ * This ships the plumbing, not a pricing model: fork teams attach their own
+ * recordUsage() calls to whatever events matter for their product.
+ */
+export const usageEventsTable = pgTable(
+  "usage_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    /** Optional team scope — nullable until a fork wires team-level metering. */
+    teamId: uuid("team_id"),
+    /** The metered event name, e.g. "api_request" / "tokens" / "seats". */
+    metric: text("metric").notNull(),
+    /** Units this event counts for (default 1; e.g. token counts pass a delta). */
+    delta: integer("delta").notNull().default(1),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("usage_events_user_id_idx").on(t.userId),
+    index("usage_events_user_metric_created_idx").on(t.userId, t.metric, t.createdAt),
+  ],
+)
+
 export type Plan = typeof plansTable.$inferSelect
 export type NewPlan = typeof plansTable.$inferInsert
 export type Subscription = typeof subscriptionsTable.$inferSelect
 export type NewSubscription = typeof subscriptionsTable.$inferInsert
 export type PaymentEvent = typeof paymentEventsTable.$inferSelect
 export type NewPaymentEvent = typeof paymentEventsTable.$inferInsert
+export type UsageEvent = typeof usageEventsTable.$inferSelect
+export type NewUsageEvent = typeof usageEventsTable.$inferInsert

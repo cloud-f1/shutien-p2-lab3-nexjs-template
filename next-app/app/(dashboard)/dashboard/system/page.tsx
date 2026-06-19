@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { getAuditLog } from "@/lib/audit"
 import { listApiKeys } from "@/lib/api-keys"
 import { getActiveSubscription } from "@/lib/billing/queries"
+import { getCurrentMonthUsage } from "@/lib/db/queries/usage"
 import { isAdmin, requireAuth } from "@/lib/permissions"
 import { listWebhooks } from "@/lib/webhooks"
 
@@ -17,11 +18,13 @@ export const metadata: Metadata = { title: "系統" }
 export default async function SystemPage() {
   const session = await requireAuth()
   const admin = isAdmin(session.user.role)
-  const [keys, webhooks, billing, audit] = await Promise.all([
+  const [keys, webhooks, billing, audit, apiRequestUsage] = await Promise.all([
     listApiKeys(session.user.id),
     listWebhooks(session.user.id),
     getActiveSubscription(session.user.id),
     admin ? getAuditLog() : Promise.resolve(null),
+    // E301 — current-month "api_request" usage for the billing panel meter.
+    getCurrentMonthUsage(session.user.id, "api_request"),
   ])
 
   return (
@@ -33,7 +36,7 @@ export default async function SystemPage() {
       <SystemTabs
         apiKeys={<ApiKeysPanel keys={keys} />}
         webhooks={<WebhooksPanel webhooks={webhooks} />}
-        billing={<BillingPanel active={billing} />}
+        billing={<BillingPanel active={billing} apiRequestUsage={apiRequestUsage} />}
         audit={audit ? <AuditPanel entries={audit} /> : null}
       />
     </div>

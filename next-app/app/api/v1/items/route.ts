@@ -114,6 +114,17 @@ export async function POST(request: NextRequest) {
       updatedAt: itemsTable.updatedAt,
     })
 
+  // E301 metering demo (fork reference): record one "api_request" unit against
+  // the key owner. This route is API-key authed (no session), so the owner is
+  // passed explicitly. Metering is best-effort — wrapped so neither a failed
+  // dynamic import nor a write error can ever affect the API response.
+  try {
+    const { recordUsage } = await import("@/actions/usage")
+    await recordUsage("api_request", 1, auth.userId)
+  } catch {
+    // swallow — usage metering must never break the request path
+  }
+
   return NextResponse.json({ item }, { status: 201 })
 }
 

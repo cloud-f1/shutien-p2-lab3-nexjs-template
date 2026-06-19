@@ -52,6 +52,7 @@ const EXPECTED = [
   "plans",
   "subscriptions",
   "payment_events",
+  "usage_events",
   "api_keys",
   "webhooks",
   "webhook_deliveries",

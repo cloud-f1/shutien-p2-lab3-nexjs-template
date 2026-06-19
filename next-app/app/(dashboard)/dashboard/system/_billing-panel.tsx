@@ -4,13 +4,22 @@ import { CreditCard } from "lucide-react"
 import type { ActiveSubscription } from "@/lib/billing/queries"
 import { formatAmount, subscriptionStatusLabel } from "@/lib/billing/billing-utils"
 import { resolveProviderKey } from "@/lib/billing/resolver"
+import { formatUsageDisplay } from "@/lib/usage-utils"
 import { Button } from "@/components/ui/button"
+import { Progress } from "@/components/ui/progress"
 import { StatusBadge } from "@/components/status-badge"
 
 import { CancelSubscriptionButton } from "./_cancel-subscription-button"
 import { ManageBillingButton } from "./_manage-billing-button"
 
-export function BillingPanel({ active }: { active: ActiveSubscription }) {
+export function BillingPanel({
+  active,
+  apiRequestUsage = 0,
+}: {
+  active: ActiveSubscription
+  /** Current-month "api_request" usage (E301). */
+  apiRequestUsage?: number
+}) {
   const periodEndLabel = active?.subscription.currentPeriodEnd
     ? active.subscription.currentPeriodEnd.toLocaleDateString("zh-TW")
     : null
@@ -18,6 +27,12 @@ export function BillingPanel({ active }: { active: ActiveSubscription }) {
   // Stripe-only: the Customer Portal redirect is wired only when Stripe is the
   // active provider (綠界 ECPay has no hosted portal — management stays in-app).
   const isStripe = resolveProviderKey() === "stripe"
+
+  // E301 usage meter. The pricing tiers carry no per-metric limit yet, so the
+  // limit is unlimited (∞) here — a fork team that adds a `limit` to their plan
+  // passes it in to flip on the Progress bar. Until then we show the count only.
+  const usageLimit: number | null = null
+  const usage = formatUsageDisplay(apiRequestUsage, usageLimit)
 
   return (
     <div className="space-y-6">
@@ -70,16 +85,17 @@ export function BillingPanel({ active }: { active: ActiveSubscription }) {
         </div>
       )}
 
-      {/* Usage meter (placeholder until usage metering exists) */}
+      {/* Usage meter — current-month API requests (E301). */}
       <div className="rounded-xl border p-5">
         <div className="mb-2 flex items-center justify-between text-sm">
-          <span className="font-medium">本月用量</span>
-          <span className="text-muted-foreground tnum">— / —</span>
+          <span className="font-medium">本月用量（API 請求）</span>
+          <span className="text-muted-foreground tnum">{usage.label}</span>
         </div>
-        <div className="bg-secondary h-2 overflow-hidden rounded-full">
-          <div className="bg-primary h-full w-0" />
-        </div>
-        <p className="text-muted-foreground mt-2 text-xs">用量計量將於後續版本接入。</p>
+        {usage.hasLimit ? (
+          <Progress value={usage.percent} />
+        ) : (
+          <p className="text-muted-foreground text-xs">目前方案未設用量上限。</p>
+        )}
       </div>
 
       {/* Payment method + invoices (managed by the provider's hosted portal) */}
