@@ -1,4 +1,5 @@
 import {
+  boolean,
   integer,
   pgEnum,
   pgTable,
@@ -26,6 +27,13 @@ export const usersTable = pgTable("users", {
   role: roleEnum("role").notNull().default("viewer"),
   // E270 — member lifecycle (active by default; invited rows created via invitations)
   status: memberStatusEnum("status").notNull().default("active"),
+  // E297 — TOTP 2FA. `totpSecret` is the base32 shared secret (null until set up);
+  // it is only authoritative when `totpEnabled` is true (verified during setup).
+  // `backupCodes` holds bcrypt hashes of one-time recovery codes — each is deleted
+  // from the array as it is consumed.
+  totpSecret: text("totp_secret"),
+  totpEnabled: boolean("totp_enabled").notNull().default(false),
+  backupCodes: text("backup_codes").array(),
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
 })

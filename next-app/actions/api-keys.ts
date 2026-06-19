@@ -8,10 +8,17 @@ import { requireAuth } from "@/lib/permissions"
 import { apiKeysTable } from "@/lib/schema"
 import { generateApiKey } from "@/lib/api-keys-utils"
 import { logAudit } from "@/lib/audit"
+import { rateLimitGuard } from "@/lib/rate-limit"
+
+const MINUTE_MS = 60_000
 
 /** Create an API key for the current user. Returns the plaintext ONCE. */
 export async function createApiKey(name: string): Promise<{ plaintext?: string; error?: string }> {
   const session = await requireAuth()
+
+  const limited = rateLimitGuard(`apikey:create:${session.user.id}`, 10, MINUTE_MS)
+  if (limited) return limited
+
   const trimmed = name?.trim()
   if (!trimmed) return { error: "請輸入金鑰名稱。" }
   if (trimmed.length > 100) return { error: "金鑰名稱過長（最多 100 個字元）。" }
@@ -27,6 +34,10 @@ export async function createApiKey(name: string): Promise<{ plaintext?: string; 
 /** Revoke one of the current user's API keys (owner-scoped). */
 export async function revokeApiKey(id: string): Promise<{ error?: string }> {
   const session = await requireAuth()
+
+  const limited = rateLimitGuard(`apikey:revoke:${session.user.id}`, 10, MINUTE_MS)
+  if (limited) return limited
+
   await db
     .update(apiKeysTable)
     .set({ revokedAt: new Date() })

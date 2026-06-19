@@ -2,16 +2,16 @@
 
 import { useState } from "react"
 import { useTheme } from "next-themes"
-import { Check, Monitor, MoonStar, ShieldCheck, Sun } from "lucide-react"
+import { Check, Monitor, MoonStar, Sun } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { providerLabel } from "@/lib/auth-utils"
-import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 import { ProfileForm } from "./_profile-form"
 import { PasswordForm } from "./_password-form"
+import { SecurityTab } from "./_security-tab"
 
 // Social providers wired in lib/auth.ts. Shown in the Connected Accounts tab
 // with their connection status so users can see every option (Google + GitHub),
@@ -103,10 +103,12 @@ export function SettingsTabs({
   defaultName,
   defaultImage,
   connectedProviders,
+  totpEnabled,
 }: {
   defaultName: string
   defaultImage: string
   connectedProviders: string[]
+  totpEnabled: boolean
 }) {
   const { theme, setTheme } = useTheme()
 
@@ -114,6 +116,7 @@ export function SettingsTabs({
     <Tabs defaultValue="account" className="gap-6">
       <TabsList>
         <TabsTrigger value="account">帳戶</TabsTrigger>
+        <TabsTrigger value="security">安全性</TabsTrigger>
         <TabsTrigger value="appearance">外觀</TabsTrigger>
         <TabsTrigger value="notifications">通知</TabsTrigger>
         <TabsTrigger value="connected">已連結</TabsTrigger>
@@ -133,18 +136,10 @@ export function SettingsTabs({
           </p>
           <PasswordForm />
         </section>
-        <Separator />
-        <section className="space-y-2">
-          <h2 className="flex items-center gap-2 text-base font-medium">
-            <ShieldCheck className="text-muted-foreground size-4" /> 兩步驟驗證（2FA）
-          </h2>
-          <p className="text-muted-foreground text-sm">
-            以驗證器 App 增加一層保護。此功能將於後續版本（Phase 62）啟用。
-          </p>
-          <Button variant="outline" size="sm" disabled>
-            啟用 2FA（即將推出）
-          </Button>
-        </section>
+      </TabsContent>
+
+      <TabsContent value="security">
+        <SecurityTab totpEnabled={totpEnabled} />
       </TabsContent>
 
       <TabsContent value="appearance" className="space-y-4">

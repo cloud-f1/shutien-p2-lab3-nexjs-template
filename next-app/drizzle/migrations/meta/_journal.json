@@ -57,6 +57,13 @@
       "when": 1781612146695,
       "tag": "0007_colorful_spectrum",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1781833607302,
+      "tag": "0008_robust_captain_flint",
+      "breakpoints": true
     }
   ]
 }

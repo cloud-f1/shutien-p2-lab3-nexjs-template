@@ -4,8 +4,8 @@ import { signIn, signOut } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { emailVerificationTokensTable, passwordResetTokensTable, usersTable } from "@/lib/schema"
 import { eq } from "drizzle-orm"
-import { getUserByEmail, getVerificationToken, getPasswordResetToken } from "@/lib/queries"
-import { hashPassword } from "@/lib/password"
+import { getUserByEmail, getVerificationToken, getPasswordResetToken, getUserById } from "@/lib/queries"
+import { comparePassword, hashPassword } from "@/lib/password"
 import { sendVerificationEmail, sendPasswordResetEmail } from "@/lib/email"
 import type { FormState } from "@/lib/validations/types"
 import { unstable_rethrow } from "next/navigation"
@@ -18,7 +18,14 @@ import {
   resetExpiry,
   isResetTokenValid,
 } from "@/lib/password-reset-utils"
-import { isRateLimited, recordFailure, cooldown } from "@/lib/rate-limit"
+import { isRateLimited, recordFailure, cooldown, rateLimitGuard } from "@/lib/rate-limit"
+import { verifyToken, verifyBackupCode } from "@/lib/totp-utils"
+import {
+  setPending2fa,
+  readPending2fa,
+  clearPending2fa,
+  issueNonce,
+} from "@/lib/pending-2fa"
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
 
@@ -113,6 +120,21 @@ export async function loginAction(prevState: FormState, formData: FormData): Pro
   const user = await getUserByEmail(email)
   if (user?.passwordHash && !user.emailVerified) {
     return { error: "請先驗證您的電子郵件再登入，請檢查您的收件匣。" }
+  }
+
+  // 2FA gate (E297): a TOTP-enabled user must clear the /login/2fa challenge
+  // before a session is created. authorize() refuses the raw-credentials path
+  // for these users, so we verify the password HERE, stash a signed
+  // pending-2FA cookie, and route to the challenge instead of signing in.
+  if (user?.passwordHash && user.emailVerified && user.totpEnabled) {
+    const ok = await comparePassword(password, user.passwordHash)
+    if (!ok) {
+      recordFailure(emailKey, WINDOW_MS)
+      recordFailure(ipKey, WINDOW_MS)
+      return { error: "電子郵件或密碼錯誤。" }
+    }
+    await setPending2fa(user.id)
+    redirect("/login/2fa")
   }
 
   try {
@@ -266,4 +288,94 @@ export async function resetPassword(
     .where(eq(passwordResetTokensTable.id, record.id))
 
   return { success: true }
+}
+
+// ─── Two-Factor Login Challenge (E297) ─────────────────────────────────────
+
+/**
+ * Complete a 2FA login with a 6-digit TOTP code. Requires the signed
+ * pending-2FA cookie set by loginAction (proves the password already passed).
+ * On success, mints a single-use nonce and signs in via the nonce path in
+ * lib/auth.ts authorize() — which redirects to /dashboard.
+ */
+export async function verifyTotpLogin(
+  prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const userId = await readPending2fa()
+  if (!userId) return { error: "驗證階段已逾時，請重新登入。" }
+
+  // Blunt brute-force on the challenge: 5 attempts / 15 min per pending user.
+  const limited = rateLimitGuard(`2fa:login:${userId}`, 5, 15 * 60 * 1000)
+  if (limited) return limited
+
+  const token = String(formData.get("token") ?? "")
+  const user = await getUserById(userId)
+  if (!user || !user.totpEnabled || !user.totpSecret) {
+    return { error: "驗證階段無效，請重新登入。" }
+  }
+
+  if (!verifyToken(user.totpSecret, token)) {
+    return { error: "驗證碼錯誤，請再試一次。" }
+  }
+
+  const nonce = issueNonce(userId)
+  await clearPending2fa()
+  try {
+    await signIn("credentials", { totpNonce: nonce, redirectTo: "/dashboard" })
+  } catch (error) {
+    unstable_rethrow(error) // re-throw the success redirect
+    return { error: "登入失敗，請重新登入。" }
+  }
+  return null
+}
+
+/**
+ * Complete a 2FA login with a one-time backup code. Verifies the code against
+ * the stored hashes, removes the consumed hash, then completes the session.
+ */
+export async function useBackupCode(
+  prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const userId = await readPending2fa()
+  if (!userId) return { error: "驗證階段已逾時，請重新登入。" }
+
+  const limited = rateLimitGuard(`2fa:backup:${userId}`, 5, 15 * 60 * 1000)
+  if (limited) return limited
+
+  const code = String(formData.get("code") ?? "")
+  const user = await getUserById(userId)
+  if (!user || !user.totpEnabled || !user.backupCodes?.length) {
+    return { error: "驗證階段無效，請重新登入。" }
+  }
+
+  // Find the matching hash (bcrypt — must compare each).
+  let matchIndex = -1
+  for (let i = 0; i < user.backupCodes.length; i++) {
+    if (await verifyBackupCode(user.backupCodes[i], code)) {
+      matchIndex = i
+      break
+    }
+  }
+  if (matchIndex === -1) {
+    return { error: "備用碼無效或已使用。" }
+  }
+
+  // Consume the code (single-use): remove its hash from the array.
+  const remaining = user.backupCodes.filter((_, i) => i !== matchIndex)
+  await db
+    .update(usersTable)
+    .set({ backupCodes: remaining, updatedAt: new Date() })
+    .where(eq(usersTable.id, userId))
+
+  const nonce = issueNonce(userId)
+  await clearPending2fa()
+  try {
+    await signIn("credentials", { totpNonce: nonce, redirectTo: "/dashboard" })
+  } catch (error) {
+    unstable_rethrow(error)
+    return { error: "登入失敗，請重新登入。" }
+  }
+  return null
 }

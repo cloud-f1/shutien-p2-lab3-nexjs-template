@@ -338,11 +338,11 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E291 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 68 — DONE PR#36 — public REST API via api_keys (app/api/v1/items, verifyApiKey + scopes), registered in E281 OpenAPI contract |
 | E292 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 68 — DONE PR#37 — billing e2e + Stripe Customer Portal (createPortalSession + Manage-billing button) |
 | E293 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 68 — DONE PR#41 — baseline observability: instrumentation.ts + env-gated Sentry + lib/logger.ts; lib/audit.ts logs failures |
-| E294 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 69 — server action unit tests. DONE on feat/E294 → PR #48 (base chore/phase-69-71-epics): 3 utils + 4 test files, 24 cases, 429 tests, 100% util cov. Merge pending (user). |
-| E295 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 69 — DataTable migration. DONE on feat/E295 → PR #47: 3 panels → DataTable, 383 tests, build clean. Merge pending (user). |
-| E296 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 69 — GitHub social login. DONE on feat/E296 → PR #49 (opus): provider + login/register buttons + connected-accounts tab + optional env. Merge pending (user). |
-| E297 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 69 — TOTP 2FA. SIZE L · complex (auth+migration) · IN-REPO (new deps otplib/qrcode + migration 0008) · dep E296 |
-| E298 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 69 — rate limiting extension (5 action files). SIZE M · complex (security) · WORKTREE-SAFE |
+| E294 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 69 — server action unit tests. MERGED (PR #48 → main): 3 utils + 4 test files, 24 cases, 100% util cov. |
+| E295 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 69 — DataTable migration. MERGED (PR #47 → main): 3 system panels → DataTable. |
+| E296 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 69 — GitHub social login. MERGED (PR #49 → main): provider + login/register buttons + connected-accounts tab + optional env. |
+| E297 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 69 — TOTP 2FA. DONE on feat/phase69-finish-E298-E297 → PR #51 (opus, base main): otplib/qrcode + migration 0008 (fresh-DB verified) + totp-utils 100% + security tab + /login/2fa challenge. Merge pending (user). |
+| E298 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 69 — rate limiting extension. DONE on feat/phase69-finish-E298-E297 → PR #51 (opus): rateLimitGuard on all mutations in api-keys/webhooks/team/user/admin + Redis/Upstash migration doc. Merge pending (user). |
 | E299 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 70 — CSV/JSON data export. SIZE M · simple · WORKTREE-SAFE (new utils/route, no shadcn) |
 | E300 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 70 — onboarding checklist. DONE on feat/E300 → PR #50: hook + client card + dashboard wire, 383 tests, build clean. Merge pending (user). Ran early (disjoint from open PRs). |
 | E301 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 70 — usage metering. SIZE M · complex (migration) · IN-REPO (needs `npx shadcn add progress` + migration 0008) |

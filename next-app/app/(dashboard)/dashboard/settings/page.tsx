@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { eq } from "drizzle-orm"
 
 import { db } from "@/lib/db"
-import { accountsTable } from "@/lib/schema"
+import { accountsTable, usersTable } from "@/lib/schema"
 import { requireAuth } from "@/lib/permissions"
 
 import { SettingsTabs } from "./_settings-tabs"
@@ -19,6 +19,12 @@ export default async function SettingsPage() {
     .where(eq(accountsTable.userId, user.id))
   const connectedProviders = [...new Set(accounts.map((a) => a.provider))]
 
+  const [row] = await db
+    .select({ totpEnabled: usersTable.totpEnabled })
+    .from(usersTable)
+    .where(eq(usersTable.id, user.id))
+  const totpEnabled = row?.totpEnabled ?? false
+
   return (
     <div className="max-w-2xl space-y-6 p-6">
       <div>
@@ -29,6 +35,7 @@ export default async function SettingsPage() {
         defaultName={user.name ?? ""}
         defaultImage={user.image ?? ""}
         connectedProviders={connectedProviders}
+        totpEnabled={totpEnabled}
       />
     </div>
   )

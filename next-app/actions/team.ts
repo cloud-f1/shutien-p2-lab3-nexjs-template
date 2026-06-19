@@ -7,12 +7,15 @@ import { db } from "@/lib/db"
 import { logAudit } from "@/lib/audit"
 import { sendInviteEmail } from "@/lib/email"
 import { requireAdmin, requireAuth } from "@/lib/permissions"
+import { rateLimitGuard } from "@/lib/rate-limit"
 import { invitationsTable, usersTable, type Role } from "@/lib/schema"
 import { generateInviteToken, inviteExpiry, isInviteValid } from "@/lib/team-utils"
 
 const VALID_ROLES: Role[] = ["admin", "editor", "viewer"]
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+const MINUTE_MS = 60_000
+const HOUR_MS = 60 * MINUTE_MS
 
 /** Invite a member by email with a role. Admin-only. Returns the invite token. */
 export async function inviteMember(input: {
@@ -20,6 +23,11 @@ export async function inviteMember(input: {
   role: Role
 }): Promise<{ token?: string; error?: string }> {
   const session = await requireAdmin()
+
+  // 5 invites / hour per admin — blunts invite-email spam.
+  const limited = rateLimitGuard(`team:invite:${session.user.id}`, 5, HOUR_MS)
+  if (limited) return limited
+
   const email = input.email?.trim().toLowerCase()
   if (!email || !EMAIL_RE.test(email)) return { error: "請輸入有效的電子郵件。" }
   if (!VALID_ROLES.includes(input.role)) return { error: "無效的角色。" }
@@ -64,6 +72,10 @@ export async function inviteMember(input: {
 /** Revoke a pending invitation. Admin-only. */
 export async function revokeInvitation(id: string): Promise<{ error?: string }> {
   const session = await requireAdmin()
+
+  const limited = rateLimitGuard(`team:revoke:${session.user.id}`, 20, MINUTE_MS)
+  if (limited) return limited
+
   await db
     .update(invitationsTable)
     .set({ status: "revoked" })
@@ -84,6 +96,10 @@ export async function revokeInvitation(id: string): Promise<{ error?: string }> 
  */
 export async function acceptInvitation(token: string): Promise<{ error?: string; ok?: boolean }> {
   const session = await requireAuth()
+
+  // 10/min per user — prevents token-guessing brute-force on the accept path.
+  const limited = rateLimitGuard(`team:accept:${session.user.id}`, 10, MINUTE_MS)
+  if (limited) return limited
 
   const [invite] = await db
     .select()

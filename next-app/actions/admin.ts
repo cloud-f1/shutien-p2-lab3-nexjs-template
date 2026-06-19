@@ -8,9 +8,16 @@ import { requireAdmin } from "@/lib/permissions"
 import { logAudit } from "@/lib/audit"
 import type { Role } from "@/lib/schema"
 import { isValidRole, assertNotSelf, assertNotSelfDelete } from "@/lib/admin-utils"
+import { rateLimitGuard } from "@/lib/rate-limit"
+
+const MINUTE_MS = 60_000
 
 export async function setUserRole(userId: string, role: Role) {
   const session = await requireAdmin()
+
+  // 20 destructive admin ops / minute per admin.
+  const limited = rateLimitGuard(`admin:role:${session.user.id}`, 20, MINUTE_MS)
+  if (limited) return limited
 
   // Runtime allowlist: TS types are erased, and Server Actions are public
   // POST endpoints — a crafted request could pass an arbitrary string.
@@ -39,6 +46,9 @@ export async function setUserRole(userId: string, role: Role) {
 
 export async function deleteUser(userId: string) {
   const session = await requireAdmin()
+
+  const limited = rateLimitGuard(`admin:delete:${session.user.id}`, 20, MINUTE_MS)
+  if (limited) return limited
 
   const selfDeleteErr = assertNotSelfDelete(session.user.id, userId)
   if (selfDeleteErr) {

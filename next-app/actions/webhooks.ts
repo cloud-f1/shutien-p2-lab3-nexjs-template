@@ -6,8 +6,11 @@ import { revalidatePath } from "next/cache"
 import { db } from "@/lib/db"
 import { logAudit } from "@/lib/audit"
 import { requireAuth } from "@/lib/permissions"
+import { rateLimitGuard } from "@/lib/rate-limit"
 import { webhooksTable } from "@/lib/schema"
 import { deliverToEndpoint, generateWebhookSecret } from "@/lib/webhooks"
+
+const MINUTE_MS = 60_000
 
 const VALID_EVENTS = [
   "*",
@@ -38,6 +41,10 @@ export async function createWebhook(input: {
   events: string[]
 }): Promise<{ secret?: string; error?: string }> {
   const session = await requireAuth()
+
+  const limited = rateLimitGuard(`webhook:create:${session.user.id}`, 10, MINUTE_MS)
+  if (limited) return limited
+
   const url = input.url?.trim()
   if (!url || !isHttpsUrl(url)) return { error: "請輸入有效的 HTTPS URL。" }
   if (url.length > 2048) return { error: "URL 過長（最多 2048 個字元）。" }
@@ -62,6 +69,10 @@ export async function createWebhook(input: {
 /** Toggle a webhook's active flag (owner-scoped). */
 export async function setWebhookActive(id: string, active: boolean): Promise<{ error?: string }> {
   const session = await requireAuth()
+
+  const limited = rateLimitGuard(`webhook:toggle:${session.user.id}`, 10, MINUTE_MS)
+  if (limited) return limited
+
   await db
     .update(webhooksTable)
     .set({ active })
@@ -73,6 +84,10 @@ export async function setWebhookActive(id: string, active: boolean): Promise<{ e
 /** Delete a webhook endpoint (owner-scoped). Cascades its delivery rows. */
 export async function deleteWebhook(id: string): Promise<{ error?: string }> {
   const session = await requireAuth()
+
+  const limited = rateLimitGuard(`webhook:delete:${session.user.id}`, 10, MINUTE_MS)
+  if (limited) return limited
+
   await db
     .delete(webhooksTable)
     .where(and(eq(webhooksTable.id, id), eq(webhooksTable.userId, session.user.id)))
@@ -89,6 +104,12 @@ export async function deleteWebhook(id: string): Promise<{ error?: string }> {
 /** Send a signed `ping` to one of the user's endpoints and record the delivery. */
 export async function sendTestEvent(id: string): Promise<{ status?: string; error?: string }> {
   const session = await requireAuth()
+
+  // Tighter bucket (3/min): test deliveries make outbound HTTP calls, so this
+  // doubles as SSRF-amplification / webhook-spam protection.
+  const limited = rateLimitGuard(`webhook:test:${session.user.id}`, 3, MINUTE_MS)
+  if (limited) return limited
+
   const [endpoint] = await db
     .select({ id: webhooksTable.id, url: webhooksTable.url, secret: webhooksTable.secret })
     .from(webhooksTable)

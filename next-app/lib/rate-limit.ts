@@ -4,6 +4,9 @@
 // across serverless instances or horizontally-scaled replicas. It is "good enough"
 // to blunt casual brute-force / email-bombing for a starter template. For real
 // production traffic, back this with Redis (e.g. Upstash) or an edge KV store.
+//
+// Migration path (in-memory → Redis/Upstash) for fork teams scaling horizontally:
+//   docs/deployment/rate-limiting.md
 
 type Bucket = {
   count: number
@@ -94,6 +97,28 @@ export function cooldown(key: string, cooldownMs: number): RateLimitResult {
   }
 
   return { ok: false, retryAfter: Math.ceil((bucket.resetAt - now) / 1000) }
+}
+
+/**
+ * Server-Action guard (E298). Consumes one hit against `key` and, when the
+ * window is exhausted, returns a ready-to-return `{ error }` result; otherwise
+ * returns `null` so the caller can proceed. Used to rate-limit per-user
+ * mutations (keyed on `session.user.id`) across the action files.
+ *
+ *   const limited = rateLimitGuard(`apikey:create:${userId}`, 10, 60_000)
+ *   if (limited) return limited
+ *
+ * The message is generic ("Too many requests" / 繁中) so it never leaks the
+ * limit or the bucket key to a caller.
+ */
+export function rateLimitGuard(
+  key: string,
+  limit: number,
+  windowMs: number,
+): { error: string } | null {
+  const { ok, retryAfter } = rateLimit(key, limit, windowMs)
+  if (ok) return null
+  return { error: `請求過於頻繁，請於 ${retryAfter} 秒後再試。` }
 }
 
 /** Test helper — clears all buckets. */

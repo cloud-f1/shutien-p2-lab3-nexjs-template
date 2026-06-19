@@ -6,8 +6,9 @@ import { DrizzleAdapter } from "@auth/drizzle-adapter"
 import { db } from "./db"
 import { accountsTable, sessionsTable, usersTable, verificationTokensTable } from "./schema"
 import type { Role } from "./schema"
-import { getUserByEmail } from "./queries"
+import { getUserByEmail, getUserById } from "./queries"
 import { comparePassword } from "./password"
+import { consumeNonce } from "./pending-2fa"
 import { authConfig } from "../auth.config"
 
 export const { auth, handlers, signIn, signOut, unstable_update } = NextAuth({
@@ -31,8 +32,24 @@ export const { auth, handlers, signIn, signOut, unstable_update } = NextAuth({
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
+        totpNonce: { label: "TOTP nonce", type: "text" },
       },
       async authorize(credentials) {
+        // ── 2FA completion path (E297) ──────────────────────────────────────
+        // After the /login/2fa challenge passes, the verify action mints a
+        // single-use nonce (lib/pending-2fa.ts) and signs in with it instead of
+        // a password — the password was already verified in loginAction, and the
+        // TOTP/backup code was just checked. We exchange the nonce for the user.
+        const totpNonce = credentials?.totpNonce as string | undefined
+        if (totpNonce) {
+          const userId = consumeNonce(totpNonce)
+          if (!userId) return null
+          const user = await getUserById(userId)
+          if (!user || !user.emailVerified || !user.totpEnabled) return null
+          return { id: user.id, email: user.email, name: user.name, image: user.image, role: user.role }
+        }
+
+        // ── Standard email + password path ──────────────────────────────────
         const email = credentials?.email as string | undefined
         const password = credentials?.password as string | undefined
 
@@ -47,6 +64,12 @@ export const { auth, handlers, signIn, signOut, unstable_update } = NextAuth({
 
         const isValid = await comparePassword(password, user.passwordHash)
         if (!isValid) return null
+
+        // 2FA gate (E297): a user with TOTP enabled must NOT complete the session
+        // via raw credentials — loginAction routes them to the /login/2fa
+        // challenge, which finishes via the nonce path above. Refusing here is
+        // defence in depth in case authorize() is reached directly.
+        if (user.totpEnabled) return null
 
         return { id: user.id, email: user.email, name: user.name, image: user.image, role: user.role }
       },
