@@ -79,6 +79,13 @@ Note: `scripts/mockup/tour-app.cjs` is added in E303. If it doesn't exist yet, c
 minimal version that: logs in as `admin@example.com`, visits each dashboard route, captures
 screenshots, and exits cleanly.
 
+**To refresh the manual after a UI change**, use the guarded wrapper
+`scripts/screenshot-refresh.sh [baseURL]` (E311): it checks the app is reachable at `/login`,
+re-runs the tour, then prints the `git status` diff of `dev-docs/public/screenshots/` so you
+review the visual change and commit intentionally. PNG re-encode noise makes byte-diffs
+chatty — `git checkout -- <png>` the shots that didn't visually change. (Pixel-true VRT is the
+follow-on, already wired via `pnpm test:vrt`.)
+
 Practices baked in:
 - **Warm the routes first** (`curl` each `/dashboard*` once) — the dev server compiles
   on first hit and a cold compile races `waitForSelector`. Then `waitForSelector` the login
@@ -135,13 +142,22 @@ One page (e.g. `concepts.md`) renders the digest into friendly prose + tables an
 **stable H2 anchors** every other page deep-links to. Give that writer the exact H2 titles
 to use verbatim, because…
 
-## 6. Verify cross-page anchors by hand (the gotcha)
+## 6. Verify cross-page anchors — automated (the gotcha)
 
 VitePress fails the build on dead *page* links but does NOT validate cross-page **#fragment**
 anchors — so a `concepts#wrong-anchor` link builds green and 404s the jump at runtime.
-After writing, extract every `concepts#…` (and other `page#…`) reference and check it against
-the target's headings. VitePress slugify ≈ lowercase latin, spaces→`-`, strip `（）／–`,
-keep CJK. Fix mismatches before deploy.
+
+**Run the deterministic check (E311) instead of eyeballing it:**
+```bash
+node scripts/docs/anchor-check.cjs        # also wired into scripts/smoke.sh
+```
+It parses every `dev-docs/**/*.md`, resolves each `page#fragment` link's target headings
+(VitePress slugify — lowercase latin, spaces→`-`, strip punctuation, keep CJK; honors explicit
+`{#custom-id}` anchors), and also verifies referenced local image assets resolve under
+`dev-docs/public/`. Exit non-zero = a dead anchor/asset. **Gotcha it catches:** a heading like
+`## Account Actions (\`@saas/account\`)` slugifies to `account-actions-saasaccount` — so a
+`#account-actions` link is dead; fix by adding an explicit `{#account-actions}` to the heading,
+or point the link at the real slug. Run it before every deploy (smoke runs it for you).
 
 ## 7. Build + redeploy + verify
 
@@ -157,6 +173,8 @@ what makes removed-path staleness harmless (long tail 301s to the manual).
 | Asset | Path |
 |---|---|
 | logged-in tour (per-item screenshots) | `scripts/mockup/tour-app.cjs` |
+| screenshot refresh (guarded wrapper) | `scripts/screenshot-refresh.sh` |
+| anchor + asset integrity check | `scripts/docs/anchor-check.cjs` (also a `scripts/smoke.sh` gate) |
 | domain digest (writers' single source) | `docs/reference/guide-domain-digest.md` |
 | the manual itself | `dev-docs/guide-zh/` + `dev-docs/public/screenshots/` |
 | publish | `gh-cf-deploy` skill → Cloudflare Pages |
@@ -168,5 +186,5 @@ what makes removed-path staleness harmless (long tail 301s to the manual).
 - [ ] Tour run; ledger all ✓; PNGs vision-verified as real content; role + mobile variants
 - [ ] Domain digest written from epics; RBAC matrix confirmed
 - [ ] One grounded writer per page (parallel); every item documented; role notes; cross-links
-- [ ] Concepts page owns stable anchors; all `page#anchor` refs hand-verified
+- [ ] Concepts page owns stable anchors; `node scripts/docs/anchor-check.cjs` passes (all `page#anchor` refs + assets resolve)
 - [ ] `pnpm build` clean → redeploy → prod 200 + screenshots render

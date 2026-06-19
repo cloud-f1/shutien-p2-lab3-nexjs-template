@@ -14,7 +14,7 @@ type ActionResult<T = void> =
   | { success: false; error: string; code?: string }
 ```
 
-## Account Actions (`@saas/account`)
+## Account Actions (`@saas/account`) {#account-actions}
 
 ### `updateProfile(data)`
 
@@ -52,7 +52,7 @@ Permanently delete the current user's account. This action is irreversible.
 async function deleteAccount(): Promise<ActionResult>
 ```
 
-## Admin Actions (`@saas/admin`)
+## Admin Actions (`@saas/admin`) {#admin-actions}
 
 > All admin actions require `role === 'admin'`. Lower roles receive a 403 response.
 

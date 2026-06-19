@@ -69,6 +69,7 @@
 | Phase 70 | E299, E300, E301 | ✅ Complete (Data & UX) — all merged to main (#50/#52/#53); migration 0009 |
 | Phase 71 | E302, E303, E304, E305, E306 | ✅ Complete (Athena Toolchain) — 5 skills + /athena:align + /athena:plan mockup + scripts, all merged (#54); dev-docs deployed to Cloudflare Pages |
 | Phase 72 | E307, E308, E309, E310 | ✅ Complete (Follow-ups from /athena:align) — all merged to main (#57); migration 0010; 518 tests. E307 e2e runs in CI. |
+| Phase 73 | E311 | ✅ Done (Smoke + dev-docs enrichment) — anchor-check.cjs + smoke gate + screenshot-refresh.sh + skill/guide; 3 real anchors fixed; smoke --core green. PR #59 merge-pending. |
 
 ## Epic Step Matrix
 
@@ -356,10 +357,11 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E304 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 71 — alignment-audit skill + /athena:align + scripts/align/. MERGED (PR #54). |
 | E305 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 71 — user-guide-builder skill + VitePress pattern + dev-docs deployed. MERGED (PR #54). |
 | E306 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 71 — zeabur-deploy skill. MERGED (PR #54). |
-| E307 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 72 — TOTP login e2e. DONE on feat/phase72-followups → PR #57 (1956c2d): e2e/two-factor.spec.ts (challenge + backup-code + negative); typecheck/lint clean, live run deferred to CI (local port 3000 occupied). Merge pending. |
-| E308 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 72 — usage limits. DONE → PR #57 (1559216): config-only (no migration) — limits in config/pricing.json + getPlanLimit/assertWithinLimit + billing Progress (amber≥80%/red≥100%) + opt-in 429 guard. Merge pending. |
-| E309 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 72 — export expansion. DONE → PR #57 (602ecfb): exportWebhooks/exportApiKeys(redacted)/exportTeam + Export buttons; export-row-mappers + 20 tests. Merge pending. |
-| E310 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 72 — 2FA recovery + onboarding persistence. DONE → PR #57 (eb29a60, opus): admin resetUserTotp + regenerateBackupCodes + onboarding DB columns (migration 0010, fresh-DB verified) + hook hydration. Merge pending. |
+| E307 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 72 — TOTP login e2e. MERGED (PR #57): e2e/two-factor.spec.ts (challenge + backup-code + negative); typecheck/lint clean, live run runs in CI. |
+| E308 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 72 — usage limits. MERGED (PR #57): config-only (no migration) — limits in config/pricing.json + getPlanLimit/assertWithinLimit + billing Progress (amber≥80%/red≥100%) + opt-in 429 guard. |
+| E309 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 72 — export expansion. MERGED (PR #57): exportWebhooks/exportApiKeys(redacted)/exportTeam + Export buttons; export-row-mappers + 20 tests. |
+| E310 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 72 — 2FA recovery + onboarding persistence. MERGED (PR #57): admin resetUserTotp + regenerateBackupCodes + onboarding DB columns (migration 0010) + hook hydration. |
+| E311 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 73 — dev-docs integrity. DONE on feat/E311-docs-integrity → PR #59 (base main): anchor-check.cjs (found+fixed 3 real broken anchors) + smoke.sh gate (smoke --core green) + screenshot-refresh.sh + skill §6 automated + dev-docs-guide. Merge pending. |
 
 
 ## Dependency Rules
@@ -652,6 +654,9 @@ E307: no deps (soft: E297)
 E308: no deps (soft: E301)
 E309: no deps (soft: E299)
 E310: E308 (migration numbering 0010→0011; soft: E297, E300)
+
+# Phase 73 — Smoke + dev-docs enrichment (2026-06-19)
+E311: no deps (soft: E304 surface-check, E305 user-guide-builder)
 ```
 
 ## Phase Parallelism

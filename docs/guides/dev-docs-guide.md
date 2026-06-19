@@ -58,6 +58,24 @@ pnpm install --prefer-offline
 pnpm build   # runs generate-catalog.mjs first, then vitepress build
 ```
 
+## Integrity checks (E311)
+
+VitePress build catches dead *page* links but **not** cross-page `#fragment` anchors (they
+build green and 404 at runtime) and **not** broken image refs. Two tools close that gap:
+
+```bash
+# Verify every page#anchor link + local image/asset ref resolves (deterministic, zero-dep).
+node scripts/docs/anchor-check.cjs        # also runs inside scripts/smoke.sh
+
+# After a UI change, refresh screenshots from the running app and review the diff (manual).
+scripts/screenshot-refresh.sh             # needs the app up: `make local && make local-db`
+```
+
+`anchor-check` is wired into `scripts/smoke.sh` (Dev-docs section), so a dead anchor fails the
+pre-merge smoke gate instead of shipping. Tip: a heading with a suffix like
+`## Account Actions (\`@saas/account\`)` slugifies to `account-actions-saasaccount` — add an
+explicit `{#account-actions}` to the heading if you want a clean anchor to link to.
+
 ## Full skill
 
 For the complete checklist including screenshot pipeline and anchor verification, run

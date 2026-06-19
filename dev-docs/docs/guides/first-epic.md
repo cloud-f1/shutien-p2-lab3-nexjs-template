@@ -66,4 +66,4 @@ Advances the pipeline automatically when confidence ≥ 0.85. Pauses and asks fo
 /athena:qa --effort ultra "critical path"           # maximum review depth
 ```
 
-See the [Effort Tiers](/docs/#effort-tiers) reference for details.
+See the [Effort Tiers](/docs/guides/ai-agent-team#effort-tiers) reference for details.

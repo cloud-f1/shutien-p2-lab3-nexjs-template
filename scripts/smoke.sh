@@ -86,6 +86,13 @@ rung_make "doc-truth"
 
 hdr "Dev-docs (VitePress)"
 if [ -d "$DOCS" ]; then rung "vitepress build" bash -c "cd '$DOCS' && pnpm build"; else skip "vitepress build" "no dev-docs/"; fi
+# anchor-check (E311): cross-page #fragment anchors + local asset refs — the gap the VitePress
+# build does NOT cover (a dead #anchor builds green but 404s the jump at runtime). Deterministic, zero-dep.
+if [ -d "$DOCS" ] && [ -f "$ROOT/scripts/docs/anchor-check.cjs" ]; then
+  rung "docs anchor-check" node "$ROOT/scripts/docs/anchor-check.cjs"
+else
+  skip "docs anchor-check" "no dev-docs/ or scripts/docs/anchor-check.cjs"
+fi
 
 if [ "$MODE_CORE" -eq 0 ]; then
   hdr "Migration (fresh-DB apply — needs Postgres)"
