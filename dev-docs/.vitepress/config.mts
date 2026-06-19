@@ -1,6 +1,19 @@
 import { defineConfig } from 'vitepress'
 
 // https://vitepress.dev/reference/site-config
+//
+// FORK TEAMS — AUDIENCE SPLIT PATTERN
+// By default this site is ENGINEER-FACING (getting-started, modules, API, whitepaper).
+// If your fork pivots to an END-USER MANUAL:
+//   1. Uncomment `srcExclude` below to hide engineer pages from the published build.
+//   2. Remove the hidden sections from `nav` + `sidebar` too.
+//   3. Add redirect rules to dev-docs/public/_redirects for any removed paths (see that file).
+//   4. Repoint socialLinks + editLink.pattern to your fork's repo URL.
+//   5. Rewrite `title`, `siteTitle`, `footer.copyright`, and dev-docs/index.md hero.
+//
+// Example srcExclude (uncomment + adjust paths for your fork):
+// srcExclude: ['docs/**', 'api/**', 'README.md'],
+//
 export default defineConfig({
   title: '@saas Template Docs',
   description:

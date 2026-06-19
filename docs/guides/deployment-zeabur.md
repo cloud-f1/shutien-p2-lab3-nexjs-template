@@ -403,6 +403,22 @@ Let Zeabur build directly from GitHub, or use `docker buildx build --platform li
 
 ---
 
+## 自動化 / 無人值守部署 / Automated (Headless) Deploy
+
+For CI pipelines or automated fork setup, use the **zeabur-deploy** skill which encodes the
+exact non-interactive CLI flow and all five gotchas (dotfile uploader, deprecated marketplace,
+standalone runtime, NEXT_PUBLIC bake order, env-then-redeploy ordering):
+
+```
+→ .claude/skills/zeabur-deploy/SKILL.md  (invoke /zeabur-deploy in Claude Code)
+```
+
+The skill covers dedicated-server targeting (`zeabur server list --json -i=false`), provisioning
+PostgreSQL via template B20CX0 (not the deprecated marketplace), and migrating from your local
+machine against the public endpoint (since the standalone runtime has no drizzle-kit).
+
+---
+
 ## 相關文件 / Related Documents
 
 | 文件 | 說明 |
@@ -411,4 +427,5 @@ Let Zeabur build directly from GitHub, or use `docker buildx build --platform li
 | `next-app/drizzle.config.ts` | Drizzle ORM 設定 / Drizzle ORM config |
 | `docs/guides/deployment.md` | 部署總覽（多平台）/ Deployment overview (multi-platform) |
 | `deploy/README.md` | 舊版部署說明（已過時）/ Legacy deploy docs (superseded) |
+| `.claude/skills/zeabur-deploy/SKILL.md` | 無人值守 CLI 流程 + 5 個常見錯誤 / Headless CLI flow + 5 gotchas |
 | [Zeabur 官方文件](https://zeabur.com/docs) | Zeabur 官方參考 / Zeabur official reference |

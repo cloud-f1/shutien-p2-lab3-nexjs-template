@@ -10,6 +10,14 @@
  *
  * This module is intentionally db-free and client-safe (zero server-only imports),
  * so it can be imported from both Server and Client Components.
+ *
+ * FORK GUIDANCE: To rebrand this template for your product, change the default
+ * strings below OR set NEXT_PUBLIC_APP_NAME + NEXT_PUBLIC_APP_DESCRIPTION in your
+ * Zeabur (or other host) environment before building. Never hardcode your product
+ * name in individual components — always import APP_NAME from here.
+ * Full rebrand checklist (logo pipeline, dev-docs, live vs. history rule):
+ *   → .claude/skills/rebrand/SKILL.md  (invoke /rebrand in Claude Code)
+ *   → docs/guides/rebrand.md           (prose guide)
  */
 
 /** Display name for the app — drives logos, nav, footer, sidebar, and document title. */

@@ -18,6 +18,7 @@ Parse $ARGUMENTS for mode:
 /athena:plan evolve       # Dependency + security scan
 /athena:plan auto         # All modes, prioritized output
 /athena:plan brainstorm "feature idea"  # Design dialogue → enriched epic proposal (E187)
+/athena:plan mockup <path>              # Ingest HTML/Claude-Design handoff → UI-ready epics (E303)
 /athena:plan status       # Show current strategy-log state (no analysis)
 /athena:plan approve E{n},E{m}  # Approve specific proposed epics
 /athena:plan reject E{n}        # Reject with reason
@@ -25,6 +26,27 @@ Parse $ARGUMENTS for mode:
 ```
 
 Default mode (no argument): `auto`
+
+## Mockup Mode (UI-readiness from an HTML handoff)
+
+If `$ARGUMENTS` starts with `mockup`, invoke the **`mockup-to-epics`** skill and follow its
+pipeline against the bundle at the given path (a Claude-Design handoff: README + `project/`
+HTML prototypes + source + optional PRD/domain doc):
+
+1. Read the handoff README + PRD + domain doc (the rules SSOT).
+2. Run + "play" the prototype and screenshot every screen × role + key modals + mobile
+   (`node scripts/mockup/shot.cjs <html> <out-dir> [tour.json]`); persist shots in-repo.
+3. Read each screen's source in full (parallelize with subagents for many screens).
+4. Inventory the codebase for reuse (`<DataTable>`, `<Dialog>`, `<ConfirmDialog>`, existing
+   RBAC helpers in `lib/is-admin.ts`); surface conflicts via `AskUserQuestion` before writing.
+5. Propose the epic list + DAG (normal plan output), then enrich each UI epic to the
+   `docs/epics/_templates/ui-spec-epic.md` depth: route/data, layout, component tree,
+   field·validation·copy tables, table/list column+filter+sort+pagination specs, RBAC
+   matrix, mutations→revalidatePath, **style mapping → shadcn/Tailwind**, states, AC.
+
+The goal: an epic a build agent can implement **pixel-aligned without opening the mockup**.
+Worktree caveat: epics that run `npx shadcn add` / add deps / add colliding migrations are
+not `/athena:flow` worktree-safe — run them in-repo.
 
 ## Step 1 — Status Check (all modes)
 

@@ -1,0 +1,21 @@
+# Cloudflare Pages edge-cache redirect rules
+#
+# VitePress copies dev-docs/public/ to the dist root, where Cloudflare Pages reads this file.
+# Format: <source>  <destination>  <status>
+#
+# PURPOSE: When fork teams pivot from engineer-facing docs to a user-facing manual, previously
+# published paths (e.g. /docs/, /api/) get removed from the VitePress build. Bookmarked or
+# already-edge-cached URLs would 404 — these rules redirect them to the new manual home.
+# Cloudflare's edge may serve stale paths for up to the cache TTL; the 301 here makes that
+# harmless by redirecting any uncached/post-expiry request to the right place.
+#
+# HOW TO USE (fork teams only — template default is engineer-facing, no redirect needed):
+#   1. When you pivot dev-docs to a user-facing manual and remove /docs/ and /api/ from nav,
+#      uncomment the rules below and replace /guide-zh/ with your actual manual root path.
+#   2. Add srcExclude in dev-docs/.vitepress/config.mts for the removed source paths.
+#   3. Rebuild and redeploy via gh-cf-deploy.
+#
+# TEMPLATE DEFAULT: These rules are commented out — the template keeps all sections published.
+#
+# /docs/*   /guide-zh/   301
+# /api/*    /guide-zh/   301

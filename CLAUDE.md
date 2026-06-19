@@ -123,7 +123,10 @@ then hardened. Shipped to `main` via PRs #1–#8:
 default DB sessions) and RBAC guards **re-read the role from the DB**. See the `nextjs-saas-patterns` skill.
 
 **Key project skills (`.claude/skills/`):** `nextjs-saas-patterns` (stack gotchas), `athena-loop-speedups`
-(orchestration practices). Stale FastAPI/Vite skills are deprecated; vendor `next-best-practices` + `vercel-*` remain.
+(orchestration practices), `rebrand` (white-label rebranding), `user-guide-builder` (繁中 user manual),
+`zeabur-deploy` (Zeabur deploy SOP), `mockup-to-epics` (HTML mockup → UI-ready epics pipeline),
+`alignment-audit` (built app ↔ spec coverage audit). Stale FastAPI/Vite skills are deprecated;
+vendor `next-best-practices` + `vercel-*` remain.
 
 ## Active Epic
 
@@ -167,6 +170,8 @@ Per-epic model is **tiered by complexity** (sonnet baseline, opus for complex/ul
 ```
 /athena:plan [mode]            @strategist analysis → epic proposals → human approval gate
 /athena:plan brainstorm "<idea>"  Dialogue-driven design → 7-step Q&A → enriched epic file
+/athena:plan mockup <path>     Ingest HTML/Claude-Design handoff → UI-ready epics (mockup-to-epics skill)
+/athena:align                  UI-surface alignment → built app vs SSOT/epics → Page-View + Feature-Mapping tables + gaps (run after each phase merges)
 /athena:cycle                  Full DevOps cycle → brainstorm → approve → execute → cooldown
 /athena:audit                  Three-source drift check → OpenAPI ↔ server ↔ client
 /athena:metrics [--memory|--agent]  Read-only audit metrics → agent reliability or memory dashboard

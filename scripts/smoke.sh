@@ -70,6 +70,15 @@ hdr "Plan alignment (deliverables present)"
 # dashboard deliverable actually landed. Extend with more suites as phases ship.
 rung "cobalt-integration" pnpm test app/cobalt-integration.test.ts
 
+hdr "Surface alignment (E304)"
+# Deterministic check: dead internal links · un-localized breadcrumb labels · orphan pages.
+# Part of the alignment-audit skill pipeline (/athena:align).
+if [ -f "$ROOT/scripts/align/surface-check.cjs" ]; then
+  rung "surface-check" node "$ROOT/scripts/align/surface-check.cjs"
+else
+  skip "surface-check" "scripts/align/surface-check.cjs not found"
+fi
+
 hdr "Athena guards (repo root)"
 rung_make "guard-selftest"
 rung_make "skills-guard"

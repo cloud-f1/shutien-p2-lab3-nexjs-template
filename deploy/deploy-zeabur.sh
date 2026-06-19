@@ -16,6 +16,12 @@
 #
 # For the full reproducible runbook see docs/guides/deployment-zeabur.md or the
 # `deploy-config` skill (covers both Zeabur and GCP Cloud Run).
+#
+# NON-INTERACTIVE / HEADLESS AUTOMATION: For CI pipelines, dedicated-server targeting,
+# or fork automation, use the zeabur-deploy skill instead — it encodes the exact
+# --json -i=false CLI flow, PostgreSQL via template B20CX0, and local-machine migration
+# (the standalone runtime has no drizzle-kit):
+#   → .claude/skills/zeabur-deploy/SKILL.md  (invoke /zeabur-deploy in Claude Code)
 
 set -euo pipefail
 
