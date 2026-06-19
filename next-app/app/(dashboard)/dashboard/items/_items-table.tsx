@@ -3,13 +3,25 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { type ColumnDef } from "@tanstack/react-table"
-import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react"
+import { DownloadIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react"
 
-import { deleteItem } from "@/actions/items"
+import { deleteItem, exportItems } from "@/actions/items"
 import { DataTable } from "@/components/data-table-generic"
 import { ConfirmDialog } from "@/components/confirm-dialog"
 import { Button } from "@/components/ui/button"
 import { ItemDialog } from "./_item-dialog"
+
+function triggerDownload(data: string, filename: string, contentType: string) {
+  const blob = new Blob([data], { type: contentType })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
 
 export type ItemRow = { id: string; title: string; createdAt: string; updatedAt: string }
 
@@ -31,6 +43,19 @@ export function ItemsTable({
     () => items.find((i) => i.id === initialEditId) ?? null,
   )
   const [deleteTarget, setDeleteTarget] = useState<ItemRow | null>(null)
+  const [exporting, setExporting] = useState(false)
+
+  async function handleExport() {
+    setExporting(true)
+    try {
+      const result = await exportItems()
+      if (result.success) {
+        triggerDownload(result.data, result.filename, result.contentType)
+      }
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const columns: ColumnDef<ItemRow>[] = [
     {
@@ -82,11 +107,17 @@ export function ItemsTable({
         filterPlaceholder="搜尋項目…"
         emptyLabel="尚無項目。"
         toolbar={
-          canEdit ? (
-            <Button onClick={() => setCreateOpen(true)}>
-              <PlusIcon className="size-4" /> 新增項目
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
+              <DownloadIcon className="size-4" />
+              {exporting ? "匯出中…" : "匯出 JSON"}
             </Button>
-          ) : undefined
+            {canEdit && (
+              <Button onClick={() => setCreateOpen(true)}>
+                <PlusIcon className="size-4" /> 新增項目
+              </Button>
+            )}
+          </div>
         }
       />
 

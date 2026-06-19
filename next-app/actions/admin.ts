@@ -5,10 +5,11 @@ import { usersTable } from "@/lib/schema"
 import { eq } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
 import { requireAdmin } from "@/lib/permissions"
-import { logAudit } from "@/lib/audit"
+import { logAudit, getAuditLog } from "@/lib/audit"
 import type { Role } from "@/lib/schema"
 import { isValidRole, assertNotSelf, assertNotSelfDelete } from "@/lib/admin-utils"
 import { rateLimitGuard } from "@/lib/rate-limit"
+import { toCsv } from "@/lib/export-utils"
 
 const MINUTE_MS = 60_000
 
@@ -80,4 +81,37 @@ export async function getAllUsers() {
     })
     .from(usersTable)
     .orderBy(usersTable.createdAt)
+}
+
+/**
+ * Export all audit log entries as CSV (admin only).
+ * Returns the CSV string, suggested filename, and content-type so the client
+ * can trigger a browser download without a streaming response.
+ */
+export async function exportAuditLog(): Promise<
+  | { success: true; data: string; filename: string; contentType: string }
+  | { success: false; error: string }
+> {
+  try {
+    await requireAdmin()
+  } catch {
+    return { success: false, error: "權限不足。" }
+  }
+
+  const entries = await getAuditLog(10_000)
+
+  const rows = entries.map((e) => ({
+    id: e.id,
+    action: e.action,
+    actorEmail: e.actorEmail ?? "",
+    targetType: e.targetType ?? "",
+    targetId: e.targetId ?? "",
+    createdAt: e.createdAt.toISOString(),
+  }))
+
+  const headers = ["id", "action", "actorEmail", "targetType", "targetId", "createdAt"]
+  const data = toCsv(rows, headers)
+  const filename = `audit-log-${new Date().toISOString().slice(0, 10)}.csv`
+
+  return { success: true, data, filename, contentType: "text/csv" }
 }

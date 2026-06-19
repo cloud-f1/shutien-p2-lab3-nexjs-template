@@ -4,8 +4,9 @@ import { db } from "@/lib/db"
 import { itemsTable } from "@/lib/schema"
 import { eq, and } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
-import { requireEditor } from "@/lib/permissions"
+import { requireAuth, requireEditor } from "@/lib/permissions"
 import { validateItemTitle } from "@/lib/items-utils"
+import { toJson } from "@/lib/export-utils"
 
 type State = { error?: string } | null
 
@@ -64,4 +65,44 @@ export async function updateItem(id: string, prevState: State, formData: FormDat
   revalidatePath("/dashboard")
   revalidatePath("/dashboard/items")
   return null // success — the modal closes + the list revalidates
+}
+
+/**
+ * Export the current user's items as JSON (all authenticated users).
+ * Returns the JSON string, suggested filename, and content-type so the client
+ * can trigger a browser download without a streaming response.
+ */
+export async function exportItems(): Promise<
+  | { success: true; data: string; filename: string; contentType: string }
+  | { success: false; error: string }
+> {
+  let session
+  try {
+    session = await requireAuth()
+  } catch {
+    return { success: false, error: "請先登入。" }
+  }
+
+  const items = await db
+    .select({
+      id: itemsTable.id,
+      title: itemsTable.title,
+      createdAt: itemsTable.createdAt,
+      updatedAt: itemsTable.updatedAt,
+    })
+    .from(itemsTable)
+    .where(eq(itemsTable.userId, session.user.id))
+    .orderBy(itemsTable.createdAt)
+
+  const rows = items.map((item) => ({
+    id: item.id,
+    title: item.title,
+    createdAt: item.createdAt.toISOString(),
+    updatedAt: item.updatedAt.toISOString(),
+  }))
+
+  const data = toJson(rows)
+  const filename = `items-${new Date().toISOString().slice(0, 10)}.json`
+
+  return { success: true, data, filename, contentType: "application/json" }
 }

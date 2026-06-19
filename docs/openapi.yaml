@@ -3,7 +3,7 @@
 openapi: 3.1.0
 info:
   title: AI App Template API
-  version: 0.2.0
+  version: 0.3.0
   description: Server Actions (actions/*.ts) are typed RPC — their contract is TypeScript + the shared Zod schemas in lib/validations, enforced at compile time; this OpenAPI documents the HTTP route-handler surface only. Auth.js routes under /api/auth/[...nextauth] are framework-owned and omitted. This file is GENERATED from Zod (the single source of truth) via `pnpm openapi:generate` — never hand-edit it; a smoke drift gate fails if it is stale.
 servers:
   - url: http://localhost:3000
@@ -233,6 +233,9 @@ components:
           $ref: "#/components/schemas/Item"
       required:
         - item
+    ItemsCsvExport:
+      type: string
+      description: "RFC-4180 CSV with columns: id, title, createdAt, updatedAt."
   parameters: {}
 paths:
   /api/health:
@@ -465,6 +468,33 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "403":
           description: The API key lacks the required `write` scope.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/export/items:
+    get:
+      summary: Export the API key owner's items as CSV
+      description: "Downloads all items owned by the user the API key resolves to as an RFC-4180 CSV file. Requires the `read` scope. Returns `Content-Disposition: attachment` so browsers trigger a file download. Bumps the key's lastUsedAt on success."
+      tags:
+        - items
+      security:
+        - apiKey: []
+      responses:
+        "200":
+          description: CSV attachment of the key owner's items.
+          content:
+            text/csv:
+              schema:
+                $ref: "#/components/schemas/ItemsCsvExport"
+        "401":
+          description: Missing, malformed, invalid, or revoked API key.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: The API key lacks the required `read` scope.
           content:
             application/json:
               schema:

@@ -396,6 +396,39 @@ export function buildOpenApiDocument() {
     },
   })
 
+  // ── E299 Export API ──────────────────────────────────────────────────────────
+
+  // GET /api/v1/export/items → app/api/v1/export/items/route.ts
+  registry.registerPath({
+    method: "get",
+    path: "/api/v1/export/items",
+    summary: "Export the API key owner's items as CSV",
+    description:
+      "Downloads all items owned by the user the API key resolves to as an RFC-4180 CSV file. Requires the `read` scope. Returns `Content-Disposition: attachment` so browsers trigger a file download. Bumps the key's lastUsedAt on success.",
+    tags: ["items"],
+    security: [{ [apiKey.name]: [] }],
+    responses: {
+      200: {
+        description: "CSV attachment of the key owner's items.",
+        content: {
+          "text/csv": {
+            schema: z.string().openapi("ItemsCsvExport", {
+              description: "RFC-4180 CSV with columns: id, title, createdAt, updatedAt.",
+            }),
+          },
+        },
+      },
+      401: {
+        description: "Missing, malformed, invalid, or revoked API key.",
+        content: { "application/json": { schema: ErrorResponse } },
+      },
+      403: {
+        description: "The API key lacks the required `read` scope.",
+        content: { "application/json": { schema: ErrorResponse } },
+      },
+    },
+  })
+
   // ── Generate the 3.1 document ────────────────────────────────────────────────
   const generator = new OpenApiGeneratorV31(registry.definitions)
 
