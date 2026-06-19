@@ -68,6 +68,41 @@ export async function deleteUser(userId: string) {
   return { success: true }
 }
 
+/**
+ * E310 — Admin-assisted 2FA recovery. Clears the target user's TOTP secret,
+ * the enabled flag, and any remaining backup codes so a user who lost their
+ * authenticator AND their backup codes can sign in again (they may re-enrol
+ * afterwards). Admin-gated (requireAdmin) + audit-logged. There is no
+ * self-target guard: an admin who locks themselves out of 2FA is a legitimate
+ * recovery case.
+ */
+export async function resetUserTotp(userId: string) {
+  const session = await requireAdmin()
+
+  const limited = rateLimitGuard(`admin:reset-2fa:${session.user.id}`, 20, MINUTE_MS)
+  if (limited) return limited
+
+  await db
+    .update(usersTable)
+    .set({
+      totpSecret: null,
+      totpEnabled: false,
+      backupCodes: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(usersTable.id, userId))
+
+  await logAudit({
+    actorId: session.user.id,
+    action: "user.totp_reset",
+    targetType: "user",
+    targetId: userId,
+  })
+
+  revalidatePath("/dashboard/admin")
+  return { success: true }
+}
+
 export async function getAllUsers() {
   await requireAdmin()
   return db
@@ -77,6 +112,7 @@ export async function getAllUsers() {
       email: usersTable.email,
       role: usersTable.role,
       emailVerified: usersTable.emailVerified,
+      totpEnabled: usersTable.totpEnabled,
       createdAt: usersTable.createdAt,
     })
     .from(usersTable)

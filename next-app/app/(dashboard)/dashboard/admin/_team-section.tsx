@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { UserPlus } from "lucide-react"
+import { DownloadIcon, UserPlus } from "lucide-react"
 
-import { inviteMember, revokeInvitation } from "@/actions/team"
+import { exportTeam, inviteMember, revokeInvitation } from "@/actions/team"
 import type { InvitationRow } from "@/lib/team"
 import type { Role } from "@/lib/schema"
 import { Button } from "@/components/ui/button"
@@ -16,6 +16,18 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { StatusBadge } from "@/components/status-badge"
+
+function triggerDownload(data: string, filename: string, contentType: string) {
+  const blob = new Blob([data], { type: contentType })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
 
 const STATUS_TONE: Record<string, "success" | "warning" | "muted"> = {
   pending: "warning",
@@ -33,7 +45,20 @@ export function TeamSection({ invitations }: { invitations: InvitationRow[] }) {
   const [role, setRole] = useState<Role>("viewer")
   const [link, setLink] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
   const [pending, startTransition] = useTransition()
+
+  async function handleExport() {
+    setExporting(true)
+    try {
+      const result = await exportTeam()
+      if (result.success) {
+        triggerDownload(result.data, result.filename, result.contentType)
+      }
+    } finally {
+      setExporting(false)
+    }
+  }
 
   function onInvite() {
     setError(null)
@@ -51,9 +76,15 @@ export function TeamSection({ invitations }: { invitations: InvitationRow[] }) {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-lg font-medium">團隊邀請</h2>
-        <p className="text-muted-foreground mt-1 text-sm">以電子郵件邀請成員並指定角色。</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-medium">團隊邀請</h2>
+          <p className="text-muted-foreground mt-1 text-sm">以電子郵件邀請成員並指定角色。</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
+          <DownloadIcon className="size-4" />
+          {exporting ? "匯出中…" : "匯出 CSV"}
+        </Button>
       </div>
 
       <div className="flex flex-wrap gap-2">

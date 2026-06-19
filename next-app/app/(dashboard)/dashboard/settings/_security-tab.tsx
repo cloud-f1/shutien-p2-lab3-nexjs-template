@@ -13,7 +13,7 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 
 import { cn } from "@/lib/utils"
-import { setupTotp, verifyTotpSetup, disableTotp } from "@/actions/user"
+import { setupTotp, verifyTotpSetup, disableTotp, regenerateBackupCodes } from "@/actions/user"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -42,6 +42,10 @@ export function SecurityTab({ totpEnabled }: { totpEnabled: boolean }) {
 
   const [disableOpen, setDisableOpen] = useState(false)
   const [disableToken, setDisableToken] = useState("")
+
+  // E310 — regenerate backup codes (requires a valid current TOTP code)
+  const [regenOpen, setRegenOpen] = useState(false)
+  const [regenToken, setRegenToken] = useState("")
 
   function beginSetup() {
     setSetupError(null)
@@ -83,6 +87,16 @@ export function SecurityTab({ totpEnabled }: { totpEnabled: boolean }) {
     router.refresh()
   }
 
+  async function confirmRegenerate(): Promise<{ error?: string } | void> {
+    const fd = new FormData()
+    fd.set("token", regenToken)
+    const res = await regenerateBackupCodes(null, fd)
+    if (!res.success) return { error: res.error }
+    setRegenToken("")
+    setBackupCodes(res.backupCodes)
+    router.refresh()
+  }
+
   function copyCodes() {
     if (backupCodes) navigator.clipboard?.writeText(backupCodes.join("\n"))
   }
@@ -115,6 +129,21 @@ export function SecurityTab({ totpEnabled }: { totpEnabled: boolean }) {
           </Button>
         )}
       </div>
+
+      {/* Backup codes — self-service regeneration (E310). Only when 2FA is on. */}
+      {totpEnabled && (
+        <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+          <div>
+            <p className="text-sm font-medium">備用碼</p>
+            <p className="text-muted-foreground text-xs">
+              重新產生一組新的一次性備用碼。舊的備用碼將失效。
+            </p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setRegenOpen(true)}>
+            重新產生
+          </Button>
+        </div>
+      )}
 
       {!setupOpen && setupError && (
         <p role="alert" className="text-destructive text-sm">
@@ -232,6 +261,33 @@ export function SecurityTab({ totpEnabled }: { totpEnabled: boolean }) {
         confirmLabel="停用"
         destructive
         onConfirm={confirmDisable}
+      />
+
+      {/* Regenerate backup codes — ConfirmDialog with a required current code */}
+      <ConfirmDialog
+        open={regenOpen}
+        onOpenChange={(o) => {
+          setRegenOpen(o)
+          if (!o) setRegenToken("")
+        }}
+        title="重新產生備用碼"
+        description={
+          <span className="space-y-2">
+            <span className="block">
+              輸入目前的驗證碼以確認。產生新備用碼後，先前的備用碼將立即失效。
+            </span>
+            <Input
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              placeholder="000000"
+              value={regenToken}
+              onChange={(e) => setRegenToken(e.target.value.replace(/\D/g, ""))}
+            />
+          </span>
+        }
+        confirmLabel="重新產生"
+        onConfirm={confirmRegenerate}
       />
     </section>
   )

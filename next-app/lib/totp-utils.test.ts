@@ -11,6 +11,7 @@ import {
   verifyBackupCode,
   normalizeBackupCode,
   generateNonce,
+  assertValidTotpForAction,
 } from "./totp-utils"
 
 const PERIOD = 30
@@ -136,6 +137,51 @@ describe("totp-utils", () => {
       const b = generateNonce()
       expect(a).toMatch(/^[a-f0-9]{32}$/)
       expect(a).not.toBe(b)
+    })
+  })
+
+  // E310 — guard used by regenerateBackupCodes (and shareable by any action that
+  // must prove the authenticator is still in the user's possession).
+  describe("assertValidTotpForAction", () => {
+    it("returns null when 2FA is enabled and a valid current code is supplied", () => {
+      const secret = generateSecret()
+      const token = tokenAt(secret, now)
+      const user = { totpEnabled: true, totpSecret: secret }
+      expect(assertValidTotpForAction(user, token, now)).toBeNull()
+    })
+
+    it("rejects when 2FA is not enabled", () => {
+      const secret = generateSecret()
+      const token = tokenAt(secret, now)
+      expect(
+        assertValidTotpForAction({ totpEnabled: false, totpSecret: secret }, token, now),
+      ).toMatch(/尚未啟用/)
+    })
+
+    it("rejects when the secret is missing", () => {
+      expect(
+        assertValidTotpForAction({ totpEnabled: true, totpSecret: null }, "000000", now),
+      ).toMatch(/尚未啟用/)
+    })
+
+    it("rejects a null/undefined user", () => {
+      expect(assertValidTotpForAction(null, "000000", now)).toMatch(/尚未啟用/)
+      expect(assertValidTotpForAction(undefined, "000000", now)).toMatch(/尚未啟用/)
+    })
+
+    it("rejects a wrong code on an enabled account", () => {
+      const secret = generateSecret()
+      const wrong = tokenAt(secret, now + 2 * PERIOD * 1000) // two steps away
+      expect(
+        assertValidTotpForAction({ totpEnabled: true, totpSecret: secret }, wrong, now),
+      ).toMatch(/驗證碼錯誤/)
+    })
+
+    it("rejects malformed input on an enabled account", () => {
+      const secret = generateSecret()
+      expect(
+        assertValidTotpForAction({ totpEnabled: true, totpSecret: secret }, "12345", now),
+      ).toMatch(/驗證碼錯誤/)
     })
   })
 })

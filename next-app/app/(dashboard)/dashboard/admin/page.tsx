@@ -4,6 +4,7 @@ import { listInvitations } from "@/lib/team"
 import { Badge } from "@/components/ui/badge"
 import { RoleSelector } from "./_role-selector"
 import { DeleteUserButton } from "./_delete-user-button"
+import { ResetTotpButton } from "./_reset-totp-button"
 import { PermissionMatrix } from "./_permission-matrix"
 import { TeamSection } from "./_team-section"
 import {
@@ -37,7 +38,7 @@ export default async function AdminPage() {
             <TableHead>角色</TableHead>
             <TableHead>已驗證</TableHead>
             <TableHead>加入時間</TableHead>
-            <TableHead className="w-20" />
+            <TableHead className="w-40 text-right" />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -63,10 +64,15 @@ export default async function AdminPage() {
               <TableCell className="text-muted-foreground text-sm">
                 {user.createdAt.toLocaleDateString()}
               </TableCell>
-              <TableCell>
-                {user.id !== session.user.id && (
-                  <DeleteUserButton userId={user.id} email={user.email} />
-                )}
+              <TableCell className="text-right">
+                <div className="flex items-center justify-end gap-1">
+                  {user.totpEnabled && (
+                    <ResetTotpButton userId={user.id} email={user.email} />
+                  )}
+                  {user.id !== session.user.id && (
+                    <DeleteUserButton userId={user.id} email={user.email} />
+                  )}
+                </div>
               </TableCell>
             </TableRow>
           ))}

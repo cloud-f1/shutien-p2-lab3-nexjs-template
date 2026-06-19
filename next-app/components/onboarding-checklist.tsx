@@ -22,6 +22,7 @@
 
 "use client"
 
+import { completeOnboarding, dismissOnboarding } from "@/actions/user"
 import {
   Card,
   CardContent,
@@ -29,6 +30,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import {
+  type OnboardingServerState,
   type OnboardingStep,
   useOnboarding,
 } from "@/hooks/use-onboarding"
@@ -62,13 +64,29 @@ const DEFAULT_STEPS: OnboardingStep[] = [
 interface OnboardingChecklistProps {
   /** Override the default step list. Useful for feature-flag or server-driven step lists. */
   steps?: OnboardingStep[]
+  /**
+   * Server-hydrated onboarding state from the user record (E310). When provided
+   * it is the source of truth: completion/dismissal persist to the DB and survive
+   * device changes; localStorage stays as an optimistic per-step layer.
+   */
+  serverState?: OnboardingServerState
 }
 
 export function OnboardingChecklist({
   steps: stepsProp,
+  serverState,
 }: OnboardingChecklistProps) {
   const { steps, dismissed, allDone, markDone, dismiss } = useOnboarding(
-    stepsProp ?? DEFAULT_STEPS
+    stepsProp ?? DEFAULT_STEPS,
+    {
+      serverState,
+      onComplete: () => {
+        void completeOnboarding()
+      },
+      onDismiss: () => {
+        void dismissOnboarding()
+      },
+    }
   )
 
   // Hidden entirely when dismissed or when all steps are complete

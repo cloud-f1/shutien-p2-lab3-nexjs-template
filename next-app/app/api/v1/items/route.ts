@@ -101,6 +101,28 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // ── E308 opt-in overage guard (OFF by default — uncomment to enforce) ──────
+  // The plumbing is shipped and unit-tested (lib/usage-utils.assertWithinLimit),
+  // but enforcement is a per-fork business decision, so this route does NOT hard-
+  // block by default. To turn a soft cap into a real 429, uncomment this block:
+  //
+  //   const { getCurrentMonthUsage } = await import("@/lib/db/queries/usage")
+  //   const { getActiveSubscription } = await import("@/lib/billing/queries")
+  //   const { getTierByPriceId } = await import("@/lib/billing/pricing")
+  //   const { assertWithinLimit } = await import("@/lib/usage-utils")
+  //
+  //   const [current, active] = await Promise.all([
+  //     getCurrentMonthUsage(auth.userId, "api_request"),
+  //     getActiveSubscription(auth.userId),
+  //   ])
+  //   // No live subscription → "free" tier; else resolve the tier from its price id.
+  //   const planSlug = active ? (getTierByPriceId(active.plan.providerPriceId)?.slug ?? "free") : "free"
+  //   const check = assertWithinLimit(planSlug, "api_request", current, 1)
+  //   if (!check.allowed) {
+  //     return NextResponse.json({ error: check.reason }, { status: 429 })
+  //   }
+  // ───────────────────────────────────────────────────────────────────────────
+
   const { db } = await import("@/lib/db")
   const { itemsTable } = await import("@/lib/schema")
 

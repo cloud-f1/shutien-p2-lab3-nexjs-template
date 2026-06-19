@@ -22,6 +22,12 @@ export interface PricingTier {
   badge: string | null
   ctaLabel: string
   features: string[]
+  /**
+   * Per-metric monthly usage caps (E308). A metric absent from this map — or the
+   * whole `limits` key missing — means UNLIMITED (∞) for that metric. Resolve a
+   * tier's cap with `getPlanLimit(slug, metric)` in lib/usage-utils.ts.
+   */
+  limits?: Record<string, number> | null
 }
 
 export const PRICING_CURRENCY: string = pricingConfig.currency

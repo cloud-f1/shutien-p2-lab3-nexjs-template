@@ -17,6 +17,7 @@ import {
   verifyToken,
   generateBackupCodes,
   hashBackupCode,
+  assertValidTotpForAction,
 } from "@/lib/totp-utils"
 
 const MINUTE_MS = 60_000
@@ -184,5 +185,81 @@ export async function disableTotp(
     .where(eq(usersTable.id, session.user.id))
 
   revalidatePath("/dashboard/settings")
+  return { success: true }
+}
+
+export type RegenerateBackupCodesResult =
+  | { success: true; backupCodes: string[]; error?: never }
+  | { success?: false; error: string; backupCodes?: never }
+
+/**
+ * E310 — Regenerate one-time backup codes. Requires a valid current TOTP code
+ * (proves the authenticator is still in the user's possession) before replacing
+ * the stored hashes. Returns the fresh PLAINTEXT codes once; the previous codes
+ * are invalidated. Lets a user low on / out of codes refresh them without an
+ * admin reset.
+ */
+export async function regenerateBackupCodes(
+  prevState: RegenerateBackupCodesResult | null,
+  formData: FormData,
+): Promise<RegenerateBackupCodesResult> {
+  const session = await requireAuth()
+
+  const limited = rateLimitGuard(`user:2fa-regen:${session.user.id}`, 5, HOUR_MS)
+  if (limited) return { error: limited.error }
+
+  const token = String(formData.get("token") ?? "")
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, session.user.id))
+
+  const guardErr = assertValidTotpForAction(user, token)
+  if (guardErr) return { error: guardErr }
+
+  const plainCodes = generateBackupCodes(10)
+  const hashed = await Promise.all(plainCodes.map(hashBackupCode))
+  await db
+    .update(usersTable)
+    .set({ backupCodes: hashed, updatedAt: new Date() })
+    .where(eq(usersTable.id, session.user.id))
+
+  revalidatePath("/dashboard/settings")
+  return { success: true, backupCodes: plainCodes }
+}
+
+// ─── Onboarding persistence (E310) ──────────────────────────────────────────
+
+/**
+ * Persist onboarding completion server-side (DB is the source of truth; the
+ * useOnboarding hook treats localStorage as an optimistic layer only). Idempotent
+ * — re-calling keeps the first completion timestamp.
+ */
+export async function completeOnboarding(): Promise<{ success: true } | { error: string }> {
+  const session = await requireAuth()
+
+  const [user] = await db
+    .select({ onboardingCompletedAt: usersTable.onboardingCompletedAt })
+    .from(usersTable)
+    .where(eq(usersTable.id, session.user.id))
+
+  if (user && !user.onboardingCompletedAt) {
+    await db
+      .update(usersTable)
+      .set({ onboardingCompletedAt: new Date(), updatedAt: new Date() })
+      .where(eq(usersTable.id, session.user.id))
+  }
+
+  revalidatePath("/dashboard")
+  return { success: true }
+}
+
+/** Persist onboarding dismissal server-side so the card stays hidden across devices. */
+export async function dismissOnboarding(): Promise<{ success: true } | { error: string }> {
+  const session = await requireAuth()
+
+  await db
+    .update(usersTable)
+    .set({ onboardingDismissed: true, updatedAt: new Date() })
+    .where(eq(usersTable.id, session.user.id))
+
+  revalidatePath("/dashboard")
   return { success: true }
 }

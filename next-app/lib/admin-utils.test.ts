@@ -67,3 +67,21 @@ describe("assertAdminRole", () => {
     expect(assertAdminRole("superadmin")).toMatch(/管理員/)
   })
 })
+
+// E310 — the admin-assisted 2FA reset (actions/admin.ts resetUserTotp) is gated
+// by requireAdmin, whose role check is this same pure guard. Documenting the
+// contract: only the admin role may reset another user's 2FA.
+describe("assertAdminRole — 2FA reset gate (E310)", () => {
+  it("permits an admin to reset 2FA", () => {
+    expect(assertAdminRole("admin")).toBeNull()
+  })
+
+  it("blocks editors and viewers from resetting 2FA", () => {
+    expect(assertAdminRole("editor")).toMatch(/管理員/)
+    expect(assertAdminRole("viewer")).toMatch(/管理員/)
+  })
+
+  it("blocks an unauthenticated caller from resetting 2FA", () => {
+    expect(assertAdminRole(undefined)).toMatch(/管理員/)
+  })
+})

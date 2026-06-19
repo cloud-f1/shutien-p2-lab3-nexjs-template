@@ -68,6 +68,7 @@
 | Phase 69 | E294, E295, E296, E297, E298 | ✅ Complete (SaaS Hardening) — server-action tests + DataTable migration + GitHub login + TOTP 2FA + rate limiting; all merged to main (PRs #47/#48/#49/#51) |
 | Phase 70 | E299, E300, E301 | ✅ Complete (Data & UX) — all merged to main (#50/#52/#53); migration 0009 |
 | Phase 71 | E302, E303, E304, E305, E306 | ✅ Complete (Athena Toolchain) — 5 skills + /athena:align + /athena:plan mockup + scripts, all merged (#54); dev-docs deployed to Cloudflare Pages |
+| Phase 72 | E307, E308, E309, E310 | ✅ Done (Follow-ups from /athena:align) — all 4 implemented+QA'd+committed on feat/phase72-followups → PR #57 (merge-pending); migration 0010; 518 tests. E307 e2e live-run deferred to CI. |
 
 ## Epic Step Matrix
 
@@ -355,6 +356,10 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E304 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 71 — alignment-audit skill + /athena:align + scripts/align/. MERGED (PR #54). |
 | E305 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 71 — user-guide-builder skill + VitePress pattern + dev-docs deployed. MERGED (PR #54). |
 | E306 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 71 — zeabur-deploy skill. MERGED (PR #54). |
+| E307 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 72 — TOTP login e2e. DONE on feat/phase72-followups → PR #57 (1956c2d): e2e/two-factor.spec.ts (challenge + backup-code + negative); typecheck/lint clean, live run deferred to CI (local port 3000 occupied). Merge pending. |
+| E308 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 72 — usage limits. DONE → PR #57 (1559216): config-only (no migration) — limits in config/pricing.json + getPlanLimit/assertWithinLimit + billing Progress (amber≥80%/red≥100%) + opt-in 429 guard. Merge pending. |
+| E309 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 72 — export expansion. DONE → PR #57 (602ecfb): exportWebhooks/exportApiKeys(redacted)/exportTeam + Export buttons; export-row-mappers + 20 tests. Merge pending. |
+| E310 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 72 — 2FA recovery + onboarding persistence. DONE → PR #57 (eb29a60, opus): admin resetUserTotp + regenerateBackupCodes + onboarding DB columns (migration 0010, fresh-DB verified) + hook hydration. Merge pending. |
 
 
 ## Dependency Rules
@@ -641,6 +646,12 @@ E303: no deps
 E304: no deps
 E305: no deps
 E306: no deps
+
+# Phase 72 — Follow-ups from /athena:align (2026-06-19); one-branch sequential, migration coupling
+E307: no deps (soft: E297)
+E308: no deps (soft: E301)
+E309: no deps (soft: E299)
+E310: E308 (migration numbering 0010→0011; soft: E297, E300)
 ```
 
 ## Phase Parallelism

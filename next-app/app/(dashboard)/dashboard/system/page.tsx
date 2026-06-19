@@ -34,8 +34,8 @@ export default async function SystemPage() {
         <p className="text-muted-foreground mt-1 text-sm">API 金鑰、Webhooks、帳務與稽核紀錄。</p>
       </div>
       <SystemTabs
-        apiKeys={<ApiKeysPanel keys={keys} />}
-        webhooks={<WebhooksPanel webhooks={webhooks} />}
+        apiKeys={<ApiKeysPanel keys={keys} isAdmin={admin} />}
+        webhooks={<WebhooksPanel webhooks={webhooks} isAdmin={admin} />}
         billing={<BillingPanel active={billing} apiRequestUsage={apiRequestUsage} />}
         audit={audit ? <AuditPanel entries={audit} /> : null}
       />

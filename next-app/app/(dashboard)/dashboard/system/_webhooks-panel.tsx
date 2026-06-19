@@ -2,11 +2,12 @@
 
 import { useState, useTransition } from "react"
 import { type ColumnDef } from "@tanstack/react-table"
-import { Webhook } from "lucide-react"
+import { DownloadIcon, Webhook } from "lucide-react"
 
 import {
   createWebhook,
   deleteWebhook,
+  exportWebhooks,
   sendTestEvent,
   setWebhookActive,
 } from "@/actions/webhooks"
@@ -16,11 +17,42 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { StatusBadge } from "@/components/status-badge"
 
-export function WebhooksPanel({ webhooks }: { webhooks: SafeWebhook[] }) {
+function triggerDownload(data: string, filename: string, contentType: string) {
+  const blob = new Blob([data], { type: contentType })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+export function WebhooksPanel({
+  webhooks,
+  isAdmin,
+}: {
+  webhooks: SafeWebhook[]
+  isAdmin?: boolean
+}) {
   const [url, setUrl] = useState("")
   const [secret, setSecret] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
   const [pending, startTransition] = useTransition()
+
+  async function handleExport() {
+    setExporting(true)
+    try {
+      const result = await exportWebhooks()
+      if (result.success) {
+        triggerDownload(result.data, result.filename, result.contentType)
+      }
+    } finally {
+      setExporting(false)
+    }
+  }
 
   function onCreate() {
     setError(null)
@@ -108,11 +140,19 @@ export function WebhooksPanel({ webhooks }: { webhooks: SafeWebhook[] }) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-base font-medium">Webhooks</h2>
-        <p className="text-muted-foreground text-sm">
-          事件發生時，我們會以 HMAC-SHA256 簽章 POST 到你的端點。簽章密鑰只會顯示一次。
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-base font-medium">Webhooks</h2>
+          <p className="text-muted-foreground text-sm">
+            事件發生時，我們會以 HMAC-SHA256 簽章 POST 到你的端點。簽章密鑰只會顯示一次。
+          </p>
+        </div>
+        {isAdmin && (
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
+            <DownloadIcon className="size-4" />
+            {exporting ? "匯出中…" : "匯出 CSV"}
+          </Button>
+        )}
       </div>
 
       <div className="flex gap-2">

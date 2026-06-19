@@ -1,14 +1,16 @@
 "use server"
 
-import { and, eq } from "drizzle-orm"
+import { and, desc, eq } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
 
 import { db } from "@/lib/db"
 import { logAudit } from "@/lib/audit"
-import { requireAuth } from "@/lib/permissions"
+import { requireAdmin, requireAuth } from "@/lib/permissions"
 import { rateLimitGuard } from "@/lib/rate-limit"
 import { webhooksTable } from "@/lib/schema"
 import { deliverToEndpoint, generateWebhookSecret } from "@/lib/webhooks"
+import { toCsv } from "@/lib/export-utils"
+import { webhookToExportRow } from "@/lib/export-row-mappers"
 
 const MINUTE_MS = 60_000
 
@@ -99,6 +101,40 @@ export async function deleteWebhook(id: string): Promise<{ error?: string }> {
   })
   revalidatePath("/dashboard/system")
   return {}
+}
+
+/**
+ * Export all webhook endpoints for the current user as CSV (admin only).
+ * The signing secret is NEVER included in the export.
+ */
+export async function exportWebhooks(): Promise<
+  | { success: true; data: string; filename: string; contentType: string }
+  | { success: false; error: string }
+> {
+  try {
+    await requireAdmin()
+  } catch {
+    return { success: false, error: "權限不足。" }
+  }
+
+  const rows = await db
+    .select({
+      id: webhooksTable.id,
+      userId: webhooksTable.userId,
+      url: webhooksTable.url,
+      events: webhooksTable.events,
+      active: webhooksTable.active,
+      createdAt: webhooksTable.createdAt,
+    })
+    .from(webhooksTable)
+    .orderBy(desc(webhooksTable.createdAt))
+
+  const exportRows = rows.map(webhookToExportRow)
+  const headers = ["id", "userId", "url", "events", "active", "createdAt"]
+  const data = toCsv(exportRows, headers)
+  const filename = `webhooks-${new Date().toISOString().slice(0, 10)}.csv`
+
+  return { success: true, data, filename, contentType: "text/csv" }
 }
 
 /** Send a signed `ping` to one of the user's endpoints and record the delivery. */

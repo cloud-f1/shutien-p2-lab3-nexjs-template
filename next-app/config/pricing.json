@@ -12,7 +12,8 @@
       "highlighted": false,
       "badge": null,
       "ctaLabel": "免費開始",
-      "features": ["1 個專案", "2 位成員", "5 GB 儲存空間", "社群支援"]
+      "features": ["1 個專案", "2 位成員", "5 GB 儲存空間", "社群支援"],
+      "limits": { "api_request": 1000 }
     },
     {
       "slug": "pro",
@@ -24,7 +25,8 @@
       "highlighted": true,
       "badge": "最受歡迎",
       "ctaLabel": "開始 Pro",
-      "features": ["無限專案", "10 位成員", "50 GB 儲存空間", "優先支援", "進階分析"]
+      "features": ["無限專案", "10 位成員", "50 GB 儲存空間", "優先支援", "進階分析"],
+      "limits": { "api_request": 50000 }
     },
     {
       "slug": "scale",
@@ -36,7 +38,8 @@
       "highlighted": false,
       "badge": null,
       "ctaLabel": "升級 Scale",
-      "features": ["無限專案", "無限成員", "500 GB 儲存空間", "專屬支援", "自訂整合", "SLA 保證"]
+      "features": ["無限專案", "無限成員", "500 GB 儲存空間", "專屬支援", "自訂整合", "SLA 保證"],
+      "$limits_comment": "Scale has no `limits` key — absent/null means unlimited (∞) for every metric."
     }
   ]
 }

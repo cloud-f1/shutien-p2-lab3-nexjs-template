@@ -519,3 +519,14 @@ Run in-repo on ONE shared branch (feat/phase69-finish-E298-E297) because E297∩
 
 Old-phase check: Phases 63–68 ✅ on main; Phase 69 ✅ (PR #51 merged mid-session). Hybrid dispatch: E299 worktree (clean off main post-#51); E301 + Phase 71 in-repo (shadcn/migration/.claude writes). All 13 backport epics (E294–E306) now done. State reconciled (merged ticks flipped; Phase 69–71 added to the Phase Status table — was stale from Phase 52).
 **Triggered by**: /athena:flow run all epics
+
+### 2026-06-19 — Phase 72 (E307-E310) — follow-ups from /athena:align
+
+| Epic | Step | Status | Summary |
+|------|------|--------|---------|
+| E309 | impl+qa+commit | ✅ | export expansion (webhooks/api-keys[redacted]/team) + 20 mapper tests → 602ecfb |
+| E307 | impl+qa+commit | ✅ | TOTP login e2e (challenge+backup+negative); typecheck/lint clean, live run → CI → 1956c2d |
+| E308 | impl+qa+commit | ✅ | usage limits config-only (no migration) + Progress states + opt-in 429 guard → 1559216 |
+| E310 | impl+qa+commit+push+PR | ✅ | 2FA admin reset + regen codes + onboarding DB persistence + migration 0010 (fresh-DB verified) → eb29a60 |
+
+One-branch sequential (migration coupling + agent can't merge between). 518 tests green; build clean. All in PR #57 (base main, merge-pending). Triggered by /athena:flow → /athena:align found no surface gaps → these 4 documented deferrals became the cycle.

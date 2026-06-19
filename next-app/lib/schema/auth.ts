@@ -34,6 +34,12 @@ export const usersTable = pgTable("users", {
   totpSecret: text("totp_secret"),
   totpEnabled: boolean("totp_enabled").notNull().default(false),
   backupCodes: text("backup_codes").array(),
+  // E310 — server-side onboarding persistence (DB is source of truth; the
+  // useOnboarding hook keeps localStorage only as an optimistic layer).
+  // `onboardingCompletedAt` is set when every checklist step is done;
+  // `onboardingDismissed` when the user explicitly closes the card.
+  onboardingCompletedAt: timestamp("onboarding_completed_at", { mode: "date" }),
+  onboardingDismissed: boolean("onboarding_dismissed").notNull().default(false),
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
 })

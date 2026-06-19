@@ -1,6 +1,6 @@
 "use server"
 
-import { and, eq } from "drizzle-orm"
+import { and, desc, eq } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
 
 import { db } from "@/lib/db"
@@ -10,6 +10,8 @@ import { requireAdmin, requireAuth } from "@/lib/permissions"
 import { rateLimitGuard } from "@/lib/rate-limit"
 import { invitationsTable, usersTable, type Role } from "@/lib/schema"
 import { generateInviteToken, inviteExpiry, isInviteValid } from "@/lib/team-utils"
+import { toCsv } from "@/lib/export-utils"
+import { teamMemberToExportRow, invitationToExportRow } from "@/lib/export-row-mappers"
 
 const VALID_ROLES: Role[] = ["admin", "editor", "viewer"]
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -138,4 +140,59 @@ export async function acceptInvitation(token: string): Promise<{ error?: string;
 
   revalidatePath("/dashboard")
   return { ok: true }
+}
+
+/**
+ * Export all team members and pending invitations as CSV (admin only).
+ * Combines users (members + roles + status) with invitation records.
+ */
+export async function exportTeam(): Promise<
+  | { success: true; data: string; filename: string; contentType: string }
+  | { success: false; error: string }
+> {
+  try {
+    await requireAdmin()
+  } catch {
+    return { success: false, error: "權限不足。" }
+  }
+
+  const [members, invitations] = await Promise.all([
+    db
+      .select({
+        id: usersTable.id,
+        name: usersTable.name,
+        email: usersTable.email,
+        role: usersTable.role,
+        status: usersTable.status,
+        createdAt: usersTable.createdAt,
+      })
+      .from(usersTable)
+      .orderBy(desc(usersTable.createdAt)),
+    db
+      .select({
+        id: invitationsTable.id,
+        email: invitationsTable.email,
+        role: invitationsTable.role,
+        status: invitationsTable.status,
+        expiresAt: invitationsTable.expiresAt,
+        createdAt: invitationsTable.createdAt,
+      })
+      .from(invitationsTable)
+      .orderBy(desc(invitationsTable.createdAt)),
+  ])
+
+  // Members sheet
+  const memberRows = members.map(teamMemberToExportRow)
+  const memberHeaders = ["id", "name", "email", "role", "status", "createdAt"]
+  const membersCsv = toCsv(memberRows, memberHeaders)
+
+  // Invitations sheet (appended after a blank separator line)
+  const inviteRows = invitations.map(invitationToExportRow)
+  const inviteHeaders = ["id", "email", "role", "status", "expiresAt", "createdAt"]
+  const invitesCsv = toCsv(inviteRows, inviteHeaders)
+
+  const data = `# Members\r\n${membersCsv}\r\n\r\n# Invitations\r\n${invitesCsv}`
+  const filename = `team-${new Date().toISOString().slice(0, 10)}.csv`
+
+  return { success: true, data, filename, contentType: "text/csv" }
 }

@@ -20,7 +20,8 @@ export default async function DashboardPage() {
 
   // Real data: the current user's items + total count (no waterfall).
   // Admin-only: total users and verified-user count.
-  const [items, totalItems, totalUsers, verifiedUsers] = await Promise.all([
+  // E310: onboarding state (DB source of truth) hydrates the checklist.
+  const [items, totalItems, totalUsers, verifiedUsers, onboardingRows] = await Promise.all([
     db
       .select()
       .from(itemsTable)
@@ -31,7 +32,19 @@ export default async function DashboardPage() {
     admin
       ? db.$count(usersTable, isNotNull(usersTable.emailVerified))
       : Promise.resolve(undefined),
+    db
+      .select({
+        onboardingCompletedAt: usersTable.onboardingCompletedAt,
+        onboardingDismissed: usersTable.onboardingDismissed,
+      })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId)),
   ])
+
+  const onboardingState = {
+    completed: onboardingRows[0]?.onboardingCompletedAt != null,
+    dismissed: onboardingRows[0]?.onboardingDismissed ?? false,
+  }
 
   // itemsTable has no status column — surface a representative status while
   // mapping the real id/title/createdAt onto the table's columns.
@@ -61,7 +74,7 @@ export default async function DashboardPage() {
                 </Button>
               )}
             </div>
-            <OnboardingChecklist />
+            <OnboardingChecklist serverState={onboardingState} />
             <SectionCards
               totalItems={totalItems}
               totalUsers={totalUsers}

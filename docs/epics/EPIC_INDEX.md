@@ -84,6 +84,7 @@
 | Phase 69 | E294, E295, E296, E297, E298 | ✅ Complete (SaaS Hardening) — E294 server-action unit tests (#48) · E295 DataTable migration (#47) · E296 GitHub social login (#49) · E297 TOTP 2FA + migration 0008 (#51) · E298 rate limiting (#51). All merged to main. |
 | Phase 70 | E299, E300, E301 | ✅ Complete (Data & UX) — E300 onboarding checklist (#50) · E299 CSV/JSON export (#52) · E301 usage metering + migration 0009 (#53). All merged to main. |
 | Phase 71 | E302, E303, E304, E305, E306 | ✅ Complete (Athena Toolchain Enrichment, #54) — E302 rebrand skill · E303 mockup-to-epics + /athena:plan mockup + scripts/mockup · E304 alignment-audit + /athena:align + scripts/align · E305 user-guide-builder + VitePress (dev-docs deployed) · E306 zeabur-deploy skill |
+| Phase 72 | E307, E308, E309, E310 | ⬜ In progress (Follow-ups surfaced by /athena:align) — E307 TOTP login e2e · E308 wire real usage limits (E301 follow-up) · E309 export expansion to webhooks/api-keys/team (E299 follow-up) · E310 2FA recovery + onboarding persistence (E297/E300 follow-up, migration 0011). One-branch sequential on `feat/phase72-followups`. |
 <!-- PHASE_STATUS_END -->
 
 <!-- EPIC_MATRIX_START -->
@@ -637,6 +638,7 @@ Phase 62: E267 + E268 + E269 + E271 + E272 (parallel, independent tables) → E2
 Phase 69: E294 + E295 + E296 + E298 (parallel, no deps) → E297 (after E296 Connected Accounts tab shape)
 Phase 70: E299 + E300 + E301 (all parallel, no deps) — independent surfaces
 Phase 71: E302 + E303 + E304 + E305 + E306 (all parallel, no deps) — each skill/command owns its own files
+Phase 72: E309 → E307 → E308 → E310 (SEQUENTIAL on one branch — E308+E310 both migrate; agent can't merge between → one PR). No-migration first (E309, E307), then 0010 (E308) → 0011 (E310)
 ```
 
 ---

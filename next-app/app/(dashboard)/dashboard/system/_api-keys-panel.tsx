@@ -2,9 +2,9 @@
 
 import { useState, useTransition } from "react"
 import { type ColumnDef } from "@tanstack/react-table"
-import { KeyRound } from "lucide-react"
+import { DownloadIcon, KeyRound } from "lucide-react"
 
-import { createApiKey, revokeApiKey } from "@/actions/api-keys"
+import { createApiKey, exportApiKeys, revokeApiKey } from "@/actions/api-keys"
 import type { ApiKey } from "@/lib/schema"
 import { DataTable } from "@/components/data-table-generic"
 import { Button } from "@/components/ui/button"
@@ -13,11 +13,36 @@ import { StatusBadge } from "@/components/status-badge"
 
 type KeyRow = Omit<ApiKey, "hashedKey">
 
-export function ApiKeysPanel({ keys }: { keys: KeyRow[] }) {
+function triggerDownload(data: string, filename: string, contentType: string) {
+  const blob = new Blob([data], { type: contentType })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+export function ApiKeysPanel({ keys, isAdmin }: { keys: KeyRow[]; isAdmin?: boolean }) {
   const [name, setName] = useState("")
   const [created, setCreated] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
   const [pending, startTransition] = useTransition()
+
+  async function handleExport() {
+    setExporting(true)
+    try {
+      const result = await exportApiKeys()
+      if (result.success) {
+        triggerDownload(result.data, result.filename, result.contentType)
+      }
+    } finally {
+      setExporting(false)
+    }
+  }
 
   function onCreate() {
     setError(null)
@@ -88,11 +113,19 @@ export function ApiKeysPanel({ keys }: { keys: KeyRow[] }) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-base font-medium">API 金鑰</h2>
-        <p className="text-muted-foreground text-sm">
-          以程式存取你的帳戶。金鑰只會在建立時顯示一次。
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-base font-medium">API 金鑰</h2>
+          <p className="text-muted-foreground text-sm">
+            以程式存取你的帳戶。金鑰只會在建立時顯示一次。
+          </p>
+        </div>
+        {isAdmin && (
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
+            <DownloadIcon className="size-4" />
+            {exporting ? "匯出中…" : "匯出 CSV"}
+          </Button>
+        )}
       </div>
 
       <div className="flex gap-2">

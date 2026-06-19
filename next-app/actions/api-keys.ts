@@ -1,14 +1,16 @@
 "use server"
 
-import { and, eq } from "drizzle-orm"
+import { and, desc, eq } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
 
 import { db } from "@/lib/db"
-import { requireAuth } from "@/lib/permissions"
+import { requireAdmin, requireAuth } from "@/lib/permissions"
 import { apiKeysTable } from "@/lib/schema"
 import { generateApiKey } from "@/lib/api-keys-utils"
 import { logAudit } from "@/lib/audit"
 import { rateLimitGuard } from "@/lib/rate-limit"
+import { toCsv } from "@/lib/export-utils"
+import { apiKeyToExportRow } from "@/lib/export-row-mappers"
 
 const MINUTE_MS = 60_000
 
@@ -29,6 +31,43 @@ export async function createApiKey(name: string): Promise<{ plaintext?: string; 
 
   revalidatePath("/dashboard/system")
   return { plaintext }
+}
+
+/**
+ * Export all API keys for the current user as CSV (admin only).
+ * SECURITY: the raw secret and hashed key are NEVER exported.
+ * Only prefix + metadata is included.
+ */
+export async function exportApiKeys(): Promise<
+  | { success: true; data: string; filename: string; contentType: string }
+  | { success: false; error: string }
+> {
+  try {
+    await requireAdmin()
+  } catch {
+    return { success: false, error: "權限不足。" }
+  }
+
+  const rows = await db
+    .select({
+      id: apiKeysTable.id,
+      userId: apiKeysTable.userId,
+      name: apiKeysTable.name,
+      prefix: apiKeysTable.prefix,
+      scopes: apiKeysTable.scopes,
+      lastUsedAt: apiKeysTable.lastUsedAt,
+      revokedAt: apiKeysTable.revokedAt,
+      createdAt: apiKeysTable.createdAt,
+    })
+    .from(apiKeysTable)
+    .orderBy(desc(apiKeysTable.createdAt))
+
+  const exportRows = rows.map(apiKeyToExportRow)
+  const headers = ["id", "userId", "name", "prefix", "scopes", "lastUsedAt", "revokedAt", "createdAt"]
+  const data = toCsv(exportRows, headers)
+  const filename = `api-keys-${new Date().toISOString().slice(0, 10)}.csv`
+
+  return { success: true, data, filename, contentType: "text/csv" }
 }
 
 /** Revoke one of the current user's API keys (owner-scoped). */

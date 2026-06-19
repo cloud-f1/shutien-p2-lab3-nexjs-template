@@ -94,3 +94,23 @@ export function normalizeBackupCode(code: string): string {
 export function generateNonce(): string {
   return randomBytes(16).toString("hex")
 }
+
+/**
+ * E310 — pure guard for actions that require proof of TOTP possession (e.g.
+ * regenerating backup codes). The user must currently have 2FA enabled with a
+ * secret, AND submit a valid code. Returns an error string on failure, null on
+ * success — keeping the Server Action's branching unit-testable without a DB.
+ */
+export function assertValidTotpForAction(
+  user: { totpEnabled: boolean; totpSecret: string | null } | null | undefined,
+  token: string,
+  atMs: number = Date.now(),
+): string | null {
+  if (!user?.totpEnabled || !user.totpSecret) {
+    return "兩步驟驗證尚未啟用。"
+  }
+  if (!verifyToken(user.totpSecret, token, atMs)) {
+    return "驗證碼錯誤，請再試一次。"
+  }
+  return null
+}
