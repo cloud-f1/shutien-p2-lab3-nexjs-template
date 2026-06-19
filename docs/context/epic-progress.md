@@ -64,6 +64,10 @@
 | Phase 50 | E206, E207, E208, E209, E210 | ✅ Complete (Operationalize the Dial — ultra judge panel + effort→cost observability + dependency security + athena-core sync v0.2.0 + deploy-skill consolidation) |
 | Phase 51 | E211, E212, E213, E214, E215 | ✅ Complete (Stabilize + Phase 2 Foundation — all 5 shipped PRs #195-197/#200-201: athena-saas-profile registry foundation + fork secrets/OWASP + WCAG guides + VRT Phase B 336-matrix + cross-theme a11y matrix; auth `social_providers` server bug fixed en route, #199) |
 | Phase 52 | E216 | ✅ Complete (Native Workflow Orchestration — `/athena:flow` interactive native-Workflow epic dispatcher merged via PR#205; completes the E198–E201 line with a budget-enforced, live-tree, no-`claude -p` path; athena-core sync pending) |
+| Phases 53–68 | E217–E293 | ✅ Complete — see EPIC_INDEX.md (canonical) for the full per-phase breakdown; this table was stale from Phase 52 and is being kept current from Phase 69 onward |
+| Phase 69 | E294, E295, E296, E297, E298 | ✅ Complete (SaaS Hardening) — server-action tests + DataTable migration + GitHub login + TOTP 2FA + rate limiting; all merged to main (PRs #47/#48/#49/#51) |
+| Phase 70 | E299, E300, E301 | ✅ Done (Data & UX) — E300 merged (#50); E299 (#52) + E301 (#53) merge-pending |
+| Phase 71 | E302, E303, E304, E305, E306 | ✅ Done (Athena Toolchain) — 5 skills + /athena:align + /athena:plan mockup + scripts; PR #54 merge-pending |
 
 ## Epic Step Matrix
 
@@ -341,16 +345,16 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E294 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 69 — server action unit tests. MERGED (PR #48 → main): 3 utils + 4 test files, 24 cases, 100% util cov. |
 | E295 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 69 — DataTable migration. MERGED (PR #47 → main): 3 system panels → DataTable. |
 | E296 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 69 — GitHub social login. MERGED (PR #49 → main): provider + login/register buttons + connected-accounts tab + optional env. |
-| E297 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 69 — TOTP 2FA. DONE on feat/phase69-finish-E298-E297 → PR #51 (opus, base main): otplib/qrcode + migration 0008 (fresh-DB verified) + totp-utils 100% + security tab + /login/2fa challenge. Merge pending (user). |
-| E298 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 69 — rate limiting extension. DONE on feat/phase69-finish-E298-E297 → PR #51 (opus): rateLimitGuard on all mutations in api-keys/webhooks/team/user/admin + Redis/Upstash migration doc. Merge pending (user). |
-| E299 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 70 — CSV/JSON data export. SIZE M · simple · WORKTREE-SAFE (new utils/route, no shadcn) |
-| E300 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 70 — onboarding checklist. DONE on feat/E300 → PR #50: hook + client card + dashboard wire, 383 tests, build clean. Merge pending (user). Ran early (disjoint from open PRs). |
-| E301 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 70 — usage metering. SIZE M · complex (migration) · IN-REPO (needs `npx shadcn add progress` + migration 0008) |
-| E302 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 71 — rebrand skill + dev-docs guide. SIZE M · IN-REPO (writes .claude/skills/) |
-| E303 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 71 — mockup-to-epics skill + /athena:plan mockup + scripts/mockup/. SIZE M · IN-REPO (writes .claude/) |
-| E304 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 71 — alignment-audit skill + /athena:align + scripts/align/. SIZE M · IN-REPO (writes .claude/) |
-| E305 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 71 — user-guide-builder skill + VitePress pattern. SIZE M · IN-REPO (writes .claude/) |
-| E306 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 71 — zeabur-deploy skill. SIZE S · IN-REPO (writes .claude/skills/) |
+| E297 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 69 — TOTP 2FA. MERGED (PR #51 → main): otplib/qrcode + migration 0008 + totp-utils 100% + security tab + /login/2fa challenge. |
+| E298 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 69 — rate limiting extension. MERGED (PR #51 → main): rateLimitGuard on all mutations in api-keys/webhooks/team/user/admin + Redis/Upstash migration doc. |
+| E299 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 70 — CSV/JSON data export. DONE on feat/E299-data-export → PR #52 (base main): export-utils + audit/items exports + /api/v1/export route + OpenAPI sync; 468 tests. Merge pending (user). |
+| E300 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 70 — onboarding checklist. MERGED (PR #50 → main): hook + client card + dashboard wire. |
+| E301 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 70 — usage metering. DONE on feat/E301-usage-metering → PR #53 (opus, base main): usage_events + migration 0009 (fresh-DB verified) + utils + recordUsage + billing Progress wiring. Merge pending (user). |
+| E302 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 71 — rebrand skill + dev-docs guide. DONE on feat/phase71-toolchain → PR #54 (base main). Merge pending (user). |
+| E303 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 71 — mockup-to-epics skill + /athena:plan mockup + scripts/mockup/. DONE → PR #54. Merge pending (user). |
+| E304 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 71 — alignment-audit skill + /athena:align + scripts/align/. DONE → PR #54. Merge pending (user). |
+| E305 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 71 — user-guide-builder skill + VitePress pattern. DONE → PR #54. Merge pending (user). |
+| E306 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 71 — zeabur-deploy skill. DONE → PR #54. Merge pending (user). |
 
 
 ## Dependency Rules

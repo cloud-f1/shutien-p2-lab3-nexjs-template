@@ -81,9 +81,9 @@
 | Phase 66 | E281, E282, E283 | ✅ Complete (AI-dev trust) — E281 generated OpenAPI contract from Zod + /api/openapi + coverage guard + smoke drift-gate (#30) + E282 stop-verifier.sh rewritten for next-app/ (8 Next.js rules; #31) + E283 /athena:domain restored as copy-from-items generator (#32) |
 | Phase 67 | E284, E285, E286, E287 | ✅ Complete (Fork-ability) — E284 de-footgun @saas registry install + SAAS_REGISTRY_URL (#38) + E285 one-knob rebrand NEXT_PUBLIC_APP_NAME/lib/branding.ts (#39) + E286 fork guide rewritten to Next.js (#33) + E287 single-service deploy-zeabur.sh + Dockerfile ARG + GCP migrate/seed fix (#42) |
 | Phase 68 | E288, E289, E290, E291, E292, E293 | ✅ Complete (Production hardening) — E288 GitHub Actions CI (#34; PR #43 makes it manual-only) + E289 security headers + CSP (#35) + E290 password-reset + invite emails, migration 0007 (#40) + E291 public REST API via api_keys (#36) + E292 billing e2e + Stripe Customer Portal (#37) + E293 observability instrumentation + Sentry + lib/logger (#41) |
-| Phase 69 | E294, E295, E296, E297, E298 | ⬜ Pending (SaaS Hardening — sourced from ai-rc-engineer-pm research 2026-06-18) — E294 server action unit tests (admin/items/user, ~18–24 new db-free test cases) · E295 system surface DataTable migration (audit/api-keys/webhooks panels) · E296 GitHub social login (second OAuth provider) · E297 TOTP 2FA with QR + backup codes (deps E296) · E298 rate limiting extension (5 unguarded action files) |
-| Phase 70 | E299, E300, E301 | ⬜ Pending (Data & UX — sourced from ai-rc-engineer-pm research 2026-06-18) — E299 CSV/JSON data export (GDPR baseline: audit log + items + /api/v1/export route) · E300 dashboard onboarding checklist (Getting Started card, localStorage-backed) · E301 usage metering foundation (usage_events table + billing panel wiring) |
-| Phase 71 | E302, E303, E304, E305, E306 | ⬜ Pending (Athena Toolchain Enrichment — backport from ai-rc-engineer-pm 2026-06-18) — E302 rebrand skill + dev-docs logo/VitePress guide · E303 mockup-to-epics skill + /athena:plan mockup + scripts/mockup/{shot,tour-app}.cjs · E304 alignment-audit skill + /athena:align command + scripts/align/surface-check.cjs · E305 user-guide-builder skill + VitePress audience-split pattern · E306 zeabur-deploy skill (headless CLI, 5 gotchas) |
+| Phase 69 | E294, E295, E296, E297, E298 | ✅ Complete (SaaS Hardening) — E294 server-action unit tests (#48) · E295 DataTable migration (#47) · E296 GitHub social login (#49) · E297 TOTP 2FA + migration 0008 (#51) · E298 rate limiting (#51). All merged to main. |
+| Phase 70 | E299, E300, E301 | ✅ Done (Data & UX) — E300 onboarding checklist merged (#50) · E299 CSV/JSON export (#52, merge-pending) · E301 usage metering + migration 0009 (#53, merge-pending) |
+| Phase 71 | E302, E303, E304, E305, E306 | ✅ Done (Athena Toolchain Enrichment, PR #54 merge-pending) — E302 rebrand skill · E303 mockup-to-epics + /athena:plan mockup + scripts/mockup · E304 alignment-audit + /athena:align + scripts/align · E305 user-guide-builder + VitePress audience-split · E306 zeabur-deploy skill |
 <!-- PHASE_STATUS_END -->
 
 <!-- EPIC_MATRIX_START -->
@@ -641,12 +641,7 @@ Phase 71: E302 + E303 + E304 + E305 + E306 (all parallel, no deps) — each skil
 
 ---
 
-**Next Action:** ⬜ **Phases 69–71 (E294–E306) READY — sourced from ai-rc-engineer-pm research (2026-06-18).** Three programs queued:
-- **Phase 69 (SaaS Hardening)**: E294 + E295 + E296 + E298 in parallel → E297 (after E296). Start with `/athena:batch --phase 69`.
-- **Phase 70 (Data & UX)**: E299 + E300 + E301 all parallel. Start with `/athena:batch --phase 70`.
-- **Phase 71 (Athena Toolchain)**: E302 + E303 + E304 + E305 + E306 all parallel. Start with `/athena:batch --phase 71`.
-
-Prerequisite: tag `v0.3.0` release first (Phases 63–68 are complete at `main` @ `25dabef`; agent cannot push tags).
+**Next Action:** ✅ **Phases 69–71 (E294–E306) COMPLETE.** Phase 69 fully merged to main (PRs #47/#48/#49/#51). Phase 70: E300 merged (#50); **E299 (#52) + E301 (#53) merge-pending**. Phase 71: **PR #54 merge-pending** (5 toolchain skills + /athena:align + /athena:plan mockup). Migrations through **0009**. Open PRs to merge: **#52, #53, #54** (+ state PR). After merge, run `pnpm db:migrate` for 0009; consider an e2e for the TOTP login flow (deferred). All E294–E306 sourced from the ai-rc-engineer-pm backport (2026-06-18/19).
 
 ---
 

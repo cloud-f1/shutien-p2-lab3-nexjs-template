@@ -507,3 +507,15 @@ Ran E300 early (only remaining epic with ZERO file overlap vs open PRs #47-49). 
 
 Run in-repo on ONE shared branch (feat/phase69-finish-E298-E297) because E297∩E298 overlap on actions/{auth,user}.ts AND E297 is in-repo (deps+migration). E297 built on E298's commit. PR #51 (base main) covers BOTH.
 **Phase 69 COMPLETE** — E294/E295/E296 merged (#47/#48/#49 → main); E297/E298 in PR #51 (merge pending). State ticks for the merged epics flipped to ✅.
+
+### 2026-06-19 — /athena:flow "run all epics" — Phases 70 + 71 complete
+
+| Epic | Step | Status | Summary |
+|------|------|--------|---------|
+| E299 | implement+qa+commit+PR | ✅ | CSV/JSON export + /api/v1/export route + OpenAPI sync, 468 tests → PR #52 (worktree, sonnet) |
+| E301 | implement+qa+commit+PR | ✅ | usage_events + migration 0009 (fresh-DB verified) + billing Progress wiring → PR #53 (in-repo, opus) |
+| E302/E305/E306 | implement+commit | ✅ | rebrand + user-guide-builder + zeabur-deploy skills (cluster A) → cadcdfc |
+| E303/E304 | implement+commit+PR | ✅ | mockup-to-epics + alignment-audit skills + /athena:plan mockup + /athena:align + scripts → PR #54 (covers all 5 Phase 71 epics) |
+
+Old-phase check: Phases 63–68 ✅ on main; Phase 69 ✅ (PR #51 merged mid-session). Hybrid dispatch: E299 worktree (clean off main post-#51); E301 + Phase 71 in-repo (shadcn/migration/.claude writes). All 13 backport epics (E294–E306) now done. State reconciled (merged ticks flipped; Phase 69–71 added to the Phase Status table — was stale from Phase 52).
+**Triggered by**: /athena:flow run all epics
