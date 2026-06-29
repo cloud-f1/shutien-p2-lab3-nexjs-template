@@ -159,6 +159,11 @@ Per-epic model is **tiered by complexity** (sonnet baseline, opus for complex/ul
 
 ## Slash Commands (athena namespace)
 
+### (entry point)
+```
+/athena:tony <goal>            TONY chief-of-staff → state a goal in plain language → routed to the right teammate
+```
+
 ### (epic) — execution pipeline
 ```
 /athena:spec <feature>         Design feature spec OpenAPI-first → @spec-writer

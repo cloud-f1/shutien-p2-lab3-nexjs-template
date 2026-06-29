@@ -69,7 +69,8 @@
 | Phase 70 | E299, E300, E301 | ✅ Complete (Data & UX) — all merged to main (#50/#52/#53); migration 0009 |
 | Phase 71 | E302, E303, E304, E305, E306 | ✅ Complete (Athena Toolchain) — 5 skills + /athena:align + /athena:plan mockup + scripts, all merged (#54); dev-docs deployed to Cloudflare Pages |
 | Phase 72 | E307, E308, E309, E310 | ✅ Complete (Follow-ups from /athena:align) — all merged to main (#57); migration 0010; 518 tests. E307 e2e runs in CI. |
-| Phase 73 | E311 | ✅ Done (Smoke + dev-docs enrichment) — anchor-check.cjs + smoke gate + screenshot-refresh.sh + skill/guide; 3 real anchors fixed; smoke --core green. PR #59 merge-pending. |
+| Phase 73 | E311, E312, E313, E314, E315, E316, E317 | ✅ Complete (Template Enhancement Backport) — E311 dev-docs integrity (#59) · E312 TONY chief-of-staff (#66) · E313 new-project wizard (#65) · E314 docs-reorg/README index (#64) · E315 service-map dead-code (#62) · E316 testing-strategy skill (#61) · E317 scripts-tooling (#63) + zeabur-deploy skill enhancement (#60); all merged to main |
+| Phase 74 | E318 | ⬜ Pending (Dev-Docs Cloudflare Pages Deploy Enhancement) |
 
 ## Epic Step Matrix
 
@@ -361,7 +362,14 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E308 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 72 — usage limits. MERGED (PR #57): config-only (no migration) — limits in config/pricing.json + getPlanLimit/assertWithinLimit + billing Progress (amber≥80%/red≥100%) + opt-in 429 guard. |
 | E309 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 72 — export expansion. MERGED (PR #57): exportWebhooks/exportApiKeys(redacted)/exportTeam + Export buttons; export-row-mappers + 20 tests. |
 | E310 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 72 — 2FA recovery + onboarding persistence. MERGED (PR #57): admin resetUserTotp + regenerateBackupCodes + onboarding DB columns (migration 0010) + hook hydration. |
-| E311 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 73 — dev-docs integrity. DONE on feat/E311-docs-integrity → PR #59 (base main): anchor-check.cjs (found+fixed 3 real broken anchors) + smoke.sh gate (smoke --core green) + screenshot-refresh.sh + skill §6 automated + dev-docs-guide. Merge pending. |
+| E311 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 73 — dev-docs integrity. MERGED (PR #59): anchor-check.cjs + smoke gate + screenshot-refresh.sh + skill §6 + dev-docs-guide. |
+| E312 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 73 — TONY chief-of-staff skill + agent reference docs. MERGED (PR #66). |
+| E313 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 73 — new-project fork wizard (script + skill + command). MERGED (PR #65). |
+| E314 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 73 — docs reorg (README index + playbooks/ + organized subdirs). MERGED (PR #64). |
+| E315 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 73 — service-map + dead-code detection scripts. MERGED (PR #62). |
+| E316 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 73 — testing-strategy skill + Known Traps in testing.md. MERGED (PR #61). |
+| E317 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 73 — scripts README + staleness-check + zeabur-deploy skill enhancement. MERGED (PR #60/63). |
+| E318 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 74 — dev-docs Cloudflare Pages deploy enhancement (spec written). |
 
 
 ## Dependency Rules
@@ -655,8 +663,17 @@ E308: no deps (soft: E301)
 E309: no deps (soft: E299)
 E310: E308 (migration numbering 0010→0011; soft: E297, E300)
 
-# Phase 73 — Smoke + dev-docs enrichment (2026-06-19)
-E311: no deps (soft: E304 surface-check, E305 user-guide-builder)
+# Phase 73 — Template Enhancement Backport (2026-06-30)
+E311: no deps (dev-docs integrity)
+E312: no deps
+E313: no deps
+E314: no deps
+E315: no deps
+E316: no deps
+E317: no deps
+
+# Phase 74 — Dev-Docs Cloudflare Pages (2026-06-30)
+E318: no deps (soft: E311 anchor-check, E305 user-guide-builder)
 ```
 
 ## Phase Parallelism
@@ -715,11 +732,15 @@ Phase 59: E254 + E258 (parallel, no deps) → E255 + E256 (parallel after E254) 
 Phase 60: E259 (no deps) → E260 (after E259) + E262 (after E259, parallel) → E261 (after E259+E260)
 Phase 61: E263 + E264 + E265 (parallel) → E266 (after E261)
 Phase 62: E267 + E268 + E269 + E271 + E272 (parallel, independent tables) → E270 (after E269)
+Phase 73: E311 + E312 + E313 + E314 + E315 + E316 + E317 (ALL PARALLEL — template backport + tooling, no deps)
+Phase 74: E318 (single epic — dev-docs Cloudflare Pages)
 ```
 
 ## Next Action
 
-**✅ Phases 63–68 (E273–E293) COMPLETE — all merged to `main` @ `25dabef` (2026-06-16).** Data/billing hardening (Phase 64: E274–E276) + FastAPI→Next.js cleanup (Phase 65: E277–E280) + AI-dev trust (Phase 66: E281–E283) + fork-ability (Phase 67: E284–E287) + production hardening (Phase 68: E288–E293). PRs #19/#22/#24–#42. ~327 unit tests green; migrations through 0007. **Program done — next: tag a release (suggest `v0.3.0`) and disable CI auto-trigger via PR #43 (or the Actions UI).**
+**✅ Phase 73 (E311–E317) COMPLETE — all merged to main (PRs #59-#66, 2026-06-30).** Template Enhancement Backport from ai-rc-engineer-pm: dev-docs integrity (anchor-check/smoke) · TONY chief-of-staff skill · new-project fork wizard · docs reorg · service-map dead-code · testing-strategy skill · scripts tooling + zeabur-deploy enhancement.
+
+**⬜ Phase 74 (E318) PENDING** — dev-docs Cloudflare Pages deploy enhancement. Run `/athena:batch auto` to begin, or `/athena:tony` to ask TONY what to do next.
 
 ---
 

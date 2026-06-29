@@ -85,7 +85,8 @@
 | Phase 70 | E299, E300, E301 | ✅ Complete (Data & UX) — E300 onboarding checklist (#50) · E299 CSV/JSON export (#52) · E301 usage metering + migration 0009 (#53). All merged to main. |
 | Phase 71 | E302, E303, E304, E305, E306 | ✅ Complete (Athena Toolchain Enrichment, #54) — E302 rebrand skill · E303 mockup-to-epics + /athena:plan mockup + scripts/mockup · E304 alignment-audit + /athena:align + scripts/align · E305 user-guide-builder + VitePress (dev-docs deployed) · E306 zeabur-deploy skill |
 | Phase 72 | E307, E308, E309, E310 | ✅ Complete (Follow-ups surfaced by /athena:align, #57) — E307 TOTP login e2e · E308 wire real usage limits (E301 follow-up) · E309 export expansion to webhooks/api-keys/team (E299 follow-up) · E310 2FA recovery + onboarding persistence (E297/E300 follow-up, migration 0010). One-branch sequential on `feat/phase72-followups`. |
-| Phase 73 | E311 | ⬜ In progress (Smoke + dev-docs enrichment, PR #59) — E311 dev-docs anchor-check (automates user-guide-builder §6) + smoke.sh gate + screenshot-refresh.sh + skill/guide updates. |
+| Phase 73 | E311, E312, E313, E314, E315, E316, E317 | ✅ Complete (Template Enhancement Backport) — E311 dev-docs integrity (#59) · E312 TONY chief-of-staff (#66) · E313 new-project wizard (#65) · E314 docs-reorg (#64) · E315 service-map (#62) · E316 testing-strategy skill (#61) · E317 scripts-tooling (#63) + zeabur-deploy skill enhancement (#60) |
+| Phase 74 | E318 | ⬜ Pending (Dev-Docs Cloudflare Pages Deploy Enhancement — spec written) |
 <!-- PHASE_STATUS_END -->
 
 <!-- EPIC_MATRIX_START -->
@@ -640,7 +641,8 @@ Phase 69: E294 + E295 + E296 + E298 (parallel, no deps) → E297 (after E296 Con
 Phase 70: E299 + E300 + E301 (all parallel, no deps) — independent surfaces
 Phase 71: E302 + E303 + E304 + E305 + E306 (all parallel, no deps) — each skill/command owns its own files
 Phase 72: E309 → E307 → E308 → E310 (SEQUENTIAL on one branch — E308+E310 both migrate; agent can't merge between → one PR). No-migration first (E309, E307), then 0010 (E308) → 0011 (E310)
-Phase 73: E311 (single epic, in-repo — tooling + docs)
+Phase 73: E311 + E312 + E313 + E314 + E315 + E316 + E317 (ALL PARALLEL — template backport, no deps)
+Phase 74: E318 (single epic — dev-docs Cloudflare Pages deploy)
 ```
 
 ---
