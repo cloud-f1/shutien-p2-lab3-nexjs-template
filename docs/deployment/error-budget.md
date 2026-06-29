@@ -46,6 +46,6 @@ make error-budget LOG=./server.log
 
 ## Integration
 
-- **Canary deployments** (docs/CANARY_DEPLOY.md): Check budget before deploying
+- **Canary deployments** ([canary-deploy.md](canary-deploy.md)): Check budget before deploying
 - **Structlog** (E131): Provides the JSON log data
 - **`make doctor-production`**: Could include a budget check in the future

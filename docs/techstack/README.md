@@ -14,6 +14,9 @@
 | [agents-memory.md](agents-memory.md) | Agent team, memory system, domain architecture |
 | [agent-teams.md](agent-teams.md) | Full agent team spec (reference) |
 | [ai-dev-pipeline.md](ai-dev-pipeline.md) | Full pipeline spec (reference) |
+| [nextjs-background.md](nextjs-background.md) | App Router background concepts and key Next.js 16 behaviors |
+| [nextjs-best-practice.md](nextjs-best-practice.md) | Best-practice patterns for this stack |
+| [nextjs-layout.md](nextjs-layout.md) | Folder structure and layout architecture guide |
 
 ## Rules
 

@@ -47,10 +47,10 @@ ai-coding-nexjs-template/
 ├── TECHSTACK.md                 ← Upload to restore any Claude session
 │
 ├── docs/
-│   ├── nextjs-background.md     ← App Router concepts
-│   ├── nextjs-best-pratice.md   ← Patterns for this stack
-│   ├── nextjs-layout.md         ← Folder structure + architecture guide
 │   ├── techstack/               ← Detailed tech decisions (this dir)
+│   │   ├── nextjs-background.md ← App Router concepts
+│   │   ├── nextjs-best-practice.md ← Patterns for this stack
+│   │   └── nextjs-layout.md     ← Folder structure + architecture guide
 │   ├── epics/                   ← Epic progress tracking
 │   ├── specs/                   ← Feature implementation plans
 │   └── context/                 ← Agent memory write-backs

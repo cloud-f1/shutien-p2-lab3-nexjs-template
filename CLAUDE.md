@@ -57,9 +57,11 @@ next-app/
   next.config.ts           Next.js config
   tsconfig.json            Path alias: @/* → next-app root
 docs/
+  README.md                Navigation index — canonical entry point for all docs/
   epics/                   EPIC_INDEX.md — single source of dev progress
   specs/                   Feature specs (@spec-writer output)
   context/                 Agent write-back memory
+  playbooks/               Workflow SOPs (mockup-to-production, etc.)
 scripts/hooks/             Lifecycle hooks — see hooks/CLAUDE.md
 .claude/agents/            Agent definitions (YAML frontmatter + instructions)
 .claude/commands/athena/   Slash commands (athena namespace)

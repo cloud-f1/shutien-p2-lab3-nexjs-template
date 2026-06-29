@@ -62,7 +62,7 @@ gcloud run services update-traffic SERVICE \
 
 Before promoting each traffic increment, verify:
 
-- [ ] Error rate < 0.5% (matches SLO from ERROR_BUDGET.md)
+- [ ] Error rate < 0.5% (matches SLO from [error-budget.md](error-budget.md))
 - [ ] P99 latency < 2s
 - [ ] No new error types in logs (check structlog JSON output)
 - [ ] Health endpoint returns healthy on new revision
@@ -81,7 +81,7 @@ Immediately roll back if ANY of these occur:
 
 ## Integration with Error Budget
 
-See `docs/ERROR_BUDGET.md` (E142) for SLO tracking.
+See [error-budget.md](error-budget.md) (E142) for SLO tracking.
 If the error budget is already exhausted before a canary:
 
 1. **Do not deploy** — fix reliability first
