@@ -5,8 +5,10 @@ description: >
   project + PostgreSQL + web service + domain + env + migrate + seed + verify. Use when the
   user says "deploy to Zeabur", "deploy to my server <name>", "spin up a dev/staging instance",
   or wants a fresh cloud instance of the app. Encodes the exact non-interactive CLI flow and the
-  five gotchas that bite (dotfile-dropping uploader, deprecated marketplace, standalone runtime
-  can't migrate, NEXT_PUBLIC bakes at build, env-then-redeploy ordering). Pairs with deploy/
+  gotchas that bite (dotfile-dropping uploader, deprecated marketplace, standalone runtime
+  can't migrate, NEXT_PUBLIC bakes at build, env-then-redeploy ordering, small-box build failures,
+  and build-before-postgres ordering). Covers BOTH deploy models: source-build (`zeabur deploy`)
+  and prebuilt-image (build locally → push → `service update tag`). Pairs with deploy/
   deploy-zeabur.sh (the interactive script) — this skill is the headless, server-targeted path.
 user-invocable: true
 ---
@@ -85,18 +87,22 @@ Watch it: `zeabur deployment list --service-id <SID> --env-id <EID> --json` → 
 `BUILDING → DEPLOYING → RUNNING`. On `FAILED`, read the build log (see Gotcha 1):
 `zeabur deployment log --deployment-id <DID> --type build`.
 
-**7. Migrate + seed — from your MACHINE against the Postgres PUBLIC endpoint.** The runtime
-image is Next.js *standalone* (no pnpm, no `drizzle/`, no drizzle-kit) so you CANNOT
-`zeabur service exec -- pnpm db:migrate`. Instead get the public TCP endpoint and run locally:
+**7. Migrate + seed — from your MACHINE against the Postgres PUBLIC endpoint, then close it.**
+The runtime image is Next.js *standalone* (no pnpm, no `drizzle/`, no drizzle-kit) so you CANNOT
+`zeabur service exec -- pnpm db:migrate`. Open the public TCP endpoint **only for this window**,
+run locally, then **disable it again** (the app never needs it — it uses private networking):
 
 ```bash
-zeabur service network --id <PG_SID> --env-id <EID> --json   # → portForwardedHost + forwardedPort
+zeabur service port-forward --id <PG_SID> --env-id <EID> --enable -i=false   # open public TCP
+zeabur service network      --id <PG_SID> --env-id <EID> --json -i=false      # → host + forwardedPort
+#   NOTE: the forwarded port is reassigned on each enable — always re-read it here, don't reuse an old one.
 # user=root, db=POSTGRES_DB ("zeabur"), pw=PASSWORD var (zeabur variable list --id <PG_SID> ...)
 cd next-app
 mv .env.local .env.local.bak 2>/dev/null   # park local URL so drizzle-kit can't pick it up
 DATABASE_URL="postgresql://root:<PW>@<host>:<fwdPort>/zeabur" pnpm db:migrate
 DATABASE_URL="postgresql://root:<PW>@<host>:<fwdPort>/zeabur" pnpm db:seed   # dev/staging only
 mv .env.local.bak .env.local 2>/dev/null
+zeabur service port-forward --id <PG_SID> --env-id <EID> --disable -i=false  # CLOSE it again
 ```
 
 The seed creates three demo accounts:
@@ -106,6 +112,8 @@ The seed creates three demo accounts:
 | Admin | `admin@example.com` | `Admin123!` |
 | Editor | `editor@example.com` | `Editor123!` |
 | Viewer | `viewer@example.com` | `Viewer123!` |
+
+For production, skip `pnpm db:seed` and set `NEXT_PUBLIC_ENABLE_DEMO_LOGIN=false` (then rebuild).
 
 **8. Verify** — curl + a real headless email login:
 
@@ -122,7 +130,7 @@ curl -s https://<slug>.zeabur.app/api/health                                    
 # POST /api/auth/signin with email=admin@example.com, password=Admin123! → redirect to /dashboard
 ```
 
-## The five gotchas (each cost a debug round)
+## The seven gotchas (each cost a debug round)
 
 1. **The uploader drops root dotfiles.** `zeabur deploy`'s local tar omits `.npmrc`, so a
    Dockerfile `COPY .npmrc ./` fails with `"/.npmrc": not found`. Fix in the Dockerfile: don't
@@ -141,7 +149,80 @@ curl -s https://<slug>.zeabur.app/api/health                                    
 5. **Env-then-redeploy ordering** → the correct order is: create project → provision DB →
    generate domain → set ALL env vars → deploy → migrate → seed. Setting env vars after deploy
    has no effect until a full rebuild. The domain must be generated before the env step so
-   `NEXT_PUBLIC_APP_URL` gets the real production URL, not a placeholder.
+   `NEXT_PUBLIC_APP_URL` gets the real production URL, not a placeholder. On production, set
+   `NEXT_PUBLIC_ENABLE_DEMO_LOGIN=false` to disable the one-click demo login buttons.
+6. **Small dedicated boxes can't schedule a source-build.** A 2C4G box with web + Postgres already
+   running (~1.2 GB free) fails to schedule the build: `startedAt: 0001-01-01`, ~10 s fail, empty
+   build log — the build container never started. This is NOT a code error. Switch to the
+   **prebuilt-image path** below — and always **cross-build `--platform linux/amd64`**, because a
+   Mac (arm64) image won't run on the amd64 server.
+7. **Built the web service BEFORE its Postgres existed?** The container started with an unresolved
+   `DATABASE_URL=${POSTGRES_CONNECTION_STRING}` (empty), so `/login` 500s (DB import throws) while
+   `/api/health` still 200s. After provisioning Postgres, `zeabur service restart --id <SID>
+   --env-id <EID>` so the now-resolved connection string is picked up. (Happens when you build
+   first to keep build-RAM high on a small box — provision PG, then restart.)
+
+## Prebuilt-image deploy path
+
+Use this when the source-build path fails on a small dedicated box (Gotcha #6), or when you want
+locally-tested, reproducible images with instant tag-swap rollbacks.
+
+### One-time setup (dashboard only)
+
+**The CLI cannot create a bring-your-own-image service headlessly.** You must use the Zeabur
+dashboard: project → *Add Service → Deploy your own image* (name e.g. `web-img`).
+
+Then discover its id and the registry push path:
+
+```bash
+zeabur service list --project-id <PID> --json                             # → get the new SID
+zeabur service instruction --id <SID> --env-id <EID>                      # → registry host + docker login + push path
+```
+
+### Each deploy = build local → push → swap tag
+
+```bash
+cd next-app
+# 1. CROSS-BUILD for the server's arch. Dedicated boxes are amd64; a Mac is arm64 → an arm image
+#    will NOT run on the server. The Dockerfile already accepts these NEXT_PUBLIC build-args.
+docker buildx build --platform linux/amd64 \
+  --build-arg NEXT_PUBLIC_APP_URL=https://<slug>.zeabur.app \
+  --build-arg NEXT_PUBLIC_ENABLE_DEMO_LOGIN=true \
+  -t <zeabur-registry>/<ns>:<tag> --load .
+# 2. push (login from `service instruction`)
+docker push <zeabur-registry>/<ns>:<tag>
+# 3. swap the running image — this IS the deploy (no server build)
+zeabur service update tag --id <SID> --env-id <EID> -t <tag> -y -i=false
+```
+
+`NEXT_PUBLIC_*` still bake at build (Gotcha 4) — pass them as `--build-arg` on the local build.
+Env vars, domain, and migrate/seed (steps 5–7) are identical to the source-build flow.
+
+A source-build service **cannot** be `service update tag`'d — you must create a prebuilt-image
+service (dashboard) and move the domain + env onto it, then retire the old service.
+
+### Which path?
+
+- **Source-build** (`zeabur deploy from next-app/`) — use when the box has >= 2 GB free during
+  build, or on a managed (cloud) region. Simplest; one command per deploy.
+- **Prebuilt image** — required when the box is too small to schedule a server-side build (Gotcha
+  #6). Bonus: reproducible locally-tested images, instant tag-swap rollbacks
+  (`service update tag -t <oldtag>`), and builds happen off-box.
+
+## Sizing — budget ~one environment per 2C4G box
+
+A `next build` needs **~1.5–2 GB free** to even *schedule* (a failed build shows `startedAt:0001`,
+~10 s, empty log — the build container never started, NOT a code error). And every running env is
+**web (~150–300 MB) + Postgres (~250–400 MB)**. So on a **2C4G (2 vCPU / 3.66 GB)** dedicated box:
+
+- One env (web+pg) idles ~0.5–0.8 GB → leaves enough headroom to source-build. **This is the comfort limit.**
+- With `dev` running, free RAM hovers ~1.2–1.4 GB — source-build is marginal on a fully-loaded box.
+- **dev + stg + prd = 6 services** (~2–2.5 GB idle) + a transient build → overcommits 3.66 GB. It will
+  not fit; builds fail and runtime risks OOM.
+
+**Rule:** give each environment its **own box** (CLI can't provision dedicated servers — the user
+adds them to Zeabur), **or** size up (e.g. 4C8G) to co-host. On a box that's tight but fixed,
+use the **prebuilt-image** path so builds happen off-box.
 
 ## Identifiers cheat-sheet
 
@@ -154,8 +235,8 @@ region=`server-<id>` · PostgreSQL template=`B20CX0` · connection ref=`${POSTGR
 cd next-app && zeabur deploy --service-id <SID> --environment-id <EID> --json -i=false
 ```
 
-Then re-run step 7 only if the schema changed. For production, drop
-`NEXT_PUBLIC_ENABLE_DEMO_LOGIN` and don't run `pnpm db:seed`.
+Then re-run step 7 only if the schema changed. For production, set
+`NEXT_PUBLIC_ENABLE_DEMO_LOGIN=false` and don't run `pnpm db:seed`.
 
 ## Interactive alternative
 
