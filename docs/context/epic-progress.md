@@ -70,7 +70,7 @@
 | Phase 71 | E302, E303, E304, E305, E306 | ✅ Complete (Athena Toolchain) — 5 skills + /athena:align + /athena:plan mockup + scripts, all merged (#54); dev-docs deployed to Cloudflare Pages |
 | Phase 72 | E307, E308, E309, E310 | ✅ Complete (Follow-ups from /athena:align) — all merged to main (#57); migration 0010; 518 tests. E307 e2e runs in CI. |
 | Phase 73 | E311, E312, E313, E314, E315, E316, E317 | ✅ Complete (Template Enhancement Backport) — E311 dev-docs integrity (#59) · E312 TONY chief-of-staff (#66) · E313 new-project wizard (#65) · E314 docs-reorg/README index (#64) · E315 service-map dead-code (#62) · E316 testing-strategy skill (#61) · E317 scripts-tooling (#63) + zeabur-deploy skill enhancement (#60); all merged to main |
-| Phase 74 | E318 | ⬜ Pending (Dev-Docs Cloudflare Pages Deploy Enhancement) |
+| Phase 74 | E318 | ✅ Complete (Dev-Docs Cloudflare Pages Deploy Enhancement) — Cloudflare Pages SOP + user-guide-mode flip guide + Makefile targets + GitHub Actions CI; merged PR #68 |
 
 ## Epic Step Matrix
 
@@ -369,7 +369,7 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E315 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 73 — service-map + dead-code detection scripts. MERGED (PR #62). |
 | E316 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 73 — testing-strategy skill + Known Traps in testing.md. MERGED (PR #61). |
 | E317 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 73 — scripts README + staleness-check + zeabur-deploy skill enhancement. MERGED (PR #60/63). |
-| E318 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 74 — dev-docs Cloudflare Pages deploy enhancement (spec written). |
+| E318 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 74 — dev-docs Cloudflare Pages deploy enhancement. MERGED (PR #68 → 69fcae4). |
 
 
 ## Dependency Rules

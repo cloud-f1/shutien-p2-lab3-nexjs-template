@@ -86,7 +86,7 @@
 | Phase 71 | E302, E303, E304, E305, E306 | ✅ Complete (Athena Toolchain Enrichment, #54) — E302 rebrand skill · E303 mockup-to-epics + /athena:plan mockup + scripts/mockup · E304 alignment-audit + /athena:align + scripts/align · E305 user-guide-builder + VitePress (dev-docs deployed) · E306 zeabur-deploy skill |
 | Phase 72 | E307, E308, E309, E310 | ✅ Complete (Follow-ups surfaced by /athena:align, #57) — E307 TOTP login e2e · E308 wire real usage limits (E301 follow-up) · E309 export expansion to webhooks/api-keys/team (E299 follow-up) · E310 2FA recovery + onboarding persistence (E297/E300 follow-up, migration 0010). One-branch sequential on `feat/phase72-followups`. |
 | Phase 73 | E311, E312, E313, E314, E315, E316, E317 | ✅ Complete (Template Enhancement Backport) — E311 dev-docs integrity (#59) · E312 TONY chief-of-staff (#66) · E313 new-project wizard (#65) · E314 docs-reorg (#64) · E315 service-map (#62) · E316 testing-strategy skill (#61) · E317 scripts-tooling (#63) + zeabur-deploy skill enhancement (#60) |
-| Phase 74 | E318 | ⬜ Pending (Dev-Docs Cloudflare Pages Deploy Enhancement — spec written) |
+| Phase 74 | E318 | ✅ Complete (Dev-Docs Cloudflare Pages Deploy Enhancement) — Cloudflare Pages SOP guide + user-guide-mode flip guide + Makefile targets (dev-docs-preview/build/deploy) + GitHub Actions CI (path: dev-docs/**) + fixed dead gh-cf-deploy ref; merged PR #68 |
 <!-- PHASE_STATUS_END -->
 
 <!-- EPIC_MATRIX_START -->
