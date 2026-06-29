@@ -74,3 +74,46 @@ There is also a visual-regression-test (VRT) project: `pnpm test:vrt` (and
 pnpm test:coverage
 # Look for: Statements / Functions ≥ 80% on the db-free layer
 ```
+
+## Pyramid Shape
+
+Unit ≥ 70% is a **floor, not a target**. A high unit ratio is not the goal; the goal is that
+*every layer that can silently break has at least one test watching it*. Pure-function tests prove
+the algorithm is right — they do NOT prove the wiring is right. Grow the integration middle by
+regression: every new Server Action ships with ≥1 integration test.
+
+See `.claude/skills/testing-strategy/SKILL.md` for the full pyramid guidance, the throwaway-DB
+integration harness pattern, and all three traps.
+
+## Known Traps
+
+Three non-obvious traps that have caused silent failures. Full detail and fix patterns in
+`.claude/skills/testing-strategy/SKILL.md`.
+
+### Trap 1 — Orphan-tested function (tested but never wired)
+
+A pure utility has 100% unit coverage and stays green, but **nothing in production calls it** —
+the feature silently does not work. Classic example: `exportItems` in `lib/items-utils.ts` has
+full tests for CSV serialization, but the export Server Action was never updated to call it.
+
+**Guard:** When you add a pure function, in the same PR add the call site *and* a test that
+exercises it through the wiring (integration test or e2e assertion on the action that uses it).
+
+### Trap 2 — Conditional-skip flaky e2e (a "passing" test asserting nothing)
+
+A test using `test.skip(condition, …)` silently skips when the condition triggers — CI stays green
+while the feature is broken for that condition. Example: a TOTP e2e that skips when 2FA is not
+enabled on the seed account.
+
+**Guard:** E2e tests on deterministic seed state should be unconditional. Prefer
+`throw new Error("fixture missing")` over `test.skip(...)`. Document which seed record a test
+depends on so future seed editors know the contract.
+
+### Trap 3 — Integration harness ordering (static import reads dev DB URL)
+
+`@/lib/db` reads `DATABASE_URL` at module load time. A top-level static import of an action
+at the test file's top resolves before `setupTestDb()` sets the throwaway DB URL — the action
+silently points at the dev DB.
+
+**Guard:** Always `await setupTestDb()` in `beforeAll` first, then `await import("@/app/.../actions")`
+dynamically inside the test body. Never static-import action modules in integration test files.

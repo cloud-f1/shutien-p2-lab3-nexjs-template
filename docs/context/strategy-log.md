@@ -9,11 +9,12 @@
 
 | Field | Value |
 |-------|-------|
-| Cycle | 30 |
+| Cycle | 33 |
 | State | APPROVED |
-| Notes | Phase 61 (Cobalt UI surfaces — App Shell/Settings/Auth/Marketing, E263–E266) active + Phase 62 (backend-backed SaaS surfaces, E267–E272) queued for Cycle 31. Derived from the Cobalt PRD (prd.md) IA + data.jsx shapes. User-confirmed scope: build all 4 UI surface groups + real backend; SKIP Cobalt product pages (workflows/analytics/AI-models/integrations — domain-specific). Phased via /athena:plan. _(Prior: Cycle 29 Phase 60 Cobalt tokens/FX/landing/dashboard.)_ |
-| Prev29 | Phase 60 (Cobalt Design Integration) — 4 epics (E259–E262). Merge the Claude-Design "Cobalt — AI SaaS" handoff (generated FROM our own shadcn tokens, elevated to premium Linear/Stripe-leaning) into our UI: foundation tokens (E259) → FX utilities (E260) + dashboard polish (E262) → landing redesign (E261). Brand-neutral, additive (core colors already match). User-decided scope (all 4 tiers). Delivered via PR on `feat/cobalt-design`. _(Prior: Cycle 28 Phase 59 Deployment Enablement E254–E258.)_ |
-| Prev28 | Phase 59 (Deployment Enablement) — 5 epics (E254–E258). Two deploy roads: Zeabur (primary) + GCP Cloud Run/Cloud SQL (secondary, `${PLACEHOLDER}`s). Config artifacts (E254), Zeabur path+guide (E255), GCP path+guide (E256), deploy-config skill retiring stale deploy-gcr-zeabur (E257), tool-install quick-start script (E258). Scope user-decided (not strategist-analysed). Zeabur plugin + CLI installed; gcloud present. E258 implemented immediately; rest execute via loop/flow. Delivered via PR on `feat/deploy-config`. _(Prior: Phase 58 E247–E253 modular SaaS graft + v0.1.0 release awaiting human `git push origin main`.)_ |
+| Date | 2026-06-29 |
+| Notes | Phase 73 (Template Enhancement Backport from ai-rc-engineer-pm, E311–E317) — 7 epics, all parallel, no migrations. TONY chief-of-staff layer (E311) · new-project fork wizard (E312) · docs reorg + README index (E313) · service-map + dead-code detection (E314) · testing-strategy skill (E315) · scripts tooling + staleness check (E316) · zeabur-deploy skill enhancement (E317). Approved from gap analysis vs ai-rc-engineer-pm downstream product. |
+| Prev32 | Phase 72 (Follow-ups from /athena:align, E307–E310) — TOTP e2e, usage limits, export expansion, 2FA recovery + onboarding persistence. Merged via PR #57 (#58 for state flip). 518 tests, migration 0010. |
+| Prev31 | Phase 71 (Athena Toolchain, E302–E306) — rebrand skill, mockup-to-epics + /athena:plan mockup, alignment-audit + /athena:align, user-guide-builder + VitePress dev-docs (deployed to Cloudflare Pages), zeabur-deploy skill. Merged via PR #54. |
 
 ---
 
