@@ -90,6 +90,8 @@ export default defineConfig({
             { text: 'Autopilot Mode', link: '/docs/guides/autopilot' },
             { text: 'Authoring a Module', link: '/docs/guides/authoring-a-module' },
             { text: 'Installing a Module via AI', link: '/docs/guides/ai-module-install' },
+            { text: 'Cloudflare Pages Deploy', link: '/docs/guides/cloudflare-pages-deploy' },
+            { text: 'User-Guide Mode', link: '/docs/guides/user-guide-mode' },
           ],
         },
         {

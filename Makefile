@@ -9,7 +9,7 @@
 NEXT := next-app
 
 .PHONY: help go dev local local-setup local-infra local-db local-env local-down \
-        dev-docs setup-dev-docs \
+        dev-docs setup-dev-docs dev-docs-preview dev-docs-build dev-docs-deploy \
         migrate db-generate db-seed db-test-migrate db-studio db-backup \
         test test-coverage test-e2e lint typecheck ci-all smoke guard-selftest \
         docker-up docker-down docker-logs docker-ps docker-clean \
@@ -83,6 +83,22 @@ dev-docs: ## Run the dev-docs site locally
 setup-dev-docs: ## Install dev-docs deps
 	cd dev-docs && pnpm install
 	@echo "✅ Dev-docs ready."
+
+dev-docs-preview: ## Run the dev-docs site locally with hot-reload (http://localhost:5173)
+	cd dev-docs && pnpm dev
+
+dev-docs-build: ## Install deps and build the dev-docs VitePress site
+	cd dev-docs && pnpm install && pnpm build
+	@echo "✅ Dev-docs built → dev-docs/.vitepress/dist/"
+
+dev-docs-deploy: dev-docs-build ## Build + deploy dev-docs to Cloudflare Pages (requires CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID)
+	@test -n "$$CLOUDFLARE_API_TOKEN" || { echo "❌ CLOUDFLARE_API_TOKEN not set"; exit 1; }
+	@test -n "$$CLOUDFLARE_ACCOUNT_ID" || { echo "❌ CLOUDFLARE_ACCOUNT_ID not set"; exit 1; }
+	npx wrangler pages deploy dev-docs/.vitepress/dist \
+		--project-name ai-coding-nexjs-template-docs \
+		--branch main \
+		--commit-dirty=true
+	@echo "✅ Dev-docs deployed to Cloudflare Pages."
 
 # ─── Database (Drizzle / drizzle-kit) ─────────────────────────────────────
 migrate: ## Apply Drizzle migrations (next-app)

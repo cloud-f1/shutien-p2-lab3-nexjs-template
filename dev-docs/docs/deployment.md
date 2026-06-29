@@ -51,9 +51,21 @@ build succeeds without `DATABASE_URL` — the runtime reads it from the Cloud Ru
 
 ## Cloudflare Pages (dev-docs)
 
-The `dev-docs/` VitePress site deploys to Cloudflare Pages via the `gh-cf-deploy` skill.
+The `dev-docs/` VitePress site deploys to Cloudflare Pages. See the full step-by-step guide at
+[Cloudflare Pages Deploy](/docs/guides/cloudflare-pages-deploy) for prerequisites, build commands,
+environment variables, and GitHub Actions setup.
 
-Build settings:
+Quick reference:
+
+```bash
+# Build
+make dev-docs-build
+
+# Deploy (requires CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID in env)
+make dev-docs-deploy
+```
+
+Build settings (Cloudflare dashboard):
 - **Build command:** `pnpm build`
 - **Build output directory:** `.vitepress/dist`
 - **Root directory:** `dev-docs`
