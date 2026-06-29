@@ -125,7 +125,8 @@ default DB sessions) and RBAC guards **re-read the role from the DB**. See the `
 **Key project skills (`.claude/skills/`):** `nextjs-saas-patterns` (stack gotchas), `athena-loop-speedups`
 (orchestration practices), `rebrand` (white-label rebranding), `user-guide-builder` (繁中 user manual),
 `zeabur-deploy` (Zeabur deploy SOP), `mockup-to-epics` (HTML mockup → UI-ready epics pipeline),
-`alignment-audit` (built app ↔ spec coverage audit). Stale FastAPI/Vite skills are deprecated;
+`alignment-audit` (built app ↔ spec coverage audit), `new-project` (fork → product wizard; pairs with
+`scripts/new-project.sh` + `/athena:new-project`). Stale FastAPI/Vite skills are deprecated;
 vendor `next-best-practices` + `vercel-*` remain.
 
 ## Active Epic
@@ -239,9 +240,20 @@ All configured in `.claude/settings.json` + agent frontmatter.
 
 如果你 fork 此 repo 開新專案，**這份 CLAUDE.md 需要客製化** — 否則 Claude session 會 follow 原作者的 architecture rules，不是你的。
 
-### 必改
+### 推薦做法：使用 new-project 精靈
 
-1. **`## What This Project Is`** — 改成你的 project description
+```bash
+bash scripts/new-project.sh          # dry-run：顯示現有 identity + 將做的變更，不修改任何檔案
+bash scripts/new-project.sh --apply  # 套用決定性的 identity 替換（product name / repo slug / docs domain）
+/athena:new-project "Your Product"   # agent 判斷半段：改寫 CLAUDE.md 身份段、README intro、roles、seed
+make new-project                     # 封存 template epics，從 E1 重新開始
+```
+
+keep/replace 邊界詳見 [`docs/TEMPLATE-VS-PRODUCT.md`](docs/TEMPLATE-VS-PRODUCT.md)。
+
+### 必改（精靈不會自動處理的部分）
+
+1. **`## What This Project Is`** — 改成你的 project description（`/athena:new-project` 可代勞）
 2. **File Layout** — 如果你的 stack 不同，改 layout
 3. **`## Architecture Rules — NEVER DEVIATE`** — 寫**你 codebase** 的 invariants
 

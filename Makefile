@@ -174,10 +174,10 @@ install-tools: ## Install required dev tools (macOS — Homebrew: node, pnpm, do
 	@echo "✅ Tools installed. Run 'make local-setup' to set up the app."
 
 # ─── Template lifecycle ────────────────────────────────────────────────────
-new-project: ## Archive template epics to _archive/ and start fresh from E1 (preserves history)
-	@echo "📦 make new-project — archive template epics, start from E1"
-	@bash scripts/template-reset.sh --archive
-	@echo "✅ Template epics archived. Next: /athena:spec E1 <your-first-feature>"
+new-project: ## Archive template epics and prepare for a fresh product start
+	@echo "Archiving template epic specs to docs/epics/archive/template-phases/..."
+	@mkdir -p docs/epics/archive/template-phases
+	@bash scripts/new-project.sh
 
 init: ## Post-clone setup: reset template history → install + migrate + seed (run once)
 	@if [ -f .initialized ]; then \
