@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AI Coding Template — AI Dev Team &amp; Pipeline</title>
+<style>
+  :root{
+    --bg:#f8f9fb; --ink:#1e2330; --muted:#6b7280; --line:#e5e7eb; --card:#fff;
+    --primary:#4f6bed; --primary-soft:#eef0fd;
+    --plan:#4f6bed; --build:#2f9e5e; --guard:#d8941f; --ship:#0d9aa3; --data:#7c5cdc; --brain:#d6477f; --field:#5b6878;
+    --shadow:0 1px 2px rgba(0,0,0,.04), 0 6px 18px rgba(30,35,48,.06);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Inter","Segoe UI",system-ui,sans-serif;
+    line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1120px;margin:0 auto;padding:40px 24px 64px}
+  h1{font-size:30px;font-weight:900;margin:0;letter-spacing:-.01em}
+  h1 .accent{color:var(--primary)}
+  .sub{color:var(--muted);margin:6px 0 0;font-size:14.5px}
+  h2{font-size:15px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);
+     margin:48px 0 16px;display:flex;align-items:center;gap:10px}
+  h2::after{content:"";flex:1;height:1px;background:var(--line)}
+
+  /* flow ribbon */
+  .flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:10px}
+  .flow .step{flex:1 1 180px;background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:14px 16px;box-shadow:var(--shadow);position:relative}
+  .flow .step .k{font-size:12px;color:var(--muted);font-weight:700}
+  .flow .step .v{font-size:15px;font-weight:800;margin-top:2px}
+  .flow .step .d{font-size:12.5px;color:var(--muted);margin-top:3px}
+  .flow .arrow{align-self:center;color:var(--primary);font-size:22px;font-weight:800}
+  @media(max-width:760px){.flow .arrow{transform:rotate(90deg)}}
+
+  /* TONY hero */
+  .tony{margin:18px auto 0;max-width:620px;background:linear-gradient(180deg,#fff,#f0f3ff);
+    border:2px solid var(--primary-soft);border-radius:18px;padding:20px 22px;box-shadow:var(--shadow);text-align:center}
+  .tony .icon{font-size:22px}
+  .tony .name{font-size:22px;font-weight:900;color:var(--primary);margin-top:2px}
+  .tony .role{font-size:13px;font-weight:700;color:var(--muted)}
+  .tony .desc{font-size:13.5px;color:var(--ink);margin-top:8px}
+  .tony .tag{display:inline-block;margin-top:10px;background:var(--primary-soft);color:var(--primary);
+    border-radius:999px;padding:3px 11px;font-size:12px;font-weight:800}
+  .stem{width:2px;height:26px;background:var(--line);margin:0 auto}
+
+  /* department grid */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(248px,1fr));gap:14px}
+  .dept{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:var(--shadow)}
+  .dept .hd{padding:10px 14px;font-weight:800;font-size:13px;color:#fff;display:flex;justify-content:space-between;align-items:center}
+  .dept .hd .cnt{font-size:11px;opacity:.85;font-weight:700}
+  .person{padding:11px 14px;border-top:1px solid var(--line)}
+  .person:first-of-type{border-top:0}
+  .person .row1{display:flex;align-items:baseline;gap:8px}
+  .person .pname{font-weight:900;font-size:14.5px}
+  .person .pid{font-size:11.5px;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .person .deliv{font-size:12.5px;color:#4b443e;margin-top:3px}
+  .person .cmd{display:inline-block;margin-top:6px;font-size:11px;font-family:ui-monospace,Menlo,monospace;
+    background:#f1f2f6;color:#6b625b;border-radius:6px;padding:2px 7px}
+  .c-plan{background:var(--plan)} .c-build{background:var(--build)} .c-guard{background:var(--guard)}
+  .c-ship{background:var(--ship)} .c-data{background:var(--data)} .c-brain{background:var(--brain)} .c-field{background:var(--field)}
+
+  /* pipeline */
+  .pipe{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px}
+  .pipe .stage{flex:1 1 150px;background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:13px 14px;box-shadow:var(--shadow)}
+  .pipe .stage .num{font-size:11px;font-weight:800;color:var(--primary)}
+  .pipe .stage .t{font-size:15px;font-weight:800;margin-top:1px}
+  .pipe .stage .who{font-size:12px;color:var(--muted);margin-top:4px}
+  .pipe .stage .cmd{font-size:11px;font-family:ui-monospace,Menlo,monospace;color:#6b625b;margin-top:5px;word-break:break-all}
+  .pipe .stage.gate{border-color:var(--primary);background:#f0f3ff}
+  .pipe .arrow{align-self:center;color:var(--primary);font-weight:800;font-size:18px}
+  @media(max-width:760px){.pipe .arrow{transform:rotate(90deg)}}
+  .note{font-size:12.5px;color:var(--muted);margin-top:12px}
+  .note b{color:var(--ink)}
+
+  /* brain band */
+  .brain{margin-top:18px;background:#f0f1f5;border:1px dashed var(--line);border-radius:16px;padding:16px 20px;text-align:center}
+  .brain .h{font-weight:800;font-size:13px}
+  .brain .items{font-size:12.5px;color:var(--muted);margin-top:5px}
+  footer{margin-top:48px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>AI Coding Template — your <span class="accent">AI Dev Team</span></h1>
+  <p class="sub">State a goal to <b>TONY</b>; TONY routes it to the right teammate and returns the deliverable. You talk, the team works.</p>
+
+  <!-- FLOW -->
+  <h2>How it works</h2>
+  <div class="flow">
+    <div class="step"><div class="k">1 · State a goal</div><div class="v">Plain language</div><div class="d">No need to remember commands</div></div>
+    <div class="arrow">→</div>
+    <div class="step"><div class="k">2 · TONY routes</div><div class="v">Decompose &amp; dispatch</div><div class="d">Chief of Staff routes to the right agent</div></div>
+    <div class="arrow">→</div>
+    <div class="step"><div class="k">3 · Teammate executes</div><div class="v">Specialist works</div><div class="d">spec / build / test / deploy</div></div>
+    <div class="arrow">→</div>
+    <div class="step"><div class="k">4 · Deliverable</div><div class="v">Returned to you</div><div class="d">PR / report / deploy + health</div></div>
+  </div>
+
+  <!-- ORG -->
+  <h2>Org chart</h2>
+  <div class="tony">
+    <div class="icon">&#x1F451;</div>
+    <div class="name">TONY</div>
+    <div class="role">Chief of Staff (= main thread + chief-of-staff skill)</div>
+    <div class="desc">The single window to the entire team: decomposes tasks, routes to the right agent, tracks progress, reports back.</div>
+    <div class="tag">You only need to talk to TONY</div>
+  </div>
+  <div class="stem"></div>
+
+  <div class="grid">
+    <div class="dept">
+      <div class="hd c-plan">PLAN <span class="cnt">2</span></div>
+      <div class="person"><div class="row1"><span class="pname">ATLAS</span><span class="pid">strategist</span></div>
+        <div class="deliv">Epic proposals · weakness audits · roadmap waves</div><span class="cmd">/athena:plan</span></div>
+      <div class="person"><div class="row1"><span class="pname">SAGE</span><span class="pid">best-practice</span></div>
+        <div class="deliv">Architecture decisions · trade-off memos</div><span class="cmd">architecture Q&amp;A</span></div>
+    </div>
+
+    <div class="dept">
+      <div class="hd c-build">BUILD <span class="cnt">3</span></div>
+      <div class="person"><div class="row1"><span class="pname">PENNY</span><span class="pid">spec-writer</span></div>
+        <div class="deliv">Feature spec + acceptance criteria</div><span class="cmd">/athena:spec</span></div>
+      <div class="person"><div class="row1"><span class="pname">VERA</span><span class="pid">designer</span></div>
+        <div class="deliv">TSX + CSS + smoke test</div><span class="cmd">/athena:design</span></div>
+      <div class="person"><div class="row1"><span class="pname">DOC</span><span class="pid">debugger</span></div>
+        <div class="deliv">Root-cause + patch (often auto-delegated)</div><span class="cmd">auto</span></div>
+    </div>
+
+    <div class="dept">
+      <div class="hd c-guard">GUARD <span class="cnt">3</span></div>
+      <div class="person"><div class="row1"><span class="pname">ARGUS</span><span class="pid">reviewer</span></div>
+        <div class="deliv">Code review + security audit</div><span class="cmd">/athena:qa --review-only</span></div>
+      <div class="person"><div class="row1"><span class="pname">QUINN</span><span class="pid">qa</span></div>
+        <div class="deliv">Test run + 80% coverage gate</div><span class="cmd">/athena:qa --test-only</span></div>
+      <div class="person"><div class="row1"><span class="pname">JUDE</span><span class="pid">evaluator</span></div>
+        <div class="deliv">Independent acceptance verdict</div><span class="cmd">/athena:qa --eval-only</span></div>
+    </div>
+
+    <div class="dept">
+      <div class="hd c-ship">SHIP <span class="cnt">1</span></div>
+      <div class="person"><div class="row1"><span class="pname">PORTER</span><span class="pid">deployer</span></div>
+        <div class="deliv">7-gate Zeabur deploy + CI green / deploy health</div><span class="cmd">/athena:deploy</span></div>
+    </div>
+
+    <div class="dept">
+      <div class="hd c-data">DATA <span class="cnt">1</span></div>
+      <div class="person"><div class="row1"><span class="pname">DELTA</span><span class="pid">dba</span></div>
+        <div class="deliv">Migration review · schema design · DB forensics</div><span class="cmd">/athena:dba</span></div>
+    </div>
+
+    <div class="dept">
+      <div class="hd c-brain">BRAIN <span class="cnt">1</span></div>
+      <div class="person"><div class="row1"><span class="pname">REMI</span><span class="pid">memory-curator</span></div>
+        <div class="deliv">Extract generalizable lessons → Tier 0 shared brain</div><span class="cmd">/athena:promote</span></div>
+    </div>
+
+    <div class="dept">
+      <div class="hd c-field">FIELD CMD <span class="cnt">1</span></div>
+      <div class="person"><div class="row1"><span class="pname">MAX</span><span class="pid">orchestrator</span></div>
+        <div class="deliv">Parallel multi-epic wave dispatch (TONY delegates large batches)</div><span class="cmd">/athena:batch</span></div>
+    </div>
+  </div>
+
+  <div class="brain">
+    <div class="h">Shared Brain Unit 0 — every teammate reads this first</div>
+    <div class="items">CLAUDE.md · Tier-0 / Tier-1 memory · nextjs-saas-patterns skill · project context docs</div>
+  </div>
+
+  <!-- PIPELINE -->
+  <h2>Development Pipeline — spec to ship</h2>
+  <div class="pipe">
+    <div class="stage"><div class="num">STEP 1</div><div class="t">SPEC</div><div class="who">PENNY</div><div class="cmd">/athena:spec</div></div>
+    <div class="arrow">→</div>
+    <div class="stage"><div class="num">STEP 2</div><div class="t">IMPLEMENT</div><div class="who">build · DOC on rescue</div><div class="cmd">/athena:implement</div></div>
+    <div class="arrow">→</div>
+    <div class="stage"><div class="num">STEP 3</div><div class="t">QA</div><div class="who">ARGUS + QUINN + JUDE</div><div class="cmd">/athena:qa</div></div>
+    <div class="arrow">→</div>
+    <div class="stage"><div class="num">STEP 4</div><div class="t">COMMIT</div><div class="who">CI green before commit</div><div class="cmd">Conventional Commits</div></div>
+    <div class="arrow">→</div>
+    <div class="stage gate"><div class="num">STEP 5 · Human gate</div><div class="t">MERGE</div><div class="who">You decide</div><div class="cmd">never auto-merge</div></div>
+  </div>
+  <p class="note">
+    <b>MAX</b> runs multiple epics in parallel on large batches (worktree isolation); <b>DELTA</b> guards migrations;
+    <b>DOC</b> auto-takes over when tests fail; <b>PORTER</b> reports deploy health after shipping.
+    <b>Merge is always a human gate</b> — like deploy, the final call is yours.
+  </p>
+
+  <footer>
+    Definitions: <code>docs/reference/agent-org-chart.md</code> · <code>.claude/agents/</code> · <code>.claude/skills/chief-of-staff/</code>
+  </footer>
+
+</div>
+</body>
+</html>

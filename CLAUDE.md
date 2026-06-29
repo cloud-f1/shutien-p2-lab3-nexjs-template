@@ -135,7 +135,9 @@ Run `/athena:loop` to advance, or `/athena:loop status` to check state.
 Run `/athena:batch auto` for cron-friendly autopilot — **tries parallel by default (`--max-concurrent 4`); auto-falls-back to sequential if your machine's worktree isolation is broken**. Step 3.5 (pre-flight smoke test) gates parallel dispatch; Step 4a-detect catches any post-hoc cross-contamination — see `.claude/commands/athena/batch.md`. `/loop 5m /athena:batch auto` is the intended cron-driven pattern.
 Per-epic model is **tiered by complexity** (sonnet baseline, opus for complex/ultra) — not blanket Opus; see `scripts/effort/resolve.sh` + `athena-loop-speedups`.
 
-## Agent Team (12 agents)
+## Agent Team — TONY + 12 specialists
+
+**TONY** (chief-of-staff skill) is the single window — state a goal in plain language and TONY routes it to the right teammate.
 
 ```
 @spec-writer      — /athena:spec: new feature or endpoint design
