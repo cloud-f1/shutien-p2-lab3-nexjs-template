@@ -14,7 +14,8 @@ NEXT := next-app
         test test-coverage test-e2e lint typecheck ci-all smoke guard-selftest \
         docker-up docker-down docker-logs docker-ps docker-clean \
         doctor-deploy deploy install-tools install-deploy-tools \
-        new-project init reset drift-check new-domain
+        new-project init reset drift-check new-domain \
+        staleness-check screenshot-refresh
 
 .DEFAULT_GOAL := help
 
@@ -200,6 +201,13 @@ reset: ## Reset template to clean state (run once after cloning)
 new-domain: ## Scaffold a new CRUD domain by copying the items domain (usage: make new-domain NAME=note [PLURAL=notes])
 	@test -n "$(NAME)" || { echo "Usage: make new-domain NAME=<singular> [PLURAL=<plural>]"; exit 1; }
 	@bash scripts/new-domain.sh $(NAME) $(PLURAL)
+
+# ─── Docs tooling ─────────────────────────────────────────────────────────
+staleness-check: ## Check docs for stale stat claims
+	bash scripts/staleness-check.sh
+
+screenshot-refresh: ## Refresh doc screenshots from live app
+	bash scripts/screenshot-refresh.sh
 
 # ─── Plugin sync ───────────────────────────────────────────────────────────
 drift-check: ## Check athena-core drift (dry-run sync; exits non-zero if diff detected)
