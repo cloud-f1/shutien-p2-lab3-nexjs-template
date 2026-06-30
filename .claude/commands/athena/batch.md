@@ -1,6 +1,6 @@
 ---
 description: "(epic) Parallel epic execution → wave dispatch → auto-fallback to sequential if worktree isolation breaks."
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, CronList, CronDelete
 ---
 
 # Batch Epic Executor — Parallel Wave Engine
@@ -201,7 +201,7 @@ This prevents the bug where the orchestrator dispatches implement agents, commit
 When `auto` is specified:
 
 1. **Find pending phase**: Scan Phase Status table for first phase with status ⬜ Pending (not ✅ Complete)
-2. **If no pending phase found**: report "No pending phases. Run `/athena:plan` to propose new epics." and EXIT
+2. **If no pending phase found**: Cancel all active cron jobs (call `CronList` to get job IDs, then `CronDelete` for each one), report "No pending phases — cron loop stopped. Run `/athena:plan` to propose new epics." and EXIT
 3. **Set `--phase` to the detected phase number** — auto fills the `--phase` argument
 4. **Read Phase Parallelism** to determine wave structure
 5. **Determine current wave**: Check which epics in the phase are already complete (all 5 steps ✅). The next wave = first group of epics whose dependencies are all satisfied

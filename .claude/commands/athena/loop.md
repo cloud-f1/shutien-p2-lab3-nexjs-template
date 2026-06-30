@@ -1,6 +1,6 @@
 ---
 description: "(epic) Orchestrator → read state → execute one step → update progress → exit. Use `auto` to suppress phase pauses."
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, CronList, CronDelete
 ---
 
 # Epic Loop Orchestrator
@@ -12,6 +12,7 @@ You are the Epic Loop controller. Your job is to advance the project **one step 
 1. **READ STATE**: Read `docs/context/epic-progress.md` to determine the current step
 2. **DETERMINE NEXT**: Find the first epic with an incomplete step (in phase order, respecting dependencies).
    **Reconcile from the actual state matrix, not a presumed linear history.** For the chosen epic, the next step is the **first `⬜` cell** scanning `spec → implement → qa → commit → merge` left-to-right. Steps already at ✅ are *done* — never re-run them, even if an earlier step is ⬜ (out-of-order / retro-spec case; see "Out-of-Order Work" below).
+   **If no incomplete step exists across ANY epic in ANY phase** (all work is done): call `CronList` to find active cron jobs, call `CronDelete` on each, then report "All phases complete — cron loop stopped. Run `/athena:plan` to propose new epics." and EXIT.
 3. **LOOKUP DETAILS**: Only if needed for subagent prompt — read `docs/epics/EPIC_INDEX.md` to get epic description
 4. **EXECUTE STEP**: Run exactly **ONE step of ONE epic** via subagent delegation:
    - **spec**: Spawn subagent → `/athena:spec "E{n}"`
@@ -148,6 +149,7 @@ After completing a step, update **both** files:
    "Phase {N} complete. Review before continuing. Run `/athena:loop` for next phase."
    Also include: "Consider running `/athena:learn --batch` to capture lessons from this phase."
    Do NOT auto-advance to the next phase.
+   **Exception — `auto` flag**: Phase boundary pause is suppressed; advance to the next pending phase automatically. However, if ALL phases are complete (no pending phase exists), still self-cancel cron jobs (via Step 2 idle check above) and EXIT.
 
 3. **QA failure pause**: If QA subagent reports coverage < 80% or critical issues, STOP and report.
    Do NOT auto-advance past a failed QA.
