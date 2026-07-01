@@ -298,32 +298,32 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E214 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 51 — DONE PR#196 — fork secrets-setup + OWASP Top 10 guide (bilingual EN+繁中, citations copy-verified); QA PASS |
 | E215 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 51 — DONE PR#197 — WCAG AA extension guide for custom domains (bilingual EN+繁中, real matrix-edit recipe); QA PASS |
 | E216 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 52 — DONE PR#205 (squash auto-merge) — `/athena:flow` interactive native-Workflow dispatcher (spec→implement→qa→commit, no `claude -p`); 20/20 fixture test, e201 regression 14/14; **adversarially validated — 3 bugs fixed** (wave truncation, cross-agent worktree stranding, blocked mis-mark); spec+plan in docs/superpowers/; athena-core sync (sync-to-plugin.sh --apply) pending |
-| E247 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — Registry infrastructure (registry.json + registry:build + @saas namespace + hello-module + validate-manifest). Committed on phase-58-modular-graft; merge = PR pending |
-| E248 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — module.manifest spec + JSON Schema + module:validate + module-author/install-* skills |
-| E249 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — PaymentProvider abstraction + resolver (default=stripe) + Drizzle plans/subscriptions/payment_events (migration 0004, idempotency) |
-| E250 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — Landing module → @saas/landing + install-landing skill |
-| E251 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — Stripe billing (DEFAULT): Checkout + webhook (constructEvent sig-verify, idempotent) → @saas/billing-stripe |
-| E252 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — ECPay billing (定期定額 CheckMacValue + dual notify route handlers) → @saas/billing-ecpay |
-| E253 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 58 — MCP AI-assembly (.mcp.json @saas namespace — AI installs a module by NL) |
-| E254 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — Deploy config artifacts (zbpack.json + .env.example matrix; Dockerfile Cloud-Run readiness) |
-| E255 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — Zeabur deploy path + guide (Road 1) + supersede stale deploy/README |
-| E256 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — GCP Cloud Run + Cloud SQL path + guide (Road 2, gcloud, placeholders) |
-| E257 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — deploy-config skill (both roads) + retire stale deploy-gcr-zeabur |
-| E258 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 59 — Tool-install quick-start script (scripts/install-deploy-tools.sh) + make target |
-| E259 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 60 — Cobalt foundation tokens (success/warning/info + shadow/motion/spacing scales + font-mono; @theme inline wiring) |
-| E260 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 60 — Premium FX utilities (cobalt-fx.css + use-reveal hook; reduced-motion-safe) |
-| E261 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 60 — Landing redesign (components/marketing/* → Cobalt aesthetic, brand-neutral, i18n-ready) |
-| E262 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 60 — Dashboard polish (KPI brand-wash + semantic badges/dots + premium inputs + optional ⌘K) |
-| E263 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 61 — App shell: ⌘K palette + notifications dropdown + breadcrumb |
-| E264 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 61 — Settings expansion (tabbed: profile/account/2FA-stub/notifications/appearance/connected) |
-| E265 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 61 — Auth split-screen + /components reference page (auth logic unchanged) |
-| E266 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 61 — Marketing gaps (use-cases/testimonials/pricing toggle+comparison/video modal) |
-| E267 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 62 — API keys (table + create/revoke + bearer-auth + System UI) |
-| E268 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 62 — Webhooks (+ deliveries, retry/backoff, System UI) |
-| E269 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 62 — Audit log (table + write helper + viewer) |
-| E270 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 62 — Team invites + member status + permission matrix |
-| E271 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 62 — Billing UI over plans/subscriptions/payment_events |
-| E272 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 62 — Notifications (table + mark-read; wires E263 dropdown) |
+| E247 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 58 — Registry infrastructure (registry.json + registry:build + @saas namespace + hello-module + validate-manifest). Merge reconciled 2026-07-02: merged via PR #11 (2026-06-14) |
+| E248 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 58 — module.manifest spec + JSON Schema + module:validate + module-author/install-* skills. Merge reconciled 2026-07-02: merged via PR #11 |
+| E249 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 58 — PaymentProvider abstraction + resolver (default=stripe) + Drizzle plans/subscriptions/payment_events (migration 0004, idempotency). Merge reconciled 2026-07-02: merged via PR #11 |
+| E250 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 58 — Landing module → @saas/landing + install-landing skill. Merge reconciled 2026-07-02: merged via PR #11 |
+| E251 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 58 — Stripe billing (DEFAULT): Checkout + webhook (constructEvent sig-verify, idempotent) → @saas/billing-stripe. Merge reconciled 2026-07-02: merged via PR #11 |
+| E252 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 58 — ECPay billing (定期定額 CheckMacValue + dual notify route handlers) → @saas/billing-ecpay. Merge reconciled 2026-07-02: merged via PR #11 |
+| E253 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 58 — MCP AI-assembly (.mcp.json @saas namespace — AI installs a module by NL). Merge reconciled 2026-07-02: merged via PR #11 |
+| E254 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 59 — Deploy config artifacts (zbpack.json + .env.example matrix; Dockerfile Cloud-Run readiness). Merge reconciled 2026-07-02: merged via PR #12 (2026-06-14) |
+| E255 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 59 — Zeabur deploy path + guide (Road 1) + supersede stale deploy/README. Merge reconciled 2026-07-02: merged via PR #12 |
+| E256 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 59 — GCP Cloud Run + Cloud SQL path + guide (Road 2, gcloud, placeholders). Merge reconciled 2026-07-02: merged via PR #12 |
+| E257 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 59 — deploy-config skill (both roads) + retire stale deploy-gcr-zeabur. Merge reconciled 2026-07-02: merged via PR #12 |
+| E258 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 59 — Tool-install quick-start script (scripts/install-deploy-tools.sh) + make target. Merge reconciled 2026-07-02: merged via PR #12 |
+| E259 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 60 — Cobalt foundation tokens (success/warning/info + shadow/motion/spacing scales + font-mono; @theme inline wiring). Merge reconciled 2026-07-02: merged via PR #14 (2026-06-15) |
+| E260 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 60 — Premium FX utilities (cobalt-fx.css + use-reveal hook; reduced-motion-safe). Merge reconciled 2026-07-02: merged via PR #14 |
+| E261 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 60 — Landing redesign (components/marketing/* → Cobalt aesthetic, brand-neutral, i18n-ready). Merge reconciled 2026-07-02: merged via PR #14 |
+| E262 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 60 — Dashboard polish (KPI brand-wash + semantic badges/dots + premium inputs + optional ⌘K). Merge reconciled 2026-07-02: merged via PR #14 |
+| E263 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 61 — App shell: ⌘K palette + notifications dropdown + breadcrumb. Merge reconciled 2026-07-02: merged via PR #14 |
+| E264 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 61 — Settings expansion (tabbed: profile/account/2FA-stub/notifications/appearance/connected). Merge reconciled 2026-07-02: merged via PR #14 |
+| E265 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 61 — Auth split-screen + /components reference page (auth logic unchanged). Merge reconciled 2026-07-02: merged via PR #14 |
+| E266 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 61 — Marketing gaps (use-cases/testimonials/pricing toggle+comparison/video modal). Merge reconciled 2026-07-02: merged via PR #14 |
+| E267 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 62 — API keys (table + create/revoke + bearer-auth + System UI). Merge reconciled 2026-07-02: merged via PR #15 (2026-06-15) |
+| E268 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 62 — Webhooks (+ deliveries, retry/backoff, System UI). Merge reconciled 2026-07-02: merged via PR #15 |
+| E269 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 62 — Audit log (table + write helper + viewer). Merge reconciled 2026-07-02: merged via PR #15 |
+| E270 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 62 — Team invites + member status + permission matrix. Merge reconciled 2026-07-02: merged via PR #15 |
+| E271 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 62 — Billing UI over plans/subscriptions/payment_events. Merge reconciled 2026-07-02: merged via PR #15 |
+| E272 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 62 — Notifications (table + mark-read; wires E263 dropdown). Merge reconciled 2026-07-02: merged via PR #15 |
 | E273 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 63 — CRUD modals + reusable DataTable (filter/pagination/page-size); actions return success (no redirect); ?new/?edit deep-links; CLAUDE.md + nextjs-saas-patterns convention |
 | E274 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 64 — DONE PR#27 — billing money-path: plan-id→UUID FK fix, currentPeriodEnd, cancel-subscription UI, real reconcile(), ECPay renewal cron, 23505 idempotent upsert (E274a JSON pricing+checkout PR#19) |
 | E275 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 64 — DONE PR#22 — schema split lib/schema/{auth,items,billing,system} + barrel; migration 0006 composite PKs/UNIQUEs/indexes |

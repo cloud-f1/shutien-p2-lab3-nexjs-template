@@ -70,3 +70,15 @@
 **Files:** next-app/app/(auth)/layout.tsx,next-app/app/(dashboard)/dashboard/page.tsx,next-app/app/(dashboard)/layout.tsx,next-app/app/cobalt-fx.css,next-app/components/app-sidebar.tsx,next-app/components/marketing/marketing-footer.tsx,next-app/components/marketing/marketing-nav.tsx,next-app/e2e/cobalt-ui.spec.ts
 **Root Cause:** _(pending — enrich during /athena:save)_
 **Test Added:** _(pending)_
+
+## 2026-06-30T09:03:58+08:00 — 063c86f
+**Message:** fix(batch): auto-stop cron loop when no pending phases remain
+**Files:** .claude/commands/athena/batch.md
+**Root Cause:** _(pending — enrich during /athena:save)_
+**Test Added:** _(pending)_
+
+## 2026-06-30T19:57:22+08:00 — ecc3bbc
+**Message:** fix(loop): auto-stop cron loop when all phases are complete
+**Files:** .claude/commands/athena/loop.md
+**Root Cause:** _(pending — enrich during /athena:save)_
+**Test Added:** _(pending)_
