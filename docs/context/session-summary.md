@@ -65,3 +65,22 @@ Skills: nextjs-saas-patterns (stack gotchas) · athena-loop-speedups (orchestrat
 Constraints: agent can't push to main / merge PRs / push tags — user does those; user-facing copy in 繁體中文
 ```
 <!-- last activity:  at 2026-06-16T13:04:17Z -->
+<!-- last activity:  at 2026-06-29T18:28:53Z -->
+<!-- last activity:  at 2026-06-29T18:53:58Z -->
+<!-- last activity:  at 2026-06-29T19:15:56Z -->
+<!-- last activity:  at 2026-06-29T19:36:49Z -->
+<!-- last activity:  at 2026-06-29T19:58:45Z -->
+<!-- last activity:  at 2026-06-29T20:19:41Z -->
+<!-- last activity:  at 2026-06-29T20:41:44Z -->
+<!-- last activity:  at 2026-06-29T21:02:33Z -->
+<!-- last activity:  at 2026-06-29T21:24:38Z -->
+<!-- last activity:  at 2026-06-29T21:45:36Z -->
+<!-- last activity:  at 2026-06-29T22:07:25Z -->
+<!-- last activity:  at 2026-06-29T22:28:20Z -->
+<!-- last activity:  at 2026-06-29T22:50:19Z -->
+<!-- last activity:  at 2026-06-29T23:11:14Z -->
+<!-- last activity:  at 2026-06-29T23:33:13Z -->
+<!-- last activity:  at 2026-06-29T23:54:04Z -->
+<!-- last activity:  at 2026-06-30T00:16:03Z -->
+<!-- last activity:  at 2026-06-30T00:34:48Z -->
+<!-- last activity:  at 2026-06-30T00:50:02Z -->
