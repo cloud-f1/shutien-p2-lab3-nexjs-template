@@ -1,0 +1,61 @@
+{
+  "$schema": "../schema/module.manifest.schema.json",
+  "id": "csv-io",
+  "version": "1.0.0",
+  "title": "CSV Import/Export",
+  "summary": "toCsv/escapeCsvCell export helpers plus a generic CSV import parser (upsert-by-key friendly, per-row errors, row cap) and a reference bulk-import dialog. Generalized to any keyed record shape — not tied to a specific table.",
+  "registryDependencies": ["dialog", "button", "input"],
+  "npmDependencies": {},
+  "npmDevDependencies": {},
+  "envVars": [],
+  "dbTables": [],
+  "db": {},
+  "routes": [],
+  "serverActions": [],
+  "postInstall": [
+    {
+      "step": 1,
+      "action": "manual",
+      "description": "For export: call toCsv(header, rows) from lib/csv-io/csv.ts wherever you build a CSV download response (e.g. a route handler returning Content-Type: text/csv)."
+    },
+    {
+      "step": 2,
+      "action": "manual",
+      "description": "For import: call parseCsv(text, { headerKey, requiredKeys, parseRow }) from lib/csv-io/import.ts inside a Server Action. Supply headerKey to map your CSV's column names to field keys, and parseRow to validate/coerce each row (e.g. wrap a Zod schema's safeParse). The action then does the upsert-by-key against your table — this module does not touch the database."
+    },
+    {
+      "step": 3,
+      "action": "manual",
+      "description": "Wire components/csv-import-dialog.tsx's onImport prop to your Server Action; it returns { imported, errors } which the dialog renders as a per-row error list. Adapt or replace the component per your domain — it is a reference starting point, not a drop-in for every table."
+    },
+    {
+      "step": 4,
+      "action": "command",
+      "description": "Run the module's unit tests plus a full verify.",
+      "command": "pnpm test && pnpm typecheck && pnpm lint"
+    }
+  ],
+  "docs": "/docs/modules/csv-io",
+  "files": [
+    {
+      "path": "registry/csv-io/lib/csv-io/csv.ts",
+      "type": "registry:lib",
+      "target": "lib/csv-io/csv.ts"
+    },
+    {
+      "path": "registry/csv-io/lib/csv-io/import.ts",
+      "type": "registry:lib",
+      "target": "lib/csv-io/import.ts"
+    },
+    {
+      "path": "registry/csv-io/components/csv-import-dialog.tsx",
+      "type": "registry:component",
+      "target": "components/csv-import-dialog.tsx"
+    },
+    {
+      "path": "registry/csv-io/module.manifest.json",
+      "type": "registry:file",
+      "target": "registry/csv-io/module.manifest.json"
+    }
+  ]
+}

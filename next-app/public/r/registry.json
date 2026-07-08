@@ -142,6 +142,88 @@
       ]
     },
     {
+      "name": "rbac-scoped-visibility",
+      "type": "registry:block",
+      "title": "RBAC Scoped Visibility (assignment-scoped rows)",
+      "description": "Assignment-scoped row-level visibility — a role sees only rows assigned to it, live role re-read server-side. Ships a pure filter/predicate helper plus an M:N assignment table pattern; composes with the defineAction() authorize hook (E323).",
+      "registryDependencies": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "files": [
+        {
+          "path": "registry/rbac-scoped-visibility/lib/rbac-scoped-visibility/visibility.ts",
+          "type": "registry:lib",
+          "target": "lib/rbac-scoped-visibility/visibility.ts"
+        },
+        {
+          "path": "registry/rbac-scoped-visibility/lib/rbac-scoped-visibility/schema.ts",
+          "type": "registry:lib",
+          "target": "lib/rbac-scoped-visibility/schema.ts"
+        },
+        {
+          "path": "registry/rbac-scoped-visibility/module.manifest.json",
+          "type": "registry:file",
+          "target": "registry/rbac-scoped-visibility/module.manifest.json"
+        }
+      ]
+    },
+    {
+      "name": "sentry-pii",
+      "type": "registry:block",
+      "title": "Sentry PII Scrubber",
+      "description": "A pure beforeSend/beforeSendTransaction scrubber that masks emails, tokens/secrets, and (opt-in) domain-specific ID-like strings before an event leaves the process. Layers onto the template's existing env-gated Sentry init (E293) — does not create a second Sentry.init().",
+      "registryDependencies": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "files": [
+        {
+          "path": "registry/sentry-pii/lib/sentry-pii/scrub.ts",
+          "type": "registry:lib",
+          "target": "lib/sentry-pii/scrub.ts"
+        },
+        {
+          "path": "registry/sentry-pii/module.manifest.json",
+          "type": "registry:file",
+          "target": "registry/sentry-pii/module.manifest.json"
+        }
+      ]
+    },
+    {
+      "name": "csv-io",
+      "type": "registry:block",
+      "title": "CSV Import/Export",
+      "description": "toCsv/escapeCsvCell export helpers plus a generic CSV import parser (upsert-by-key friendly, per-row errors, row cap) and a reference bulk-import dialog. Generalized to any keyed record shape — not tied to a specific table.",
+      "registryDependencies": [
+        "dialog",
+        "button",
+        "input"
+      ],
+      "dependencies": [],
+      "devDependencies": [],
+      "files": [
+        {
+          "path": "registry/csv-io/lib/csv-io/csv.ts",
+          "type": "registry:lib",
+          "target": "lib/csv-io/csv.ts"
+        },
+        {
+          "path": "registry/csv-io/lib/csv-io/import.ts",
+          "type": "registry:lib",
+          "target": "lib/csv-io/import.ts"
+        },
+        {
+          "path": "registry/csv-io/components/csv-import-dialog.tsx",
+          "type": "registry:component",
+          "target": "components/csv-import-dialog.tsx"
+        },
+        {
+          "path": "registry/csv-io/module.manifest.json",
+          "type": "registry:file",
+          "target": "registry/csv-io/module.manifest.json"
+        }
+      ]
+    },
+    {
       "name": "landing",
       "type": "registry:block",
       "title": "Landing Page",

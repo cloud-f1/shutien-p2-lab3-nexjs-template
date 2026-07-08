@@ -1,0 +1,67 @@
+{
+  "$schema": "../schema/module.manifest.schema.json",
+  "id": "rbac-scoped-visibility",
+  "version": "1.0.0",
+  "title": "RBAC Scoped Visibility (assignment-scoped rows)",
+  "summary": "Assignment-scoped row-level visibility — a role sees only rows assigned to it, live role re-read server-side. Ships a pure filter/predicate helper plus an M:N assignment table pattern; composes with the defineAction() authorize hook (E323).",
+  "registryDependencies": [],
+  "npmDependencies": {},
+  "npmDevDependencies": {},
+  "envVars": [],
+  "dbTables": ["resource_assignees"],
+  "db": {
+    "schemaFragmentPath": "lib/rbac-scoped-visibility/schema.ts",
+    "generateCommand": "pnpm db:generate",
+    "migrateCommand": "pnpm db:migrate"
+  },
+  "routes": [],
+  "serverActions": [],
+  "postInstall": [
+    {
+      "step": 1,
+      "action": "manual",
+      "description": "Re-export the assignment schema from the Drizzle barrel so drizzle-kit picks up the table: add `export * from \"./rbac-scoped-visibility/schema\"` to lib/schema/index.ts. Without this, db:generate will not emit a migration for resource_assignees."
+    },
+    {
+      "step": 2,
+      "action": "db-generate",
+      "description": "Generate the Drizzle migration for the resource_assignees table.",
+      "command": "pnpm db:generate"
+    },
+    {
+      "step": 3,
+      "action": "db-migrate",
+      "description": "Apply the migration to your database.",
+      "command": "pnpm db:migrate"
+    },
+    {
+      "step": 4,
+      "action": "manual",
+      "description": "Wire `hasFullVisibility` to your own permission matrix (e.g. `(role) => role === \"admin\"` or a call into `@/lib/permissions`), then call canSeeAssignedRow()/filterAssignedRows() from the query layer or a defineAction() `authorize` hook. See the install-rbac-scoped-visibility skill for the exact wiring against `getLiveRole()` (E323)."
+    },
+    {
+      "step": 5,
+      "action": "command",
+      "description": "Verify no import/type errors.",
+      "command": "pnpm typecheck && pnpm lint"
+    }
+  ],
+  "docs": "/docs/modules/rbac-scoped-visibility",
+  "files": [
+    {
+      "path": "registry/rbac-scoped-visibility/lib/rbac-scoped-visibility/visibility.ts",
+      "type": "registry:lib",
+      "target": "lib/rbac-scoped-visibility/visibility.ts"
+    },
+    {
+      "path": "registry/rbac-scoped-visibility/lib/rbac-scoped-visibility/schema.ts",
+      "type": "registry:lib",
+      "target": "lib/rbac-scoped-visibility/schema.ts"
+    },
+    {
+      "path": "registry/rbac-scoped-visibility/module.manifest.json",
+      "type": "registry:file",
+      "target": "registry/rbac-scoped-visibility/module.manifest.json"
+    }
+  ]
+}

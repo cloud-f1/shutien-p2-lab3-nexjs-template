@@ -1,0 +1,46 @@
+{
+  "$schema": "../schema/module.manifest.schema.json",
+  "id": "sentry-pii",
+  "version": "1.0.0",
+  "title": "Sentry PII Scrubber",
+  "summary": "A pure beforeSend/beforeSendTransaction scrubber that masks emails, tokens/secrets, and (opt-in) domain-specific ID-like strings before an event leaves the process. Layers onto the template's existing env-gated Sentry init (E293) — does not create a second Sentry.init().",
+  "registryDependencies": [],
+  "npmDependencies": {},
+  "npmDevDependencies": {},
+  "envVars": [],
+  "dbTables": [],
+  "db": {},
+  "routes": [],
+  "serverActions": [],
+  "postInstall": [
+    {
+      "step": 1,
+      "action": "manual",
+      "description": "Do NOT create a second Sentry.init(). Open next-app/instrumentation.ts (E293) and pass `beforeSend`/`beforeSendTransaction` from lib/sentry-pii/scrub.ts into the EXISTING Sentry.init({ ... }) call, for both the nodejs and edge runtime branches. See the install-sentry-pii skill for the exact diff."
+    },
+    {
+      "step": 2,
+      "action": "manual",
+      "description": "Optional: if your product has ID-like strings worth masking (badge numbers, ticket ids, order numbers, ...), pass them as `idPatterns` via createBeforeSend({ idPatterns: [...] }) instead of the bare `beforeSend` export. Leave unset to scrub only emails/tokens/secrets."
+    },
+    {
+      "step": 3,
+      "action": "command",
+      "description": "Run the module's unit tests (scrub.test.ts) plus a full verify.",
+      "command": "pnpm test && pnpm typecheck && pnpm lint"
+    }
+  ],
+  "docs": "/docs/modules/sentry-pii",
+  "files": [
+    {
+      "path": "registry/sentry-pii/lib/sentry-pii/scrub.ts",
+      "type": "registry:lib",
+      "target": "lib/sentry-pii/scrub.ts"
+    },
+    {
+      "path": "registry/sentry-pii/module.manifest.json",
+      "type": "registry:file",
+      "target": "registry/sentry-pii/module.manifest.json"
+    }
+  ]
+}
