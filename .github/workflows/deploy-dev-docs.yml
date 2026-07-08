@@ -1,0 +1,68 @@
+name: Deploy dev-docs
+
+# Auto-publish the developer docs (dev-docs/ — guides + API reference + whitepaper)
+# to Cloudflare Pages whenever it changes on main. Manual run via workflow_dispatch.
+# Requires repo secrets: CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID.
+#
+# Target Cloudflare Pages project: ai-coding-nexjs-template-docs (see E318 /
+# docs/guides/cloudflare-pages-deploy.md). Forks: rename the --project-name below
+# to your own Cloudflare Pages project once created.
+#
+# The sibling user-docs/ site (end-user manual) has its own workflow:
+# deploy-docs.yml — kept path-scoped and separate so each site only rebuilds/
+# redeploys when its own content changes.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'dev-docs/**'
+      - '.github/workflows/deploy-dev-docs.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-dev-docs
+  cancel-in-progress: true
+
+# Least-privilege: the build only reads the repo; the Cloudflare deploy authenticates
+# with its own API token secret, not GITHUB_TOKEN — so no write scopes are needed.
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build + deploy → Cloudflare Pages
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dev-docs
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          run_install: false
+          package_json_file: dev-docs/package.json
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: dev-docs/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: dev-docs
+          command: pages deploy .vitepress/dist --project-name=ai-coding-nexjs-template-docs --branch=main

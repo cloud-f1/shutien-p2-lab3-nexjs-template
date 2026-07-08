@@ -61,6 +61,21 @@ Demo logins (after `pnpm db:seed`): `admin@example.com / Admin123!` ·
 
 > Direct pushes to `main` are blocked by `scripts/hooks/pre-bash-guard.sh` — always go through a PR.
 
+### Ship discipline — one concern per branch
+
+When several fixes are in flight at once, keep them on **disjoint files** so PRs merge in any order:
+
+- **One concern = one branch/PR.** Don't stack unrelated fixes; a fix that belongs to file X
+  should land on the branch that already owns X. (A guard-vocab correction once had to land in a
+  *different* PR than the audit that found it — because the two PRs touched the same file from
+  different branches. Avoid that: edit the file on its in-flight branch.)
+- **Rebase, don't stack.** If `main` moved, `git pull --rebase origin main` rather than branching
+  off a branch — keeps PRs independent and mergeable in any order.
+- **Verify disjointness** before opening a second PR: `git diff --name-only main...HEAD` on each
+  branch should not overlap. `git merge-tree $(git merge-base A B) A B` shows 0 conflict markers.
+- **Run `make verify`** before pushing — one umbrella gate (staleness + typecheck·lint·unit +
+  `check:orphans` + `test:int` + dev-docs build). CI runs the equivalent jobs (quality · db · docs).
+
 ---
 
 ## Commit Conventions & Versioning
