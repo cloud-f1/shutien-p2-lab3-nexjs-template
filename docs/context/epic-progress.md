@@ -71,6 +71,7 @@
 | Phase 72 | E307, E308, E309, E310 | ✅ Complete (Follow-ups from /athena:align) — all merged to main (#57); migration 0010; 518 tests. E307 e2e runs in CI. |
 | Phase 73 | E311, E312, E313, E314, E315, E316, E317 | ✅ Complete (Template Enhancement Backport) — E311 dev-docs integrity (#59) · E312 TONY chief-of-staff (#66) · E313 new-project wizard (#65) · E314 docs-reorg/README index (#64) · E315 service-map dead-code (#62) · E316 testing-strategy skill (#61) · E317 scripts-tooling (#63) + zeabur-deploy skill enhancement (#60); all merged to main |
 | Phase 74 | E318 | ✅ Complete (Dev-Docs Cloudflare Pages Deploy Enhancement) — Cloudflare Pages SOP + user-guide-mode flip guide + Makefile targets + GitHub Actions CI; merged PR #68 |
+| Phase 75 | E319, E320, E321, E322, E323 | ⬜ Pending (Backport Wave 2 — executable tooling + patterns from ai-rc-engineer-pm) — all parallel, no cross-deps; E321 + E323 run in-repo (devDeps + shadcn). Approved 2026-07-08 via /athena:plan Cycle 34. |
 
 ## Epic Step Matrix
 
@@ -370,6 +371,11 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E316 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 73 — testing-strategy skill + Known Traps in testing.md. MERGED (PR #61). |
 | E317 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 73 — scripts README + staleness-check + zeabur-deploy skill enhancement. MERGED (PR #60/63). |
 | E318 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 74 — dev-docs Cloudflare Pages deploy enhancement. MERGED (PR #68 → 69fcae4). |
+| E319 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 75 — orchestration & guardrail hardening (flow Step 6 · audit Step 6 · stop-verifier public-action marker + 2 Tier-0 notes). |
+| E320 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 75 — executable dead-code & arch guards. Ported service-map.cjs + check-orphan-exports.mjs (check:orphans, non-strict default), generated docs/architecture/service-map.md, service-map skill. QA: typecheck/lint clean, 518/518 tests. **check:orphans found 8 true orphans in the template** (flagged, not fixed — follow-up). branch feat/E320; PR open → awaiting user merge. |
+| E321 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 75 — test pyramid middle layer (test:int throwaway-DB harness + jsdom/RTL component tests + docs/qa/). Run IN-REPO. |
+| E322 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 75 — CI/deploy/release hardening + doctrine (CI SHA-pin+docs-job · docs-deploy split + user-docs/ · make verify + deploy-gcp · env/seeding/version doctrine). |
+| E323 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 75 — reusable patterns HYBRID (bake-in: defineAction · responsive-modal · calendar/date-picker · mobile-tab-bar · ui-spec-epic; @saas modules: scheduler · audit-log · rbac-scoped-visibility · sentry · csv-io). Run IN-REPO. |
 
 
 ## Dependency Rules
@@ -674,6 +680,11 @@ E317: no deps
 
 # Phase 74 — Dev-Docs Cloudflare Pages (2026-06-30)
 E318: no deps (soft: E311 anchor-check, E305 user-guide-builder)
+E319: no deps
+E320: no deps (upgrades E314 docs→runnable — soft)
+E321: no deps (run in-repo)
+E322: no deps (soft: E320 check:orphans + E321 test:int feed `make verify`; E318 Cloudflare SOP)
+E323: no deps (run in-repo; soft: E319 stop-verifier guard-family widening)
 ```
 
 ## Phase Parallelism
@@ -734,6 +745,7 @@ Phase 61: E263 + E264 + E265 (parallel) → E266 (after E261)
 Phase 62: E267 + E268 + E269 + E271 + E272 (parallel, independent tables) → E270 (after E269)
 Phase 73: E311 + E312 + E313 + E314 + E315 + E316 + E317 (ALL PARALLEL — template backport + tooling, no deps)
 Phase 74: E318 (single epic — dev-docs Cloudflare Pages)
+Phase 75: E319 + E320 + E321 + E322 + E323 (ALL PARALLEL — backport wave 2, no cross-deps; run E321 + E323 IN-REPO, not worktree)
 ```
 
 ## Next Action

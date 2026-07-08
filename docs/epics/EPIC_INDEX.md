@@ -87,6 +87,7 @@
 | Phase 72 | E307, E308, E309, E310 | ✅ Complete (Follow-ups surfaced by /athena:align, #57) — E307 TOTP login e2e · E308 wire real usage limits (E301 follow-up) · E309 export expansion to webhooks/api-keys/team (E299 follow-up) · E310 2FA recovery + onboarding persistence (E297/E300 follow-up, migration 0010). One-branch sequential on `feat/phase72-followups`. |
 | Phase 73 | E311, E312, E313, E314, E315, E316, E317 | ✅ Complete (Template Enhancement Backport) — E311 dev-docs integrity (#59) · E312 TONY chief-of-staff (#66) · E313 new-project wizard (#65) · E314 docs-reorg (#64) · E315 service-map (#62) · E316 testing-strategy skill (#61) · E317 scripts-tooling (#63) + zeabur-deploy skill enhancement (#60) |
 | Phase 74 | E318 | ✅ Complete (Dev-Docs Cloudflare Pages Deploy Enhancement) — Cloudflare Pages SOP guide + user-guide-mode flip guide + Makefile targets (dev-docs-preview/build/deploy) + GitHub Actions CI (path: dev-docs/**) + fixed dead gh-cf-deploy ref; merged PR #68 |
+| Phase 75 | E319, E320, E321, E322, E323 | ⬜ Pending (Backport Wave 2 — executable tooling + patterns from ai-rc-engineer-pm) — E319 orchestration & guardrail hardening (flow Step 6 · audit Step 6 · stop-verifier public-action marker) · E320 executable dead-code & arch guards (real service-map.cjs + check:orphans) · E321 test pyramid middle layer (test:int + component tests + docs/qa) · E322 CI/deploy/release hardening + doctrine · E323 reusable patterns (Hybrid: bake-in primitives + @saas modules) |
 <!-- PHASE_STATUS_END -->
 
 <!-- EPIC_MATRIX_START -->
@@ -643,6 +644,7 @@ Phase 71: E302 + E303 + E304 + E305 + E306 (all parallel, no deps) — each skil
 Phase 72: E309 → E307 → E308 → E310 (SEQUENTIAL on one branch — E308+E310 both migrate; agent can't merge between → one PR). No-migration first (E309, E307), then 0010 (E308) → 0011 (E310)
 Phase 73: E311 + E312 + E313 + E314 + E315 + E316 + E317 (ALL PARALLEL — template backport, no deps)
 Phase 74: E318 (single epic — dev-docs Cloudflare Pages deploy)
+Phase 75: E319 + E320 + E321 + E322 + E323 (ALL PARALLEL — backport wave 2, no cross-deps; run E321 + E323 IN-REPO, not worktree — they add devDeps + shadcn components)
 ```
 
 ---

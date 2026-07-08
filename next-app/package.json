@@ -27,7 +27,8 @@
     "db:seed": "tsx drizzle/seed.ts",
     "registry:build": "shadcn build registry.json --output public/r",
     "module:validate": "tsx scripts/module-validate.ts",
-    "openapi:generate": "tsx lib/openapi/generate.ts"
+    "openapi:generate": "tsx lib/openapi/generate.ts",
+    "check:orphans": "node ../scripts/check-orphan-exports.mjs"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^7.3.4",

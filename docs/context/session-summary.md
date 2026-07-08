@@ -3,6 +3,35 @@
 
 ---
 
+## Latest Session — 2026-07-08 (Phase 75 planned — Backport Wave 2 from ai-rc-engineer-pm)
+Branch: `fix/batch-auto-stop-cron-on-idle` @ `7b26d6a`. Planning-only session (no code shipped). Ran `/athena:plan` (Cycle 34).
+
+### Done This Session
+- **Researched the downstream fork `../ai-rc-engineer-pm` (瑞成工程專案管理系統)** across 4 lenses in parallel (agents/skills/commands/hooks · next-app features+UI+design · docs/scripts/infra/deploy · git+epics E294→E323). Separated GENERALIZABLE from PRODUCT-SPECIFIC (engineering-PM domain excluded).
+- **Found the key nuance:** Phase 73 (Cycle 33) already backported the *skill/docs* layer from this same fork — but only lightly (e.g. E314 shipped a hand-written `docs/architecture/payments-service-map.md`, NOT the fork's runnable `scripts/service-map.cjs`). The fork then built a second wave of *executable* tooling + patterns (its E301–E323) the template lacks.
+- **Proposed + APPROVED Phase 75 (Cycle 34): 5 epics E319–E323, 64 SP, single parallel wave.** E323 shape = **Hybrid** (bake-in primitives + optional `@saas` modules) per user decision. All 5 approved.
+- Wrote 5 epic files (`docs/epics/e319..e323-*.md`), registered rows in `EPIC_INDEX.md` + `epic-progress.md` (status matrix + deps block + parallelism), marked strategy-log Cycle 34 APPROVED. `epic-graph.sh --phase 75` resolves to Wave 1 = [E319–E323].
+
+### Phase 75 epics
+- **E319** orchestration/guardrail hardening (flow Step 6 in-repo chain · audit Step 6 doc↔code + brand-staleness · stop-verifier public-action marker + 2 Tier-0 notes).
+- **E320** executable dead-code/arch guards (real `service-map.cjs` + `check-orphan-exports.mjs`/`check:orphans`) — upgrades E314 docs→runnable.
+- **E321** test pyramid middle layer (`test:int` throwaway-DB harness + jsdom/RTL component tests + `docs/qa/`). ⚠ in-repo.
+- **E322** CI/deploy/release hardening + doctrine (CI SHA-pin+least-priv+docs-job · docs-deploy split + `user-docs/` · `make verify` + `make deploy-gcp` · runtime-vs-build-time env / per-env seeding / version-in-sidebar).
+- **E323** reusable patterns HYBRID (bake-in: `defineAction` · responsive-modal · calendar/date-picker · mobile-tab-bar · ui-spec-epic; `@saas` modules: scheduler · audit-log · rbac-scoped-visibility · sentry · csv-io). ⚠ in-repo.
+
+### Current State
+- Nothing executed — plan-and-confirm only. All Phase 75 state registered; strategy-log Cycle 34 = APPROVED.
+- Working branch is still `fix/batch-auto-stop-cron-on-idle` (pre-existing cron auto-stop work, unrelated to this plan).
+
+### Next Actions (ordered)
+1. `git push` the branch, then execute Phase 75 via `/loop 2m /athena:batch auto` (or `/athena:loop` one step at a time). Agent opens PRs; **user merges** (pull-only perms).
+2. Optional: add **E324 — checkpoint-hygiene** (squash `/athena:save` session-checkpoint noise before the template inherits the fork's ~50%-checkpoint git history) — advisory logged in strategy-log Cycle 34.
+
+### Open Questions
+- Should E323's `@saas` modules (scheduler/audit-log/rbac-visibility/sentry/csv-io) all land in one epic, or split the last three into a follow-up E324 if scope runs long? (Noted in E323 Out of Scope.)
+
+---
+
 ## Latest Session — 2026-06-16 (Phases 63–68 — hardening + fork-ability + production)
 Branch: `main` @ `25dabef`. The E274–E293 program is fully merged (PRs #19/#22/#24–#42 across the phases; see EPIC_INDEX).
 
@@ -84,3 +113,7 @@ Constraints: agent can't push to main / merge PRs / push tags — user does thos
 <!-- last activity:  at 2026-06-30T00:16:03Z -->
 <!-- last activity:  at 2026-06-30T00:34:48Z -->
 <!-- last activity:  at 2026-06-30T00:50:02Z -->
+<!-- last activity:  at 2026-07-07T16:53:21Z -->
+<!-- last activity:  at 2026-07-07T16:53:31Z -->
+<!-- last activity:  at 2026-07-07T16:53:44Z -->
+<!-- last activity:  at 2026-07-07T16:53:52Z -->
