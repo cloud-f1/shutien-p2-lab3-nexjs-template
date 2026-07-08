@@ -71,6 +71,7 @@
 | Phase 72 | E307, E308, E309, E310 | ✅ Complete (Follow-ups from /athena:align) — all merged to main (#57); migration 0010; 518 tests. E307 e2e runs in CI. |
 | Phase 73 | E311, E312, E313, E314, E315, E316, E317 | ✅ Complete (Template Enhancement Backport) — E311 dev-docs integrity (#59) · E312 TONY chief-of-staff (#66) · E313 new-project wizard (#65) · E314 docs-reorg/README index (#64) · E315 service-map dead-code (#62) · E316 testing-strategy skill (#61) · E317 scripts-tooling (#63) + zeabur-deploy skill enhancement (#60); all merged to main |
 | Phase 74 | E318 | ✅ Complete (Dev-Docs Cloudflare Pages Deploy Enhancement) — Cloudflare Pages SOP + user-guide-mode flip guide + Makefile targets + GitHub Actions CI; merged PR #68 |
+| Phase 76 | E324, E325 | ⬜ Pending (Backport Wave 2 follow-up) — E324 orphan remediation (wire/delete the 8 tested-but-unwired guards E320 found; behavior-changing) · E325 remaining @saas modules (rbac-scoped-visibility · sentry-pii · csv-io). Independent PRs off main. Registered 2026-07-08. |
 | Phase 75 | E319, E320, E321, E322, E323 | ✅ Complete (Backport Wave 2 — executable tooling + patterns from ai-rc-engineer-pm) — all parallel, no cross-deps; E321 + E323 run in-repo (devDeps + shadcn). Approved 2026-07-08 via /athena:plan Cycle 34. |
 
 ## Epic Step Matrix
@@ -376,6 +377,8 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E321 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 75 — test pyramid middle layer. Throwaway-DB harness + `test:int` (3 int tests: items CRUD, RBAC reject, usage) + jsdom component layer (2 tests) + docs/qa/ (test-strategy + manual-test-plan). QA: 523 unit pass, test:int 10/10 vs real Postgres, graceful-skip verified, typecheck/lint clean. branch feat/E321; PR → base feat/E319. |
 | E322 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 75 — CI/deploy/release hardening + doctrine. CI re-enabled+SHA-pinned+least-priv+docs-job · docs-deploy split (deploy-dev-docs/deploy-docs) + user-docs/ VitePress scaffold · make verify/deploy-gcp/db-migrate-prod/image + deploy/.env.deploy.example · CONTRIBUTING ship-discipline + CLAUDE.md env/seeding/deploy-table doctrine + APP_VERSION in sidebar. QA: make verify passes, YAML valid, typecheck/lint/build clean, user-docs builds. branch feat/E322; PR → base feat/E321. |
 | E323 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 75 — reusable patterns HYBRID. Bake-in: defineAction factory (+ deleteItem migrated + stop-verifier recognition + int test) · responsive-modal · calendar/date-picker/textarea · mobile-tab-bar · ui-spec-epic template. Modules: @saas/scheduler + @saas/audit-log (manifests + install skills). QA: 532 tests pass, guard-selftest+defineAction fixture, module:validate 6/6, registry builds, typecheck/lint/build clean. **Deferred to E324:** @saas/{rbac-scoped-visibility, sentry-pii, csv-io}. branch feat/E323; PR → base feat/E322. |
+| E324 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 76 — orphan remediation: wire/delete the 8 orphans from E320 (assertPasswordChanged, isUniqueViolationOn, assertItemOwner, assertCanWriteItems, assertAdminRole, assertAuthenticatedUser, generateNonce, aggregateUsage) + tests. Behavior-changing. |
+| E325 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 76 — remaining @saas modules: rbac-scoped-visibility · sentry-pii · csv-io (manifest + install skill each). |
 
 
 ## Dependency Rules
@@ -685,6 +688,8 @@ E320: no deps (upgrades E314 docs→runnable — soft)
 E321: no deps (run in-repo)
 E322: no deps (soft: E320 check:orphans + E321 test:int feed `make verify`; E318 Cloudflare SOP)
 E323: no deps (run in-repo; soft: E319 stop-verifier guard-family widening)
+E324: no deps (soft: E320 check:orphans found the targets)
+E325: no deps (soft: E323 module pattern + E293 Sentry)
 ```
 
 ## Phase Parallelism
@@ -745,7 +750,8 @@ Phase 61: E263 + E264 + E265 (parallel) → E266 (after E261)
 Phase 62: E267 + E268 + E269 + E271 + E272 (parallel, independent tables) → E270 (after E269)
 Phase 73: E311 + E312 + E313 + E314 + E315 + E316 + E317 (ALL PARALLEL — template backport + tooling, no deps)
 Phase 74: E318 (single epic — dev-docs Cloudflare Pages)
-Phase 75: E319 + E320 + E321 + E322 + E323 (ALL PARALLEL — backport wave 2, no cross-deps; run E321 + E323 IN-REPO, not worktree)
+Phase 75: E319 + E320 + E321 + E322 + E323 (ALL PARALLEL — backport wave 2)
+Phase 76: E324 + E325 (PARALLEL — disjoint files: E324 next-app/lib+actions, E325 next-app/registry; independent PRs off main)
 ```
 
 ## Next Action
