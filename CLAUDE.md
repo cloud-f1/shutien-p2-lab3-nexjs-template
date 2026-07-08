@@ -133,6 +133,8 @@ vendor `next-best-practices` + `vercel-*` remain.
 
 ## Active Epic
 
+**Phase 75 (E319–E323) — Backport Wave 2, APPROVED 2026-07-08, ⬜ pending execution.** Ports the downstream fork `../ai-rc-engineer-pm`'s *executable* tooling + reusable patterns upstream (Wave 1 / Phase 73 was skill/docs-level). All 5 parallel; run **E321 + E323 in-repo** (they add devDeps + shadcn components). Next: `git push` → `/loop 2m /athena:batch auto`.
+
 See `docs/epics/EPIC_INDEX.md` for current phase and next action.
 Run `/athena:loop` to advance, or `/athena:loop status` to check state.
 Run `/athena:batch auto` for cron-friendly autopilot — **tries parallel by default (`--max-concurrent 4`); auto-falls-back to sequential if your machine's worktree isolation is broken**. Step 3.5 (pre-flight smoke test) gates parallel dispatch; Step 4a-detect catches any post-hoc cross-contamination — see `.claude/commands/athena/batch.md`. `/loop 5m /athena:batch auto` is the intended cron-driven pattern.

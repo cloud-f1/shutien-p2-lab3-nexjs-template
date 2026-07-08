@@ -9,12 +9,40 @@
 
 | Field | Value |
 |-------|-------|
-| Cycle | 33 |
+| Cycle | 34 |
 | State | APPROVED |
-| Date | 2026-06-29 |
-| Notes | Phase 73 (Template Enhancement Backport from ai-rc-engineer-pm, E311–E317) — 7 epics, all parallel, no migrations. TONY chief-of-staff layer (E311) · new-project fork wizard (E312) · docs reorg + README index (E313) · service-map + dead-code detection (E314) · testing-strategy skill (E315) · scripts tooling + staleness check (E316) · zeabur-deploy skill enhancement (E317). Approved from gap analysis vs ai-rc-engineer-pm downstream product. |
+| Date | 2026-07-08 |
+| Notes | Phase 75 (Backport Wave 2 — executable tooling + patterns from ai-rc-engineer-pm) — 5 epics E319–E323 **APPROVED** 2026-07-08 (all 5, E323 = Hybrid bake-in+@saas-modules per user decision). Wave 1 (Phase 73) was skill/docs-level; this wave ports the fork's *runnable* guards, test middle-layer, CI/deploy hardening, and reusable patterns (fork E301–E323). Epic files + both state tables registered. Next: `git push` then `/loop 2m /athena:batch auto` (E321+E323 in-repo). |
+| Prev33 | Phase 73 (Template Enhancement Backport from ai-rc-engineer-pm, E311–E317) — 7 epics, all parallel. TONY chief-of-staff · new-project wizard · docs reorg · service-map+dead-code (docs-level) · testing-strategy skill · scripts tooling · zeabur-deploy skill. APPROVED + merged (PRs #59–#66). |
 | Prev32 | Phase 72 (Follow-ups from /athena:align, E307–E310) — TOTP e2e, usage limits, export expansion, 2FA recovery + onboarding persistence. Merged via PR #57 (#58 for state flip). 518 tests, migration 0010. |
 | Prev31 | Phase 71 (Athena Toolchain, E302–E306) — rebrand skill, mockup-to-epics + /athena:plan mockup, alignment-audit + /athena:align, user-guide-builder + VitePress dev-docs (deployed to Cloudflare Pages), zeabur-deploy skill. Merged via PR #54. |
+
+---
+
+## Cycle 34 — 2026-07-08 — Mode: register-backport (source: ../ai-rc-engineer-pm downstream product)
+
+**Theme**: **Backport Wave 2 — pull the fork's *executable* tooling + reusable code patterns upstream.** Phase 73 already backported the *skill/docs* layer. Since then the fork (瑞成 PMS) hardened E301–E323 and produced runnable guards, a real test middle-layer, CI/deploy hardening, and reusable Server-Action/UI patterns the template still lacks. Research method: 4 parallel gap-analysis agents (agents/skills/commands/hooks · next-app features+UI+design · docs/scripts/infra/deploy · git+epics history), cross-checked against the template's actual deliverables (found E314 shipped only a hand-written `service-map.md`, not the fork's mechanical `service-map.cjs`).
+
+**GENERALIZABLE-only.** Engineering-PM domain code (cases/nodes/prereqs/subcases/calendars, traffic-light schedule engine, gantt, badge-login role tiers, 繁中 domain enums) is explicitly **excluded**.
+
+### Proposed Epics (Phase 75)
+
+| # | Epic | Priority | Pts | Deps | Rationale |
+|---|------|----------|-----|------|-----------|
+| **E319** | **Orchestration & guardrail hardening** | P1 | 10 | none | `flow.md` **Step 6 Sequential In-Repo Chain Mode** (coupled / ≥2-migration / foundational epics break parallel worktrees — real gap in the template's parallel-only model) · `audit.md` **Step 6 Knowledge-drift** (doc↔code constant drift + post-rebrand brand/identity staleness — the exact class that let E314's state say "MERGED" while only a doc shipped) · stop-verifier **`// stop-verifier:public-action` exemption marker** + guard-family recognition + hooks "re-sync verifier on convention-rename" lesson · 2 Tier-0 notes (dependency-rules duplicate-block gotcha; guardrail-widening needs sign-off + fixture). |
+| **E320** | **Executable dead-code & architecture guards** (upgrades E314/E315 docs→runnable) | P1 | 8 | none | Port the fork's real `scripts/service-map.cjs` (import-graph → Mermaid + orphan/phantom detection) to replace the template's hand-written `payments-service-map.md` · `scripts/check-orphan-exports.mjs` + `pnpm check:orphans` (the "orphan-tested-function" trap the testing-strategy skill only *describes*) · wire both into `make verify` + CI. |
+| **E321** | **Test pyramid middle layer + QA process** | P1 | 13 | none | Throwaway-DB **integration harness → `pnpm test:int`** · **jsdom + RTL component-test layer** (+ `@testing-library/*` deps) — template has only vitest-unit + playwright-e2e (missing hourglass middle) · `docs/qa/` scaffold: test-strategy pyramid-audit template + versioned **manual-test-plan** convention with automation-coverage annotation. |
+| **E322** | **CI / deploy / release hardening + doctrine** | P1 | 15 | none | Re-enable + harden CI (**SHA-pin actions, least-priv `permissions`, `package_json_file: next-app/package.json`, docs-build job**) · **docs-deploy workflow split** (dev-docs vs user-docs, path-scoped) + scaffold `user-docs/` VitePress end-user-manual pipeline · `make verify` umbrella gate + **`make deploy-gcp` (Cloud Run Road 2)** + `deploy/.env.deploy.example` · CONTRIBUTING "ship discipline" + CLAUDE.md doctrine (**runtime-vs-build-time env**, per-env seeding rules, multi-env deploy table, **version-in-sidebar `APP_VERSION`**). |
+| **E323** | **Reusable patterns — DECISION-GATED (bake-in vs @saas module)** | P2 | 18 | none | Lightweight bake-in: **`defineAction` factory** (guard→zod→authorize→handler→audit→revalidate) + stop-verifier recognition · **responsive `rc-modal`** (Dialog↔Sheet) + `calendar`/`date-picker` shadcn primitives + `mobile-tab-bar` · `ui-spec-epic.md` surface-contract template. Heavier/domain-adjacent patterns proposed as **optional `@saas` registry modules** (keep base lean): in-process `node-cron` scheduler, immutable before/after audit-log, CSV import/export, Sentry+PII-scrub, assignment-scoped row-level RBAC visibility. |
+
+**Total**: 64 SP · 5 epics · all parallel (no cross-deps, no colliding migrations expected — E321 adds deps + a throwaway-DB harness, E323 may add shadcn components → run those two **in-repo**, not worktree-isolated). DAG: all five independent → single wave.
+
+**Advisory (my ideas, not yet epics — defer or fold on request):**
+- **Session-checkpoint noise** — the fork's history was ~50% `chore: session checkpoint` commits (one commit had to compact them). Recommend a batched-checkpoint / squash-on-save convention for `/athena:save` before the template inherits the same noise.
+- **Module-vs-bake-in is the one real decision** (drives E323 shape). Template already ships a `@saas` registry (billing-stripe, landing) — the clean home for heavy optional patterns. Recommend: bake in the factory + UI primitives (broadly useful), modularize scheduler/audit-log/RBAC-visibility.
+- **The state-drift I found is self-justifying evidence** for E319's audit Step 6 + E320's orphan tool: E314 was marked "service-map tools MERGED" but only a markdown map shipped. The doc↔code drift check would have caught it.
+
+**State**: AWAITING_APPROVAL. Approve with `/athena:plan approve E319,E320,E321,E322` (E323 gated on the bake-in-vs-module decision below), or adjust scope first.
 
 ---
 
