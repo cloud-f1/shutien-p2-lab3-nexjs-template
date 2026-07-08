@@ -371,7 +371,7 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E316 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 73 — testing-strategy skill + Known Traps in testing.md. MERGED (PR #61). |
 | E317 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 73 — scripts README + staleness-check + zeabur-deploy skill enhancement. MERGED (PR #60/63). |
 | E318 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 74 — dev-docs Cloudflare Pages deploy enhancement. MERGED (PR #68 → 69fcae4). |
-| E319 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 75 — orchestration & guardrail hardening (flow Step 6 · audit Step 6 · stop-verifier public-action marker + 2 Tier-0 notes). |
+| E319 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 75 — orchestration & guardrail hardening. flow.md Step 6 (sequential in-repo chain) · audit.md Step 6 (doc↔code + brand staleness) · stop-verifier public-action marker + guard-family widening + 3 fixtures + hooks-CLAUDE lesson. QA: guard-selftest 8/8. Tier-0 dir absent on machine → 2 memory notes deferred (captured in epic doc). branch feat/E319; PR → base feat/E320. |
 | E320 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 75 — executable dead-code & arch guards. Ported service-map.cjs + check-orphan-exports.mjs (check:orphans, non-strict default), generated docs/architecture/service-map.md, service-map skill. QA: typecheck/lint clean, 518/518 tests. **check:orphans found 8 true orphans in the template** (flagged, not fixed — follow-up). branch feat/E320; PR open → awaiting user merge. |
 | E321 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 75 — test pyramid middle layer (test:int throwaway-DB harness + jsdom/RTL component tests + docs/qa/). Run IN-REPO. |
 | E322 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 75 — CI/deploy/release hardening + doctrine (CI SHA-pin+docs-job · docs-deploy split + user-docs/ · make verify + deploy-gcp · env/seeding/version doctrine). |

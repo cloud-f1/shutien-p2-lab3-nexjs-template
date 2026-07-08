@@ -97,13 +97,28 @@ while IFS= read -r FILE; do
 
   # Rule 2: Every mutating Server Action must be guarded (RBAC + defense-in-depth).
   # Server Actions are public POST endpoints; UI hiding is not a control. A file under
-  # next-app/actions/ that writes the DB (insert/update/delete) MUST call a guard
-  # (requireAuth/requireEditor/requireAdmin) — see lib/permissions.ts.
+  # next-app/actions/ that writes the DB (insert/update/delete) MUST call a guard.
+  # Recognised guards are a FAMILY, not one hardcoded name — today's lib/permissions.ts
+  # exports requireAuth/requireEditor/requireAdmin; requireRole/requireFlag and a generic
+  # guard() helper are recognised too so a future RBAC-convention rename doesn't silently
+  # false-positive this rule (see scripts/hooks/CLAUDE.md, "convention-rename" lesson —
+  # E319). Product-specific names (e.g. can(role,flag), a defineAction() factory) are
+  # intentionally NOT recognised here — that lands with the epic that introduces them.
+  #
+  # Exemption: files containing the marker comment
+  #   // stop-verifier:public-action
+  # are explicitly exempt from Rule 2. Use ONLY for genuine pre-auth endpoints
+  # (login, password reset, invite-accept before a session exists) where an RBAC
+  # guard would break the endpoint's purpose — not as a general escape hatch.
+  # (Guardrail-widening discipline: every change to this rule ships with a regression
+  # fixture in scripts/hooks/tests/ + explicit user sign-off — it gates the agent's own
+  # completion.)
   if echo "$FILE" | grep -qE "^next-app/actions/.*\.ts$" \
      && ! echo "$FILE" | grep -qE "\.(test|spec)\.ts$"; then
     if grep -qE "db\.(insert|update|delete)\(" "$FILE" 2>/dev/null \
-       && ! grep -qE "require(Auth|Editor|Admin)\b" "$FILE" 2>/dev/null; then
-      VIOLATIONS="${VIOLATIONS}\n❌ Rule 2: mutating Server Action in $FILE has no RBAC guard.\n   Fix: call requireAuth()/requireEditor()/requireAdmin() (lib/permissions.ts) as the first line — Server Actions are public POST endpoints.\n"
+       && ! grep -qE "require(Auth|Editor|Admin|Role|Flag)\b|guard\(" "$FILE" 2>/dev/null \
+       && ! grep -qE "//\s*stop-verifier:public-action" "$FILE" 2>/dev/null; then
+      VIOLATIONS="${VIOLATIONS}\n❌ Rule 2: mutating Server Action in $FILE has no RBAC guard.\n   Fix: call a guard as the first line — requireAuth()/requireEditor()/requireAdmin()/requireRole()/requireFlag() (lib/permissions.ts) or a guard() helper. Server Actions are public POST endpoints.\n   (Exception: add '// stop-verifier:public-action' only for genuine pre-auth endpoints like login/password-reset.)\n"
       emit_rule_fired 2 block
     fi
   fi

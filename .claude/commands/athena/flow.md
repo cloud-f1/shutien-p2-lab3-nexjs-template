@@ -168,3 +168,62 @@ for (let i = 0; i < WAVE.length; i += CAP) {
 }
 return results;
 ```
+
+## Step 6 — Sequential In-Repo Chain Mode (coupled / migration-heavy phases)
+
+The parallel-worktree pattern above (Steps 3–5) is right for **independent** epics. It
+BREAKS for a **coupled phase** — prefer a single sequential chain on ONE branch instead.
+This is distinct from `/athena:batch`'s Step 3.5 fallback (`--max-concurrent 1`), which
+triggers on *infra failure* (broken worktree isolation); this mode is a **deliberate
+choice** made up front because the epics are coupled by design, not because parallel
+dispatch broke.
+
+**Use the sequential chain when ANY holds:**
+- **Dependency chain** — a later epic needs an earlier epic's *committed code at QA time*
+  (e.g. schema → enum → UI: the UI epic can't typecheck without the new column + enum).
+- **≥2 epics add DB migrations** — each worktree branches from the same `main` HEAD and
+  `db:generate` picks the *same next number* → N migrations collide at merge. Sequential
+  stacks them cleanly (0008 → 0009 → …).
+- **A foundational epic is worktree-unsafe** (`npx shadcn add`, new npm deps, `.claude/`
+  edits) AND other epics import its output — they can't build until it lands.
+
+**Pattern:** one Workflow, **NO `isolation:'worktree'`** (agents share the main repo on a
+pre-created `feat/phase-<N>-<slug>` branch), dependency-ordered, **stop-on-failure**. Each
+agent commits before the next starts → migrations stack, downstream sees upstream, zero
+cross-branch conflict. Survives interrupts (a killed/limited agent returns non-`success` →
+chain stops clean; relaunch resumes — completed epics are already committed).
+
+```javascript
+// Outer-plane pre-step (before the Workflow): git checkout -b feat/phase-NN-slug
+const CHAIN = [/* {id, slug, type, migration, notes} in dependency order */];
+phase('Chain');
+const results = [];
+for (const e of CHAIN) {
+  const r = await agent([
+    `Epic ${e.id}. Work in the MAIN repo on the ALREADY-CHECKED-OUT branch feat/phase-NN-slug.`,
+    `Do NOT create a worktree, switch, or merge. node_modules is installed.`,
+    `1. SPEC — read CLAUDE.md + the enriched docs/epics/${e.id.toLowerCase()}-*.md.`,
+    `2. IMPLEMENT — ${e.notes}`,
+    `3. QA — from next-app/: pnpm typecheck && pnpm lint && pnpm test`
+      + (e.migration ? ` && pnpm db:test-migrate` : ``)
+      + ` && (DATABASE_URL=... AUTH_SECRET=dev pnpm build). On real failure → status="failure", do NOT commit.`,
+    `4. COMMIT — only if QA passed: SCOPE the add to owned dirs — \`git add next-app docs\``,
+    `   (NOT \`git add -A\`, which sweeps stray repo-root/OS files) then commit "${e.type}(${e.id}): ...".`,
+  ].join("\n"), { schema: REPORT, label: e.id, phase: "Chain", model: "opus" });
+  results.push({ epic: e.id, report: r });
+  if (!r || r.status !== "success") { log(`CHAIN STOPPED at ${e.id}`); break; }  // stop-on-failure
+  log(`${e.id} ✓ committed`);
+}
+return results;
+```
+
+**Write-back is the same as Step 4.** After the chain: run the *integrated* gate on the
+final branch (`pnpm typecheck && pnpm test && pnpm db:test-migrate && pnpm build`) —
+per-epic QA does not prove the merged whole. Merge stays manual (outer plane).
+
+> **Two gotchas this mode prevents/needs:**
+> - **Scoped `git add`** (above) — never `git add -A` in a shared-repo agent; it sweeps
+>   stray repo-root/OS files into the commit.
+> - **Dev-DB drift** — after a phase with a new migration merges, `pnpm db:migrate` the
+>   local dev DB to HEAD before running the app/e2e, or pages that read the new columns
+>   will 500.
