@@ -16,6 +16,7 @@ Developer and project documentation for AI Coding Template.
 | [techstack/](techstack/README.md) | Deep-dive tech reference — server, client, deployment, agents, nextjs | Live |
 | [reference/](reference/) | Agent team catalog, commands, skills, parallel-pipeline strategy | Live |
 | [dev-guide/](dev-guide/README.md) | Developer how-tos — getting started, testing, API guide, deployment | Live |
+| [qa/](qa/test-strategy.md) | QA process — test-pyramid audit + versioned manual-test-plan (human-judgment layer) | Live |
 | [playbooks/](playbooks/mockup-to-production.md) | End-to-end runbooks — step-by-step workflows for recurring ops | Live |
 | [deployment/](deployment/) | Ops runbooks — canary deploy, error budget, secret rotation | Live |
 | [design/](design/) | Design system, CSS architecture, Claude Design enrichment notes | Live |

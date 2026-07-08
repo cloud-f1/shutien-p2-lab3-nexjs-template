@@ -1,0 +1,66 @@
+{
+  "$schema": "../schema/module.manifest.schema.json",
+  "id": "audit-log",
+  "version": "1.0.0",
+  "title": "Audit Log (immutable)",
+  "summary": "Legal-grade immutable audit trail — append-only table with a denormalized actor snapshot (actorRole/actorLabel captured at write time), before/after jsonb, and targetLabel. Ships a fire-and-forget log() helper that records the real actor even for act-on-behalf-of.",
+  "registryDependencies": [],
+  "npmDependencies": {},
+  "envVars": [],
+  "dbTables": ["audit_log_entries"],
+  "db": {
+    "schemaFragmentPath": "lib/audit-log/schema.ts",
+    "generateCommand": "pnpm db:generate",
+    "migrateCommand": "pnpm db:migrate"
+  },
+  "routes": [],
+  "serverActions": [],
+  "postInstall": [
+    {
+      "step": 1,
+      "action": "manual",
+      "description": "Re-export the audit-log schema from the Drizzle barrel so drizzle-kit picks up the table: add `export * from \"./audit-log/schema\"` to lib/schema/index.ts (or import it into lib/schema.ts). Without this, db:generate will not emit a migration for audit_log_entries."
+    },
+    {
+      "step": 2,
+      "action": "db-generate",
+      "description": "Generate the Drizzle migration for the audit_log_entries table.",
+      "command": "pnpm db:generate"
+    },
+    {
+      "step": 3,
+      "action": "db-migrate",
+      "description": "Apply the migration to your database.",
+      "command": "pnpm db:migrate"
+    },
+    {
+      "step": 4,
+      "action": "manual",
+      "description": "Call log({ action, targetType, targetId, before, after }) from your mutations after they succeed. Pairs naturally with lib/define-action.ts — return the entry as the handler's `audit` field, or call log() directly."
+    },
+    {
+      "step": 5,
+      "action": "command",
+      "description": "Verify no import/type errors.",
+      "command": "pnpm typecheck && pnpm lint"
+    }
+  ],
+  "docs": "/docs/modules/audit-log",
+  "files": [
+    {
+      "path": "registry/audit-log/lib/audit-log/schema.ts",
+      "type": "registry:lib",
+      "target": "lib/audit-log/schema.ts"
+    },
+    {
+      "path": "registry/audit-log/lib/audit-log/log.ts",
+      "type": "registry:lib",
+      "target": "lib/audit-log/log.ts"
+    },
+    {
+      "path": "registry/audit-log/module.manifest.json",
+      "type": "registry:file",
+      "target": "registry/audit-log/module.manifest.json"
+    }
+  ]
+}

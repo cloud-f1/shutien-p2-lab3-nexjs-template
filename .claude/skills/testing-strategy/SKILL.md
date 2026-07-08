@@ -40,9 +40,12 @@ Do NOT chase integration-layer volume. Grow it by **regression**:
 
 ## 3. The integration harness pattern (the unlock for the middle)
 
-Pattern lives in `next-app/test/int/harness.ts` + a separate Vitest config, run via `pnpm test:int`.
-If `test/int/` does not yet exist in this repo, describe the pattern and create it before adding
-integration tests:
+Pattern lives in `next-app/test/int/harness.ts` (E321) + `next-app/vitest.int.config.ts`, run via
+`pnpm test:int`. Reference tests: `test/int/items.int.test.ts`, `test/int/rbac.int.test.ts`,
+`test/int/usage.int.test.ts`. Every `*.int.test.ts` file calls `isPostgresReachable()` before its
+`describe` block and `describe.skipIf`s the suite with a `console.warn` when no Postgres is
+reachable — `pnpm test:int` exits 0 (skipped) rather than hard-failing when
+`docker compose up -d postgres` hasn't been run.
 
 - Admin-connect to the `postgres` maintenance DB → `CREATE DATABASE saas_int_test_<pid>` →
   run `drizzle-kit migrate` against it → run the action → `DROP DATABASE` at teardown.
@@ -59,36 +62,46 @@ integration tests:
 
 ### Example — items domain integration test
 
+The real reference test (`next-app/test/int/items.int.test.ts`), trimmed to the shape that
+matters — see the actual file for the full ownership/validation cases and
+`test/int/rbac.int.test.ts` for the RBAC-rejection variant:
+
 ```ts
 // next-app/test/int/items.int.test.ts
-import { describe, it, expect, afterEach } from "vitest"
-import { setupTestDb, teardownTestDb, truncateDomain, rawClient } from "./harness"
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest"
+import { countItems, isPostgresReachable, readItemsByUser, seedUser, setupTestDb, teardownTestDb, truncateDomain } from "./harness"
 
-describe("createItem action", () => {
-  let db: Awaited<ReturnType<typeof setupTestDb>>
+const reachable = await isPostgresReachable()
+if (!reachable) console.warn("⏭ SKIP — no reachable Postgres; run `docker compose up -d postgres`.")
 
-  beforeAll(async () => { db = await setupTestDb() })
-  afterAll(async () => { await teardownTestDb(db) })
-  afterEach(async () => { await truncateDomain(db, ["items"]) })
+let actorId: string | null = null
+vi.mock("@/lib/auth", () => ({ auth: async () => (actorId ? { user: { id: actorId } } : null) }))
+vi.mock("next/cache", () => ({ revalidatePath: () => {} }))
+vi.mock("next/navigation", () => ({ redirect: vi.fn() }))
 
-  it("admin can create an item and it appears in the DB", async () => {
-    // Dynamic import AFTER setupTestDb — never top-level
-    const { createItem } = await import("@/app/(dashboard)/dashboard/items/actions")
-    const result = await createItem({ name: "Test Widget", description: "desc" })
-    expect(result.success).toBe(true)
+describe.skipIf(!reachable)("createItem / deleteItem (actions/items.ts)", () => {
+  let items: typeof import("@/actions/items")
 
-    const rows = await rawClient(db).select().from("items")
+  beforeAll(async () => {
+    await setupTestDb() // sets DATABASE_URL first
+    items = await import("@/actions/items") // dynamic import AFTER — never top-level
+  }, 120_000)
+
+  afterAll(async () => { await teardownTestDb() })
+  afterEach(async () => { actorId = null; await truncateDomain(["items", "users"]) })
+
+  it("editor: create → the row exists in the DB, then delete removes it", async () => {
+    const editor = await seedUser({ email: "editor@int.test", role: "editor" })
+    actorId = editor.id
+
+    const form = new FormData()
+    form.set("title", "Integration Widget")
+    expect(await items.createItem(null, form)).toBeNull() // null = success
+
+    const rows = await readItemsByUser(editor.id)
     expect(rows).toHaveLength(1)
-    expect(rows[0].name).toBe("Test Widget")
-  })
-
-  it("viewer cannot create an item (RBAC)", async () => {
-    // Swap the auth mock to return viewer role
-    vi.mocked(auth).mockResolvedValueOnce(makeSession("viewer"))
-    const { createItem } = await import("@/app/(dashboard)/dashboard/items/actions")
-    const result = await createItem({ name: "Blocked" })
-    expect(result.success).toBe(false)
-    expect(result.error).toMatch(/permission/i)
+    expect(await items.deleteItem(rows[0].id)).toBeNull()
+    expect(await countItems()).toBe(0)
   })
 })
 ```
@@ -141,7 +154,7 @@ static-import an action at the top of the integration test file, the import reso
 
 **Wrong:**
 ```ts
-import { createItem } from "@/app/(dashboard)/dashboard/items/actions" // ← resolves dev DB URL
+import { createItem } from "@/actions/items" // ← resolves dev DB URL
 // ...
 beforeAll(async () => { await setupTestDb() }) // too late — db already initialized
 ```
@@ -151,7 +164,7 @@ beforeAll(async () => { await setupTestDb() }) // too late — db already initia
 beforeAll(async () => { await setupTestDb() }) // sets DATABASE_URL first
 
 it("...", async () => {
-  const { createItem } = await import("@/app/.../actions") // ← dynamic import after URL set
+  const { createItem } = await import("@/actions/items") // ← dynamic import after URL set
 })
 ```
 
@@ -160,7 +173,7 @@ it("...", async () => {
 | You're testing… | Layer | Where |
 |---|---|---|
 | A pure algorithm (Zod schema, hash fn, date util, format helper) | unit | `lib/*.test.ts`, `lib/validations/*` |
-| A component renders derived state (disabled button, badge color) | component (jsdom) | `*.test.tsx` + Testing Library |
+| A component renders derived state (disabled button, badge color) | component (jsdom) | `test/component/*.test.tsx` — first line `// @vitest-environment jsdom`, runs as part of `pnpm test` |
 | A Server Action's DB side-effect + RBAC | integration | `test/int/*.int.test.ts` (`pnpm test:int`) |
 | A multi-step user journey across pages | e2e | `e2e/*.spec.ts` (`pnpm test:e2e`) |
 | Color/visual, copy, RWD/dark, concurrency feel | **manual** | `docs/qa/manual-test-plan/` |

@@ -17,7 +17,9 @@ export async function requireAuth(): Promise<Session> {
 // snapshotted into the JWT at sign-in. This makes demotions (setUserRole) take
 // effect immediately instead of waiting for the user to sign in again. If the
 // user row vanished (deleted account), treat as no role.
-async function getLiveRole(userId: string): Promise<Role | undefined> {
+// Exported (E323) so the defineAction() factory can share the single live-role
+// read instead of duplicating the DB round-trip.
+export async function getLiveRole(userId: string): Promise<Role | undefined> {
   const user = await getUserById(userId)
   return user?.role
 }

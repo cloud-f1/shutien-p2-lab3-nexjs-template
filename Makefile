@@ -11,9 +11,10 @@ NEXT := next-app
 .PHONY: help go dev local local-setup local-infra local-db local-env local-down \
         dev-docs setup-dev-docs dev-docs-preview dev-docs-build dev-docs-deploy \
         migrate db-generate db-seed db-test-migrate db-studio db-backup \
-        test test-coverage test-e2e lint typecheck ci-all smoke guard-selftest \
+        test test-coverage test-e2e lint typecheck ci-all verify smoke guard-selftest \
         docker-up docker-down docker-logs docker-ps docker-clean \
         doctor-deploy deploy install-tools install-deploy-tools \
+        image deploy-gcp db-migrate-prod \
         new-project init reset drift-check new-domain \
         staleness-check screenshot-refresh
 
@@ -138,6 +139,14 @@ typecheck: ## tsc --noEmit (next-app)
 ci-all: ## Full pre-merge gate: repo hygiene + typecheck + lint + unit (+ e2e with --e2e)
 	@bash scripts/pre-merge-check.sh $(ARGS)
 
+verify: ## One umbrella gate: staleness + pre-merge (typecheck·lint·unit) + orphan-export report + integration tests + dev-docs build
+	@bash scripts/staleness-check.sh
+	@bash scripts/pre-merge-check.sh $(ARGS)
+	@echo "▶ check:orphans (non-strict — reports the known orphans, does not fail the gate)…" && pnpm --dir next-app check:orphans || true
+	@echo "▶ test:int (gracefully skips if no reachable Postgres)…" && pnpm --dir next-app test:int
+	@echo "▶ dev-docs build…" && cd dev-docs && pnpm install --frozen-lockfile --prefer-offline >/dev/null 2>&1 && pnpm build >/dev/null && echo "  ✓ dev-docs build clean"
+	@echo "✅ make verify passed — identity + code + docs all green"
+
 smoke: ## Full verification surface (build/test/e2e/registry/vitepress; --vrt for visual)
 	@bash scripts/smoke.sh $(ARGS)
 
@@ -175,12 +184,88 @@ deploy: ## How to deploy (Zeabur primary · GCP Cloud Run Road 2)
 	@echo "Deploy this Next.js app:"
 	@echo "  • Use the \`deploy-config\` skill (interactive, both roads), or:"
 	@echo "  • Zeabur (primary)     → bash deploy/deploy-zeabur.sh   ·  docs/guides/deployment-zeabur.md"
-	@echo "  • GCP Cloud Run (Road 2) → docs/guides/deployment-gcp.md"
+	@echo "  • GCP Cloud Run (Road 2) → make image / make deploy-gcp   ·  docs/guides/deployment-gcp.md"
 	@echo "  • Verify prereqs first → make doctor-deploy PLATFORM=zeabur|cloudrun"
+	@echo "  • Run \`make verify\` before shipping — umbrella gate: staleness + typecheck/lint/unit + check:orphans + test:int + dev-docs build."
 	@echo ""
 
 install-deploy-tools: ## Install/verify the deploy toolchain (Zeabur plugin + CLI; checks gcloud/node/pnpm/docker)
 	@bash scripts/install-deploy-tools.sh
+
+# ─── One-command ship (Road 2 — GCP Cloud Run + Cloud SQL) ────────────────
+# Deploy-time vars come from deploy/.env.deploy (copy from .env.deploy.example).
+# Image tag derives from the git short SHA so every build is traceable.
+DEPLOY_ENV   := deploy/.env.deploy
+GIT_SHA      := $(shell git rev-parse --short HEAD 2>/dev/null || echo nogit)
+IMAGE_TAG    ?= $(GIT_SHA)
+
+image: ## Build the next-app runtime image for linux/amd64, tagged from the git short SHA
+	@set -a; [ -f $(DEPLOY_ENV) ] && . ./$(DEPLOY_ENV) || true; set +a; \
+	tag="$${IMAGE_TAG:-$(IMAGE_TAG)}"; \
+	echo "▶ docker buildx build linux/amd64 → next-app:$$tag"; \
+	docker buildx build --platform linux/amd64 \
+		--build-arg NEXT_PUBLIC_APP_URL="$${NEXT_PUBLIC_APP_URL:-http://localhost:3000}" \
+		-t "next-app:$$tag" -t "next-app:latest" \
+		--load \
+		$(NEXT)
+	@echo "✅ Built next-app:$(IMAGE_TAG) (linux/amd64). Push it with make deploy-gcp (or your own registry push)."
+
+deploy-gcp: ## Ship to GCP: build → push (Artifact Registry) → Cloud Run deploy → migrate (Cloud Run Job)
+	@command -v gcloud >/dev/null 2>&1 || { echo "❌ gcloud not found → make install-deploy-tools"; exit 1; }
+	@test -f $(DEPLOY_ENV) || { echo "❌ Missing $(DEPLOY_ENV) → cp deploy/.env.deploy.example $(DEPLOY_ENV) and fill it in"; exit 1; }
+	@set -a; . ./$(DEPLOY_ENV); set +a; \
+	: "$${GCP_PROJECT_ID:?set GCP_PROJECT_ID in $(DEPLOY_ENV)}"; \
+	: "$${GCP_REGION:?set GCP_REGION in $(DEPLOY_ENV)}"; \
+	: "$${GCP_AR_REPO:?set GCP_AR_REPO in $(DEPLOY_ENV)}"; \
+	: "$${GCP_SERVICE_NAME:?set GCP_SERVICE_NAME in $(DEPLOY_ENV)}"; \
+	: "$${GCP_SQL_INSTANCE:?set GCP_SQL_INSTANCE in $(DEPLOY_ENV)}"; \
+	tag="$${IMAGE_TAG:-$(IMAGE_TAG)}"; \
+	registry="$${GCP_REGION}-docker.pkg.dev/$${GCP_PROJECT_ID}/$${GCP_AR_REPO}"; \
+	image="$$registry/$${GCP_IMAGE_NAME:-next-app}:$$tag"; \
+	migrate_image="$$registry/$${GCP_IMAGE_NAME:-next-app}-migrate:$$tag"; \
+	sql_conn="$${GCP_PROJECT_ID}:$${GCP_REGION}:$${GCP_SQL_INSTANCE}"; \
+	echo "▶ Auth Docker → Artifact Registry ($${GCP_REGION}-docker.pkg.dev)"; \
+	gcloud auth configure-docker "$${GCP_REGION}-docker.pkg.dev" --quiet; \
+	echo "▶ Build + push runtime image: $$image"; \
+	docker buildx build --platform linux/amd64 \
+		--build-arg NEXT_PUBLIC_APP_URL="$${NEXT_PUBLIC_APP_URL:-https://$${GCP_SERVICE_NAME}.a.run.app}" \
+		-t "$$image" --push $(NEXT); \
+	echo "▶ Build + push migrate image (builder stage — has drizzle-kit + tsx): $$migrate_image"; \
+	docker buildx build --platform linux/amd64 --target builder \
+		-t "$$migrate_image" --push $(NEXT); \
+	echo "▶ Deploy Cloud Run service: $${GCP_SERVICE_NAME}"; \
+	gcloud run deploy "$${GCP_SERVICE_NAME}" \
+		--image "$$image" --region "$${GCP_REGION}" --project "$${GCP_PROJECT_ID}" \
+		--platform managed --allow-unauthenticated \
+		--add-cloudsql-instances "$$sql_conn" \
+		--set-secrets "AUTH_SECRET=AUTH_SECRET:latest,DATABASE_URL=DATABASE_URL:latest" \
+		--set-env-vars "AUTH_TRUST_HOST=true,NODE_ENV=production,NEXT_TELEMETRY_DISABLED=1" \
+		--port 3000; \
+	echo "▶ Migrate-on-deploy: update + run the migrate Cloud Run Job"; \
+	gcloud run jobs describe migrate-job --region "$${GCP_REGION}" --project "$${GCP_PROJECT_ID}" >/dev/null 2>&1 \
+		&& gcloud run jobs update migrate-job --image "$$migrate_image" --region "$${GCP_REGION}" --project "$${GCP_PROJECT_ID}" \
+		|| gcloud run jobs create migrate-job --image "$$migrate_image" --region "$${GCP_REGION}" --project "$${GCP_PROJECT_ID}" \
+			--add-cloudsql-instances "$$sql_conn" \
+			--set-secrets "DATABASE_URL=DATABASE_URL:latest" \
+			--set-env-vars "NODE_ENV=production" --command pnpm --args "db:migrate"; \
+	gcloud run jobs execute migrate-job --region "$${GCP_REGION}" --project "$${GCP_PROJECT_ID}" --wait; \
+	echo "✅ deploy-gcp complete → $$(gcloud run services describe "$${GCP_SERVICE_NAME}" --region "$${GCP_REGION}" --project "$${GCP_PROJECT_ID}" --format 'value(status.url)' 2>/dev/null)"
+
+db-migrate-prod: ## Apply pending Drizzle migrations to a prod DATABASE_URL (GUARDED: requires CONFIRM=1)
+	@test "$(CONFIRM)" = "1" || { \
+		echo "❌ Refusing to migrate a PROD database without an explicit confirm."; \
+		echo "   This applies all pending Drizzle migrations to the target DATABASE_URL."; \
+		echo "   Re-run with:  make db-migrate-prod CONFIRM=1"; \
+		echo "   DATABASE_URL is read from \$$PROD_DATABASE_URL (or $(DEPLOY_ENV))."; \
+		exit 1; }
+	@set -a; [ -f $(DEPLOY_ENV) ] && . ./$(DEPLOY_ENV) || true; set +a; \
+	url="$${PROD_DATABASE_URL:-$${DATABASE_URL:-}}"; \
+	test -n "$$url" || { echo "❌ No PROD_DATABASE_URL set (export it or put it in $(DEPLOY_ENV))"; exit 1; }; \
+	host=$$(echo "$$url" | sed -E 's#^[^@]*@([^/?:]+).*#\1#'); \
+	echo "▶ Migrating PROD DB at host: $$host"; \
+	cd $(NEXT) && DATABASE_URL="$$url" pnpm db:migrate \
+		&& echo "✅ Prod migrations applied." \
+		|| { echo "❌ Prod migrate failed (see above)."; exit 1; }
 
 install-tools: ## Install required dev tools (macOS — Homebrew: node, pnpm, docker)
 	@echo "📦 Installing development tools…"

@@ -14,7 +14,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { isAdmin, canEdit } from "@/lib/is-admin"
-import { APP_NAME } from "@/lib/branding"
+import { APP_NAME, APP_VERSION } from "@/lib/branding"
 import { Logo } from "@/components/logo"
 import Link from "next/link"
 import {
@@ -68,6 +68,9 @@ export function AppSidebar({
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={user} />
+        <span className="px-2 pb-1 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
+          v{APP_VERSION}
+        </span>
       </SidebarFooter>
     </Sidebar>
   )

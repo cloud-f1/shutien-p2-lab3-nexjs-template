@@ -55,7 +55,7 @@ with that stack. The rules now enforce the CLAUDE.md "NEVER DEVIATE" invariants 
 | # | Rule | Scope | Blocking |
 |---|------|-------|----------|
 | 1 | No inline `style=` colour overrides in `next-app/{app,components}/**.tsx` (excludes the generated `next-app/components/ui/`). Detection: `style={{ ... color\|background\|fill\|stroke\|borderColor ... }}`. Fix: Tailwind classes + `dark:` variants + `cn()` for conditionals; tokens live in `app/globals.css`. | Per file | exit 2 |
-| 2 | RBAC guard on mutating Server Actions — a non-test file under `next-app/actions/*.ts` that calls `db.insert/update/delete(` MUST also call a guard (`requireAuth`/`requireEditor`/`requireAdmin`, `lib/permissions.ts`). Server Actions are public POST endpoints; UI hiding is not a control. | Per file | exit 2 |
+| 2 | RBAC guard on mutating Server Actions — a non-test file under `next-app/actions/*.ts` that calls `db.insert/update/delete(` MUST also call a guard from the recognized family (`requireAuth`/`requireEditor`/`requireAdmin`/`requireRole`/`requireFlag`, or a `guard(...)` helper — see `lib/permissions.ts`). Server Actions are public POST endpoints; UI hiding is not a control. Exempt if the file carries the `// stop-verifier:public-action` marker comment (genuine pre-auth endpoints only, e.g. login/password-reset). E319. | Per file | exit 2 |
 | 3 | No raw `<table>` in `next-app/app/**.tsx` pages — use the reusable `<DataTable>` (`components/data-table-generic.tsx`), which ships filter + pagination + page-size. | Per file | warning only |
 | 4 | No `console.log` in next-app RUNTIME code (`next-app/{app,components,hooks,actions,lib}`). Excludes tests AND the CLI tooling dirs `lib/registry` + `lib/openapi` (generators/validators that legitimately print to stdout via `package.json` scripts, not in the browser or a request path). Fix: remove `console.log` before shipping (use a real logger for server logs). | Global | exit 2 |
 | 5 | No new hand-authored files added under `next-app/components/ui/` — shadcn components are generated via `npx shadcn@latest add <name>`; app-specific components belong in `components/` (not `components/ui/`). | Global | warning only |
@@ -916,3 +916,38 @@ Fixture-driven cases live in `scripts/hooks/tests/test-context-health-monitor.sh
 - Empty audit log -> exits silently
 - No `jq` installed -> `bytes_read` stays 0, tool-call threshold still fires
 - Non-JSON stdin -> ignored (stdin is drained, not parsed)
+
+## Lesson: Convention-rename → re-sync the verifier patterns (E319)
+
+`stop-verifier.sh`'s Rule 2 (RBAC guard on mutating Server Actions) matches guard calls
+by **name** (`requireAuth`/`requireEditor`/`requireAdmin`/…). Name-based rules are
+correct on the day they're written and then **silently false-positive** the moment a
+downstream fork renames or extends the RBAC convention (e.g. `requireEditor` →
+`requireRole`/`requireFlag`, or a per-action `guard()` helper) — the rule keeps blocking
+on files that ARE guarded, just under a name it doesn't recognize yet. There is no
+compiler error for this; it just quietly starts rejecting legitimate work.
+
+Three practices this epic (E319) encodes to prevent repeating that:
+
+1. **Recognize a family, not one hardcoded name.** When a guardrail matches by
+   identifier, list the *reasonable near-future variants* up front (Rule 2 now
+   recognizes `requireAuth|requireEditor|requireAdmin|requireRole|requireFlag|guard(`)
+   rather than waiting for the false-positive to happen and firefighting it.
+2. **Editing a guardrail that gates the agent's own completion needs explicit user
+   sign-off.** `stop-verifier.sh` runs on `Stop` — it decides whether *this session*
+   is allowed to finish. Widening or narrowing what it blocks is not a routine
+   refactor; get the user to confirm the new pattern before it ships (see the
+   `// stop-verifier:public-action` exemption marker and the guard-family widening
+   above — both required explicit review).
+3. **Every guardrail change ships with a regression fixture.** A rule change with no
+   fixture in `scripts/hooks/tests/` is unverifiable — you can't prove it still blocks
+   what it should AND passes what it shouldn't. `test-rule-nextjs-invariants.sh` now
+   carries three E319 cases: an unguarded action (still blocks), a `requireRole()`/
+   `guard()`-guarded action (passes), and a `// stop-verifier:public-action`-marked
+   pre-auth endpoint (passes despite no guard call).
+
+**Guardrail-widening discipline, stated generally:** if you touch a stop-verifier rule,
+ask "what convention will this look for tomorrow, not just today" — and don't skip the
+fixture. A companion Tier-0 memory note (`guardrail-widening-discipline.md`, if present
+under `~/.claude/template-memory/`) generalizes this beyond `stop-verifier.sh` to any
+completion-gating check.

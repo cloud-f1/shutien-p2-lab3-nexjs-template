@@ -38,7 +38,10 @@ npx shadcn@latest add <component-name>
 
 > **Quality gate before merge:** run `scripts/pre-merge-check.sh [--e2e]` from the repo root —
 > it checks repo hygiene (no nested `.git`, no accidental mass deletions) + typecheck + lint +
-> unit (+ e2e). The athena loop's `merge` step should pass this first.
+> unit (+ e2e). The athena loop's `merge` step should pass this first. **`make verify` (E322)**
+> is the umbrella version — staleness-check + `pre-merge-check.sh` + a non-strict `check:orphans`
+> report + `test:int` (gracefully skips without a reachable Postgres) + a dev-docs build — run it
+> before pushing per the "Ship discipline" section in `CONTRIBUTING.md`.
 
 ## File Layout
 
@@ -89,8 +92,44 @@ scripts/epic-graph.sh      Dependency graph parser + wave planner
 
 ## Deployment
 
-- Platform: Zeabur — `next-app/` as a single service with `zbpack.json`
-- `NEXT_PUBLIC_*` env vars baked at **build time** — set in Zeabur before build
+- Platform: Zeabur (primary, Road 1) — `next-app/` as a single service with `zbpack.json`. GCP
+  Cloud Run + Cloud SQL is Road 2 — see `make deploy-gcp` + `docs/guides/deployment-gcp.md`.
+- **Runtime-vs-build-time env (E322)** — know which bucket a var is in before you go looking for
+  "why didn't my env change take effect":
+  - **Server-side runtime env** (`SENTRY_DSN`, `DATABASE_URL`, `AUTH_SECRET`, any `ENABLE_*` you
+    add without a `NEXT_PUBLIC_` prefix) — read at request time; toggle per-service/env with
+    **no rebuild**. Example: `SENTRY_DSN` unset → `instrumentation.ts` is a complete no-op;
+    setting it just flips Sentry on for that service, next request.
+  - **`NEXT_PUBLIC_*`** (`NEXT_PUBLIC_APP_NAME`, `NEXT_PUBLIC_APP_URL`,
+    `NEXT_PUBLIC_ENABLE_DEMO_LOGIN`, `NEXT_PUBLIC_SENTRY_DSN` if you wire client-side Sentry) —
+    bake into the JS bundle at **build time**. Changing them in the host's dashboard has **no
+    effect until the next build/deploy** — `make image` / `make deploy-gcp` pass these as
+    `--build-arg`.
+- **Per-env seeding** — dev vs. stg/prd want different data:
+  - **dev** — `pnpm db:migrate` then full `pnpm db:seed` (demo accounts + demo data,
+    `NEXT_PUBLIC_ENABLE_DEMO_LOGIN=true`). This is what `make local-setup` / `docker compose up`
+    already do.
+  - **stg / prd** — migrate, then seed **only** a real admin + baseline reference data — **never**
+    the dev demo seed. This template ships only `db:seed` today (single-tenant dev seed); if your
+    fork needs a real stg/prd environment, add two idempotent scripts following this split —
+    `db:seed-admin` (one real admin account, no demo data) → `db:seed-baseline` (non-secret
+    reference/lookup data every env needs) — and keep `NEXT_PUBLIC_ENABLE_DEMO_LOGIN` unset/false
+    there.
+  - Promotion direction: `dev` → `stg` → `prd` (merge forward), never backward.
+- **Multi-env deploy table** (fill in for your fork — placeholders below):
+
+  | Env | Git branch | Platform / project | URL |
+  |---|---|---|---|
+  | **dev** | `main` (or `dev`) | Zeabur project `${ZEABUR_PROJECT}` | `https://<dev-url>` |
+  | **stg** | `stg` | `${GCP_PROJECT_ID}` / Cloud Run `${GCP_SERVICE_NAME}` | `https://<stg-url>` |
+  | **prd** | `main` (tagged release) | `${GCP_PROJECT_ID}` / Cloud Run `${GCP_SERVICE_NAME}` | `https://<prd-url>` |
+
+  See `deploy/.env.deploy.example` for the deploy-time variables behind these placeholders, and
+  the `deploy-config` / `zeabur-deploy` skills for the interactive walkthroughs.
+- **Version-in-sidebar** — `next-app/lib/branding.ts` exports `APP_VERSION`, read directly from
+  `next-app/package.json`'s `version` field (no git-tag↔UI drift possible). Shown as a small muted
+  label in the dashboard sidebar footer (`components/app-sidebar.tsx`). Bump `package.json`
+  `version` per the SemVer rule in `CONTRIBUTING.md` and it shows up in the UI on the next deploy.
 
 ## Effort Tiers (E198)
 

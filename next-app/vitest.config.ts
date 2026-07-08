@@ -4,10 +4,17 @@ export default defineConfig({
   // Vitest 4 resolves tsconfig `paths` (the @/* alias) natively.
   resolve: { tsconfigPaths: true },
   test: {
-    // Unit tests only — e2e lives in e2e/ and runs via Playwright.
+    // Unit + component tests — e2e lives in e2e/ and runs via Playwright;
+    // integration tests (test/int/**/*.int.test.ts, real throwaway-DB Server
+    // Action tests) need Postgres and run separately via `pnpm test:int`
+    // (vitest.int.config.ts) — never as part of the default `pnpm test`.
     include: ["**/*.test.ts", "**/*.test.tsx"],
-    exclude: ["e2e/**", "node_modules/**", ".next/**"],
+    exclude: ["e2e/**", "node_modules/**", ".next/**", "test/int/**"],
+    // Default node env (fast) for the pure-logic suite; component tests
+    // (test/component/**/*.test.tsx) opt into jsdom per-file via the
+    // `// @vitest-environment jsdom` pragma on the first line of the file.
     environment: "node",
+    setupFiles: ["./test/setup.ts"],
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
