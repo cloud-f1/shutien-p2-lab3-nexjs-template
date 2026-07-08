@@ -7,7 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_Planned: Account & Admin modules packaged as `@saas` registry modules; TapPay / NewebPay (藍新) providers; usage-based billing; teams._
+_Planned: TapPay / NewebPay (藍新) providers; usage-based billing; teams._
+
+## [0.4.0] - 2026-07-08
+
+The **Backport Wave 2 program** (Phases 75–76, E319–E325) pulled the *executable* tooling and
+reusable patterns that the downstream product `ai-rc-engineer-pm` (瑞成 PMS) hardened after the
+earlier skill/docs-level backport (Phase 73). This wave ships runnable guards, a real test
+middle layer, CI/deploy hardening, a Server-Action factory + UI primitives, and five opt-in
+`@saas` modules — all generalized (no product/domain literals). All merged to `main`.
+
+### Added
+
+- **Executable dead-code & architecture guards** (E320) — `scripts/service-map.cjs` (import-graph → Mermaid + orphan detection) and `scripts/check-orphan-exports.mjs` / `pnpm check:orphans` (flags `lib/` exports tested but never called). Upgrades Phase 73's docs-only map to runnable tools.
+- **Test pyramid middle layer** (E321) — throwaway-DB integration harness + `pnpm test:int`, a jsdom/RTL component-test layer, and a `docs/qa/` process (pyramid audit + manual-test-plan scaffold).
+- **`defineAction` Server-Action factory** (E323) — guard → Zod → authorize → handler → audit → revalidate; `deleteItem` migrated as a reference; recognized by the stop-verifier.
+- **Reusable UI primitives** (E323) — `responsive-modal` (Dialog↔Sheet), `calendar`/`date-picker`/`textarea`, `mobile-tab-bar`, and a `ui-spec-epic` surface-contract epic template.
+- **Five opt-in `@saas` registry modules** — `scheduler` (in-process node-cron), `audit-log` (immutable before/after trail) (E323); `rbac-scoped-visibility` (assignment-scoped row visibility), `sentry-pii` (PII scrubber composing with the existing Sentry), `csv-io` (export helpers + generic keyed import) (E325). Each with a paired `install-*` skill.
+- **Second deploy road + release hardening** (E322) — `make deploy-gcp` (Cloud Run + Cloud SQL), `make verify` umbrella gate, `make db-migrate-prod` (CONFIRM-guarded), `deploy/.env.deploy.example`, and a `user-docs/` VitePress end-user-manual scaffold.
+- **Version in the sidebar** (E322) — `APP_VERSION` in `lib/branding.ts` reads `package.json` directly (no git-tag↔UI drift).
+
+### Changed
+
+- **CI re-enabled + hardened** (E322) — push/PR triggers restored; all actions SHA-pinned; `permissions: contents: read`; `package_json_file` pointer; a docs-build job; and the docs-deploy workflow split into path-scoped dev-docs / user-docs pipelines.
+- **Orchestration & guardrails** (E319) — `/athena:flow` gains a **Sequential In-Repo Chain Mode** for coupled/migration-heavy waves; `/athena:audit` gains **knowledge-drift** checks (doc↔code constants + post-rebrand brand/identity staleness); the stop-verifier gains a `// stop-verifier:public-action` exemption marker + guard-family recognition.
+- **Doctrine** (E322) — `CLAUDE.md` documents runtime-vs-build-time env, per-env seeding, and a multi-env deploy table; `CONTRIBUTING.md` adds a "Ship discipline" section.
+
+### Fixed
+
+- **Orphan remediation** (E324) — resolved all 8 tested-but-unwired `lib/` guards `check:orphans` found (`check:orphans` now reports 0): 2 wired, 6 removed as dead duplicates.
+  - **Password no-op change now rejected** — `assertPasswordChanged` is wired into `changePassword`; a same-as-current password change is blocked (was silently succeeding) with no DB write. Covered by a new integration test.
 
 ## [0.3.0] - 2026-06-16
 
