@@ -9,7 +9,11 @@ import { unstable_update } from "@/lib/auth"
 import { comparePassword, hashPassword } from "@/lib/password"
 import { updateProfileSchema, changePasswordSchema } from "@/lib/validations/user"
 import type { FormState } from "@/lib/validations/types"
-import { assertHasPassword, assertCurrentPasswordValid } from "@/lib/user-utils"
+import {
+  assertHasPassword,
+  assertCurrentPasswordValid,
+  assertPasswordChanged,
+} from "@/lib/user-utils"
 import { rateLimitGuard } from "@/lib/rate-limit"
 import {
   generateSecret,
@@ -74,6 +78,11 @@ export async function changePassword(prevState: FormState, formData: FormData): 
   const isValid = await comparePassword(currentPassword, user!.passwordHash!)
   const pwErr = assertCurrentPasswordValid(isValid)
   if (pwErr) return { error: pwErr }
+
+  // Block a no-op change (new password identical to current) so it can't silently
+  // "succeed" — the tested guard is now wired here (E324).
+  const noopErr = assertPasswordChanged(currentPassword, newPassword)
+  if (noopErr) return { error: noopErr }
 
   const newHash = await hashPassword(newPassword)
   await db

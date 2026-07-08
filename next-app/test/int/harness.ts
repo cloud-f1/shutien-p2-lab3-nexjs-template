@@ -169,6 +169,15 @@ export async function readUserByEmail(
   return rows.length ? rows[0] : null
 }
 
+/** Read a single user's stored password hash by id (null for OAuth-only rows). */
+export async function readUserPasswordHash(userId: string): Promise<string | null> {
+  const { sql } = requireDb()
+  const rows = await sql<{ password_hash: string | null }[]>`
+    SELECT password_hash FROM users WHERE id = ${userId} LIMIT 1
+  `
+  return rows.length ? rows[0].password_hash : null
+}
+
 /** Read every item row owned by a user. */
 export async function readItemsByUser(
   userId: string,

@@ -38,17 +38,3 @@ export function assertPasswordChanged(
   }
   return null
 }
-
-/**
- * Checks that the caller role is authenticated (any non-null session user id
- * is acceptable — this guards the pure logic layer; the server action still
- * calls requireAuth() which redirects on failure).
- *
- * Returns an error string if the userId is missing, null if OK.
- */
-export function assertAuthenticatedUser(userId: string | undefined | null): string | null {
-  if (!userId) {
-    return "請先登入。"
-  }
-  return null
-}

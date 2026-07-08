@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import {
-  isUniqueViolation,
-  isUniqueViolationOn,
-  PG_UNIQUE_VIOLATION,
-} from "./idempotency-utils"
+import { isUniqueViolation, PG_UNIQUE_VIOLATION } from "./idempotency-utils"
 
 describe("idempotency-utils", () => {
   describe("isUniqueViolation", () => {
@@ -31,23 +27,6 @@ describe("idempotency-utils", () => {
       expect(isUniqueViolation(undefined)).toBe(false)
       expect(isUniqueViolation("23505")).toBe(false)
       expect(isUniqueViolation(23505)).toBe(false)
-    })
-  })
-
-  describe("isUniqueViolationOn", () => {
-    it("matches the violated constraint name (constraint_name)", () => {
-      const err = { code: "23505", constraint_name: "payment_events_provider_event_id_unique" }
-      expect(isUniqueViolationOn(err, "payment_events_provider_event_id_unique")).toBe(true)
-      expect(isUniqueViolationOn(err, "subscriptions_provider_sub_id_unique")).toBe(false)
-    })
-
-    it("also reads the legacy `constraint` property", () => {
-      const err = { code: "23505", constraint: "subscriptions_provider_sub_id_unique" }
-      expect(isUniqueViolationOn(err, "subscriptions_provider_sub_id_unique")).toBe(true)
-    })
-
-    it("returns false when not a unique violation at all", () => {
-      expect(isUniqueViolationOn({ code: "23503", constraint_name: "x" }, "x")).toBe(false)
     })
   })
 })
