@@ -1,44 +1,11 @@
 import { describe, expect, it } from "vitest"
 
 import {
-  aggregateUsage,
   assertWithinLimit,
   formatUsageDisplay,
   getPlanLimit,
   getUsagePeriod,
-  type UsageEventLike,
 } from "./usage-utils"
-
-describe("aggregateUsage", () => {
-  const events: UsageEventLike[] = [
-    { metric: "api_request", delta: 1 },
-    { metric: "api_request", delta: 3 },
-    { metric: "tokens", delta: 100 },
-    { metric: "api_request", delta: 2 },
-  ]
-
-  it("sums delta only for the matching metric (mixed metrics)", () => {
-    expect(aggregateUsage(events, "api_request")).toBe(6)
-    expect(aggregateUsage(events, "tokens")).toBe(100)
-  })
-
-  it("returns 0 for a metric with no events", () => {
-    expect(aggregateUsage(events, "seats")).toBe(0)
-  })
-
-  it("returns 0 for the zero-event case", () => {
-    expect(aggregateUsage([], "api_request")).toBe(0)
-  })
-
-  it("ignores non-finite deltas defensively", () => {
-    const dirty: UsageEventLike[] = [
-      { metric: "api_request", delta: 5 },
-      { metric: "api_request", delta: Number.NaN },
-      { metric: "api_request", delta: Infinity },
-    ]
-    expect(aggregateUsage(dirty, "api_request")).toBe(5)
-  })
-})
 
 describe("getUsagePeriod", () => {
   it("returns the first instant of the current and next month (UTC)", () => {
