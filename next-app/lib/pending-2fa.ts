@@ -13,8 +13,9 @@
  * Node-only (crypto + a server-side nonce store). Never imported into the Edge
  * proxy or a client bundle.
  */
-import { createHmac, randomBytes, timingSafeEqual } from "crypto"
+import { createHmac, timingSafeEqual } from "crypto"
 import { cookies } from "next/headers"
+import { generateNonce } from "@/lib/totp-utils"
 
 const COOKIE = "pending_2fa"
 const TTL_MS = 5 * 60 * 1000 // a login challenge is valid for 5 minutes
@@ -80,8 +81,9 @@ export async function clearPending2fa(): Promise<void> {
 /** Mint a single-use nonce that authorize() will exchange for a session. */
 export function issueNonce(userId: string): string {
   // Keyed by an opaque random token; value carries the userId so authorize()
-  // can look up who it belongs to.
-  const token = randomBytes(24).toString("hex")
+  // can look up who it belongs to. The random portion comes from totp-utils'
+  // generateNonce() so there is a single source of truth (E324 dedupe).
+  const token = generateNonce()
   nonces.set(token, { userId, expiresAt: Date.now() + 60_000 })
   return token
 }

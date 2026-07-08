@@ -1,11 +1,13 @@
 /**
  * Usage metering — pure, db-free helpers (E301, E308).
  *
- * The metering FOUNDATION, not a pricing model: these functions aggregate and
- * format usage so the DB layer (lib/db/queries/usage.ts), the Server Action
- * (actions/usage.ts) and the billing panel stay thin. Everything here is pure
- * and synchronous so it can be unit-tested without a database — see
- * usage-utils.test.ts.
+ * The metering FOUNDATION, not a pricing model: these functions compute the
+ * period window, format usage and resolve plan caps so the DB layer
+ * (lib/db/queries/usage.ts), the Server Action (actions/usage.ts) and the billing
+ * panel stay thin. Everything here is pure and synchronous so it can be unit-tested
+ * without a database — see usage-utils.test.ts. (The current-month total itself is
+ * summed in Postgres by getCurrentMonthUsage, which is cheaper than loading every
+ * row into Node.)
  *
  * E308 adds the limit layer: `getPlanLimit` reads a tier's per-metric cap from
  * `config/pricing.json` (via lib/billing/pricing — JSON-only, no db import) and
@@ -14,31 +16,10 @@
 
 import { getTierBySlug, type PricingTier } from "@/lib/billing/pricing"
 
-/** The minimal shape an event needs to be aggregated — matches usageEventsTable rows. */
-export interface UsageEventLike {
-  metric: string
-  delta: number
-}
-
 /** A half-open usage window [start, end) — typically the current calendar month. */
 export interface UsagePeriod {
   start: Date
   end: Date
-}
-
-/**
- * Sum `delta` across the events that match `metric`. Rows for other metrics are
- * ignored, so a single mixed-metric result set can be reduced per metric. A
- * non-finite or missing delta contributes 0 (defensive — DB default is 1).
- */
-export function aggregateUsage(events: readonly UsageEventLike[], metric: string): number {
-  let total = 0
-  for (const event of events) {
-    if (event.metric !== metric) continue
-    const delta = Number(event.delta)
-    if (Number.isFinite(delta)) total += delta
-  }
-  return total
 }
 
 /**

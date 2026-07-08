@@ -29,14 +29,3 @@ export function assertNotSelfDelete(actorId: string, targetId: string): string |
   }
   return null
 }
-
-/**
- * Validates that the caller has the admin role before performing a
- * user-management operation.  Returns an error string if denied, null if OK.
- */
-export function assertAdminRole(role: string | undefined): string | null {
-  if (role !== "admin") {
-    return "權限不足：需要管理員角色。"
-  }
-  return null
-}
