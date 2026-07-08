@@ -22,6 +22,62 @@
       ]
     },
     {
+      "name": "scheduler",
+      "type": "registry:block",
+      "title": "Scheduler (node-cron worker)",
+      "description": "In-process node-cron background worker started from instrumentation.ts register() — nodejs-runtime-only, single-run guarded, try/catch-wrapped tick, env-overridable cadence + timezone. Opt-in alternative to an external/HTTP cron.",
+      "registryDependencies": [],
+      "dependencies": [
+        "node-cron"
+      ],
+      "devDependencies": [
+        "@types/node-cron"
+      ],
+      "files": [
+        {
+          "path": "registry/scheduler/lib/scheduler-worker.ts",
+          "type": "registry:lib",
+          "target": "lib/scheduler-worker.ts"
+        },
+        {
+          "path": "registry/scheduler/lib/scheduler-job.ts",
+          "type": "registry:lib",
+          "target": "lib/scheduler-job.ts"
+        },
+        {
+          "path": "registry/scheduler/module.manifest.json",
+          "type": "registry:file",
+          "target": "registry/scheduler/module.manifest.json"
+        }
+      ]
+    },
+    {
+      "name": "audit-log",
+      "type": "registry:block",
+      "title": "Audit Log (immutable)",
+      "description": "Legal-grade immutable audit trail — append-only table with a denormalized actor snapshot, before/after jsonb, and targetLabel. Ships a fire-and-forget log() helper that records the real actor even for act-on-behalf-of.",
+      "registryDependencies": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "files": [
+        {
+          "path": "registry/audit-log/lib/audit-log/schema.ts",
+          "type": "registry:lib",
+          "target": "lib/audit-log/schema.ts"
+        },
+        {
+          "path": "registry/audit-log/lib/audit-log/log.ts",
+          "type": "registry:lib",
+          "target": "lib/audit-log/log.ts"
+        },
+        {
+          "path": "registry/audit-log/module.manifest.json",
+          "type": "registry:file",
+          "target": "registry/audit-log/module.manifest.json"
+        }
+      ]
+    },
+    {
       "name": "billing-stripe",
       "type": "registry:block",
       "title": "Billing (Stripe)",

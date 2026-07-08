@@ -3,8 +3,10 @@
 import { db } from "@/lib/db"
 import { itemsTable } from "@/lib/schema"
 import { eq, and } from "drizzle-orm"
+import { z } from "zod"
 import { revalidatePath } from "next/cache"
-import { requireAuth, requireEditor } from "@/lib/permissions"
+import { requireAuth, requireEditor, canEdit } from "@/lib/permissions"
+import { defineAction } from "@/lib/define-action"
 import { validateItemTitle } from "@/lib/items-utils"
 import { toJson } from "@/lib/export-utils"
 
@@ -26,23 +28,37 @@ export async function createItem(prevState: State, formData: FormData): Promise<
   return null // success — the modal closes + the list revalidates
 }
 
+// E323 — reference migration to the defineAction() factory. The pipeline
+// (guard → validate → authorize → handler → audit → revalidate) is provided by the
+// factory; the handler holds only the delete + the audit entry it can't forget. The
+// thin `deleteItem(id)` wrapper below preserves the existing `(id) => State` signature
+// its callers (components/delete-button.tsx) already depend on.
+const deleteItemAction = defineAction({
+  allow: canEdit, // viewers are read-only; editors + admins may delete
+  schema: z.object({ id: z.string().min(1) }),
+  revalidate: ["/dashboard", "/dashboard/items"],
+  handler: async ({ id }, ctx) => {
+    const result = await db
+      .delete(itemsTable)
+      .where(and(eq(itemsTable.id, id), eq(itemsTable.userId, ctx.actorId)))
+
+    // Ownership-scoped WHERE matching zero rows means the item doesn't exist or
+    // belongs to another user — surface that instead of silently "succeeding".
+    // (postgres-js exposes rows-affected as `.count`.)
+    if (result.count === 0) {
+      return { error: "找不到項目，或您沒有權限刪除。" }
+    }
+
+    return {
+      data: {},
+      audit: { actorId: ctx.actorId, action: "item.deleted", targetType: "item", targetId: id },
+    }
+  },
+})
+
 export async function deleteItem(id: string): Promise<State> {
-  const session = await requireEditor()
-
-  const result = await db
-    .delete(itemsTable)
-    .where(and(eq(itemsTable.id, id), eq(itemsTable.userId, session.user.id)))
-
-  // Ownership-scoped WHERE matching zero rows means the item doesn't exist or
-  // belongs to another user — surface that instead of silently "succeeding".
-  // (postgres-js exposes rows-affected as `.count`.)
-  if (result.count === 0) {
-    return { error: "找不到項目，或您沒有權限刪除。" }
-  }
-
-  revalidatePath("/dashboard")
-  revalidatePath("/dashboard/items")
-  return null
+  const result = await deleteItemAction({ id })
+  return "ok" in result ? null : { error: result.error }
 }
 
 export async function updateItem(id: string, prevState: State, formData: FormData): Promise<State> {

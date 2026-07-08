@@ -102,8 +102,9 @@ while IFS= read -r FILE; do
   # exports requireAuth/requireEditor/requireAdmin; requireRole/requireFlag and a generic
   # guard() helper are recognised too so a future RBAC-convention rename doesn't silently
   # false-positive this rule (see scripts/hooks/CLAUDE.md, "convention-rename" lesson —
-  # E319). Product-specific names (e.g. can(role,flag), a defineAction() factory) are
-  # intentionally NOT recognised here — that lands with the epic that introduces them.
+  # E319). E323 adds defineAction( — the Server-Action factory (lib/define-action.ts)
+  # runs the guard (auth + live role + allow) as step 1 of its pipeline, so a file whose
+  # mutations are ALL built through defineAction() is guarded even with no requireX() call.
   #
   # Exemption: files containing the marker comment
   #   // stop-verifier:public-action
@@ -116,9 +117,9 @@ while IFS= read -r FILE; do
   if echo "$FILE" | grep -qE "^next-app/actions/.*\.ts$" \
      && ! echo "$FILE" | grep -qE "\.(test|spec)\.ts$"; then
     if grep -qE "db\.(insert|update|delete)\(" "$FILE" 2>/dev/null \
-       && ! grep -qE "require(Auth|Editor|Admin|Role|Flag)\b|guard\(" "$FILE" 2>/dev/null \
+       && ! grep -qE "require(Auth|Editor|Admin|Role|Flag)\b|guard\(|defineAction\(" "$FILE" 2>/dev/null \
        && ! grep -qE "//\s*stop-verifier:public-action" "$FILE" 2>/dev/null; then
-      VIOLATIONS="${VIOLATIONS}\n❌ Rule 2: mutating Server Action in $FILE has no RBAC guard.\n   Fix: call a guard as the first line — requireAuth()/requireEditor()/requireAdmin()/requireRole()/requireFlag() (lib/permissions.ts) or a guard() helper. Server Actions are public POST endpoints.\n   (Exception: add '// stop-verifier:public-action' only for genuine pre-auth endpoints like login/password-reset.)\n"
+      VIOLATIONS="${VIOLATIONS}\n❌ Rule 2: mutating Server Action in $FILE has no RBAC guard.\n   Fix: call a guard as the first line — requireAuth()/requireEditor()/requireAdmin()/requireRole()/requireFlag() (lib/permissions.ts) or a guard() helper, or build the mutation with defineAction() (lib/define-action.ts, which guards in-pipeline). Server Actions are public POST endpoints.\n   (Exception: add '// stop-verifier:public-action' only for genuine pre-auth endpoints like login/password-reset.)\n"
       emit_rule_fired 2 block
     fi
   fi

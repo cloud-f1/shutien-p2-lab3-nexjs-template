@@ -62,6 +62,13 @@ printf '"use server"\n// stop-verifier:public-action — pre-auth login endpoint
 run "Rule 2: public-action marker on unguarded action PASSES" "$ACT_REL" 0
 rm -f "$ACT_ABS"
 
+# Rule 2 (E323) — a mutation built through the defineAction() factory is recognised as
+# guarded (the factory runs auth + live-role + allow as pipeline step 1), even with no
+# requireX() call anywhere in the file.
+printf '"use server"\nimport { db } from "@/lib/db"\nimport { defineAction } from "@/lib/define-action"\nexport const del = defineAction({ schema: s, allow: canEdit, handler: async ({ id }, ctx) => { await db.delete(t).where(eq(t.id, id)); return { data: {}, audit: null } } })\n' > "$ACT_ABS"
+run "Rule 2: defineAction() factory PASSES" "$ACT_REL" 0
+rm -f "$ACT_ABS"
+
 # Rule 4 — console.log in next-app production code blocks (global grep).
 printf 'export function Y(){ console.log("x"); return null }\n' > "$FIX_ABS/logbad.tsx"
 run "Rule 4: console.log BLOCKS" "$FIX_REL/logbad.tsx" 2

@@ -1,0 +1,79 @@
+{
+  "$schema": "../schema/module.manifest.schema.json",
+  "id": "scheduler",
+  "version": "1.0.0",
+  "title": "Scheduler (node-cron worker)",
+  "summary": "In-process node-cron background worker started from instrumentation.ts register() — nodejs-runtime-only, single-run guarded, try/catch-wrapped tick, env-overridable cadence + timezone. Opt-in alternative to an external/HTTP cron.",
+  "registryDependencies": [],
+  "npmDependencies": {
+    "node-cron": "^3.0.3"
+  },
+  "npmDevDependencies": {
+    "@types/node-cron": "^3.0.11"
+  },
+  "envVars": [
+    {
+      "name": "SCHEDULER_CRON",
+      "description": "Cron expression for the job cadence. Defaults to '0 * * * *' (hourly on the hour).",
+      "required": false,
+      "example": "0 2 * * *"
+    },
+    {
+      "name": "SCHEDULER_TZ",
+      "description": "IANA timezone for the schedule. Defaults to 'UTC'.",
+      "required": false,
+      "example": "Asia/Taipei"
+    }
+  ],
+  "dbTables": [],
+  "db": {},
+  "routes": [],
+  "serverActions": [],
+  "postInstall": [
+    {
+      "step": 1,
+      "action": "command",
+      "description": "Install the node-cron runtime dependency (shadcn installs it automatically from npmDependencies; run this if it did not).",
+      "command": "pnpm add node-cron && pnpm add -D @types/node-cron"
+    },
+    {
+      "step": 2,
+      "action": "manual",
+      "description": "Edit lib/scheduler-job.ts — replace the heartbeat body with your idempotent domain work."
+    },
+    {
+      "step": 3,
+      "action": "manual",
+      "description": "Call startScheduler() from instrumentation.ts's register() under the NEXT_RUNTIME === 'nodejs' guard. COMPOSE with the template's existing Sentry init (E293) — add the dynamic import + startScheduler() call alongside it; do NOT replace the file. See the install-scheduler skill for the exact edit."
+    },
+    {
+      "step": 4,
+      "action": "env-wire",
+      "description": "Optionally set SCHEDULER_CRON and SCHEDULER_TZ in .env.local to override the hourly-UTC default."
+    },
+    {
+      "step": 5,
+      "action": "command",
+      "description": "Verify no import/type errors.",
+      "command": "pnpm typecheck && pnpm lint"
+    }
+  ],
+  "docs": "/docs/modules/scheduler",
+  "files": [
+    {
+      "path": "registry/scheduler/lib/scheduler-worker.ts",
+      "type": "registry:lib",
+      "target": "lib/scheduler-worker.ts"
+    },
+    {
+      "path": "registry/scheduler/lib/scheduler-job.ts",
+      "type": "registry:lib",
+      "target": "lib/scheduler-job.ts"
+    },
+    {
+      "path": "registry/scheduler/module.manifest.json",
+      "type": "registry:file",
+      "target": "registry/scheduler/module.manifest.json"
+    }
+  ]
+}
