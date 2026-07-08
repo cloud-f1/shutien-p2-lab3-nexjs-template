@@ -20,6 +20,8 @@
  *   → docs/guides/rebrand.md           (prose guide)
  */
 
+import packageJson from "../package.json"
+
 /** Display name for the app — drives logos, nav, footer, sidebar, and document title. */
 export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME?.trim() || "AI App Template"
 
@@ -27,3 +29,11 @@ export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME?.trim() || "AI App Temp
 export const APP_DESCRIPTION =
   process.env.NEXT_PUBLIC_APP_DESCRIPTION?.trim() ||
   "內建認證、3 階 RBAC、模組化金流與深色主題的 Next.js SaaS 起手式。"
+
+/**
+ * App version (E322) — read directly from next-app/package.json's `version` field, so
+ * the UI can never drift from a git tag: bump `package.json` per the SemVer rule in
+ * CONTRIBUTING.md and the next build/deploy shows it. Rendered as a small muted label
+ * in the dashboard sidebar footer (components/app-sidebar.tsx).
+ */
+export const APP_VERSION = packageJson.version

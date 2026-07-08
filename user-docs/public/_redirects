@@ -1,0 +1,7 @@
+# Cloudflare Pages redirect rules for the user-docs site.
+#
+# VitePress copies user-docs/public/ to the dist root, where Cloudflare Pages reads
+# this file. Format: <source>  <destination>  <status>
+#
+# Empty by default — add rules here if you rename/remove published guide pages and
+# need to redirect old bookmarked/cached URLs to their new home.

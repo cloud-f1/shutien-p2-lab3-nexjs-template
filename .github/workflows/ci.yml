@@ -1,20 +1,19 @@
 name: CI
 
-# DISABLED (manual-only): runs ONLY when triggered by hand from the Actions tab
-# (workflow_dispatch). To re-enable automatic CI on every push / PR to main,
-# uncomment the `push:` + `pull_request:` blocks below. The gates themselves
-# (typecheck · lint · test · build · db migrate) are unchanged — only the trigger
-# is gated off.
 on:
-  workflow_dispatch:
-  # push:
-  #   branches: [main]
-  # pull_request:
-  #   branches: [main]
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
+
+# Least-privilege: this workflow only reads the repo (build/test/lint). It needs
+# no write scopes on GITHUB_TOKEN.
+permissions:
+  contents: read
 
 jobs:
   quality:
@@ -26,15 +25,18 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
         with:
           run_install: false
+          # packageManager lives in next-app/package.json (there is no root package.json),
+          # so point the action there or it errors "No pnpm version is specified".
+          package_json_file: next-app/package.json
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: "22"
           cache: pnpm
@@ -85,15 +87,18 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
         with:
           run_install: false
+          # packageManager lives in next-app/package.json (there is no root package.json),
+          # so point the action there or it errors "No pnpm version is specified".
+          package_json_file: next-app/package.json
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: "22"
           cache: pnpm
@@ -109,3 +114,34 @@ jobs:
           # test-migrate.ts connects to the `postgres` maintenance DB first (via withDatabase),
           # creates a throwaway test DB, runs drizzle-kit migrate, asserts tables, then drops it.
           DATABASE_URL: postgresql://saas_user:saas_pass@localhost:5432/saas_dev
+
+  docs:
+    name: Docs & identity (staleness · dev-docs build)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      # Gate the audit's brand/identity-staleness check (old repo slug / org / email
+      # demo-logins surviving in live docs). No deps — pure git grep, runs in seconds.
+      - name: Staleness check
+        run: bash scripts/staleness-check.sh
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          run_install: false
+          package_json_file: dev-docs/package.json
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: dev-docs/pnpm-lock.yaml
+
+      # PRs don't otherwise build the user manual (deploy-docs.yml only runs on main) —
+      # this catches a broken VitePress build / dead link before merge.
+      - name: Build dev-docs
+        run: pnpm install --frozen-lockfile && pnpm build
+        working-directory: dev-docs

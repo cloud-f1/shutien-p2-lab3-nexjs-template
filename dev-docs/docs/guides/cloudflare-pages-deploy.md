@@ -98,7 +98,7 @@ Cloudflare Pages creates a unique preview URL per branch: `https://<branch-slug>
 
 ## GitHub Actions (Automatic Deploy)
 
-A GitHub Actions workflow is included at `.github/workflows/dev-docs.yml` that deploys automatically on every push to `main` that touches `dev-docs/**`.
+A GitHub Actions workflow is included at `.github/workflows/deploy-dev-docs.yml` that deploys automatically on every push to `main` that touches `dev-docs/**` (path-scoped and SHA-pinned; a sibling `deploy-docs.yml` handles the separate `user-docs/` site).
 
 Required GitHub repository secrets:
 - `CLOUDFLARE_API_TOKEN`
