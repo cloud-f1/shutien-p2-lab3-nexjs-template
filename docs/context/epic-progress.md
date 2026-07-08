@@ -372,7 +372,7 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E317 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 73 — scripts README + staleness-check + zeabur-deploy skill enhancement. MERGED (PR #60/63). |
 | E318 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 74 — dev-docs Cloudflare Pages deploy enhancement. MERGED (PR #68 → 69fcae4). |
 | E319 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 75 — orchestration & guardrail hardening (flow Step 6 · audit Step 6 · stop-verifier public-action marker + 2 Tier-0 notes). |
-| E320 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 75 — executable dead-code & arch guards (real service-map.cjs + check-orphan-exports.mjs / check:orphans). Upgrades E314 docs→runnable. |
+| E320 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 75 — executable dead-code & arch guards. Ported service-map.cjs + check-orphan-exports.mjs (check:orphans, non-strict default), generated docs/architecture/service-map.md, service-map skill. QA: typecheck/lint clean, 518/518 tests. **check:orphans found 8 true orphans in the template** (flagged, not fixed — follow-up). branch feat/E320; PR open → awaiting user merge. |
 | E321 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 75 — test pyramid middle layer (test:int throwaway-DB harness + jsdom/RTL component tests + docs/qa/). Run IN-REPO. |
 | E322 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 75 — CI/deploy/release hardening + doctrine (CI SHA-pin+docs-job · docs-deploy split + user-docs/ · make verify + deploy-gcp · env/seeding/version doctrine). |
 | E323 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 75 — reusable patterns HYBRID (bake-in: defineAction · responsive-modal · calendar/date-picker · mobile-tab-bar · ui-spec-epic; @saas modules: scheduler · audit-log · rbac-scoped-visibility · sentry · csv-io). Run IN-REPO. |

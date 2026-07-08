@@ -1,5 +1,12 @@
 # Payments Service — Real Import-Graph Map
 
+> **Note (E320):** this file is **illustrative** — a hand-written narrative snapshot, drawn once
+> and not regenerated. The **generated source of truth** is
+> [`docs/architecture/service-map.md`](service-map.md), produced mechanically by
+> `node scripts/service-map.cjs items billing api-keys auth --out docs/architecture/service-map.md`.
+> Re-run that command to refresh the real import graph; keep this narrative for the prose
+> walkthrough of the billing domain, but trust the generated file for current edges/orphans.
+
 > **This map is drawn from the code, not a whiteboard.** Every edge below was extracted
 > from actual `import … from` statements in `next-app/` (tests + the `registry/` distribution
 > copies excluded). Regenerate the raw edges with:
