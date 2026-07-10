@@ -27,8 +27,7 @@ Quick access: `make help` lists all Makefile-backed targets.
 | `check-doc-versions.sh` | Detect stale version references in documentation (package versions, Node versions, etc.). |
 | `check-translations.sh` | Validate that `en` and `zh-TW` i18n namespaces have identical key sets. |
 | `visuals-mindmap-verify.sh` | Compare hardcoded stats in `docs/visuals/agent-team-mindmap.html` against live counts (agents / commands / hooks / stop rules). |
-| `smoke-test.sh` | Next.js stack smoke test: boots Docker infra, builds app, starts it, and hits key endpoints. |
-| `smoke.sh` | Comprehensive "is everything OK?" gate — build / test / e2e / registry / VitePress (+ `--vrt` for visual). |
+| `smoke.sh` | Comprehensive "is everything OK?" gate — build / test / e2e / registry / VitePress (+ `--vrt` for visual). (Superseded the old `smoke-test.sh`, removed 2026-07-10.) |
 | `checks/check-context-budget.sh` | Check context document sizes against memory budget limits. |
 | `checks/css-var-check.sh` | CSS Variable Drift Guard — detect undefined CSS custom properties in the app. |
 | `align/surface-check.cjs` | Deterministic UI-surface alignment linter for the Next.js app (used by `/athena:align`). |

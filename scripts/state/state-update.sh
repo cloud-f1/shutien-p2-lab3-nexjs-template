@@ -264,11 +264,11 @@ awk -v target="$EPIC" -v col="$COL" -v newval="$NEW_CELL" -v do_notes="$DO_NOTES
 # ---------------------------------------------------------------------------
 # Sync EPIC_INDEX.md — surgical edit of the SAME matrix row only.
 #
-# Deliberately NOT render-index.sh: a full re-render rebuilds the Phase Status
-# table from epic-progress.md's lean rows and would WIPE the rich historical
-# prose EPIC_INDEX.md carries per phase (78 rich rows vs 63 lean — verified
-# 2026-07-10). Until that gap is closed, this script mirrors the single
-# matrix-row change and touches nothing else.
+# Deliberately NOT render-index.sh: even though render-index.sh is now
+# prose-preserving (E196 gap closed 2026-07-10 — merge logic keeps EPIC_INDEX's
+# rich Phase Status prose and history-only rows), a single-cell update doesn't
+# need a full two-table merge pass. This script mirrors the one matrix-row
+# change and touches nothing else; run render-index.sh for full re-syncs.
 # ---------------------------------------------------------------------------
 
 if [ -f "$INDEX_FILE" ] && grep -qE "^\|[ \t]*${EPIC}[ \t]*\|" "$INDEX_FILE"; then

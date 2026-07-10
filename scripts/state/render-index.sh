@@ -10,7 +10,33 @@
 # All prose outside these sentinel blocks (Dependency Rules, Phase Parallelism,
 # Next Action, etc.) is extracted verbatim and reinjected — never regenerated.
 #
-# Idempotent: running twice on the same epic-progress.md produces identical output.
+# Prose-preserving MERGE (not replace): epic-progress.md and EPIC_INDEX.md are
+# asymmetric — epic-progress rows are lean state ("✅ Complete"), EPIC_INDEX
+# rows often carry rich historical prose ("✅ Complete (Backport Wave 2 — ...)")
+# and each file may have rows the other lacks. A naive full-replace regen would
+# wipe that prose and drop history-only rows. The merge rules:
+#
+#   Phase Status table (per phase row, keyed by the Phase/Infra cell):
+#     1. Row in both files: if EPIC_INDEX's existing Status cell *starts with*
+#        epic-progress's Status cell, keep the existing (rich) Status cell —
+#        prose preserved. Otherwise the status actually changed, so
+#        epic-progress's Status cell wins (state wins over stale prose). Either
+#        way the row's position in EPIC_INDEX is kept, and the Epics cell
+#        always comes from epic-progress (state is authoritative for which
+#        epics belong to a phase).
+#     2. Row only in EPIC_INDEX: preserved verbatim, in place — history is
+#        never deleted.
+#     3. Row only in epic-progress: appended (current behavior for new rows).
+#
+#   Epic Step Matrix (per epic row, keyed by the Epic cell):
+#     Step cells (Spec/Impl/QA/Commit/Merge) always come from epic-progress
+#     (state). The Notes cell: if epic-progress's Notes is a prefix of
+#     EPIC_INDEX's existing Notes, keep the existing (richer) Notes; otherwise
+#     epic-progress's Notes wins. Rows only in EPIC_INDEX are preserved in
+#     place; rows only in epic-progress are appended.
+#
+# Idempotent: running twice on the same file pair produces identical output
+# (a merged rich row already satisfies "starts with" against itself).
 #
 # Environment overrides (for testing):
 #   PROGRESS_FILE  — path to epic-progress.md (default: docs/context/epic-progress.md)
@@ -44,9 +70,9 @@ if [[ ! -f "$INDEX_FILE" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Step 1: Extract Phase Status table from epic-progress.md
-# Collect rows between "## Phase Status" and the next "## " heading.
-# Output format: | Phase N | E1, E2 | ✅ Complete |
+# Step 1: Extract Phase Status table from epic-progress.md (source of truth
+# for STATE). Collect rows between "## Phase Status" and the next "## "
+# heading. Output format: | Phase N | E1, E2 | ✅ Complete |
 # ---------------------------------------------------------------------------
 phase_rows=$(awk '
   /^## Phase Status/ { in_section=1; next }
@@ -57,17 +83,10 @@ phase_rows=$(awk '
   in_section { next }
 ' "$PROGRESS_FILE" 2>/dev/null || true)
 
-# Build the complete Phase Status table (header + rows)
-phase_table="## Phase Status
-
-| Phase | Epics | Status |
-|-------|-------|--------|
-${phase_rows}"
-
 # ---------------------------------------------------------------------------
-# Step 2: Extract Epic Step Matrix from epic-progress.md
-# Collect rows between "## Epic Step Matrix" and the next "## " heading.
-# Emit only epic data rows (lines starting with | E).
+# Step 2: Extract Epic Step Matrix from epic-progress.md (source of truth for
+# STATE). Collect rows between "## Epic Step Matrix" and the next "## "
+# heading. Emit only epic data rows (lines starting with | E).
 # ---------------------------------------------------------------------------
 matrix_rows=$(awk '
   /^## Epic Step Matrix/ { in_section=1; next }
@@ -77,26 +96,11 @@ matrix_rows=$(awk '
   in_section { next }
 ' "$PROGRESS_FILE" 2>/dev/null || true)
 
-# Build the complete Epic Step Matrix table (header + rows from progress)
-matrix_table="## Epic Step Matrix
-
-<!--
-Steps: spec → implement → qa → commit → merge
-Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
-Size: S (~1 session) | M (1-2 sessions) | L (2-3 sessions) — lives in each epic file's \`size:\` header (S/M/L), not this matrix (no Size column here); used by flow/batch model tiering.
-Phase 46+ epics: enriched template — epic files include Implementation Phases, Per-Phase Checkpoints, and Test Strategy sections (produced by \`scripts/plan/brainstorm-emit.sh render-epic\`). E1–E186 epics use the legacy format; backward compat is additive-only.
--->
-
-| Epic | Spec | Impl | QA | Commit | Merge | Notes |
-|------|------|------|-----|--------|-------|-------|
-${matrix_rows}"
-
 # ---------------------------------------------------------------------------
-# Step 3: Splice generated sections into INDEX_FILE between sentinel comments.
-# If sentinels are absent, add them around the existing sections.
+# Step 3: Ensure sentinel comments exist in INDEX_FILE. If absent, inject them
+# around the first occurrence of the Phase Status and Epic Step Matrix tables
+# so the merge/splice logic below always has sentinels to work with.
 # ---------------------------------------------------------------------------
-
-# Check if sentinels exist in the INDEX_FILE
 has_phase_sentinel=0
 has_matrix_sentinel=0
 grep -q '<!-- PHASE_STATUS_START -->' "$INDEX_FILE" 2>/dev/null && has_phase_sentinel=1 || true
@@ -104,12 +108,7 @@ grep -q '<!-- EPIC_MATRIX_START -->' "$INDEX_FILE" 2>/dev/null && has_matrix_sen
 
 tmp_index="$INDEX_FILE.render.tmp"
 
-# ---------------------------------------------------------------------------
-# Step 3a: If sentinels are missing, inject them around the first occurrence
-# of the Phase Status and Epic Step Matrix tables.
-# ---------------------------------------------------------------------------
 if [[ "$has_phase_sentinel" -eq 0 ]] || [[ "$has_matrix_sentinel" -eq 0 ]]; then
-  # Add sentinels around the sections in a temporary copy
   awk '
     /^## Phase Status/ && !phase_done {
       print "<!-- PHASE_STATUS_START -->"
@@ -143,16 +142,154 @@ if [[ "$has_phase_sentinel" -eq 0 ]] || [[ "$has_matrix_sentinel" -eq 0 ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Step 3b: Replace content between sentinels using awk.
+# Step 4: Extract the CURRENT (pre-render) EPIC_INDEX.md rows between
+# sentinels — this is the "rich" side of the merge.
 # ---------------------------------------------------------------------------
+existing_phase_rows=$(awk '
+  /<!-- PHASE_STATUS_START -->/ { in_section=1; next }
+  /<!-- PHASE_STATUS_END -->/ { exit }
+  in_section && /^\| Phase [0-9]/ { print; next }
+  in_section && /^\| Infra/ { print; next }
+' "$INDEX_FILE" 2>/dev/null || true)
 
-# Write the new Phase Status block (without the trailing newline confusion)
-# We use a temp file to pass the multi-line replacement through awk.
+existing_matrix_rows=$(awk '
+  /<!-- EPIC_MATRIX_START -->/ { in_section=1; next }
+  /<!-- EPIC_MATRIX_END -->/ { exit }
+  in_section && /^\| E[0-9]/ { print; next }
+' "$INDEX_FILE" 2>/dev/null || true)
+
+# ---------------------------------------------------------------------------
+# Step 5: Merge. Write progress (state) rows and existing (rich) rows to temp
+# files, then run an awk merge pass per the rules documented at the top of
+# this file. bash 3.2 / BSD awk compatible — no gawk-only features.
+# ---------------------------------------------------------------------------
+prog_phase_tmp=$(mktemp 2>/dev/null || echo "/tmp/render_prog_phase.$$")
+idx_phase_tmp=$(mktemp 2>/dev/null || echo "/tmp/render_idx_phase.$$")
+prog_matrix_tmp=$(mktemp 2>/dev/null || echo "/tmp/render_prog_matrix.$$")
+idx_matrix_tmp=$(mktemp 2>/dev/null || echo "/tmp/render_idx_matrix.$$")
+
+printf '%s\n' "$phase_rows" > "$prog_phase_tmp"
+printf '%s\n' "$existing_phase_rows" > "$idx_phase_tmp"
+printf '%s\n' "$matrix_rows" > "$prog_matrix_tmp"
+printf '%s\n' "$existing_matrix_rows" > "$idx_matrix_tmp"
+
+merged_phase_rows=$(awk -v prog_file="$prog_phase_tmp" '
+  function trim(s) { gsub(/^[ \t]+|[ \t]+$/, "", s); return s }
+  # Rejoin fields [start..nf] with "|" — the Status cell (or any tail cell) may
+  # itself contain a literal "|" (e.g. markdown-escaped "\|" in prose), which
+  # a naive single-field lookup after split() would silently truncate.
+  # end is nf-1: a well-formed table row always ends with "|" as its last
+  # character, so split() always yields one guaranteed-empty trailing field
+  # after the final delimiter — that field must be dropped, not joined back in.
+  function join_from(arr, start, end,    result, i) {
+    result = arr[start]
+    for (i = start + 1; i <= end; i++) result = result "|" arr[i]
+    return result
+  }
+  BEGIN {
+    FS = "|"
+    n = 0
+    while ((getline line < prog_file) > 0) {
+      if (line == "") continue
+      nf = split(line, f, "|")
+      key = trim(f[2])
+      n++
+      porder[n] = key
+      pepics[key] = trim(f[3])
+      pstatus[key] = trim(join_from(f, 4, nf - 1))
+      prow[key] = line
+      pused[key] = 0
+    }
+    close(prog_file)
+  }
+  {
+    if ($0 == "") next
+    nf = split($0, f, "|")
+    key = trim(f[2])
+    istatus = trim(join_from(f, 4, nf - 1))
+    if (key in pused) {
+      pused[key] = 1
+      ne = pepics[key]
+      ns = pstatus[key]
+      if (index(istatus, ns) == 1) {
+        printf "| %s | %s | %s |\n", key, ne, istatus
+      } else {
+        printf "| %s | %s | %s |\n", key, ne, ns
+      }
+    } else {
+      print $0
+    }
+  }
+  END {
+    for (i = 1; i <= n; i++) {
+      k = porder[i]
+      if (!pused[k]) print prow[k]
+    }
+  }
+' "$idx_phase_tmp" 2>/dev/null || true)
+
+merged_matrix_rows=$(awk -v prog_file="$prog_matrix_tmp" '
+  function trim(s) { gsub(/^[ \t]+|[ \t]+$/, "", s); return s }
+  # end is nf-1: a well-formed table row always ends with "|" as its last
+  # character, so split() always yields one guaranteed-empty trailing field
+  # after the final delimiter — that field must be dropped, not joined back in.
+  function join_from(arr, start, end,    result, i) {
+    result = arr[start]
+    for (i = start + 1; i <= end; i++) result = result "|" arr[i]
+    return result
+  }
+  BEGIN {
+    FS = "|"
+    n = 0
+    while ((getline line < prog_file) > 0) {
+      if (line == "") continue
+      nf = split(line, f, "|")
+      key = trim(f[2])
+      n++
+      porder[n] = key
+      pspec[key] = trim(f[3]); pimpl[key] = trim(f[4]); pqa[key] = trim(f[5])
+      pcommit[key] = trim(f[6]); pmerge[key] = trim(f[7]); pnotes[key] = trim(join_from(f, 8, nf - 1))
+      prow[key] = line
+      pused[key] = 0
+    }
+    close(prog_file)
+  }
+  {
+    if ($0 == "") next
+    nf = split($0, f, "|")
+    key = trim(f[2])
+    inotes = trim(join_from(f, 8, nf - 1))
+    if (key in pused) {
+      pused[key] = 1
+      nn = pnotes[key]
+      if (index(inotes, nn) == 1) {
+        finalnotes = inotes
+      } else {
+        finalnotes = nn
+      }
+      printf "| %s | %s | %s | %s | %s | %s | %s |\n", key, pspec[key], pimpl[key], pqa[key], pcommit[key], pmerge[key], finalnotes
+    } else {
+      print $0
+    }
+  }
+  END {
+    for (i = 1; i <= n; i++) {
+      k = porder[i]
+      if (!pused[k]) print prow[k]
+    }
+  }
+' "$idx_matrix_tmp" 2>/dev/null || true)
+
+rm -f "$prog_phase_tmp" "$idx_phase_tmp" "$prog_matrix_tmp" "$idx_matrix_tmp"
+
+# ---------------------------------------------------------------------------
+# Step 6: Splice merged sections into INDEX_FILE between sentinel comments.
+# ---------------------------------------------------------------------------
 phase_tmp=$(mktemp 2>/dev/null || echo "/tmp/render_phase.$$")
 matrix_tmp=$(mktemp 2>/dev/null || echo "/tmp/render_matrix.$$")
 
-printf '%s\n' "$phase_rows" > "$phase_tmp"
-printf '%s\n' "$matrix_rows" > "$matrix_tmp"
+printf '%s\n' "$merged_phase_rows" > "$phase_tmp"
+printf '%s\n' "$merged_matrix_rows" > "$matrix_tmp"
 
 awk -v phase_file="$phase_tmp" -v matrix_file="$matrix_tmp" '
   # Track which section we are in
@@ -216,5 +353,5 @@ fi
 
 rm -f "$phase_tmp" "$matrix_tmp"
 
-printf 'render-index.sh: rendered %s from %s\n' "$INDEX_FILE" "$PROGRESS_FILE"
+printf 'render-index.sh: rendered %s from %s (prose-preserving merge)\n' "$INDEX_FILE" "$PROGRESS_FILE"
 exit 0
