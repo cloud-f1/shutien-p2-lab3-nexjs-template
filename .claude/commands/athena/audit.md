@@ -67,6 +67,13 @@ Flag each of these:
 - **Untested surface** — a Route Handler or Server Action with no test under `lib/**`,
   `e2e/`, or a co-located `*.test.ts`.
 
+**Fork note (RBAC gap check, Step 5):** a downstream fork/product may add a **second RBAC guard
+family** alongside `lib/permissions.ts` (a product-layer permissions module, or a
+resource-scoped `defineAction()`-style factory's `authorize` hook). When present, check the
+**union** of guard families actually used in the codebase before flagging an action as
+ungated — grep the fork's actual guard call sites, don't assume only the template's canonical
+`requireAuth`/`requireEditor`/`requireAdmin` names are in play.
+
 ### Step 6: Knowledge drift (docs ↔ code, brand/identity)
 Two checks for things the type system can't catch. Run when `$ARGUMENTS` is empty or
 contains `docs`/`brand`; skip for a scoped data-layer run (e.g. `auth`).

@@ -167,8 +167,12 @@ skill (Cloudflare Pages, env token — never `wrangler login`). If `gh-cf-deploy
 200 + read a screenshot-heavy page's HTML to confirm `/screenshots/*.png` resolve (not a stale
 edge cache).
 Verify on the **fresh deployment hash URL** (`https://<hash>.<proj>.pages.dev`) — the prod
-alias can return a cached 200 for a path the new build 404s. The `_redirects` rule from §0 is
-what makes removed-path staleness harmless (long tail 301s to the manual).
+alias can return a cached 200 for a path the new build 404s. Cloudflare's `s-maxage` means a
+removed/changed path can serve **stale from the edge** for up to its TTL, and `*.pages.dev` is
+Cloudflare-managed — you cannot API-purge its edge cache. Don't chase a purge; rely on
+checking the hash URL for ground truth plus the redirect + TTL expiry for everyone else. The
+`_redirects` rule from §0 is what makes removed-path staleness harmless in the meantime (the
+long tail 301s to the manual instead of a stale 200 or a 404).
 
 ## Reusable assets
 

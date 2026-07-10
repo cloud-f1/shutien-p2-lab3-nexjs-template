@@ -64,6 +64,12 @@ routine, not a lucky manual review.
   `<ConfirmDialog>`; Server Actions return success (no `redirect`).
 - **DataTable** — record list pages use `<DataTable>` from `components/data-table-generic.tsx`;
   not a hand-rolled `<table>`.
+- **No orphan-tested logic** — run `pnpm check:orphans` (`scripts/check-orphan-exports.mjs`,
+  from `next-app/`) as part of the audit pipeline. An exported function that's referenced only
+  by its own test file (zero production callers) passes every coverage gate while doing
+  nothing at runtime — a strong signal a feature was built but never wired into the UI/action
+  layer (spec said "add X", the pure function landed, the call site didn't). Treat any orphan
+  hit as a gap: either wire it in, or if it's genuinely dead, remove it.
 
 ## Quality bar
 Every SSOT feature and every epic-contract tab/section/deep-link is either ✅ shipped or an

@@ -65,7 +65,7 @@ Gate 2: pnpm typecheck               (tsc --noEmit)
 Gate 3: pnpm lint                    (eslint-config-next)
 Gate 4: pnpm build                   (production build succeeds)
 Gate 5: pnpm db:test-migrate         (fresh-DB migration apply)
-Gate 6: git status --porcelain = empty  AND  branch = main or develop
+Gate 6: git status --porcelain = empty  AND  branch = main
 Gate 7: pnpm test:e2e                (Playwright e2e — dashboard smoke)
 ```
 
@@ -80,7 +80,7 @@ Gate 7: pnpm test:e2e                (Playwright e2e — dashboard smoke)
    - **STOP** — the USER pushes/merges to `main` (or the deploy branch). Zeabur's
      git-triggered build fires on that push; this command does not push on the
      user's behalf.
-4. After the user confirms the push/merge landed: health check `curl /health` on the
+4. After the user confirms the push/merge landed: health check `curl /api/health` on the
    target URL → expect HTTP 200.
 5. Verify migration version matches the expected latest Drizzle migration.
 6. Write-back → `docs/context/deploy-log.md`.

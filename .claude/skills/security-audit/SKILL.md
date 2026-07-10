@@ -126,7 +126,53 @@ and needs an explicit justification in the PR description for why the builder co
 - Seed data: `drizzle/seed.ts` must refuse to run when `NODE_ENV==='production'` (unless an explicit
   override) — static demo passwords (`Admin123!` etc.) reaching a prod DB is a Critical finding.
 
-## 8. Gaps this template ships with (note, don't silently assume fixed)
+## 8. Authorization-flag vs ownership confusion — Block
+
+A capability flag that grants "can edit structure" (e.g. `canEdit(role)` / `requireEditor()`)
+must not implicitly authorize an **assignment-scoped completion action**. In any domain where
+rows can be assigned to a specific user (a task, a case, an item with an owner/assignee), a
+"mark complete" / "mark done" action must gate on the actor **being the assignee**
+(an `isAssigned`-style check), not on the broader edit-structure flag. The classic bug shape is
+an OR-condition:
+
+```ts
+// looks like "editor OR assignee can complete" — actually lets ANY editor complete
+// a task that isn't theirs, bypassing the assignee-only rule:
+if (!canEdit(role) && !isAssigned) return { error: "..." }
+```
+
+That reads as defense-in-depth but is the opposite: it lets a higher-privilege role (an
+editor/supervisor) perform an action a lower-privilege assignee should hold exclusively —
+e.g. a supervisor "completing" a task never assigned to them, breaking an
+audit/accountability rule like "supervisor view is read-only; only the assignee decides the
+outcome." Fix: split the two capabilities. "Can edit structure" (add/remove fields, reassign,
+change metadata) stays gated on the role flag (`canEdit`/`requireEditor`). "Can
+complete/mark-done" gates on `isAssigned` **alone** (or an explicit act-on-behalf-of
+allowlist) — never OR'd with the edit flag. With this template's `defineAction()` factory
+(`lib/define-action.ts`), the ownership/assignment check belongs in the `authorize` resource
+hook (load the row, check `resource.assigneeId === ctx.actorId`), kept structurally separate
+from the role-level `allow`. Flag any completion-type action whose guard is
+`!hasEditFlag && !isAssigned` (or logically equivalent) — that's a privilege-escalation
+finding, not a style nitpick.
+
+## 9. Never trust a `<Select>`'s implied constraint — Block
+
+A `<Select>` that only offers a subset of valid options in a given context (e.g. a "kind"
+field limited to certain values only when a parent record has a specific category) is a UI
+convenience, not a security or data-integrity control. Any authenticated user can call the
+Server Action directly with a value the `<Select>` never exposed — client-side option lists
+are not validated server-side by construction. Every field whose valid range depends on
+another row's state must be **re-checked in the Server Action / `authorize` hook against the
+actual DB row**, not inferred from "the form wouldn't have allowed that." Example in this
+template's shape: a hypothetical `addSubItem` action that should only be callable when the
+parent `items` row has `category === "special"` — the action must re-load the parent and
+assert `parentItem.category === "special"` before inserting, even though the create-dialog's
+`<Select>` only shows the sub-item option for that category client-side. Flag any mutating
+action whose only enforcement of a category/type/kind constraint is "the form doesn't offer
+the other option" — that is a Server Action, reachable directly, validated only by a `<Select>`
+that was never a boundary.
+
+## 10. Gaps this template ships with (note, don't silently assume fixed)
 
 - **File upload validation**: no binary file-upload endpoint exists in `next-app/actions` or
   `app/api` at the time of writing. The optional `@saas/csv-io` module (`registry/csv-io/`) does
@@ -149,7 +195,7 @@ and needs an explicit justification in the PR description for why the builder co
   migration path for forks that need it; don't flag the in-memory nature itself as a finding unless
   the PR is specifically about horizontal scaling.
 
-## 9. Frontend security (folded in from the retired frontend-review.md)
+## 11. Frontend security (folded in from the retired frontend-review.md)
 
 - `NEXT_PUBLIC_*` env vars containing API keys or secrets → server-only vars have no
   `NEXT_PUBLIC_` prefix (duplicate of §7, kept here since it's a common frontend-diff catch).

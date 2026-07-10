@@ -52,6 +52,14 @@ file) on your behalf.
 - Interactive element missing keyboard handler (`onKeyDown` for Enter/Space)
 - Image or icon-only element missing `aria-label` or `aria-hidden="true"`
 
+**Fork note:** a downstream fork/product may add a **second RBAC guard family** alongside
+`lib/permissions.ts` — e.g. a product-layer permissions module or a resource-scoped
+`defineAction()`-style factory (`lib/define-action.ts`'s `authorize` hook and its descendants).
+When that's present, the Red-tier server-security checks above must be run against the
+**union** of guard families actually in the codebase, not just the template's canonical
+`requireAuth`/`requireAdmin`/`requireEditor` names — grep for what a mutating action actually
+calls before flagging "missing guard."
+
 ### Yellow — Warn, must fix before merge
 
 **Architecture:**

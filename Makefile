@@ -14,7 +14,7 @@ NEXT := next-app
         test test-coverage test-e2e lint typecheck ci-all verify smoke guard-selftest hook-test \
         docker-up docker-down docker-logs docker-ps docker-clean \
         doctor-deploy deploy install-tools install-deploy-tools \
-        image deploy-gcp db-migrate-prod \
+        image deploy-zeabur deploy-gcp db-migrate-prod \
         new-project init reset drift-check new-domain \
         staleness-check screenshot-refresh
 
@@ -192,7 +192,7 @@ deploy: ## How to deploy (Zeabur primary · GCP Cloud Run Road 2)
 	@echo ""
 	@echo "Deploy this Next.js app:"
 	@echo "  • Use the \`deploy-config\` skill (interactive, both roads), or:"
-	@echo "  • Zeabur (primary)     → bash deploy/deploy-zeabur.sh   ·  docs/guides/deployment-zeabur.md"
+	@echo "  • Zeabur (primary)     → make deploy-zeabur (or bash deploy/deploy-zeabur.sh)  ·  docs/guides/deployment-zeabur.md"
 	@echo "  • GCP Cloud Run (Road 2) → make image / make deploy-gcp   ·  docs/guides/deployment-gcp.md"
 	@echo "  • Verify prereqs first → make doctor-deploy PLATFORM=zeabur|cloudrun"
 	@echo "  • Run \`make verify\` before shipping — umbrella gate: staleness + typecheck/lint/unit + check:orphans + test:int + dev-docs build."
@@ -218,6 +218,23 @@ image: ## Build the next-app runtime image for linux/amd64, tagged from the git 
 		--load \
 		$(NEXT)
 	@echo "✅ Built next-app:$(IMAGE_TAG) (linux/amd64). Push it with make deploy-gcp (or your own registry push)."
+
+deploy-zeabur: ## Ship to Zeabur (Road 1, primary): preflight build → deploy via zeabur CLI → migrate prod DB
+	@command -v zeabur >/dev/null 2>&1 || { echo "❌ Zeabur CLI not found → make install-deploy-tools"; exit 1; }
+	@echo "▶ Preflight: production build (catches what typecheck/test miss)…"
+	cd $(NEXT) && pnpm build
+	@echo "▶ Deploying the Next.js service to Zeabur…"
+	@# The Zeabur CLI builds from source server-side (zbpack.json / Dockerfile) — it
+	@# is the supported one-command path. deploy/deploy-zeabur.sh wraps the full
+	@# gated flow (project/env/domain/migrate); use --redeploy for code-only pushes.
+	@bash deploy/deploy-zeabur.sh --redeploy
+	@echo "▶ Applying Drizzle migrations against the deployed DB (via zeabur exec)…"
+	@set -a; [ -f $(DEPLOY_ENV) ] && . ./$(DEPLOY_ENV) || true; set +a; \
+	zeabur exec --service "$${ZEABUR_SERVICE:-web}" -- pnpm db:migrate \
+		&& echo "✅ Migrations applied on Zeabur." \
+		|| { echo "⚠ Auto-migrate failed — run once the build is live:"; \
+		     echo "    zeabur exec --service $${ZEABUR_SERVICE:-web} -- pnpm db:migrate"; }
+	@echo "✅ deploy-zeabur complete. Status: bash deploy/deploy-zeabur.sh --status"
 
 deploy-gcp: ## Ship to GCP: build → push (Artifact Registry) → Cloud Run deploy → migrate (Cloud Run Job)
 	@command -v gcloud >/dev/null 2>&1 || { echo "❌ gcloud not found → make install-deploy-tools"; exit 1; }
