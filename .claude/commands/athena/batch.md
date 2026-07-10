@@ -72,7 +72,12 @@ Dispatch the agent `model` from `$ATHENA_MODEL_MAP` (Step 0), by step + epic com
 - **qa** → the map's `reviewer` model (haiku at quick, sonnet standard/thorough, opus ultra).
 - **spec** → `execute` (sonnet baseline; opus for complex epics).
 
-This keeps the inherited main-loop model (often opus) from being applied blanket to every agent. Read each epic's size from `EPIC_INDEX.md` to classify complexity, same as `/athena:flow` Step 2.
+This keeps the inherited main-loop model (often opus) from being applied blanket to every agent.
+Classify each epic's size in this source order — same as `/athena:flow` Step 2 (the matrix
+itself has no Size column, so this is NOT "read EPIC_INDEX.md"): **(a)** the `size:` header
+line in the epic file `docs/epics/e{n}-*.md` (produced by `scripts/plan/brainstorm-emit.sh
+render-epic`); **(b)** a `Size: S/M/L` text elsewhere in the epic file body; **(c)** the Notes
+column of the epic's row in `docs/context/epic-progress.md`; **(d)** unknown → `"simple"`.
 
 ---
 
@@ -149,7 +154,10 @@ After all three agents complete (or timeout at 30 min):
 git push -u origin feat/E83-dashboard-widget
 PR=$(gh pr list --head feat/E83-dashboard-widget --json number --jq '.[0].number')
 [ -z "$PR" ] && gh pr create --title "feat(E83): dashboard widget" --body "..."
-# → write "⏸ awaiting human merge (PR #$PR)" into the epic's merge cell; emit publish event; move on.
+# → write "⏸ awaiting human merge (PR #$PR)" into the epic's merge cell — primary mechanism:
+bash scripts/state/state-update.sh E83 merge awaiting-merge --note "PR #$PR"
+# (fall back to manually editing epic-progress.md + EPIC_INDEX.md only if the script errors)
+# → emit publish event; move on.
 
 # The integration test (Step 4c) runs only against whatever the HUMAN has already merged to
 # origin/main; open PRs stay open. Sync local main via: git fetch origin && git reset --hard origin/main
@@ -206,7 +214,7 @@ When `auto` is specified:
 3. **Set `--phase` to the detected phase number** — auto fills the `--phase` argument
 4. **Read Phase Parallelism** to determine wave structure
 5. **Determine current wave**: Check which epics in the phase are already complete (all 5 steps ✅). The next wave = first group of epics whose dependencies are all satisfied
-5a. **Reconcile pending merges**: For any epic whose merge cell is `⏸ awaiting human merge (PR #N)`, run `gh pr view N --json state` — MERGED → flip merge cell ✅ and `git fetch origin && git reset --hard origin/main`; CLOSED → mark ❌ and skip; OPEN → leave `⏸`. (Same rule as `/athena:loop` Step 1a.)
+5a. **Reconcile pending merges**: For any epic whose merge cell is `⏸ awaiting human merge (PR #N)`, run `gh pr view N --json state` — MERGED → `bash scripts/state/state-update.sh E{n} merge done` (primary mechanism; fall back to manually editing epic-progress.md + EPIC_INDEX.md if the script errors) and `git fetch origin && git reset --hard origin/main`; CLOSED → `bash scripts/state/state-update.sh E{n} merge failed --note "PR closed unmerged"` and skip; OPEN → leave `⏸`. (Same rule as `/athena:loop` Step 1a.)
 5b. **STALL BREAKER**: Before dispatching, query `.claude/audit.jsonl` — if the SAME `epic`+`step` has recorded a failure in the last 3 batch invocations, do NOT re-dispatch it: mark it `❌ blocked: {step} failed 3× — human required` and exclude it from the wave. If that empties the wave, STOP and report.
 6. **Execute ONE wave only** — not all waves. After the wave completes, EXIT. The cron re-invokes for the next wave.
 7. **Phase auto-advance**: When all epics in the current phase reach ✅, auto-detect the next pending phase on the next invocation. No phase boundary pause (auto mode suppresses it, like `/athena:loop auto`).
@@ -437,8 +445,8 @@ bash scripts/hooks/audit-emit-pipeline.sh batch_wave_end wave=$WAVE epics="$WAVE
 
 For each epic in the wave (up to `--max-concurrent` at a time):
 
-1. Read the epic spec file at `docs/epics/e{n}-{slug}.md` (find the matching file via glob `docs/epics/e{n}-*.md`)
-2. Read `docs/epics/EPIC_INDEX.md` to get epic metadata (name, size, dependencies)
+1. Read the epic spec file at `docs/epics/e{n}-{slug}.md` (find the matching file via glob `docs/epics/e{n}-*.md`) — this is also where `{size}` comes from (see "Model tiering" size source order above; EPIC_INDEX.md's matrix has no Size column)
+2. Read `docs/epics/EPIC_INDEX.md` to get epic metadata (name, dependencies)
 3. **For spec/implement/qa steps** — dispatch a subagent (see Step Delegation Rules above). Only `implement` uses `isolation: "worktree"`; `spec` and `qa` omit it:
 
 ```
@@ -486,17 +494,17 @@ Agent(
      "
    )
    ```
-   - If qa passes → update epic step to `qa=✅`, proceed to commit
-   - If qa fails → mark epic as ❌, do NOT commit, log failure
+   - If qa passes → `bash scripts/state/state-update.sh E{n} qa done` (primary mechanism; fall back to manually editing epic-progress.md + EPIC_INDEX.md if the script errors), proceed to commit
+   - If qa fails → `bash scripts/state/state-update.sh E{n} qa failed --note "{reason}"`, do NOT commit, log failure
    - This dispatch is MANDATORY — going from `implement → commit` without `qa` is a protocol violation
 
 5. **For commit/merge steps** — run inline (no subagent), and **fire the TaskCompleted boundary hook** so users with `AI_CODING_WEBHOOK_URL` configured get Slack/Telegram/Discord pings on real epic boundaries (not just on internal Task tool moves):
-   - **commit**: Create branch `feat/e{n}-{slug}`, stage changes (use **explicit paths** — never `git add .`/`-A`), commit with conventional message, update state. **Then fire**:
+   - **commit**: Create branch `feat/e{n}-{slug}`, stage changes (use **explicit paths** — never `git add .`/`-A`), commit with conventional message, then `bash scripts/state/state-update.sh E{n} commit done` (primary mechanism — updates epic-progress.md and syncs EPIC_INDEX.md via render-index.sh; fall back to manually editing both files if the script errors). **Then fire**:
      ```bash
      echo '{"epic_id":"E{n}","step":"commit","status":"completed","duration_seconds":N}' | bash scripts/hooks/task-completed.sh
      bash scripts/hooks/audit-emit-pipeline.sh commit epic=E{n} sha=$(git rev-parse --short HEAD) || true
      ```
-   - **merge (publish)**: Run the **Publish step (human-merge protocol)** from `loop.md` (CANONICAL) — `git push -u origin HEAD`, then `gh pr create` if no PR exists (capture PR number), then write `⏸ awaiting human merge (PR #N)` into the epic's merge cell. **NEVER `gh pr merge`** — this executor has pull-only GitHub perms; the USER merges. After the PR is pushed/created: **fire**:
+   - **merge (publish)**: Run the **Publish step (human-merge protocol)** from `loop.md` (CANONICAL) — `git push -u origin HEAD`, then `gh pr create` if no PR exists (capture PR number), then `bash scripts/state/state-update.sh E{n} merge awaiting-merge --note "PR #$PR"` to write `⏸ awaiting human merge (PR #N)` into the epic's merge cell (primary mechanism; fall back to manually editing epic-progress.md + EPIC_INDEX.md if the script errors). **NEVER `gh pr merge`** — this executor has pull-only GitHub perms; the USER merges. After the PR is pushed/created: **fire**:
      ```bash
      echo '{"epic_id":"E{n}","step":"publish","status":"awaiting_merge","duration_seconds":N}' | bash scripts/hooks/task-completed.sh
      bash scripts/hooks/audit-emit-pipeline.sh publish epic=E{n} pr=$PR_NUMBER || true
@@ -532,12 +540,11 @@ After all agents in the wave complete:
 1. Collect each agent's result: status (success/failure), files changed, summary
 2. Record results in a local tracking structure
 3. If an agent **failed**:
-   - Mark the epic as ❌ in `docs/context/epic-progress.md`
+   - `bash scripts/state/state-update.sh E{n} {step} failed --note "{reason}"` — primary mechanism (fall back to manually editing epic-progress.md + EPIC_INDEX.md if the script errors)
    - Log the failure reason
    - **Continue** with remaining independent epics (do NOT stop the batch)
 4. If an agent **succeeded**:
-   - Update `docs/context/epic-progress.md` with the completed step (✅)
-   - Update `docs/epics/EPIC_INDEX.md` to keep catalog in sync
+   - `bash scripts/state/state-update.sh E{n} {step} done` — updates `docs/context/epic-progress.md` with the completed step and syncs `docs/epics/EPIC_INDEX.md` via `render-index.sh` in one call (primary mechanism; fall back to manually editing both files if the script errors)
 
 #### 4b-retry. Auto-Retry on Agent Failure (E88)
 

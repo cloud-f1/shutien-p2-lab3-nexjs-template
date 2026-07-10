@@ -6,7 +6,7 @@ This folder is the **Tier 1 project memory**. Each file is owned by one agent.
 
 | File | Owner Agent | Written When |
 |---|---|---|
-| `review-log.md` | @qa | After every review (legacy — see review-findings.md) |
+| `review-log.md` | _(none — legacy, unowned)_ | Not written by any current agent — @reviewer writes `review-findings.md` instead. `review-log.md` is kept only for history; do not add new entries to it. |
 | `review-findings.md` | @reviewer | After every code review |
 | `test-status.md` | @qa | After every test run |
 | `decisions.md` | @best-practice | After architecture decisions |

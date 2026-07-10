@@ -97,7 +97,7 @@
 <!--
 Steps: spec → implement → qa → commit → merge
 Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
-Size: S (~1 session) | M (1-2 sessions) | L (2-3 sessions)
+Size: S (~1 session) | M (1-2 sessions) | L (2-3 sessions) — lives in each epic file's `size:` header (S/M/L), not this matrix (no Size column here); used by flow/batch model tiering.
 Phase 46+ epics: enriched template — epic files include Implementation Phases, Per-Phase Checkpoints, and Test Strategy sections (produced by `scripts/plan/brainstorm-emit.sh render-epic`). E1–E186 epics use the legacy format; backward compat is additive-only.
 -->
 

@@ -42,9 +42,14 @@ tool; absent in headless/cron and in older Claude Code). If it is **not** callab
 2. Read `docs/context/epic-progress.md`; drop any epic already marked ✅ by a prior `/athena:flow`
    run in this cycle (this is the resume mechanism — re-running continues where it stopped).
 3. If no pending epics remain → print "flow: nothing to do (graph drained)" and STOP.
-4. **Classify each pending epic's complexity** (drives its model): read its catalog row in
-   `EPIC_INDEX.md` for a SIZE/SP hint. `S`/`M` (or `< 8` SP) → `"simple"`; `L`/`XL` (or `≥ 8` SP),
-   or anything touching auth/security/migrations/multi-file features → `"complex"`. Unknown → `"simple"`.
+4. **Classify each pending epic's complexity** (drives its model). Size lives in each epic
+   file's `size:` header (S/M/L), not in the matrix (which has no Size column) — resolve it
+   in this source order: **(a)** the `size:` line in the epic file header
+   `docs/epics/e{n}-*.md` (produced by `scripts/plan/brainstorm-emit.sh render-epic`);
+   **(b)** a `Size: S/M/L` text elsewhere in the epic file body; **(c)** the Notes column of
+   the epic's row in `docs/context/epic-progress.md`; **(d)** unknown → `"simple"`.
+   `S`/`M` (or `< 8` SP) → `"simple"`; `L`/`XL` (or `≥ 8` SP), or anything touching
+   auth/security/migrations/multi-file features → `"complex"`.
    Build the `COMPLEXITY` literal `{ Exxx: "simple"|"complex", ... }` for Step 5.
 
 ## Step 3 — Wave loop (outer plane — you own this, NOT the Workflow)
@@ -61,12 +66,16 @@ outer-plane (it can carry a policy/human gate), exactly as `/autopilot` keeps me
 ## Step 4 — Write-back (you do this; the Workflow cannot touch the filesystem)
 **Cell granularity (flow stops at commit — never at merge):** on `success`, mark the **spec, implement, qa, and commit** cells ✅ and **LEAVE the merge cell ⬜** (or `⏸ awaiting human merge (PR #N)` if this run pushed a branch + opened a PR). A later `/athena:loop` (Step 1a) reconciles the merge cell once the human merges. flow NEVER runs `gh pr merge` — merge is human/outer-plane.
 
-For each epic in the returned `AgentReport[]`:
-- `status == "success"` → mark spec/implement/qa/commit ✅ (merge stays ⬜ or ⏸) in `docs/context/epic-progress.md`; then
+For each epic in the returned `AgentReport[]`, use `scripts/state/state-update.sh` as the primary
+write-back mechanism (it updates `docs/context/epic-progress.md` and syncs `docs/epics/EPIC_INDEX.md`
+via `render-index.sh` in one call per cell; fall back to manually editing both files only if the
+script errors):
+- `status == "success"` → mark spec/implement/qa/commit ✅ (merge stays ⬜ or ⏸) — one call per cell:
+  `for STEP in spec implement qa commit; do bash scripts/state/state-update.sh <E> $STEP done; done`; then
   `bash scripts/hooks/audit-emit-pipeline.sh commit epic=<E> branch=<worktreeBranch> || true`
-- `status == "failure"` → mark the epic ❌ in `docs/context/epic-progress.md` (genuine QA/impl failure); then
+- `status == "failure"` → `bash scripts/state/state-update.sh <E> <step-that-failed> failed --note "<reason>"` (genuine QA/impl failure — `<step-that-failed>` is `implement` or `qa`, whichever the agent reported); then
   `bash scripts/hooks/audit-emit-pipeline.sh qa_result epic=<E> verdict=fail || true`
-- `status == "blocked"` → leave the epic **PENDING** (neither ✅ nor ❌ — a block is *not* a QA failure); then
+- `status == "blocked"` → leave the epic **PENDING** (neither ✅ nor ❌ — a block is *not* a QA failure; no state-update.sh call needed, pending is the existing default); then
   `bash scripts/hooks/audit-emit-pipeline.sh flow_blocked epic=<E> || true`. The next `/athena:flow` run retries it (resume skips only ✅).
 Append a one-line wave summary to `docs/context/orchestration-log.md`.
 Update BOTH `epic-progress.md` (run tracking) and look up `EPIC_INDEX.md` for epic details, per
@@ -105,11 +114,13 @@ const MODEL = { execute: "sonnet", reviewer: "sonnet", evaluator: "sonnet" }; //
 // Per-epic model is chosen by TASK COMPLEXITY — NOT blanket opus. This mirrors the
 // athena agent team's tiering (doers like @reviewer/@qa/@debugger = sonnet; only
 // deep-design/orchestration like @spec-writer/@best-practice/@strategist = opus).
-// COMPLEXITY is injected from Step 2 by reading each epic's SIZE in EPIC_INDEX.md:
+// COMPLEXITY is injected from Step 2 by reading each epic's size, in source order:
+//   (a) `size:` header in docs/epics/e{n}-*.md, (b) `Size: S/M/L` text in the epic file
+//   body, (c) the Notes column of the epic's row in epic-progress.md, (d) unknown -> simple.
 //   S / M  → "simple"  → MODEL.execute (sonnet at standard)
 //   L / XL → "complex" → "opus"
 // At ultra tier MODEL.execute is already "opus", so everything escalates there.
-const COMPLEXITY = { E2XX: "complex", E2YY: "simple" }; // <-- literal: per-epic, from EPIC_INDEX size
+const COMPLEXITY = { E2XX: "complex", E2YY: "simple" }; // <-- literal: per-epic, from Step 2 size classification
 const modelForEpic = (E) => (COMPLEXITY[E] === "complex" ? "opus" : MODEL.execute);
 
 const REPORT = {
@@ -201,7 +212,7 @@ chain stops clean; relaunch resumes — completed epics are already committed).
 // Outer-plane pre-step (before the Workflow): git checkout -b feat/phase-NN-slug
 const CHAIN = [/* {id, slug, type, migration, notes} in dependency order */];
 const MODEL      = { execute: "sonnet", reviewer: "sonnet", evaluator: "sonnet" }; // <-- literal: $ATHENA_MODEL_MAP (Step 0)
-const COMPLEXITY = { /* Exxx: "simple"|"complex" */ };                             // <-- literal: per-epic, from EPIC_INDEX size (Step 2)
+const COMPLEXITY = { /* Exxx: "simple"|"complex" */ };                             // <-- literal: per-epic, from Step 2 size classification
 // Per-epic model tiers by complexity — SAME rule as the parallel path (Step 5):
 // reuse COMPLEXITY (from Step 2) + MODEL.execute (from Step 0). Do NOT hardcode opus for
 // every epic — a simple S/M epic runs on MODEL.execute (sonnet at standard); only a

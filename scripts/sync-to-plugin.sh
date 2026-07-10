@@ -69,8 +69,9 @@ declare -a SYNC_PAIRS=(
 #   stop-verifier.sh — athena-core has a modular version at scripts/hooks/
 #     stop-verifier.sh that delegates to scripts/stop-rules/; the template's
 #     monolithic 497-line version must not land in athena-core/hooks/.
-#   Template-specific hook scripts that reference FastAPI/React/OpenAPI
-#     rules — those belong in a profile pack, not the universal core.
+#   Template-specific hook scripts that encode Next.js/Drizzle/Auth.js-stack
+#     rules (e.g. stop-verifier's RBAC-guard and DataTable checks) — those
+#     belong in a profile pack, not the universal core.
 #   CLAUDE.md, tests/ — template-internal docs and tests.
 #
 # scripts/memory/ → scripts/memory/ excludes:
@@ -87,8 +88,9 @@ get_pair_excludes() {
       # Rationale: athena-core's hook scripts live in scripts/hooks/ (NOT hooks/)
       # and are purposely different — they source scripts/lib/common.sh and use
       # $ATHENA_MEMORY_DIR / $PROJECT_AUDIT_LOG instead of template hardcoded paths.
-      # The template's scripts/hooks/ contains 25+ template-specific rules (FastAPI,
-      # React, OpenAPI drift, etc.) that belong in a profile pack, not the universal
+      # The template's scripts/hooks/ contains template-specific rules (Next.js/
+      # Drizzle/Auth.js-stack invariants — see stop-verifier.sh's Rule table in
+      # scripts/hooks/CLAUDE.md) that belong in a profile pack, not the universal
       # core. The only file in athena-core/hooks/ is hooks.json (athena-core-owned).
       # E203 hardening: stop-verifier.sh (scripts/hooks/), registry-read block, and
       # check-version-sync.sh are all outside this sync target and are preserved.
@@ -115,6 +117,37 @@ get_pair_excludes() {
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 ts() { date -u +"%Y-%m-%dT%H:%M:%SZ"; }
+
+# Empty reference dir — used to measure how many files in a source pair
+# SURVIVE that pair's excludes (i.e. would ever be eligible to sync), as
+# opposed to how many currently DIFFER from the target. A pair can show
+# zero diff for two very different reasons: (a) genuinely nothing to sync
+# right now but files DO flow through when they change, or (b) the excludes
+# swallow 100% of the source tree by policy (E203) and NOTHING ever syncs
+# through this pair, no matter what changes. Only (b) should print
+# "[SKIP by policy]" instead of the (a) "[OK]".
+EMPTY_REF_DIR="$(mktemp -d)"
+trap 'rm -rf "$EMPTY_REF_DIR"' EXIT
+
+# effective_file_count <src> <pair_excl_arr...>
+# Counts files in <src> that would survive the given excludes, by rsync
+# dry-running against a guaranteed-empty target (so every non-excluded file
+# is reported as "new", regardless of the real target's current contents).
+effective_file_count() {
+  local src="$1"
+  shift
+  local out
+  out=$(rsync -rlc --dry-run --out-format="%n" \
+    --exclude="*.pyc" --exclude="__pycache__" \
+    "$@" \
+    "$src" "$EMPTY_REF_DIR" 2>/dev/null) || true
+  # Exclude directory entries (trailing "/") — rsync lists a directory as
+  # "new" even when every file inside it is excluded, so counting dir
+  # entries would understate how excluded a pair really is.
+  local n
+  n=$(echo "$out" | grep -v '/$' | grep -c '[^[:space:]]' 2>/dev/null || true)
+  echo $(( ${n:-0} + 0 ))
+}
 
 emit_audit() {
   local mode="$1"
@@ -145,6 +178,19 @@ if [[ "$MODE" == "dry-run" ]]; then
       continue
     fi
 
+    # A pair's excludes (E203 hardening) can swallow 100% of the source tree
+    # — if so, this pair can never sync anything, and neither [NEW] nor [OK]
+    # accurately describes that (both imply "syncing is active here, just
+    # nothing to do right now"). Detect and label it distinctly.
+    pair_excl_str="$(get_pair_excludes "$pair")"
+    read -ra pair_excl_arr <<< "$pair_excl_str"
+    effective_count=$(effective_file_count "$src" ${pair_excl_arr[@]+"${pair_excl_arr[@]}"})
+
+    if [ "$effective_count" -eq 0 ]; then
+      echo "  [SKIP by policy] ${pair%%:*} → ${pair##*:} (all source files excluded — see get_pair_excludes in this script)"
+      continue
+    fi
+
     if [[ ! -d "$dst" ]]; then
       echo "  [NEW]  Target directory does not exist: $dst"
       # Count source files as diff
@@ -155,8 +201,6 @@ if [[ "$MODE" == "dry-run" ]]; then
     fi
 
     # rsync dry-run to detect changes (apply per-pair excludes)
-    pair_excl_str="$(get_pair_excludes "$pair")"
-    read -ra pair_excl_arr <<< "$pair_excl_str"
     diff_output=$(rsync -rlc --dry-run --out-format="%n" \
       --exclude="*.pyc" --exclude="__pycache__" \
       ${pair_excl_arr[@]+"${pair_excl_arr[@]}"} \

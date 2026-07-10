@@ -11,10 +11,10 @@ You are the Epic Loop controller. Your job is to advance the project **one step 
 
 1. **READ STATE**: Read `docs/context/epic-progress.md` to determine the current step
 1a. **RECONCILE PENDING MERGES (runs first, every invocation)**: For any epic whose merge cell in `docs/context/epic-progress.md` is `⏸ awaiting human merge (PR #N)`, run `gh pr view N --json state`:
-   - **MERGED** → flip the merge cell to ✅ (both epic-progress.md and EPIC_INDEX.md), and sync local main via `git fetch origin && git reset --hard origin/main` (never `git checkout main && git pull`).
-   - **CLOSED** (unmerged) → mark the merge cell ❌ with reason `PR closed unmerged` and STOP for human input.
+   - **MERGED** → `bash scripts/state/state-update.sh E{n} merge done` (flips the cell to ✅ in epic-progress.md and syncs EPIC_INDEX.md via render-index.sh — primary mechanism; fall back to manually editing both files only if the script errors), and sync local main via `git fetch origin && git reset --hard origin/main` (never `git checkout main && git pull`).
+   - **CLOSED** (unmerged) → `bash scripts/state/state-update.sh E{n} merge failed --note "PR closed unmerged"` and STOP for human input.
    - **OPEN** → leave `⏸` as-is; the human hasn't merged yet. Do not re-push or re-open.
-1b. **STALL BREAKER**: Before dispatching the chosen epic+step, query `.claude/audit.jsonl` — if the SAME `epic`+`step` has recorded a failure in the last 3 loop invocations, STOP: write `❌ blocked: {step} failed 3× — human required` to epic-progress.md and EXIT. Do not auto-retry a repeatedly-failing step.
+1b. **STALL BREAKER**: Before dispatching the chosen epic+step, query `.claude/audit.jsonl` — if the SAME `epic`+`step` has recorded a failure in the last 3 loop invocations, STOP: `bash scripts/state/state-update.sh E{n} {step} failed --note "blocked: {step} failed 3x - human required"` (fall back to manually editing epic-progress.md if the script errors) and EXIT. Do not auto-retry a repeatedly-failing step.
 2. **DETERMINE NEXT**: Find the first epic with an incomplete step (in phase order, respecting dependencies).
    **Reconcile from the actual state matrix, not a presumed linear history.** For the chosen epic, the next step is the **first `⬜` cell** scanning `spec → implement → qa → commit → merge` left-to-right. Steps already at ✅ are *done* — never re-run them, even if an earlier step is ⬜ (out-of-order / retro-spec case; see "Out-of-Order Work" below).
    **If no incomplete step exists across ANY epic in ANY phase** (all work is done): report "All phases complete — backlog drained. Please stop the `/loop` schedule yourself. Run `/athena:plan` to propose new epics." and EXIT. (This orchestrator cannot cancel cron jobs — it has no such tool. The human owns the schedule.)
@@ -28,7 +28,7 @@ You are the Epic Loop controller. Your job is to advance the project **one step 
      bash scripts/hooks/audit-emit-pipeline.sh commit epic=$EPIC sha=$(git rev-parse --short HEAD) || true
      ```
    - **merge**: Inline — run the **Publish step (human-merge protocol)** below. This orchestrator has **pull-only GitHub permissions**: it can push branches and open PRs but can NEVER merge. The USER merges.
-5. **UPDATE STATE**: Update `docs/context/epic-progress.md` with the completed step, and emit the loop-step observability event:
+5. **UPDATE STATE**: `bash scripts/state/state-update.sh $EPIC $STEP $STATUS` — the primary mechanism for flipping the step cell (writes epic-progress.md, syncs EPIC_INDEX.md via render-index.sh, emits its own `state_update` audit event). Fall back to manually editing both `docs/context/epic-progress.md` and `docs/epics/EPIC_INDEX.md` only if the script errors. Then emit the loop-step observability event:
    ```bash
    bash scripts/hooks/audit-emit-pipeline.sh loop_step epic=$EPIC step=$STEP status=$STATUS || true
    ```
@@ -54,14 +54,14 @@ You are the Epic Loop controller. Your job is to advance the project **one step 
    fi
    ```
    - Set `E2E_FLAG=--e2e` for epics touching **auth / Server Actions / DB / routes**; leave it empty otherwise.
-   - On non-zero exit: update epic-progress.md with `❌ merge blocked: pre-merge-check failed` and STOP. Do **NOT** `git push` or open a PR. The half-migrated-tree class of bug (uncommitted mass deletions, nested `.git`) is exactly what this gate catches.
+   - On non-zero exit: `bash scripts/state/state-update.sh $EPIC merge failed --note "merge blocked: pre-merge-check failed"` (fall back to manually editing epic-progress.md if the script errors) and STOP. Do **NOT** `git push` or open a PR. The half-migrated-tree class of bug (uncommitted mass deletions, nested `.git`) is exactly what this gate catches.
 2. **Push the feature branch**: `git push -u origin HEAD`
 3. **Open a PR if none exists** (capture the PR number):
    ```bash
    PR=$(gh pr list --head "$(git branch --show-current)" --json number --jq '.[0].number')
    [ -z "$PR" ] && PR=$(gh pr create --title "..." --body "..." | grep -oE '[0-9]+$')
    ```
-4. **Write `⏸ awaiting human merge (PR #N)`** into the epic's merge cell in `docs/context/epic-progress.md` (and mirror in EPIC_INDEX.md).
+4. **Write `⏸ awaiting human merge (PR #N)`** into the epic's merge cell: `bash scripts/state/state-update.sh $EPIC merge awaiting-merge --note "PR #$PR"` — the primary mechanism (updates epic-progress.md and syncs EPIC_INDEX.md via render-index.sh). Fall back to manually editing both files only if the script errors.
 5. **Emit the publish audit event**:
    ```bash
    bash scripts/hooks/audit-emit-pipeline.sh publish epic=$EPIC pr=$PR || true
@@ -153,9 +153,11 @@ Next step = `spec` (first ⬜), executed as a **retro-spec** documenting the alr
 
 ## State Update Rules
 
-After completing a step, update **both** files:
-1. `docs/context/epic-progress.md` — update the step emoji in the matrix
-2. `docs/epics/EPIC_INDEX.md` — update the matching row (keeps catalog in sync)
+After completing a step, use `bash scripts/state/state-update.sh E{n} {step} {status} [--note "..."]` as the
+primary mechanism — it updates `docs/context/epic-progress.md` and syncs the matching row in
+`docs/epics/EPIC_INDEX.md` via `render-index.sh` in one call, eliminating the dual-write-drift
+failure mode of hand-editing both files. Fall back to manually editing both files only if the
+script errors (unknown epic, invalid step/status, etc.).
 
 ## Auto-Pilot Safety Guards
 
@@ -171,7 +173,7 @@ After completing a step, update **both** files:
 3. **QA failure pause**: If QA subagent reports coverage < 80% or critical issues, STOP and report.
    Do NOT auto-advance past a failed QA.
 
-4. **Error recovery**: If any step fails, update epic-progress.md with "❌ failed: {reason}" and STOP.
+4. **Error recovery**: If any step fails, `bash scripts/state/state-update.sh E{n} {step} failed --note "{reason}"` (fall back to manually editing epic-progress.md if the script errors) and STOP.
    Do NOT retry the same step automatically.
 
 5. **Mandatory pipeline order**: For each epic, steps MUST execute in order `spec → implement → qa → commit → merge`.

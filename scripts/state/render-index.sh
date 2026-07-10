@@ -83,7 +83,7 @@ matrix_table="## Epic Step Matrix
 <!--
 Steps: spec → implement → qa → commit → merge
 Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
-Size: S (~1 session) | M (1-2 sessions) | L (2-3 sessions)
+Size: S (~1 session) | M (1-2 sessions) | L (2-3 sessions) — lives in each epic file's \`size:\` header (S/M/L), not this matrix (no Size column here); used by flow/batch model tiering.
 Phase 46+ epics: enriched template — epic files include Implementation Phases, Per-Phase Checkpoints, and Test Strategy sections (produced by \`scripts/plan/brainstorm-emit.sh render-epic\`). E1–E186 epics use the legacy format; backward compat is additive-only.
 -->
 
@@ -186,7 +186,7 @@ awk -v phase_file="$phase_tmp" -v matrix_file="$matrix_tmp" '
     print "<!--"
     print "Steps: spec \342\206\222 implement \342\206\222 qa \342\206\222 commit \342\206\222 merge"
     print "Status: \342\254\234 pending | \360\237\224\204 in-progress | \342\234\205 done | \342\217\255\357\270\217 skip | \342\235\214 failed"
-    print "Size: S (~1 session) | M (1-2 sessions) | L (2-3 sessions)"
+    print "Size: S (~1 session) | M (1-2 sessions) | L (2-3 sessions) - lives in the `size:` header of each epic file (S/M/L), not this matrix (no Size column here); used by flow/batch model tiering."
     print "Phase 46+ epics: enriched template \342\200\224 epic files include Implementation Phases, Per-Phase Checkpoints, and Test Strategy sections (produced by `scripts/plan/brainstorm-emit.sh render-epic`). E1\342\200\223E186 epics use the legacy format; backward compat is additive-only."
     print "-->"
     print ""

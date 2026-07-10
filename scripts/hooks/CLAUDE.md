@@ -54,13 +54,40 @@ NOT migrated to source this file (out of scope — minimal diffs).
 | Stop | `check-drift.sh` (`\|\| true`, non-blocking) | (`scripts/state/check-drift.sh`) E196 drift detector — compares `EPIC_INDEX.md` vs `epic-progress.md`; emits one summary `state_drift` event per run (E-batch1 fix — see below) |
 | Stop | `stop-notify.sh` | macOS notification (runs after verifier passes) |
 | SubagentStop | `subagent-stop-writeback.sh` | Timestamp agent docs |
-| PostToolUse(Bash) | `post-bash-log.sh` | JSONL audit log (`.claude/audit.jsonl`) |
-| PostToolUse(Bash) | `post-bash-failure-inject.sh` | Failure detection + @debugger context injection (E88) |
-| PostToolUse(Bash) | `post-commit-bugfix-log.sh` | Auto-log `fix:` commits to `docs/context/bugfix-log.md` (E148) |
-| PostToolUse(Bash) | `pr-created.sh` | Auto-label, assign reviewers, add epic context on `gh pr create` |
+| PostToolUse(Bash) | `post-bash-dispatch.sh` | **Dispatcher** (see "Dispatcher" section below) — single stdin read + jq parse, then prefilters into the 4 sub-hooks below |
+| ↳ dispatched by `post-bash-dispatch.sh` | `post-bash-log.sh` | JSONL audit log (`.claude/audit.jsonl`) — always dispatched |
+| ↳ dispatched by `post-bash-dispatch.sh` | `post-bash-failure-inject.sh` | Failure detection + @debugger context injection (E88) — dispatched on non-zero exit |
+| ↳ dispatched by `post-bash-dispatch.sh` | `post-commit-bugfix-log.sh` | Auto-log `fix:` commits to `docs/context/bugfix-log.md` (E148) — dispatched on `git commit` |
+| ↳ dispatched by `post-bash-dispatch.sh` | `pr-created.sh` | Auto-label, assign reviewers, add epic context on `gh pr create` — dispatched on `gh pr create` |
 | PostToolUse(`.*`) | `context-health-monitor.sh` | Emit yellow/red context-health warnings from `.claude/audit.jsonl` (E145), session-scoped via `.claude/.session-anchor` (E-batch1) |
 | TaskCompleted | `task-completed.sh` | Webhook notification (`$AI_CODING_WEBHOOK_URL`) |
 | _(none — not auto-wired)_ | `worktree-setup.sh` | **Not a registered hook.** There is no `WorktreeCreate` lifecycle event in `.claude/settings.json` (E-batch1 fix — the registry previously claimed one). Copies `.env`/`next-app/.env`/`next-app/.env.local` + `docs/context/` into a new worktree. Must be invoked explicitly by batch worktree setup: `bash scripts/hooks/worktree-setup.sh <worktree-path>`. |
+
+## Dispatcher (`post-bash-dispatch.sh`)
+
+Every `Bash` tool call used to spawn 4 separate PostToolUse hook processes,
+each re-reading stdin and re-parsing the same JSON with its own `jq` call.
+`post-bash-dispatch.sh` is the single `.claude/settings.json` PostToolUse(Bash)
+entry now — it reads stdin ONCE into `$INPUT`, extracts `CMD` (`tool_input.command`)
+and `EXIT_CODE` (`tool_result.exit_code`, sanitized to post-bash-log.sh's `-1`
+missing-result sentinel) with ONE `jq` pass, then dispatches to each sub-hook
+via a cheap string prefilter — no sub-hook is invoked unless its prefilter
+matches:
+
+| Sub-hook | Prefilter |
+|---|---|
+| `post-bash-log.sh` | always (logs every command) |
+| `pr-created.sh` | `$CMD` contains `gh pr create` |
+| `post-commit-bugfix-log.sh` | `$CMD` contains `git commit` |
+| `post-bash-failure-inject.sh` | `$EXIT_CODE != 0` AND `$EXIT_CODE != -1` (the missing-result sentinel — an absent `tool_result` isn't a known failure, so don't guess) |
+
+Each sub-hook runs **unchanged** — the dispatcher re-feeds it the original
+`$INPUT` via `printf '%s' "$INPUT" | bash <hook>`, so every sub-hook stays
+standalone-runnable and its own fixture tests (`test-post-bash-log.sh`, etc.)
+keep passing without modification. Every dispatch is `|| true` and the
+dispatcher always `exit 0` — a crashing sub-hook must never block the
+PostToolUse pipeline. Sub-hook stdout is forwarded through as-is (it becomes
+`additionalContext`). Regression fixture: `tests/test-post-bash-dispatch.sh`.
 
 ## Agent-Scoped Hooks (in agent frontmatter, not settings.json)
 

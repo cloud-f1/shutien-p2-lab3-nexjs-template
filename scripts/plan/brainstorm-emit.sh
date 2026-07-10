@@ -119,16 +119,26 @@ render_epic_subcmd() {
     return 66
   fi
 
-  local epic slug name size sp deps rationale risks test_strategy
+  local epic slug name size size_note sp deps rationale risks test_strategy
   epic=$(jq -r '.epic' "$input")
   slug=$(jq -r '.slug' "$input")
   name=$(jq -r '.name' "$input")
-  size=$(jq -r '.size' "$input")
+  size=$(jq -r '.size // empty' "$input")
   sp=$(jq -r '.sp' "$input")
   deps=$(jq -r '.dependencies | join(", ")' "$input")
   rationale=$(jq -r '.rationale' "$input")
   risks=$(jq -r '.risks | map("- " + .) | join("\n")' "$input")
   test_strategy=$(jq -r '.test_strategy' "$input")
+
+  # E320-followup: model tiering (flow.md/batch.md) reads a machine-readable
+  # `size:` header line from the rendered epic file — see below. Default to
+  # M when the brainstorm JSON doesn't carry a size field, so classification
+  # never silently falls through to "simple" for an unclassified epic.
+  size_note=""
+  if [ -z "$size" ]; then
+    size="M"
+    size_note="  <!-- default: brainstorm JSON has no size field -->"
+  fi
 
   local lower_epic
   lower_epic=$(echo "$epic" | tr 'A-Z' 'a-z')
@@ -141,6 +151,8 @@ render_epic_subcmd() {
 
   {
     echo "# $epic — $name"
+    echo ""
+    echo "size: ${size}${size_note}"
     echo ""
     echo "> Phase 46 — Workflow Discipline + Memory-Aware Planning | Size: $size ($sp SP) | Deps: $deps"
     echo ""

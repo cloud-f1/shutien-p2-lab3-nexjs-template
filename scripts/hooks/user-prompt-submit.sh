@@ -6,7 +6,24 @@ INPUT=$(cat)
 PROMPT=$(echo "$INPUT" | jq -r '.prompt // empty' 2>/dev/null | tr '[:upper:]' '[:lower:]')
 
 # Detect write-back phrases (see docs/techstack/agent-teams.md for full list)
-if echo "$PROMPT" | grep -qE "(update|write|save|checkpoint).*(doc|memory|context|file|log)|write.?back"; then
+#
+# Narrowed (was: generic "(update|write|save|checkpoint).*(doc|memory|context|
+# file|log)" — matched on verb+noun co-occurrence ANYWHERE in the prompt, so
+# an ordinary request like "update the login file" or "write a file for auth"
+# false-positived the banner). Now requires an explicit agent/memory cue:
+# a possessive "your <doc-noun>", the literal write-back phrase, the
+# /athena:save command, the word "checkpoint", the Chinese write-back cue
+# 記錄到, or an @agent mention (@qa, @debugger, ...).
+#
+# SHOULD trigger:
+#   "update your document with the new schema"   -> "your" + doc noun
+#   "write back the findings when you're done"    -> write-back phrase
+#   "@debugger checkpoint your progress"           -> agent name + checkpoint
+# should NOT trigger:
+#   "update the login file"                        -> no "your", no cue
+#   "write a file for the auth flow"                -> generic write, no cue
+#   "save the changes and run tests"                -> generic save, no cue
+if echo "$PROMPT" | grep -qE "(update|write|save)[[:space:]]+your[[:space:]]+(doc|document|memory|context|log|file)s?|write.?back|/athena:save|checkpoint|記錄到|@(spec-writer|reviewer|qa|evaluator|best-practice|debugger|deployer|memory-curator|strategist|orchestrator|designer|dba|tony)"; then
   echo "=== WRITE-BACK REQUESTED ==="
   echo "Agent document targets:"
   echo "  @spec-writer     → docs/context/spec-log.md"
