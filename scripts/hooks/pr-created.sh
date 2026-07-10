@@ -49,24 +49,23 @@ SIZE=""
 EPIC_NAME=""
 
 if [ -n "$EPIC_ID" ] && [ -f "docs/context/epic-progress.md" ]; then
-  # Phase: find which phase contains this epic
+  # Phase: find which phase contains this epic. Anchored on the Epic column so
+  # E32 can never match E320 (unanchored `grep "$EPIC_ID"` would).
   PHASE=$(grep -E "Phase [0-9]+" docs/context/epic-progress.md \
-    | grep "$EPIC_ID" \
+    | grep -E "\|[[:space:]]*${EPIC_ID}[[:space:]]*\|" \
     | head -1 \
     | sed -n 's/.*Phase \([0-9]\{1,\}\).*/\1/p')
 fi
 
 if [ -n "$EPIC_ID" ] && [ -f "docs/epics/EPIC_INDEX.md" ]; then
-  # Size: from the EPIC_INDEX table (column 4: Size)
-  SIZE=$(grep "$EPIC_ID" docs/epics/EPIC_INDEX.md \
-    | grep '|' \
+  # Size: from the EPIC_INDEX table (column 4: Size). Anchored — see above.
+  SIZE=$(grep -E "\|[[:space:]]*${EPIC_ID}[[:space:]]*\|" docs/epics/EPIC_INDEX.md \
     | head -1 \
     | awk -F'|' '{print $4}' \
     | tr -d ' ')
 
-  # Epic name: from the EPIC_INDEX table (column 3: Name)
-  EPIC_NAME=$(grep "$EPIC_ID" docs/epics/EPIC_INDEX.md \
-    | grep '|' \
+  # Epic name: from the EPIC_INDEX table (column 3: Name). Anchored — see above.
+  EPIC_NAME=$(grep -E "\|[[:space:]]*${EPIC_ID}[[:space:]]*\|" docs/epics/EPIC_INDEX.md \
     | head -1 \
     | awk -F'|' '{print $3}' \
     | sed 's/^ *//;s/ *$//')
@@ -118,11 +117,12 @@ BACKEND_REVIEWER="${PR_REVIEWER_BACKEND:-}"
 FRONTEND_REVIEWER="${PR_REVIEWER_FRONTEND:-}"
 
 if [ -n "$BACKEND_REVIEWER" ] || [ -n "$FRONTEND_REVIEWER" ]; then
-  # Determine changed file areas from the PR diff
+  # Determine changed file areas from the PR diff. Single Next.js app under
+  # next-app/ — the old server/ vs client/ path split was always 0/0 here
+  # (guaranteed no-op). Assign either/both configured reviewers whenever the
+  # diff touches non-doc files.
   CHANGED_FILES=$(git diff --name-only origin/main...HEAD 2>/dev/null || echo "")
 
-  HAS_SERVER=$(echo "$CHANGED_FILES" | grep -c '^server/' || true)
-  HAS_CLIENT=$(echo "$CHANGED_FILES" | grep -c '^client/' || true)
   HAS_DOCS_ONLY=false
 
   # Check if changes are docs-only
@@ -133,12 +133,8 @@ if [ -n "$BACKEND_REVIEWER" ] || [ -n "$FRONTEND_REVIEWER" ]; then
 
   REVIEWERS=""
   if [ "$HAS_DOCS_ONLY" = false ]; then
-    if [ "$HAS_SERVER" -gt 0 ] && [ -n "$BACKEND_REVIEWER" ]; then
-      REVIEWERS="${REVIEWERS}${BACKEND_REVIEWER},"
-    fi
-    if [ "$HAS_CLIENT" -gt 0 ] && [ -n "$FRONTEND_REVIEWER" ]; then
-      REVIEWERS="${REVIEWERS}${FRONTEND_REVIEWER},"
-    fi
+    [ -n "$BACKEND_REVIEWER" ] && REVIEWERS="${REVIEWERS}${BACKEND_REVIEWER},"
+    [ -n "$FRONTEND_REVIEWER" ] && REVIEWERS="${REVIEWERS}${FRONTEND_REVIEWER},"
   fi
 
   REVIEWERS=$(echo "$REVIEWERS" | sed 's/,$//')

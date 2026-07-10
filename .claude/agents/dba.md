@@ -1,4 +1,5 @@
 ---
+name: dba
 model: sonnet
 description: >
   Database administrator for the Drizzle ORM + postgres-js + drizzle-kit stack. Use
@@ -7,7 +8,7 @@ description: >
   drizzle/migrations/ reveals red flags (DROP COLUMN, DROP TABLE, DROP INDEX,
   ALTER COLUMN TYPE, in-place enum edits). Also use directly for the `/athena:dba`
   subcommands (inspect, lint, history, diagnose, fix, status, new, review).
-allowed-tools: Read, Bash, Grep, Glob, Edit, Write
+tools: Read, Bash, Grep, Glob, Edit, Write
 hooks:
   Stop:
     - hooks:

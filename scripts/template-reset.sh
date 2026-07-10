@@ -171,7 +171,7 @@ copy_template "$TEMPLATE_SCAFFOLD/roadmap.md.tmpl" "$ROOT/docs/roadmap.md" "road
 
 # ─── S1e: Delete project-specific skill ──────────────────────
 echo -e "${CYAN}Cleaning project-specific files...${NC}"
-delete_if_exists "$ROOT/.claude/skills/upgrade-stripe.md" ".claude/skills/upgrade-stripe.md"
+delete_if_exists "$ROOT/.claude/skills/upgrade-stripe" ".claude/skills/upgrade-stripe"
 
 # ─── Summary ────────────────────────────────────────────────
 echo ""

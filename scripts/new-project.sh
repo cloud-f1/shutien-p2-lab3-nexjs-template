@@ -44,7 +44,7 @@ NEW_DOMAIN="$(ask 'Docs domain (blank = skip)' "${OLD_DOMAIN}")"
 # ── 2. Choose template-only skills to prune (per TEMPLATE-VS-PRODUCT.md) ───────
 # Template-substrate skills a fork may not need. The loop skips any that don't exist,
 # so this list is safe to over-specify for forks taken from an earlier point.
-TEMPLATE_SKILLS=(install-landing module-author deploy-config openapi-first.md install-stripe-billing install-ecpay-billing upgrade-stripe.md)
+TEMPLATE_SKILLS=(install-landing module-author deploy-config spec-first install-stripe-billing install-ecpay-billing upgrade-stripe)
 PRUNE=()
 say ""; say "${BLD}Template-only skills${NC} ${DIM}(substrate — prune what your product won't use)${NC}"
 for s in "${TEMPLATE_SKILLS[@]}"; do

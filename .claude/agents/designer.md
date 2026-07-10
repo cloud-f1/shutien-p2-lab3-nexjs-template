@@ -1,4 +1,5 @@
 ---
+name: designer
 model: sonnet
 description: >
   Design-to-code generator. Use this agent when the user wants to create a new
@@ -12,7 +13,7 @@ description: >
   never hardcodes colors, never adds a per-page `.css` file, never edits the
   global token block by hand. Asks one batched clarifying question if critical
   info is missing, then proceeds.
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash
+tools: Read, Write, Edit, Glob, Grep, Bash
 hooks:
   PostToolUse:
     - matcher: "Write|Edit"

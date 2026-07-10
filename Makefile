@@ -11,7 +11,7 @@ NEXT := next-app
 .PHONY: help go dev local local-setup local-infra local-db local-env local-down \
         dev-docs setup-dev-docs dev-docs-preview dev-docs-build dev-docs-deploy \
         migrate db-generate db-seed db-test-migrate db-studio db-backup \
-        test test-coverage test-e2e lint typecheck ci-all verify smoke guard-selftest \
+        test test-coverage test-e2e lint typecheck ci-all verify smoke guard-selftest hook-test \
         docker-up docker-down docker-logs docker-ps docker-clean \
         doctor-deploy deploy install-tools install-deploy-tools \
         image deploy-gcp db-migrate-prod \
@@ -150,12 +150,21 @@ verify: ## One umbrella gate: staleness + pre-merge (typecheck·lint·unit) + or
 smoke: ## Full verification surface (build/test/e2e/registry/vitepress; --vrt for visual)
 	@bash scripts/smoke.sh $(ARGS)
 
-guard-selftest: ## Fail-open canary: assert stop-verifier still BLOCKS + run rule fixtures
+guard-selftest: ## Fail-open canary + full hook regression suite (all scripts/hooks/tests/test-*.sh)
 	@echo "🛡  stop-verifier fail-open canary..."
 	@bash scripts/hooks/tests/test-stop-verifier-canary.sh
-	@echo "🛡  blocking-rule fixture suites..."
-	@for t in scripts/hooks/tests/test-rule-*.sh; do echo "--- $$t ---"; bash "$$t" || exit 1; done
+	@$(MAKE) hook-test
 	@echo "✅ Guard self-test passed — no fail-open detected."
+
+hook-test: ## Run every scripts/hooks/tests/test-*.sh (not just the canary + rule fixtures)
+	@echo "🛡  full hook regression suite..."
+	@for t in scripts/hooks/tests/test-*.sh; do \
+		case "$$t" in \
+			*test-stop-verifier-canary.sh) continue ;; \
+		esac; \
+		echo "--- $$t ---"; \
+		bash "$$t" || exit 1; \
+	done
 
 # ─── Docker full stack (postgres + mailpit + migrate + web) ───────────────
 docker-up: ## Build & start the full stack in Docker → http://localhost:3000

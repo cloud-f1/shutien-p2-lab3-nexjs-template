@@ -1,6 +1,6 @@
 ---
 description: "(epic) Parallel epic execution → wave dispatch → auto-fallback to sequential if worktree isolation breaks."
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, CronList, CronDelete
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent
 ---
 
 # Batch Epic Executor — Parallel Wave Engine
@@ -62,7 +62,7 @@ The batch command is a **thin orchestrator**. It reads state, computes waves via
 | implement | `Agent(subagent_type="general-purpose", isolation="worktree", model=<by complexity>)` | Heaviest step — gets its own git worktree |
 | qa | `Agent(subagent_type="general-purpose", model=$reviewer)` | Review + test execution reads/runs many files |
 | commit | Inline (Bash + Edit) | Just git commands — fast, no subagent needed |
-| merge | Inline (Bash) | Push + PR + auto-merge on GitHub — no worktree needed |
+| merge | Inline (Bash) | Publish protocol (loop.md canonical): push + open PR, then leave for human merge — pull-only perms, never `gh pr merge` |
 
 **IMPORTANT**: Only spec/implement/qa steps are dispatched to parallel agents. Commit and merge steps run **inline sequentially** after the parallel wave completes.
 
@@ -141,21 +141,22 @@ After all three agents complete (or timeout at 30 min):
 3. For each agent that returned `status: "failure"` or `status: "blocked"`: mark ❌, skip commit
 4. After all commits: run the integration test gate (Step 4c) to verify no cross-epic regressions
 
-**Step 4 — merge-back/verify sequence** (inline, not parallel):
+**Step 4 — publish/verify sequence** (inline, not parallel):
 ```bash
-# For each successfully QA'd epic branch:
+# For each successfully QA'd epic branch — follow the Publish step (human-merge protocol)
+# in loop.md (CANONICAL). This executor has PULL-ONLY GitHub perms — push + open PR, then
+# leave it for the human. NEVER `gh pr merge`.
 git push -u origin feat/E83-dashboard-widget
-gh pr create --title "feat(E83): dashboard widget" ...
-gh pr merge --squash --delete-branch --auto
+PR=$(gh pr list --head feat/E83-dashboard-widget --json number --jq '.[0].number')
+[ -z "$PR" ] && gh pr create --title "feat(E83): dashboard widget" --body "..."
+# → write "⏸ awaiting human merge (PR #$PR)" into the epic's merge cell; emit publish event; move on.
 
-# After all PRs merge:
-git fetch origin && git reset --hard origin/main
-
-# Integration test (Step 4c):
+# The integration test (Step 4c) runs only against whatever the HUMAN has already merged to
+# origin/main; open PRs stay open. Sync local main via: git fetch origin && git reset --hard origin/main
 cd next-app && pnpm typecheck && pnpm lint && pnpm test:coverage && pnpm test:e2e
 ```
 
-The merge-back is **always sequential** — merging PRs in parallel on GitHub causes merge conflicts. Merge one PR, wait for it to land on `main`, then merge the next.
+Publishing is **sequential** — push one branch and open its PR, record `⏸`, then the next. The USER merges the PRs (pull-only perms); a later `/athena:batch auto` or `/athena:loop` reconciles the `⏸` merge cells once the human has merged (Step 5a).
 
 ---
 
@@ -201,10 +202,12 @@ This prevents the bug where the orchestrator dispatches implement agents, commit
 When `auto` is specified:
 
 1. **Find pending phase**: Scan Phase Status table for first phase with status ⬜ Pending (not ✅ Complete)
-2. **If no pending phase found**: Cancel all active cron jobs (call `CronList` to get job IDs, then `CronDelete` for each one), report "No pending phases — cron loop stopped. Run `/athena:plan` to propose new epics." and EXIT
+2. **If no pending phase found**: Report "No pending phases — backlog drained. Please stop the `/loop` schedule yourself. Run `/athena:plan` to propose new epics." and EXIT. (This executor has no cron-cancel tool — the human owns the schedule.)
 3. **Set `--phase` to the detected phase number** — auto fills the `--phase` argument
 4. **Read Phase Parallelism** to determine wave structure
 5. **Determine current wave**: Check which epics in the phase are already complete (all 5 steps ✅). The next wave = first group of epics whose dependencies are all satisfied
+5a. **Reconcile pending merges**: For any epic whose merge cell is `⏸ awaiting human merge (PR #N)`, run `gh pr view N --json state` — MERGED → flip merge cell ✅ and `git fetch origin && git reset --hard origin/main`; CLOSED → mark ❌ and skip; OPEN → leave `⏸`. (Same rule as `/athena:loop` Step 1a.)
+5b. **STALL BREAKER**: Before dispatching, query `.claude/audit.jsonl` — if the SAME `epic`+`step` has recorded a failure in the last 3 batch invocations, do NOT re-dispatch it: mark it `❌ blocked: {step} failed 3× — human required` and exclude it from the wave. If that empties the wave, STOP and report.
 6. **Execute ONE wave only** — not all waves. After the wave completes, EXIT. The cron re-invokes for the next wave.
 7. **Phase auto-advance**: When all epics in the current phase reach ✅, auto-detect the next pending phase on the next invocation. No phase boundary pause (auto mode suppresses it, like `/athena:loop auto`).
 
@@ -264,7 +267,7 @@ Then EXIT.
 
 ### Step 3.5: Pre-flight — Worktree Isolation (two-layer probe; Phase 45 hardening)
 
-Run **only when `--max-concurrent ≥ 2`** (i.e. you're about to dispatch parallel implement agents). Skip in single-epic / `auto`-default mode — there's no parallelism to validate.
+Run **only when `--max-concurrent ≥ 2`** (i.e. you're about to dispatch parallel implement agents). Skip **only when the effective `MAX_CONCURRENT == 1` or the wave has a single epic** — there's no parallelism to validate. (Note: `auto` default is NOT a skip case — `auto` runs at `MAX_CONCURRENT=4`, parallel, so the probe DOES run.)
 
 The Phase 45 Wave 1 incident happened because the Agent tool's `isolation: "worktree"` parameter silently degraded — agents reported `worktreePath: "Worktree ready: unknown"` and wrote into the main worktree. **Two failure layers exist** and Step 3.5 must probe both:
 
@@ -283,10 +286,15 @@ EXISTING_WT=$(git worktree list | wc -l)
 DIRTY=$(git status --porcelain | wc -l)
 [ "$DIRTY" -ne 0 ] && echo "ABORT: working tree must be clean before parallel dispatch" && exit 1
 
-# 2. Smoke test: create + remove a probe worktree on a throwaway branch
+# 2. Smoke test: create + remove a probe worktree on a throwaway branch.
+#    Capture git's OWN exit status — NOT a piped `tail`'s (which is always 0).
 PROBE_BRANCH="probe/wt-smoke-$(date +%s)"
-git worktree add /tmp/wt-probe-$$ -b "$PROBE_BRANCH" 2>&1 | tail -2
-SHELL_OK=$?
+if git worktree add /tmp/wt-probe-$$ -b "$PROBE_BRANCH" >/tmp/wt-probe.log 2>&1; then
+  SHELL_OK=0
+else
+  SHELL_OK=1
+  tail -2 /tmp/wt-probe.log   # show why it failed
+fi
 git worktree remove /tmp/wt-probe-$$ --force 2>/dev/null
 git branch -D "$PROBE_BRANCH" 2>/dev/null
 
@@ -294,12 +302,13 @@ git branch -D "$PROBE_BRANCH" 2>/dev/null
 if [ "$SHELL_OK" -ne 0 ]; then
   echo "Shell-layer worktree probe FAILED — falling back to --max-concurrent 1"
   MAX_CONCURRENT=1
-  # skip Agent-layer probe; sequential dispatch doesn't need isolation
-  return
+  # skip Agent-layer probe (3.5b); sequential dispatch doesn't need isolation
 fi
 ```
 
 #### 3.5b — Agent-layer probe (catches the Phase 45 failure mode)
+
+**Run only if 3.5a passed** (i.e. `MAX_CONCURRENT` was not already forced to `1` by the shell probe). If the shell probe already degraded to sequential, skip 3.5b — sequential dispatch needs no isolation.
 
 Dispatch a tiny read-only Agent with `isolation: "worktree"` and inspect the path it actually runs in. The probe **must return a JSON object** matching the **Step 3.5 Probe Schema** (see below). Freeform responses trigger a retry (max 3 attempts).
 
@@ -417,6 +426,13 @@ Pipeline drop rules:
 
 For each wave (in order, or just the next wave if `auto`):
 
+**Observability — emit at wave boundaries:** immediately before dispatching a wave's agents, emit `batch_wave_start`; after the wave's integration gate (4c) settles, emit `batch_wave_end` with the epic list and per-epic results:
+```bash
+bash scripts/hooks/audit-emit-pipeline.sh batch_wave_start wave=$WAVE epics="$WAVE_EPICS" || true
+# ... dispatch + collect + integration gate ...
+bash scripts/hooks/audit-emit-pipeline.sh batch_wave_end wave=$WAVE epics="$WAVE_EPICS" results="$WAVE_RESULTS" || true
+```
+
 #### 4a. Dispatch Agents
 
 For each epic in the wave (up to `--max-concurrent` at a time):
@@ -480,12 +496,12 @@ Agent(
      echo '{"epic_id":"E{n}","step":"commit","status":"completed","duration_seconds":N}' | bash scripts/hooks/task-completed.sh
      bash scripts/hooks/audit-emit-pipeline.sh commit epic=E{n} sha=$(git rev-parse --short HEAD) || true
      ```
-   - **merge**: `git push -u origin HEAD`, `gh pr create`, `gh pr merge --squash --delete-branch --auto` (falls back to immediate merge if repo doesn't allow auto-merge — that's normal, not a failure). After GitHub returns merged: **fire**:
+   - **merge (publish)**: Run the **Publish step (human-merge protocol)** from `loop.md` (CANONICAL) — `git push -u origin HEAD`, then `gh pr create` if no PR exists (capture PR number), then write `⏸ awaiting human merge (PR #N)` into the epic's merge cell. **NEVER `gh pr merge`** — this executor has pull-only GitHub perms; the USER merges. After the PR is pushed/created: **fire**:
      ```bash
-     echo '{"epic_id":"E{n}","step":"merge","status":"merged","duration_seconds":N}' | bash scripts/hooks/task-completed.sh
-     bash scripts/hooks/audit-emit-pipeline.sh merge epic=E{n} pr=$PR_NUMBER || true
+     echo '{"epic_id":"E{n}","step":"publish","status":"awaiting_merge","duration_seconds":N}' | bash scripts/hooks/task-completed.sh
+     bash scripts/hooks/audit-emit-pipeline.sh publish epic=E{n} pr=$PR_NUMBER || true
      ```
-     Do NOT `git checkout main` locally during merge step. After all wave merges, sync via `git fetch origin && git reset --hard origin/main` (works even when local has divergent commits — those go through their own PR flow).
+     Do NOT `git checkout main` locally. Sync local main only when reconciling an already-human-merged PR, via `git fetch origin && git reset --hard origin/main`.
    - **failure**: when commit/merge fails, fire `step=<current_step>, status=failed` so users see the boundary in real time.
 
 6. If more epics remain in the wave than `--max-concurrent` allows, wait for an agent to finish before dispatching the next one
@@ -572,11 +588,11 @@ When an agent fails AND `--max-retries` > 0 (default: 2):
 
 #### 4c. Post-Merge Integration Test Gate (E91)
 
-After all agents in a wave complete and branches are merged to main, run the integration test gate **unless `--skip-integration-test` is set**:
+After all agents in a wave complete and the human has merged their PRs, run the integration test gate **unless `--skip-integration-test` is set**. (The gate tests whatever the human has already merged to `origin/main`; unmerged `⏸` PRs are simply not yet reflected.)
 
-1. **Pull latest main** to ensure all wave merges are included:
+1. **Sync local main** to whatever is currently on `origin/main` (never `git checkout main && git pull` — always fetch + hard-reset, consistent with the publish protocol):
    ```bash
-   git checkout main && git pull origin main
+   git fetch origin && git reset --hard origin/main
    ```
 
 2. **Run full test suite** (Next.js stack — all commands from `next-app/`):
@@ -706,7 +722,7 @@ Append an entry to `docs/context/orchestration-log.md`:
 | E83  | implement | ✅ | 8m  | Created batch API |
 | E85  | implement | ❌ | 30m | Timeout |
 
-| Integration | Wave {N} | ✅ PASS / ❌ FAIL | — | server: {X}% ({+/-delta}), client: {Y}% ({+/-delta}) |
+| Integration | Wave {N} | ✅ PASS / ❌ FAIL | — | vitest: {X}% ({+/-delta}), e2e: pass/fail |
 
 **Waves**: {completed}/{total} | **Duration**: {total} | **Triggered by**: /athena:batch {args}
 ```
@@ -723,7 +739,7 @@ Append an entry to `docs/context/orchestration-log.md`:
 | **Shell-layer probe fails (Step 3.5a)** | **Auto-fallback to `--max-concurrent 1`; do NOT abort. Skips 3.5b.** |
 | **Agent-layer probe fails (Step 3.5b — Phase 45 failure mode)** | **Auto-fallback to `--max-concurrent 1`; do NOT abort. Wave runs sequentially, no implement-agent time wasted.** |
 | **Cross-contamination detected (Step 4a-detect)** | **STOP wave, fire `status=blocked` hook, print untangle protocol, exit 0. Should be unreachable if 3.5b is honest, but kept as third-line backstop.** |
-| **`gh pr merge` "not possible to fast-forward"** | **Cosmetic only — ignore. Server-side merge succeeded; the warning is from gh's local-sync attempt failing because local has divergent commits.** |
+| **Push rejected / PR create fails** | **Report and stop for that epic — do not force. The human resolves and merges (pull-only perms; this executor never merges).** |
 | Merge conflict | STOP batch, report conflicting files |
 | Integration test failure | STOP batch, report suspects (E91 gate) |
 | Coverage below 80% | Treated as integration test failure — STOP batch |
@@ -780,7 +796,7 @@ git switch feat/e{n}-{slug}
 # Run /athena:qa --test-only locally OR rely on CI
 git push -u origin feat/e{n}-{slug}
 gh pr create --title "feat(E{n}): ..." --body "..."
-gh pr merge --squash --delete-branch --auto   # --auto may show a "fast-forward" warning; ignore (server-side merge still succeeds)
+# STOP here — the USER merges the PR (pull-only perms; never `gh pr merge`).
 ```
 
 ### 5. Reconcile state on main
@@ -813,11 +829,21 @@ done
 - **Default behavior is "try parallel; degrade automatically"** — that's the point. Sequential-by-default would make `/athena:batch` indistinguishable from `/athena:loop`. Don't override unless you have a specific reason.
 - **`/loop 5m /athena:batch auto`** is the intended cron pattern — the safety nets above make it set-and-forget on any machine, regardless of whether Agent worktree isolation is broken.
 
+## Posture invariants (stated once — apply everywhere)
+
+Three invariants hold regardless of where they're referenced in this file:
+
+1. **Probe trigger** — Step 3.5 (worktree isolation probe) runs iff effective `MAX_CONCURRENT ≥ 2` AND the wave has `> 1` epic. `auto` default (`MAX_CONCURRENT=4`) DOES trigger it.
+2. **Main-sync method** — ALWAYS `git fetch origin && git reset --hard origin/main`. NEVER `git checkout main && git pull`. Local main is only ever synced to already-human-merged state.
+3. **Barrier semantics** — standard posture = full wave barrier; parallel posture (`--effort thorough|ultra`) = per-epic `pipeline()` with only the Step 4c integration-gate barrier.
+
+Publishing is always human-merge (pull-only perms): push + open PR + write `⏸ awaiting human merge (PR #N)`; never `gh pr merge`.
+
 ## Safety Guards
 
 1. **Never modify files directly** — all implementation is done by worktree-isolated agents
 2. **Never skip dependency order** — waves enforce topological ordering
 3. **Always update state** — epic-progress.md is updated after each agent completes
 4. **Max concurrent limit** — never exceed `--max-concurrent` simultaneous agents
-5. **Wave barrier** — all agents in a wave must complete before the next wave starts
+5. **Wave barrier (posture-dependent)** — **standard posture**: a full wave barrier — all agents in a wave must complete before the next wave starts. **parallel posture** (`--effort thorough|ultra`): NO cross-epic wave barrier — each epic runs its own `pipeline()` independently; the only barrier is the **integration-gate barrier** at Step 4c (all epics must finish before the shared integration assertion). See "Posture invariants" below and Step 4 Dispatch Posture.
 6. **Never commit without qa** — `impl=✅` alone is not enough; `qa=✅` is required before `commit`. Going `implement → commit` without a qa agent in between is a protocol violation (see Mandatory Pipeline Order above)

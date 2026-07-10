@@ -196,7 +196,7 @@ emit_event() {
       --arg epic "$epic" \
       --argjson strength "$strength" \
       --argjson threshold "$threshold" \
-      '{ts:$ts,event:$event,lesson:$lesson,strength:$strength,threshold:$threshold,epic:$epic}' \
+      '{ts:$ts,event:$event,lesson:$lesson,strength:($strength+0),threshold:($threshold+0),epic:$epic}' \
       >> "$AUDIT_LOG" 2>/dev/null || true
   else
     jq -n -c \

@@ -162,8 +162,10 @@ or point the link at the real slug. Run it before every deploy (smoke runs it fo
 ## 7. Build + redeploy + verify
 
 `cd dev-docs && pnpm build` (clean = no dead page links), then publish via the **gh-cf-deploy**
-skill (Cloudflare Pages, env token — never `wrangler login`). Verify prod 200 + read a
-screenshot-heavy page's HTML to confirm `/screenshots/*.png` resolve (not a stale edge cache).
+skill (Cloudflare Pages, env token — never `wrangler login`). If `gh-cf-deploy` is unavailable
+(fresh fork), deploy dev-docs via `.github/workflows/deploy-dev-docs.yml` instead. Verify prod
+200 + read a screenshot-heavy page's HTML to confirm `/screenshots/*.png` resolve (not a stale
+edge cache).
 Verify on the **fresh deployment hash URL** (`https://<hash>.<proj>.pages.dev`) — the prod
 alias can return a cached 200 for a path the new build 404s. The `_redirects` rule from §0 is
 what makes removed-path staleness harmless (long tail 301s to the manual).

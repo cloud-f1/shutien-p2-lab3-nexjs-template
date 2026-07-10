@@ -67,18 +67,26 @@ JQ_REDUCE_PARTS=""
 for PAIR in "$@"; do
   KEY="${PAIR%%=*}"
   VAL="${PAIR#*=}"
-  # Skip empty keys
+  # Skip empty keys; reject non-identifier keys (they'd break the jq program string)
   [ -z "$KEY" ] && continue
+  case "$KEY" in
+    *[!A-Za-z0-9_]*|[0-9]*)
+      echo "audit-emit-pipeline.sh: skipping invalid field name '${KEY}'" >&2
+      continue
+      ;;
+  esac
   JQ_ARGS+=(--arg "${KEY}" "${VAL}")
   # Build a reduce expression: `. + {key: $key}`
   JQ_REDUCE_PARTS="${JQ_REDUCE_PARTS} | . + {\"${KEY}\": \$${KEY}}"
 done
 
 # Emit the JSONL line: start with base fields, then merge extra key=value pairs.
+# NOTE: `${JQ_ARGS[@]+...}` guard — on macOS default bash 3.2, expanding an empty
+# array under `set -u` is an unbound-variable error (zero key=value pairs case).
 jq -n -c \
   --arg ts "$TS" \
   --arg event "$EVENT" \
-  "${JQ_ARGS[@]}" \
+  ${JQ_ARGS[@]+"${JQ_ARGS[@]}"} \
   "{ts:\$ts,event:\$event}${JQ_REDUCE_PARTS}" \
   >> "$AUDIT_LOG" || true
 

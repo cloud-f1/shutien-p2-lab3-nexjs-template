@@ -4,7 +4,7 @@ description: >
   Design system rules for this Next.js project. Use this skill whenever adding a page,
   styling a component, generating a TSX page, working with @designer, running
   /athena:design, or composing any new UI. Covers the primitive-first rule,
-  Stop-verifier Rule #21/#22 constraints, shadcn/ui component usage, Tailwind CSS v4 dark
+  Stop-verifier rule constraints, shadcn/ui component usage, Tailwind CSS v4 dark
   mode, and token canonical sources. Trigger phrases: "add a page", "style a", "new page",
   "tsx page", "@designer", "new component", "generate page".
 ---
@@ -17,8 +17,9 @@ Every page and feature composes `components/ui/` primitives. Never write
 raw HTML elements styled with ad-hoc CSS when a primitive exists.
 
 ```typescript
-// Correct — compose primitives
-import { Card, Stack, PageHeader, Button } from '@/components/ui';
+// Correct — compose primitives, per-file shadcn imports
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 // Wrong — raw elements with CSS classes or inline styles from scratch
 <div style={{ display: 'flex', gap: 16 }}>
@@ -26,11 +27,16 @@ import { Card, Stack, PageHeader, Button } from '@/components/ui';
 
 ## Stop-Verifier Constraints (enforced, will block completion)
 
-- **Rule #21** — NO new co-located `*.css` files alongside page components.
-  Page-co-located CSS is banned. Any new `Page.css` / `<slug>.css` will fail
-  the stop-verifier immediately.
-- **Rule #22** — NO new CSS selectors added to shared global CSS files.
-  New visual rules belong in `components/ui/<Name>.tsx` Tailwind classes, not global CSS.
+The stop-verifier's current structural rule set (see `scripts/hooks/CLAUDE.md` for the full
+table) — the ones most relevant to UI work:
+
+- **Rule 1** — no inline `style=` color overrides; use Tailwind + `dark:` variants.
+- **Rule 2** — mutating Server Actions must carry an RBAC guard.
+- **Rule 3** — list/table views use the reusable `<DataTable>`, never a hand-rolled `<table>`.
+- **Rule 4** — no `console.log` residue in committed code.
+- **Rule 5** — no hand-authored files in `components/ui/` — always use the shadcn CLI.
+- **Rule 23** — verification discipline: a `verification_check` audit event must exist before
+  a `feat:`/`fix:`/`refactor:`/`perf:`/`test:`/`style:` commit (see the `verification-discipline` skill).
 
 ## Canonical Token Sources
 

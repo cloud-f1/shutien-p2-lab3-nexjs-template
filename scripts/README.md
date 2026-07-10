@@ -27,7 +27,6 @@ Quick access: `make help` lists all Makefile-backed targets.
 | `check-doc-versions.sh` | Detect stale version references in documentation (package versions, Node versions, etc.). |
 | `check-translations.sh` | Validate that `en` and `zh-TW` i18n namespaces have identical key sets. |
 | `visuals-mindmap-verify.sh` | Compare hardcoded stats in `docs/visuals/agent-team-mindmap.html` against live counts (agents / commands / hooks / stop rules). |
-| `design-system-coverage.sh` | Measure what percentage of client pages compose primitives from `components/ui/`. |
 | `smoke-test.sh` | Next.js stack smoke test: boots Docker infra, builds app, starts it, and hits key endpoints. |
 | `smoke.sh` | Comprehensive "is everything OK?" gate — build / test / e2e / registry / VitePress (+ `--vrt` for visual). |
 | `checks/check-context-budget.sh` | Check context document sizes against memory budget limits. |

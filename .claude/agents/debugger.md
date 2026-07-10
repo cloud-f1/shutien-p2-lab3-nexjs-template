@@ -1,4 +1,5 @@
 ---
+name: debugger
 model: sonnet
 description: >
   Root cause analysis specialist. Use this agent whenever a test fails, an error appears,
@@ -6,7 +7,7 @@ description: >
   "getting an error", "why isn't this working", or reports any bug. Also auto-invoke when
   @qa detects test failures. Reads debug history to detect repeated patterns and tags
   [GENERALIZABLE] lessons for template promotion.
-allowed-tools: Read, Write, Edit, Bash, Grep, Glob
+tools: Read, Write, Edit, Bash, Grep, Glob
 hooks:
   PreToolUse:
     - matcher: "Edit|Write"
@@ -150,17 +151,14 @@ Round-mode rules:
 - In **round mode** (E162): scope is strictly the `## Round N` open items —
   no scope creep, no adjacent fixes that weren't flagged
 
-## request_id Requirement (E159)
+## Error Correlation
 
-Every bug report MUST include a `request_id`:
+There is no request-ID middleware in this Next.js stack. Correlate errors like this:
 
-- **Server bug** → grab the `request_id` field from the JSON log line that
-  emitted the error. Every request emits one (`RequestIDMiddleware`).
-- **Client bug** → either pull it from the failing response's
-  `x-request-id` header, or — for an in-browser error — read the latest
-  Sentry breadcrumb that includes one.
-- **No request_id, no triage**: if the report has none, ask for it before
-  hypothesising. The id collapses minutes of "what was happening at the
-  time" into a single grep across all logs. See
-  [`docs/guides/en/sre-observability.md`](../../docs/guides/en/sre-observability.md)
-  for the full triage workflow.
+- **When `SENTRY_DSN` is set** → use the Sentry event ID (from the error toast,
+  the server log line, or the Sentry dashboard) to pull the full event —
+  stack trace, breadcrumbs, and request context — as your primary evidence.
+- **Otherwise** → triage from the stack trace, the failing command's output,
+  and the reproduction steps in the bug report. Ask the reporter for exact
+  repro steps if the stack trace alone doesn't localize the fault — this is
+  advisory, not a hard gate. Never block triage for lack of an ID.

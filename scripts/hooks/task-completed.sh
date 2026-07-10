@@ -13,6 +13,10 @@
 #
 # Gracefully skips if AI_CODING_WEBHOOK_URL is not set.
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/audit-common.sh
+. "$SCRIPT_DIR/lib/audit-common.sh" 2>/dev/null || true
+
 WEBHOOK_URL="${AI_CODING_WEBHOOK_URL:-}"
 if [ -z "$WEBHOOK_URL" ]; then
   exit 0
@@ -32,7 +36,16 @@ DURATION=$(echo "$INPUT" | jq -r '.duration_seconds // 0' 2>/dev/null)
 
 BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
 if [ -z "$EPIC_ID" ]; then
-  EPIC_ID=$(echo "$BRANCH" | sed -n 's/.*\(E[0-9]\{1,\}\).*/\1/p')
+  # Case-insensitive, uppercase-normalized — see scripts/hooks/lib/audit-common.sh.
+  # Preserve original semantics: leave EPIC_ID empty (not "none") when the
+  # branch has no epic id, so the existing ${EPIC_ID:-unknown} display below
+  # still reads "unknown" rather than "none".
+  if command -v epic_from_branch >/dev/null 2>&1; then
+    EPIC_ID=$(epic_from_branch "$BRANCH")
+    [ "$EPIC_ID" = "none" ] && EPIC_ID=""
+  else
+    EPIC_ID=$(echo "$BRANCH" | sed -n 's/.*\([Ee][0-9]\{1,\}\).*/\1/p' | tr '[:lower:]' '[:upper:]')
+  fi
 fi
 
 # Boundary filter: only fire for "I need to look now" events.

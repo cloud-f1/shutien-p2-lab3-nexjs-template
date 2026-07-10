@@ -8,6 +8,9 @@ Read sequentially:
   3. docs/context/session-summary.md (where we left off)
   4. docs/context/decisions.md (architecture decisions)
   5. docs/context/spec-log.md, test-status.md, deploy-log.md (current state)
-  6. ~/.claude/template-memory/NEW_PROJECT_PRIMER.md (cross-project wisdom)
+  6. ~/.claude/template-memory/NEW_PROJECT_PRIMER.md (cross-project wisdom) — if
+     `~/.claude/template-memory/` is missing or empty, note "Tier 0 not
+     initialized" and continue (a fresh fork/machine has no cross-project memory
+     yet; this is not an error).
 
 Then summarize: current phase, active epic, last completed step, next action, blockers.

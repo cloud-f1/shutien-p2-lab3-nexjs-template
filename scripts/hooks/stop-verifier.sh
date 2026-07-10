@@ -157,10 +157,15 @@ fi
 
 # Rule 5: No hand-authored files added under next-app/components/ui/ (warn).
 # CLAUDE.md: shadcn/ui components are generated — add via `npx shadcn@latest add`.
+# Sees both staged additions AND untracked new files — a file sitting untracked
+# (added but never `git add`-ed) previously slipped past this rule entirely.
 RULE_5_NEW_UI=$(git diff --cached --name-only --diff-filter=A 2>/dev/null \
   | grep -E '^next-app/components/ui/.*\.tsx$' || true)
-if [ -n "$RULE_5_NEW_UI" ]; then
-  LARGE_WARNINGS="${LARGE_WARNINGS}\n⚠️  Rule 5: new file(s) under next-app/components/ui/:\n$(echo "$RULE_5_NEW_UI" | sed 's/^/  - /')\n   These should be generated via \`npx shadcn@latest add <name>\`, not hand-authored. App-specific components belong in components/ (not components/ui/).\n"
+RULE_5_UNTRACKED_UI=$(git ls-files --others --exclude-standard next-app/components/ui/ 2>/dev/null \
+  | grep -E '\.tsx$' || true)
+RULE_5_ALL=$(printf '%s\n%s\n' "$RULE_5_NEW_UI" "$RULE_5_UNTRACKED_UI" | sort -u | grep -v '^\s*$')
+if [ -n "$RULE_5_ALL" ]; then
+  LARGE_WARNINGS="${LARGE_WARNINGS}\n⚠️  Rule 5: new file(s) under next-app/components/ui/:\n$(echo "$RULE_5_ALL" | sed 's/^/  - /')\n   These should be generated via \`npx shadcn@latest add <name>\`, not hand-authored. App-specific components belong in components/ (not components/ui/).\n"
   emit_rule_fired 5 warn
 fi
 
@@ -244,22 +249,36 @@ if [ "${STOP_RULE_23_ENABLED:-0}" = "1" ]; then
     RULE_23_WINDOW="${RULE_23_WINDOW_MIN:-10}"
     RULE_23_GREEN=""
     if [ -f "$RULE_23_AUDIT_LOG" ] && command -v jq >/dev/null 2>&1; then
-      RULE_23_CUTOFF=$(python3 -c \
-        "import datetime; print((datetime.datetime.utcnow() - datetime.timedelta(minutes=${RULE_23_WINDOW})).strftime('%Y-%m-%dT%H:%M:%SZ'))" \
-        2>/dev/null || echo "")
+      # Portable N-minutes-ago cutoff: BSD date (macOS, -v flag) first, then
+      # GNU date (-d flag), then python3 as a last resort. Previously this used
+      # ONLY python3 — when it was unavailable, RULE_23_CUTOFF silently stayed
+      # empty and the fallback branch accepted ANY historical verification_check
+      # ever logged, making the 10-min window meaningless (accept-all). Now the
+      # window degradation itself is surfaced as a warning instead of silently
+      # widening to "any time".
+      RULE_23_CUTOFF=$(date -u -v-"${RULE_23_WINDOW}"M +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || echo "")
+      if [ -z "$RULE_23_CUTOFF" ]; then
+        RULE_23_CUTOFF=$(date -u -d "-${RULE_23_WINDOW} min" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || echo "")
+      fi
+      if [ -z "$RULE_23_CUTOFF" ]; then
+        RULE_23_CUTOFF=$(python3 -c \
+          "import datetime; print((datetime.datetime.utcnow() - datetime.timedelta(minutes=${RULE_23_WINDOW})).strftime('%Y-%m-%dT%H:%M:%SZ'))" \
+          2>/dev/null || echo "")
+      fi
       if [ -n "$RULE_23_CUTOFF" ]; then
         RULE_23_GREEN=$(jq -r \
           --arg cutoff "$RULE_23_CUTOFF" \
           'select(.event=="verification_check" and .exit==0 and .ts >= $cutoff) | .ts' \
           "$RULE_23_AUDIT_LOG" 2>/dev/null | tail -1)
       else
+        echo "⚠️  Rule 23: could not compute the ${RULE_23_WINDOW}-min lookback window (no BSD/GNU date, no python3) — window check degraded to unbounded lookback." >&2
         RULE_23_GREEN=$(jq -r \
           'select(.event=="verification_check" and .exit==0) | .ts' \
           "$RULE_23_AUDIT_LOG" 2>/dev/null | tail -1)
       fi
     fi
     if [ -z "$RULE_23_GREEN" ]; then
-      VIOLATIONS="${VIOLATIONS}\n❌ Rule 23: commit \"${RULE_23_MSG}\" uses a completion verb but no verification_check event (exit=0) found in the last ${RULE_23_WINDOW} min.\n   Fix: run /athena:qa (or the relevant test suite) then emit the event:\n   scripts/hooks/audit-emit-verification.sh <check-name> 0\n   Skill reference: .claude/skills/verification-discipline.md\n"
+      VIOLATIONS="${VIOLATIONS}\n❌ Rule 23: commit \"${RULE_23_MSG}\" uses a completion verb but no verification_check event (exit=0) found in the last ${RULE_23_WINDOW} min.\n   Fix: run /athena:qa (or the relevant test suite) then emit the event:\n   scripts/hooks/audit-emit-verification.sh <check-name> 0\n   Skill reference: .claude/skills/verification-discipline/SKILL.md\n"
       emit_rule_fired 23 block
     fi
   fi
@@ -275,6 +294,10 @@ if [ -n "$VIOLATIONS" ]; then
   echo "=== Stop Verifier — VIOLATIONS FOUND ===" >&2
   echo -e "$VIOLATIONS" >&2
   echo "Fix all violations before completing." >&2
+  # Write the block flag consumed by subagent-stop-writeback.sh so the
+  # agent_complete event can report status="failure" (E146 contract — the
+  # flag had no writer before, making `failure` unreachable).
+  touch "${STOP_VERIFIER_BLOCK_FLAG:-.claude/.stop-verifier-blocked}" 2>/dev/null || true
   exit 2
 fi
 

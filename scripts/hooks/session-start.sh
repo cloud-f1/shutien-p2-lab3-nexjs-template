@@ -1,7 +1,45 @@
 #!/bin/bash
 # stdout on SessionStart → added to Claude's context window automatically
 # 1M context era: load full project state (~200-400 lines) instead of truncated Quick Reference
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/audit-common.sh
+. "$SCRIPT_DIR/lib/audit-common.sh" 2>/dev/null || true
 cd "$(git rev-parse --show-toplevel 2>/dev/null || echo ".")" || exit 0
+
+# ── Audit-log rotation + session anchor (E-batch1) ──────────────────────────
+# context-health-monitor.sh used to compute tool_calls from the LIFETIME line
+# count of .claude/audit.jsonl, which sticks the yellow/red tiers permanently
+# once any long-lived repo accumulates enough history. Fix: at the start of
+# every session, snapshot the current line count into .claude/.session-anchor
+# so the monitor can compute (current - anchor) = this session's activity.
+# Must run before anything below appends to the audit log (Block 5A's
+# tier0_loaded event), so the anchor reflects pre-session state.
+#
+# Also rotates the audit log itself when it exceeds 5MB — an append-only
+# JSONL file in a long-lived repo grows unbounded otherwise. Rotation moves
+# it to .claude/audit-<YYYYMM>.jsonl and starts a fresh (empty) log, resetting
+# the health-state dedup file to "none" (a fresh log has nothing to be red/
+# yellow about) and the anchor to 0.
+AUDIT_LOG_FOR_ANCHOR="${AUDIT_LOG_PATH:-.claude/audit.jsonl}"
+SESSION_ANCHOR_PATH_="${SESSION_ANCHOR_PATH:-.claude/.session-anchor}"
+HEALTH_STATE_PATH_FOR_ROTATE="${HEALTH_STATE_PATH:-.claude/.health-state}"
+mkdir -p "$(dirname "$AUDIT_LOG_FOR_ANCHOR")" 2>/dev/null
+if [ -f "$AUDIT_LOG_FOR_ANCHOR" ]; then
+  _audit_bytes=$(stat -f %z "$AUDIT_LOG_FOR_ANCHOR" 2>/dev/null || stat -c %s "$AUDIT_LOG_FOR_ANCHOR" 2>/dev/null || echo 0)
+  case "$_audit_bytes" in ''|*[!0-9]*) _audit_bytes=0 ;; esac
+  if [ "$_audit_bytes" -gt 5242880 ]; then
+    _rotate_suffix=$(date -u +%Y%m 2>/dev/null || echo "unknown")
+    mv "$AUDIT_LOG_FOR_ANCHOR" "$(dirname "$AUDIT_LOG_FOR_ANCHOR")/audit-${_rotate_suffix}.jsonl" 2>/dev/null || true
+    : > "$AUDIT_LOG_FOR_ANCHOR" 2>/dev/null || true
+    echo "none" > "$HEALTH_STATE_PATH_FOR_ROTATE" 2>/dev/null || true
+  fi
+fi
+_anchor_count=0
+if [ -f "$AUDIT_LOG_FOR_ANCHOR" ]; then
+  _anchor_count=$(wc -l < "$AUDIT_LOG_FOR_ANCHOR" 2>/dev/null | tr -d ' ')
+fi
+mkdir -p "$(dirname "$SESSION_ANCHOR_PATH_")" 2>/dev/null
+echo "${_anchor_count:-0}" > "$SESSION_ANCHOR_PATH_" 2>/dev/null || true
 
 BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
 UNCOMMITTED=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')
@@ -82,8 +120,13 @@ if [ -f "$PRIMER" ]; then
   AUDIT_LOG="${AUDIT_LOG_PATH:-.claude/audit.jsonl}"
   mkdir -p "$(dirname "$AUDIT_LOG")" 2>/dev/null
   TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-  EPIC=$(echo "$BRANCH" | sed -n 's/.*\(E[0-9]\{1,\}\).*/\1/p')
-  [ -z "$EPIC" ] && EPIC="none"
+  # Case-insensitive, uppercase-normalized — see scripts/hooks/lib/audit-common.sh.
+  if command -v epic_from_branch >/dev/null 2>&1; then
+    EPIC=$(epic_from_branch "$BRANCH")
+  else
+    EPIC=$(echo "$BRANCH" | sed -n 's/.*\([Ee][0-9]\{1,\}\).*/\1/p' | tr '[:lower:]' '[:upper:]')
+    [ -z "$EPIC" ] && EPIC="none"
+  fi
   if command -v jq >/dev/null 2>&1; then
     jq -n -c \
       --arg ts "$TS" \

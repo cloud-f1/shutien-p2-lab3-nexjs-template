@@ -40,14 +40,17 @@ State is persisted in `docs/context/strategy-log.md` under `## Current Cycle`.
 - **This phase ALWAYS requires human interaction — NEVER skip**
 
 ### Phase 3: EXECUTE
-1. Run `/athena:loop auto` for all approved epics
+1. Run `/athena:loop auto` for all approved epics. For more than one epic, the
+   recommended multi-epic pattern is `/loop 2m /athena:batch auto` (cron-driven
+   parallel wave dispatch, auto-falls-back to sequential) alongside/instead of a
+   single `/athena:loop auto` call.
 2. Monitor for failures (QA < 80%, implementation errors)
 3. If failure: set state to COOLDOWN with failure report, STOP
 4. If all epics complete: set state to REFLECTING
 
 ### Phase 4: REFLECT
 1. @strategist reviews what was built:
-   - Which stories succeeded/failed?
+   - Which epics succeeded/failed?
    - What lessons learned?
    - Any new weaknesses introduced?
 2. Update strategy-log.md with cycle results

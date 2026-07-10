@@ -15,9 +15,17 @@
 # `.claude/.health-state` so the same tier only emits once; escalations
 # (yellow -> red) still fire.
 #
+# Session-scoped proxy (E-batch1): tool_calls is offset by the line count
+# recorded in .claude/.session-anchor at SessionStart (session-start.sh), so
+# the monitor tracks THIS session's activity rather than the repo's lifetime
+# audit-log history. Falls back to the raw total line count when the anchor
+# file doesn't exist (e.g. hook run standalone, or before session-start.sh
+# has ever run).
+#
 # Test injection:
 #   AUDIT_LOG_PATH=/tmp/fixture.jsonl ./context-health-monitor.sh
 #   HEALTH_STATE_PATH=/tmp/state ./context-health-monitor.sh
+#   SESSION_ANCHOR_PATH=/tmp/anchor ./context-health-monitor.sh
 
 set -euo pipefail
 
@@ -46,9 +54,23 @@ filesize() {
   echo "${sz:-0}"
 }
 
-# tool_calls = line count of audit.jsonl
-TOOL_CALLS=$(wc -l <"$AUDIT_LOG" | tr -d ' ')
-TOOL_CALLS=${TOOL_CALLS:-0}
+# tool_calls = line count of audit.jsonl, offset by the session anchor
+# (current - anchor) when the anchor file exists; falls back to the raw
+# total when it doesn't (un-sticks the monitor from lifetime history).
+TOTAL_LINES=$(wc -l <"$AUDIT_LOG" | tr -d ' ')
+TOTAL_LINES=${TOTAL_LINES:-0}
+
+SESSION_ANCHOR_FILE="${SESSION_ANCHOR_PATH:-.claude/.session-anchor}"
+if [ -f "$SESSION_ANCHOR_FILE" ]; then
+  ANCHOR=$(cat "$SESSION_ANCHOR_FILE" 2>/dev/null | tr -d '[:space:]')
+  case "$ANCHOR" in
+    ''|*[!0-9]*) ANCHOR=0 ;;
+  esac
+  TOOL_CALLS=$((TOTAL_LINES - ANCHOR))
+  [ "$TOOL_CALLS" -lt 0 ] && TOOL_CALLS=0
+else
+  TOOL_CALLS=$TOTAL_LINES
+fi
 
 # bytes_read = sum of stat sizes for every tool_input.file_path found in the
 # audit log. jq streams distinct file paths; the shell loop stats existing

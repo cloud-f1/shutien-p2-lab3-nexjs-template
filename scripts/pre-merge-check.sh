@@ -72,6 +72,20 @@ if [ "$RUN_E2E" -eq 1 ]; then
   if (cd "$APP" && pnpm -s test:e2e >/tmp/pmc-e2e.log 2>&1); then ok "e2e suite passes"; else bad "e2e failed (see /tmp/pmc-e2e.log)"; fi
 fi
 
+# ── Gate 7: command/agent frontmatter + stale-stack + tool-name lint ────────
+# Non-fatal in the running pre-merge sense: command-lint.sh itself is fatal on
+# (a) broken frontmatter and (d) a referenced scripts/*.sh path that doesn't
+# exist, but warn-only on (b) stale-stack tokens and (c) the legacy `Task`
+# tool name — see scripts/checks/command-lint.sh header for the full rubric.
+# We run it in its own (non-strict) default mode here, so pre-merge-check
+# fails only on the fatal class, not on every warning.
+say "Command/agent lint (scripts/checks/command-lint.sh)"
+if (cd "$ROOT" && bash scripts/checks/command-lint.sh >/tmp/pmc-command-lint.log 2>&1); then
+  ok "command-lint clean (or warnings only — see /tmp/pmc-command-lint.log)"
+else
+  bad "command-lint FATAL finding(s) — see /tmp/pmc-command-lint.log"
+fi
+
 echo ""
 if [ "$FAIL" -eq 0 ]; then
   printf '\033[32m✅ pre-merge-check passed — safe to commit/merge\033[0m\n'

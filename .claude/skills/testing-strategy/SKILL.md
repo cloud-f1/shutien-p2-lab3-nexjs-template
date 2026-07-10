@@ -186,5 +186,109 @@ add the matching automated entry; manual cases cover only what automation struct
 `pnpm test:int` and `pnpm check:orphans` run **outside** the default gate today — wire them into
 `scripts/pre-merge-check.sh` / CI so the middle layer and the orphan guard can't silently bit-rot.
 
+## TDD principles
+
+### The cycle: RED → GREEN → REFACTOR
+
+1. **RED** — write a failing test that defines expected behavior.
+2. **GREEN** — write the minimum code to make it pass.
+3. **REFACTOR** — clean up without changing behavior, re-run tests.
+
+Do NOT write implementation code before the test exists and fails. Coverage gate: unit
+`cd next-app && pnpm test -- --coverage` (target 80%) | e2e `cd next-app && pnpm test:e2e`
+(all scenarios must pass).
+
+### Layer A — testing philosophy
+
+**P1. Test behavior, not implementation.** Assert on HTTP status / return values / DB state —
+not internal call counts.
+
+```typescript
+// DO — assert on behavior (return value of the real Server Action)
+const result = await createItem(null, formData)
+expect(result).toBeNull() // null = success
+
+// DON'T — tests internal wiring, not behavior
+expect(mockDb.insert).toHaveBeenCalledOnce() // ← tests implementation, not behavior
+```
+
+Litmus: if you refactor internals but output stays the same, does the test still pass?
+
+**P2. Triangulation.** Use multiple cases to force general logic; prefer `it.each` /
+`describe.each` in Vitest.
+
+```typescript
+it.each([
+  ["valid@example.com", true],
+  ["", false],
+  ["no-at-sign", false],
+])("validates email %s → %s", (email, valid) => {
+  expect(validateEmail(email)).toBe(valid)
+})
+```
+
+### Layer B — testable architecture
+
+**P3. Humble object.** Keep framework glue thin; push logic into testable pure functions or
+`lib/<domain>-utils.ts` modules (e.g. `lib/items-utils.ts`) — unit-test those directly rather
+than testing business logic embedded in a Route Handler or Server Action body.
+
+**P4. Dependency injection.** In Next.js, inject dependencies via function arguments (no DI
+framework). Tests pass test doubles directly:
+
+```typescript
+// service.ts
+export async function createUser(db: DrizzleDb, email: string) { ... }
+
+// service.test.ts
+const mockDb = { insert: vi.fn().mockResolvedValue([{ id: "1" }]) }
+await createUser(mockDb as any, "test@example.com")
+```
+
+**P5. Wrappers.** Wrap third-party services behind your own interface so they're mockable —
+e.g. `lib/billing/providers/stripe.ts` adapter, mocked with `vi.mock()`, instead of calling
+`stripe.charges.create()` directly inside a Server Action.
+
+### Layer C — boundary control
+
+**P6. Contract tests.** Validate assumptions about external interfaces haven't drifted — e.g.
+`satisfies z.ZodType<...>` on client Zod schemas, or an integration test asserting the actual
+Drizzle row shape matches what the Server Action returns.
+
+**P7. Effective mocking.** Mock at system boundaries only; never mock your own core logic.
+`vi.mock("@/lib/db")` for the DB boundary in unit tests, Playwright `page.route()` for the
+network boundary in e2e. Return realistic data matching actual Drizzle schema shapes. Don't
+mock Server Actions themselves — test the underlying logic/DB behavior they drive (see the
+integration harness in §3 for the real-DB version of this).
+
+### Layer D — AI agent rules
+
+**P8. Agent test guidelines**
+1. Test public behavior via rendered output (component) or return value (Server Action/service function).
+2. Never `expect(mock).toHaveBeenCalled()` on internal logic — assert DOM or return values instead.
+3. Use `userEvent` (not `fireEvent`) for interaction tests.
+4. Use Playwright for auth flows and full page interactions — Vitest for unit/component logic.
+5. All tests are TypeScript: Vitest for unit/integration, Playwright for e2e. No other test runner.
+
+**P9. Parametrize over duplication.** One `it.each`/`describe.each` for input variants, not five
+near-identical `it()` blocks with one value changed.
+
+**P10. Mock boundaries, not internals**
+
+| Layer | Mock target | Tool |
+|-------|------------|------|
+| DB (unit) | `@/lib/db` module | `vi.mock("@/lib/db")` |
+| External API | Third-party SDK modules | `vi.mock("stripe")` etc. |
+| Network (e2e) | HTTP requests | Playwright `page.route()` |
+| Time | Timers / dates | `vi.useFakeTimers()` |
+
+Never mock: Next.js router internals, Auth.js session internals, Drizzle query builder internals.
+
+### What to test / not to test
+
+**Server logic**: happy path, auth guard (redirect/401), validation errors, not found, duplicate.
+**Client components**: loading, success render, error render, user interactions, empty state.
+**Never**: internal state, private methods, library internals, CSS class names, framework plumbing.
+
 Related: `nextjs-saas-patterns` (stack gotchas, Auth.js JWT session trap), `docs/dev-guide/testing.md`
 (layer commands + coverage gate).

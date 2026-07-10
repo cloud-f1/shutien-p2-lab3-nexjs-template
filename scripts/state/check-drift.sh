@@ -106,9 +106,18 @@ extract_index_matrix_rows() {
 
 # ---------------------------------------------------------------------------
 # Step 5: Compare Phase Status rows and collect mismatches
+#
+# E-batch1 audit fix: this used to emit ONE state_drift JSONL event PER
+# drifted row PER run — on a repo with a lot of drift that was ~98% of the
+# live audit log. Now every mismatch is accumulated into an in-memory
+# `details` array (bash 3.2-compatible indexed array) and printed in full to
+# stdout; only ONE summary event is appended to AUDIT_LOG per run, built via
+# `jq -n` (never printf — markdown cells can carry embedded quotes that would
+# otherwise produce invalid JSONL).
 # ---------------------------------------------------------------------------
 iso_ts=$(date -u +%FT%TZ 2>/dev/null || date -u '+%Y-%m-%dT%H:%M:%SZ')
 mismatches=0
+details=()
 
 # Get expected rows from epic-progress.md
 expected_phase=$(extract_phase_status "$PROGRESS_FILE")
@@ -118,9 +127,7 @@ actual_phase=$(extract_index_phase_status "$INDEX_FILE")
 # If EPIC_INDEX doesn't have sentinels, the phase section will be empty — that's drift
 if [[ -z "$actual_phase" ]] && [[ -n "$expected_phase" ]]; then
   mismatches=$((mismatches + 1))
-  mkdir -p "$(dirname "$AUDIT_LOG")" 2>/dev/null || true
-  printf '{"ts":"%s","event":"state_drift","source":"check-drift.sh","mismatches":%d,"section":"phase_status","expected":"(rows present)","found":"(sentinels missing or section empty)"}\n' \
-    "$iso_ts" 1 >> "$AUDIT_LOG" 2>/dev/null || true
+  details+=("phase_status: sentinels missing or section empty")
 else
   # Compare row by row, extracting just the Status cell (3rd column)
   while IFS= read -r expected_row; do
@@ -133,9 +140,7 @@ else
     if [[ -z "$actual_row" ]]; then
       # Phase row missing from index — that's drift
       mismatches=$((mismatches + 1))
-      mkdir -p "$(dirname "$AUDIT_LOG")" 2>/dev/null || true
-      printf '{"ts":"%s","event":"state_drift","source":"check-drift.sh","mismatches":%d,"epic":"%s","expected":"%s","found":"(missing)"}\n' \
-        "$iso_ts" 1 "$phase_name" "$expected_status" >> "$AUDIT_LOG" 2>/dev/null || true
+      details+=("${phase_name} ${expected_status}→(missing)")
     else
       actual_status=$(printf '%s' "$actual_row" | awk -F'|' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $4); print $4}')
       # Compare just the first emoji/status symbol (not the full note text)
@@ -143,9 +148,7 @@ else
       act_symbol=$(printf '%s' "$actual_status" | grep -oE '^[✅🔄⬜❌⏭️]+' | head -1 || printf '%s' "$actual_status" | cut -c1-4)
       if [[ "$exp_symbol" != "$act_symbol" ]]; then
         mismatches=$((mismatches + 1))
-        mkdir -p "$(dirname "$AUDIT_LOG")" 2>/dev/null || true
-        printf '{"ts":"%s","event":"state_drift","source":"check-drift.sh","mismatches":%d,"epic":"%s","expected":"%s","found":"%s"}\n' \
-          "$iso_ts" 1 "$phase_name" "$expected_status" "$actual_status" >> "$AUDIT_LOG" 2>/dev/null || true
+        details+=("${phase_name} ${exp_symbol}→${act_symbol}")
       fi
     fi
   done <<< "$expected_phase"
@@ -159,9 +162,7 @@ actual_matrix=$(extract_index_matrix_rows "$INDEX_FILE")
 
 if [[ -z "$actual_matrix" ]] && [[ -n "$expected_matrix" ]]; then
   mismatches=$((mismatches + 1))
-  mkdir -p "$(dirname "$AUDIT_LOG")" 2>/dev/null || true
-  printf '{"ts":"%s","event":"state_drift","source":"check-drift.sh","mismatches":%d,"section":"epic_matrix","expected":"(rows present)","found":"(sentinels missing or section empty)"}\n' \
-    "$iso_ts" 1 >> "$AUDIT_LOG" 2>/dev/null || true
+  details+=("epic_matrix: sentinels missing or section empty")
 else
   # Detect EPIC_INDEX matrix format from the header row (not data rows, which may
   # have | inside Notes and inflate NF). Look for "Name" column as indicator.
@@ -225,20 +226,50 @@ else
 
       if [[ "$exp_val" != "$act_val" ]]; then
         mismatches=$((mismatches + 1))
-        mkdir -p "$(dirname "$AUDIT_LOG")" 2>/dev/null || true
-        printf '{"ts":"%s","event":"state_drift","source":"check-drift.sh","mismatches":%d,"epic":"%s","column":"%s","expected":"%s","found":"%s"}\n' \
-          "$iso_ts" 1 "$epic_id" "$col_name" "$exp_val" "$act_val" >> "$AUDIT_LOG" 2>/dev/null || true
+        details+=("${epic_id} ${col_name}:${exp_val}→${act_val}")
       fi
     done
   done < <(printf '%s\n' "$expected_matrix")
 fi
 
 # ---------------------------------------------------------------------------
-# Exit
+# Exit — emit ONE summary state_drift event per run (not one per mismatch),
+# built via `jq -n` (never printf — markdown cells can carry embedded quotes
+# that would otherwise produce invalid JSONL). Full detail always goes to
+# stdout; only a ~200-char-capped digest goes into the audit log.
 # ---------------------------------------------------------------------------
 if [[ "$mismatches" -gt 0 ]]; then
+  # Join all detail entries with "; " for the full stdout report.
+  full_detail=""
+  for d in "${details[@]+"${details[@]}"}"; do
+    if [[ -z "$full_detail" ]]; then
+      full_detail="$d"
+    else
+      full_detail="${full_detail}; ${d}"
+    fi
+  done
+
+  # Cap the digest that goes into the audit log to ~200 chars.
+  first_detail="$full_detail"
+  if [[ ${#first_detail} -gt 200 ]]; then
+    first_detail="${first_detail:0:197}..."
+  fi
+
+  if command -v jq >/dev/null 2>&1; then
+    mkdir -p "$(dirname "$AUDIT_LOG")" 2>/dev/null || true
+    jq -n -c \
+      --arg ts "$iso_ts" \
+      --arg event "state_drift" \
+      --arg source "check-drift.sh" \
+      --argjson mismatches "$mismatches" \
+      --arg first "$first_detail" \
+      '{ts:$ts,event:$event,source:$source,mismatches:$mismatches,first:$first}' \
+      >> "$AUDIT_LOG" 2>/dev/null || true
+  fi
+
   printf 'check-drift.sh: %d mismatch(es) found between %s and %s\n' \
     "$mismatches" "$PROGRESS_FILE" "$INDEX_FILE" >&2
+  printf 'Detail: %s\n' "$full_detail" >&2
   printf 'Run: scripts/state/render-index.sh to reconcile.\n' >&2
   exit 1
 fi

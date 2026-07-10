@@ -112,7 +112,14 @@ Report to user: "{N} epic proposals generated from {M} unresolved bugs. Review d
       - Key files from affected files list
       - Size and dependencies
    c. Add row to `docs/epics/EPIC_INDEX.md` in the appropriate phase
-   d. Update the proposal status in `docs/context/qa-report.md` from `PROPOSED` to `APPROVED`
+   d. Register the epic in `docs/context/epic-progress.md` (mirrors `/athena:plan`'s
+      approve flow) — otherwise the orchestrator (`/athena:loop`, `/athena:batch`)
+      cannot see it:
+      - Add a **Phase Status table** row for the epic's phase (create the phase row
+        if new, or append the epic ID to an existing pending phase row)
+      - Add a **Epic Step Matrix** row for the epic with all 5 steps ⬜
+        (spec / implement / qa / commit / merge)
+   e. Update the proposal status in `docs/context/qa-report.md` from `PROPOSED` to `APPROVED`
 3. Report: "Approved {N} epics: {list}. Run `/athena:loop` to begin execution."
 
 ### reject E{n}

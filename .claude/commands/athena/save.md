@@ -1,24 +1,26 @@
 ---
 description: "(memory) Checkpoint all agents simultaneously → write context docs → commit for session resume."
-allowed-tools: Read, Write, Bash, Task
+allowed-tools: Read, Write, Bash, Agent
 ---
 # Checkpoint All Context
 
 ## Step 1 — Spawn parallel write-backs
-Use Task tool to launch simultaneously:
+Use the Agent tool to launch simultaneously:
 
-  Task A: @qa              "Update your document -> docs/context/review-log.md
-                            AND docs/context/test-status.md"
-  Task B: @best-practice   "Update your document -> docs/context/decisions.md
-                            AND update TECHSTACK.md Section 12 decision log"
+  Agent A: @qa              "Update your document -> docs/context/review-log.md
+                             AND docs/context/test-status.md"
+  Agent B: @best-practice   "Update your document -> docs/context/decisions.md"
 
 If @strategist was active this session, also spawn:
-  Task F: @strategist     "Update your document -> docs/context/strategy-log.md"
+  Agent F: @strategist     "Update your document -> docs/context/strategy-log.md"
 
 If these agents were active this session, also spawn:
-  Task C: @spec-writer     "Update your document -> docs/context/spec-log.md"
-  Task D: @debugger        "Update your document -> docs/context/debug-log.md"
-  Task E: @deployer        "Update your document -> docs/context/deploy-log.md"
+  Agent C: @spec-writer     "Update your document -> docs/context/spec-log.md"
+  Agent D: @debugger        "Update your document -> docs/context/debug-log.md"
+  Agent E: @deployer        "Update your document -> docs/context/deploy-log.md"
+
+An agent not active this session has nothing to check-point — skip its doc silently
+(do not spawn it, do not report it as missing/failed).
 
 ## Step 2 — Write session-summary.md
 
@@ -42,11 +44,13 @@ Branch: [branch] | Commit: [git log --oneline -1]
 ---
 
 ## Step 3 — Update project state docs
-- TECHSTACK.md S13: refresh active track status, last session line, known issues.
-- CLAUDE.md "Active Track" section: update track status and next action.
+- `CLAUDE.md` "## Active Epic" / "Current State" sections: refresh active phase status,
+  last session line, next action.
+- `docs/context/session-summary.md`: ensure it reflects the latest state (already
+  written in Step 2 — this is a consistency check, not a second write).
 
 ## Step 4 — Commit
-git add docs/context/ TECHSTACK.md CLAUDE.md
+git add docs/context/ CLAUDE.md
 git commit -m "docs: checkpoint — $(date +%Y-%m-%d)"
 
 ## Post-save check (E160)

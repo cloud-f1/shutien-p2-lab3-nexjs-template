@@ -26,7 +26,9 @@ if echo "$CMD" | grep -qE "$BENIGN_PATTERN"; then
 fi
 
 # Only trigger for commands that look like test/build/lint/migration operations
-BUILD_PATTERN="(pytest|vitest|pnpm|npm|npx|uv |pip |make |alembic|uvicorn|python |node |tsc|eslint|ruff|mypy|cargo|go |docker)"
+# (Next.js stack — no pytest/alembic/uvicorn/ruff/mypy; that FastAPI/Vite tooling
+# was removed with the migration to next-app/.)
+BUILD_PATTERN="(pnpm|npm|npx|next build|next dev|vitest|playwright|tsc|eslint|drizzle-kit|node |make |cargo|go |docker)"
 if ! echo "$CMD" | grep -qE "$BUILD_PATTERN"; then
   exit 0
 fi
@@ -38,61 +40,79 @@ TAIL_OUTPUT=$(echo "$STDOUT" | tail -50)
 # Each pattern: regex to match against output → name + fix suggestion
 MATCH=""
 
-# Pattern 1: Wrong JWT library (python-jose)
-if echo "$TAIL_OUTPUT" | grep -qiE "(from jose import|jose\.exceptions|JOSEError)"; then
-  MATCH="Known pattern: Wrong JWT Library Import
-Fix: Replace \`from jose import jwt\` with \`import jwt\` (PyJWT).
-     Replace \`from jose.exceptions import ...\` with \`from jwt.exceptions import ...\`
-Reference: debug-log.md Pattern 1"
+# Pattern 1: Auth.js v5 Credentials login bounce-back (DrizzleAdapter defaults to
+# DB sessions, but Credentials can't create one — auth() returns null next request).
+if echo "$TAIL_OUTPUT" | grep -qiE "(redirected? to (the )?/login|CredentialsSignin|toHaveURL.*login|session\(\).*(null|undefined)|auth\(\).*returned null)"; then
+  MATCH="Known pattern: Auth.js v5 Credentials Login Bounce-Back
+Fix: Credentials provider CANNOT create a database session. Configure JWT sessions:
+     session: { strategy: \"jwt\" } in lib/auth.ts, with jwt()/session() callbacks
+     copying token.id/token.role. See nextjs-saas-patterns skill §1.
+Reference: .claude/skills/nextjs-saas-patterns/SKILL.md"
 fi
 
-# Pattern 2: asyncio event loop error
-if [ -z "$MATCH" ] && echo "$TAIL_OUTPUT" | grep -qiE "(RuntimeError.*event loop|no running event loop|can.t run nested)"; then
-  MATCH="Known pattern: asyncio Event Loop Error
-Fix: Remove asyncio.run(), use \`await\` directly. Ensure asyncio_mode = 'auto' in pyproject.toml.
-Reference: debug-log.md Pattern 2"
+# Pattern 2: RBAC guard trusts the JWT-snapshotted role instead of re-reading the DB
+if [ -z "$MATCH" ] && echo "$TAIL_OUTPUT" | grep -qiE "(403|Forbidden|Unauthorized).*role|role.*(stale|mismatch)|session\.user\.role"; then
+  MATCH="Known pattern: Stale Role From JWT (RBAC privilege gap)
+Fix: Server-side guards must re-read the LIVE role from the DB (getLiveRole()) —
+     never trust session.user.role directly, since the JWT snapshots role at
+     sign-in and a demotion won't apply until re-login. See lib/permissions.ts.
+Reference: .claude/skills/nextjs-saas-patterns/SKILL.md §2"
 fi
 
-# Pattern 3: Stale UI after mutation (React Query)
-if [ -z "$MATCH" ] && echo "$TAIL_OUTPUT" | grep -qiE "(stale.*data|cache.*not.*invalidat|query.*not.*refetch)"; then
-  MATCH="Known pattern: Stale UI After Mutation
-Fix: Add \`queryClient.invalidateQueries({ queryKey: queryKeys.[resource] })\` to mutation's onSettled.
-Reference: debug-log.md Pattern 3"
+# Pattern 3: Server Action mutation not reflected in the UI (missing revalidatePath)
+if [ -z "$MATCH" ] && echo "$TAIL_OUTPUT" | grep -qiE "(stale.*data|list.*not.*(refresh|update)|expected.*updated.*but.*(old|stale)|cache.*not.*invalidat)"; then
+  MATCH="Known pattern: Stale UI After Server Action Mutation
+Fix: Server Actions mutate then must call \`revalidatePath(...)\` server-side AND
+     the dialog/client caller must call \`router.refresh()\` on success — both are
+     required, neither alone is sufficient.
+Reference: .claude/skills/nextjs-saas-patterns/SKILL.md (CRUD modals + list tables)"
 fi
 
-# Pattern 4: MSW handler missing
-if [ -z "$MATCH" ] && echo "$TAIL_OUTPUT" | grep -qiE "(\[MSW\].*Warning.*no.*handler|captured a request without a matching)"; then
-  MATCH="Known pattern: MSW Handler Missing
-Fix: Add handler to \`src/tests/handlers/\` for the missing endpoint.
-Reference: debug-log.md Pattern 4"
+# Pattern 4: Hydration mismatch (Date/locale rendered differently server vs client)
+if [ -z "$MATCH" ] && echo "$TAIL_OUTPUT" | grep -qiE "(Hydration failed|did not match.*server-rendered|Text content does not match|hydration.*mismatch)"; then
+  MATCH="Known pattern: Hydration Mismatch
+Fix: Usually a Date/locale/timezone value formatted differently on server vs
+     client (e.g. new Date().toLocaleString() in a Server Component). Format
+     dates deterministically (fixed locale/timezone) or move formatting to a
+     Client Component with useEffect.
+Reference: general"
 fi
 
-# Pattern 5: Alembic drift
-if [ -z "$MATCH" ] && echo "$TAIL_OUTPUT" | grep -qiE "(Target database is not up to date|alembic.*not.*up.*to.*date|Can.t locate revision)"; then
-  MATCH="Known pattern: Alembic Drift
-Fix: Run \`alembic upgrade head\` to apply pending migrations, or generate missing with \`alembic revision --autogenerate\`.
-Reference: debug-log.md Pattern 5"
+# Pattern 5: drizzle-kit schema drift
+if [ -z "$MATCH" ] && echo "$TAIL_OUTPUT" | grep -qiE "(relation .* does not exist|column .* does not exist|drizzle-kit.*(check|migrate)|schema drift)"; then
+  MATCH="Known pattern: Drizzle Schema Drift
+Fix: Run \`pnpm db:generate\` to create a migration from the current
+     lib/schema.ts, then \`pnpm db:migrate\` to apply it. Verify the journal
+     (drizzle/migrations/meta/_journal.json) picked up the new file.
+Reference: .claude/skills/nextjs-saas-patterns/SKILL.md §5"
 fi
 
-# Pattern 6: tokenCache always null
-if [ -z "$MATCH" ] && echo "$TAIL_OUTPUT" | grep -qiE "(tokenCache.*null|token.*undefined|401.*loop|refresh.*loop)"; then
-  MATCH="Known pattern: tokenCache Always Returns null
-Fix: Ensure auth mutation's onSuccess calls \`tokenCache.set(accessToken)\`. Check login + refresh both set it.
-Reference: debug-log.md Pattern 6"
+# Pattern 6: NEXT_PUBLIC_* env var change not taking effect
+if [ -z "$MATCH" ] && echo "$TAIL_OUTPUT" | grep -qiE "NEXT_PUBLIC_[A-Z_]+.*(undefined|not defined|is not set)"; then
+  MATCH="Known pattern: NEXT_PUBLIC_* Env Var Not Picked Up
+Fix: NEXT_PUBLIC_* vars are baked into the JS bundle at BUILD time, not read at
+     request time. Changing them in the host dashboard has no effect until the
+     next build/deploy — pass as --build-arg (see CLAUDE.md Deployment section).
+Reference: CLAUDE.md — Runtime-vs-build-time env (E322)"
 fi
 
-# Pattern 7: bcrypt import error
-if [ -z "$MATCH" ] && echo "$TAIL_OUTPUT" | grep -qiE "(bcrypt.*AttributeError|bcrypt.*ImportError|CryptContext.*error|passlib.*error)"; then
-  MATCH="Known pattern: bcrypt Import Error
-Fix: Replace CryptContext usage with direct bcrypt: \`bcrypt.hashpw()\` / \`bcrypt.checkpw()\`.
-Reference: debug-log.md Pattern 7"
+# Pattern 7: sidebar-01 TooltipProvider crash
+if [ -z "$MATCH" ] && echo "$TAIL_OUTPUT" | grep -qiE "Tooltip.*must be used within.*TooltipProvider"; then
+  MATCH="Known pattern: Missing TooltipProvider (sidebar-01 block)
+Fix: SidebarMenuButton's tooltip prop renders a <Tooltip>, but SidebarProvider
+     does not include a TooltipProvider. Wrap the dashboard subtree (or root)
+     in <TooltipProvider>.
+Reference: .claude/skills/nextjs-saas-patterns/SKILL.md §4"
 fi
 
-# Pattern 8: Pydantic v2 validator syntax
-if [ -z "$MATCH" ] && echo "$TAIL_OUTPUT" | grep -qiE "(PydanticUserError|@validator.*deprecated|orm_mode.*removed|ConfigDict)"; then
-  MATCH="Known pattern: Pydantic v2 Validator Syntax
-Fix: Replace @validator → @field_validator, @root_validator → @model_validator, orm_mode=True → ConfigDict(from_attributes=True).
-Reference: debug-log.md Pattern 8"
+# Pattern 8: proxy.ts (Edge middleware) importing Node-only code
+if [ -z "$MATCH" ] && echo "$TAIL_OUTPUT" | grep -qiE "(edge runtime does not support|Node\.js standard library.*edge runtime|UntrustedHost)"; then
+  MATCH="Known pattern: proxy.ts Edge Runtime Import Crash
+Fix: proxy.ts (Next.js 16's renamed middleware.ts) runs on the Edge runtime and
+     must only import auth.config.ts — never lib/auth.ts (Node-only: postgres,
+     DrizzleAdapter). Keep proxy.ts to a coarse logged-in check; do role checks
+     server-side. Also set trustHost: true in auth.config.ts.
+Reference: .claude/skills/nextjs-saas-patterns/SKILL.md §3"
 fi
 
 # Pattern 9: fireEvent in tests (should use userEvent)
@@ -102,11 +122,15 @@ Fix: Replace \`fireEvent\` with \`userEvent\` from \`@testing-library/user-event
 Reference: CLAUDE.md Testing Rules"
 fi
 
-# Pattern 10: localStorage in client (banned)
-if [ -z "$MATCH" ] && echo "$TAIL_OUTPUT" | grep -qiE "(localStorage.*not.*defined|localStorage.*SecurityError)"; then
-  MATCH="Known pattern: localStorage Usage (banned)
-Fix: Use \`tokenCache.ts\` (in-memory) instead of localStorage. Project convention forbids localStorage.
-Reference: CLAUDE.md Architecture Rules"
+# Pattern 10: db.$count() misused (postgres-js row-count footgun)
+if [ -z "$MATCH" ] && echo "$TAIL_OUTPUT" | grep -qiE "(Cannot destructure.*count|Cannot read propert(y|ies).*'count'|rowCount.*undefined)"; then
+  MATCH="Known pattern: db.\$count() Misuse (postgres-js)
+Fix: \`db.\$count(table, where)\` returns a Promise<number> directly — use it as
+     is. Wrapping it in \`.select({count}).from(table)\` returns one row per
+     matched row and yields [] (destructure crash) for zero-row results. A
+     mutation's affected-row count is \`.count\`, not \`.rowCount\`, with
+     postgres-js.
+Reference: .claude/skills/nextjs-saas-patterns/SKILL.md §4"
 fi
 
 # Pattern 11: Import/module not found

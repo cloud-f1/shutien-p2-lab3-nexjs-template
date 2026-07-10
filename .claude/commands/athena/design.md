@@ -1,6 +1,6 @@
 ---
 description: "(ui) Generate a Next.js page → design tokens + @designer → page.tsx + smoke test. Usage: `<slug> \"<description>\"`."
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Task
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent
 ---
 
 Parse the user's input: $ARGUMENTS
@@ -12,7 +12,8 @@ the **description** — usually quoted.
 Optional flags:
 
 - `--layout=dashboard|auth|none` — which route group to place the page in
-  (default: `dashboard`). `dashboard` → `app/(dashboard)/<slug>/page.tsx`,
+  (default: `dashboard`). `dashboard` → `app/(dashboard)/dashboard/<slug>/page.tsx`
+  (URL `/dashboard/<slug>` — matches the canonical `items` pattern's URL space),
   `auth` → `app/(auth)/<slug>/page.tsx`, `none` → `app/<slug>/page.tsx`.
 - `--blueprint=<path>` — optional path to an HTML blueprint under `docs/blueprints/`
 - `--ref=<path>` — optional path to a reference image (treated as guidance only;
@@ -35,7 +36,7 @@ about the rename.
 
 ## Invoke @designer
 
-Pass the parsed inputs as a JSON object via the Task tool, asking @designer
+Pass the parsed inputs as a JSON object via the Agent tool, asking @designer
 to produce the deliverables defined in `.claude/agents/designer.md`:
 
 ```
@@ -55,8 +56,9 @@ Inputs:
 2. Ask one batched clarifying question if critical info is missing, then
    proceed
 3. Write `page.tsx` at the layout-derived route path (e.g.
-   `next-app/app/(dashboard)/<slug>/page.tsx`) as a **Server Component by
-   default** — **NO co-located `.css` file**. Style exclusively via:
+   `next-app/app/(dashboard)/dashboard/<slug>/page.tsx` for the default
+   `--layout=dashboard`) as a **Server Component by default** — **NO co-located
+   `.css` file**. Style exclusively via:
    - shadcn `components/ui/` primitives (`Card`, `Button`, `Table`, `Tabs`,
      `Input`, `Dialog`, …) and app components (`<DataTable>` from
      `components/data-table-generic.tsx`, `<ConfirmDialog>`)
@@ -75,14 +77,24 @@ Inputs:
    > `App.tsx` to edit.
 5. Write the design review artifact at
    `docs/context/design-review/<slug>.md`
-6. Append one `design_generated` event to `.claude/audit.jsonl`
+6. **Register the page so it isn't orphaned** (skip for `--layout=none`, which is
+   for standalone/marketing pages not meant to live in dashboard nav):
+   - Add a nav entry to the `navMain` array in
+     `next-app/components/app-sidebar.tsx` (`{ title: "<label>", url:
+     "/dashboard/<slug>", icon: <SomeIcon /> }`), gated by role if the page is
+     admin-only (mirror the existing `admin` entry's `canEdit`/role check).
+   - Add a friendly Chinese label for the slug segment to the `LABELS` map in
+     `next-app/components/app-breadcrumb.tsx` so the breadcrumb doesn't fall back
+     to a raw-slug title-case guess.
+7. Append one `design_generated` event to `.claude/audit.jsonl`
 
 ## After completion
 
 Report to the user:
 
-- Files created (with line counts); files edited (normally none — filesystem
-  routing means no route registration)
+- Files created (with line counts); files edited (`app-sidebar.tsx` +
+  `app-breadcrumb.tsx` for the nav/breadcrumb registration, unless
+  `--layout=none` — filesystem routing means no separate route-map edit)
 - The route URL the new page is reachable at
 - Tokens used, primitives flagged as missing (need
   `npx shadcn@latest add <name>`)

@@ -59,8 +59,8 @@ cut noise for your fork team:
 | `install-landing` | Remove if you have your own landing page approach |
 | `module-author` | Remove if you won't publish `@saas/*` modules |
 | `deploy-config` | Remove if you deploy only one way (keep the method you use) |
-| `openapi-first.md` | Remove if you expose no external API |
-| `upgrade-stripe.md` | Remove if not using Stripe |
+| `spec-first` | Remove if you expose no external API |
+| `upgrade-stripe` | Remove if not using Stripe |
 
 ---
 

@@ -11,7 +11,7 @@ if echo "$PROMPT" | grep -qE "(update|write|save|checkpoint).*(doc|memory|contex
   echo "Agent document targets:"
   echo "  @spec-writer     → docs/context/spec-log.md"
   echo "  @qa              → docs/context/review-log.md + docs/context/test-status.md"
-  echo "  @best-practice   → docs/context/decisions.md + TECHSTACK.md §12"
+  echo "  @best-practice   → docs/context/decisions.md"
   echo "  @debugger        → docs/context/debug-log.md (tag [GENERALIZABLE] if applicable)"
   echo "  @deployer        → docs/context/deploy-log.md"
   echo "  @memory-curator  → ~/.claude/template-memory/"

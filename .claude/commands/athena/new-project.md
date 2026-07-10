@@ -30,7 +30,7 @@ docs domain, which template skills to prune) and get a yes before editing. Work 
 
 3. **Swap the domain SSOT + PRD.** Point the product PRD at yours (keep `docs/PRD.md` as the *substrate* PRD — see the boundary doc). Cross-link them so neither looks authoritative-for-the-other.
 
-4. **Prune template-only skills** (per `docs/TEMPLATE-VS-PRODUCT.md` § Prune): remove the billing/landing/`module-author`/`openapi-first` skills your product doesn't use; trim their rows from any reference docs.
+4. **Prune template-only skills** (per `docs/TEMPLATE-VS-PRODUCT.md` § Prune): remove the billing/landing/`module-author`/`spec-first` skills your product doesn't use; trim their rows from any reference docs.
 
 5. **Reset roles + seed identity.**
    - In `next-app/lib/permissions.ts`: replace the role enum values (`admin`, `editor`, `viewer`) with your product's roles. Keep the *mechanism* (guards re-reading role from DB) — only replace the *names* and *flag set*.

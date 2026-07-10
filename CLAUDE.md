@@ -167,12 +167,21 @@ default DB sessions) and RBAC guards **re-read the role from the DB**. See the `
 (orchestration practices), `rebrand` (white-label rebranding), `user-guide-builder` (繁中 user manual),
 `zeabur-deploy` (Zeabur deploy SOP), `mockup-to-epics` (HTML mockup → UI-ready epics pipeline),
 `alignment-audit` (built app ↔ spec coverage audit), `new-project` (fork → product wizard; pairs with
-`scripts/new-project.sh` + `/athena:new-project`). Stale FastAPI/Vite skills are deprecated;
-vendor `next-best-practices` + `vercel-*` remain.
+`scripts/new-project.sh` + `/athena:new-project`), `security-audit` (Server-Action/RBAC/webhook
+attack-surface checklist), `drizzle-migration-safety` (destructive-change + expand-migrate-contract
+SOP), `release-versioning` (SemVer → package.json → APP_VERSION → release PR), `spec-first`
+(Drizzle+Zod contract-first), `debugging`, `design-system`, `verification-discipline` (Stop Rule
+#23 protocol). All skills are directories with `SKILL.md` — loose `.md` files never load. Stale
+FastAPI/Vite skills were removed; vendor `next-best-practices` + `vercel-*` remain.
 
 ## Active Epic
 
-**Phase 75 (E319–E323) — Backport Wave 2, APPROVED 2026-07-08, ⬜ pending execution.** Ports the downstream fork `../ai-rc-engineer-pm`'s *executable* tooling + reusable patterns upstream (Wave 1 / Phase 73 was skill/docs-level). All 5 parallel; run **E321 + E323 in-repo** (they add devDeps + shadcn components). Next: `git push` → `/loop 2m /athena:batch auto`.
+**Phases 75–76 ✅ Complete (Backport Wave 2 + follow-up, shipped in v0.4.0) — backlog drained.**
+Latest work (2026-07-10): full athena-pipeline audit + hardening — human-merge publish protocol
+(loop/batch/ship/pr/autopilot no longer attempt `gh pr merge`; pull-only perms), agent frontmatter
+standardized (`name:` + `tools:`), telemetry fixes (bash/agent_complete events now actually land),
+skills directory normalized (no loose `.md` files), 3 new skills (security-audit ·
+drizzle-migration-safety · release-versioning). See `docs/context/athena-pipeline-audit-2026-07-10.md`.
 
 See `docs/epics/EPIC_INDEX.md` for current phase and next action.
 Run `/athena:loop` to advance, or `/athena:loop status` to check state.

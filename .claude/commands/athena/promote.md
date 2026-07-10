@@ -1,7 +1,5 @@
 ---
-description: "(memory) Promote [GENERALIZABLE] lessons → Tier 0 (~/.claude/template-memory/) → regenerate NEW_PROJECT_PRIMER.md."
-             ~/.claude/template-memory/. Invokes @memory-curator.
-             Regenerates NEW_PROJECT_PRIMER.md for all future projects.
+description: "(memory) Promote [GENERALIZABLE] lessons → Tier 0 (~/.claude/template-memory/) → regenerate NEW_PROJECT_PRIMER.md. Invokes @memory-curator."
 allowed-tools: Read, Write, Bash
 ---
 

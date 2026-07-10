@@ -8,6 +8,19 @@
 # the count >= 3, drops a promotion proposal in docs/context/promotion-proposals/
 # and writes a JSONL audit event. Never blocks a Claude turn — always exit 0.
 #
+# Watermark advance (E-batch1 fix): the watermark was never advanced after
+# writing a proposal, so every subsequent Edit/Write on a watched file re-scanned
+# the SAME full history and spammed a new proposal file. Fix chosen (documented
+# per the task's "pick the simpler, document it" instruction): after writing a
+# proposal, stamp docs/context/.last-promote-ts with the current epoch seconds —
+# the same watermark file the `since` read at the top already uses — so the next
+# run's `git log --since=@<epoch>` naturally excludes everything just proposed.
+# (The alternative considered — a separate .promote-proposal-pending marker
+# checked at entry — was rejected: it only suppresses the *next* run rather than
+# resetting the count, so a slow trickle of new [GENERALIZABLE] tags would still
+# re-trigger on every single edit once the marker is manually cleared. Advancing
+# the existing watermark is the simpler, already-plumbed mechanism.)
+#
 # Contract:
 #   input:   Claude Code passes file path via $CLAUDE_FILE_PATH (or stdin JSON)
 #   output:  (stdout silent); side effects = proposal file + audit line
@@ -131,5 +144,11 @@ mkdir -p "$(dirname "$audit_log")" 2>/dev/null || true
 iso_ts=$(date -u +%FT%TZ 2>/dev/null || date -u '+%Y-%m-%dT%H:%M:%SZ')
 printf '{"ts":"%s","event":"auto_promote_proposed","count":%d,"file":"%s"}\n' \
   "$iso_ts" "$count" "$proposal" >> "$audit_log" 2>/dev/null || true
+
+# Advance the watermark so the NEXT run only scans history since this proposal.
+# Without this, every subsequent watched-file edit re-scans the full unbounded
+# history and spams a new proposal for the same already-proposed tags.
+now_epoch=$(date +%s 2>/dev/null || echo "$since")
+printf '%s' "$now_epoch" > "$watermark_file" 2>/dev/null || true
 
 exit 0

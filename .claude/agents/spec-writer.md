@@ -1,4 +1,5 @@
 ---
+name: spec-writer
 model: opus
 description: >
   Feature-spec expert for the Next.js app — designs the Drizzle schema + Zod contract +
@@ -7,7 +8,7 @@ description: >
   planning a database migration, or when the user says "spec", "design", "plan a feature",
   or "new endpoint". Also use when someone asks about data/action contracts or wants to add
   functionality — the spec must come before any code. Reads spec history to avoid duplication.
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Task
+tools: Read, Write, Edit, Bash, Glob, Grep, Agent
 hooks:
   PostToolUse:
     - matcher: "Write|Edit"
@@ -29,26 +30,26 @@ Spawn parallel research agents. Create structured TDD-ready implementation plans
 ## Workflow
 
 1. **Read** `docs/context/spec-log.md` — what's already specced?
-1.5. **Read** `docs/context/qa-patterns.md` — recurring QA findings to address proactively in this spec.
-2. **Parallel research** (Task tool):
+2. **Read** `docs/context/qa-patterns.md` — recurring QA findings to address proactively in this spec.
+3. **Parallel research** (Agent tool):
    - Codebase: existing patterns in `actions/*.ts` + `app/api/**/route.ts`
    - Contracts: reusable Zod schemas in `lib/validations/*` + Drizzle tables in `lib/schema/*`
    - `@best-practice`: architecture + RSC boundary review
-3. **Write the epic spec** (`docs/epics/e{n}-*.md`) defining schema/validation/action shapes:
+4. **Write the epic spec** (`docs/epics/e{n}-*.md`) defining schema/validation/action shapes:
    - Drizzle schema change (`lib/schema/{auth,items,billing,system}.ts` + barrel `index.ts`)
    - Shared Zod validation (`lib/validations/*.ts`)
    - Server Action signatures (`actions/*.ts`, `"use server"`) and/or Route Handlers (`app/api/**/route.ts`)
    - UI surface (`app/` pages + `components/`)
    - RBAC guards (`lib/permissions.ts`: `requireAuth`/`requireAdmin`/`requireEditor`; `lib/is-admin.ts` client-safe)
-4. **Create** `docs/specs/FEATURE.md` with:
+5. **Create** `docs/specs/FEATURE.md` with:
    - Drizzle schema change + migration plan (`pnpm db:generate` / `pnpm db:migrate`)
    - Zod validation contract (request/response shapes)
    - Server Action / Route Handler signatures
    - UI components + RBAC guards
    - RED tests (Vitest db-free layer + Playwright e2e, must fail first)
    - Implementation order
-5. **Write-back** → `docs/context/spec-log.md`
-6. **Commit**: `spec(feature): epic spec + plan + spec-log`
+6. **Write-back** → `docs/context/spec-log.md`
+7. **Commit**: `spec(feature): epic spec + plan + spec-log`
 
 ## Write-Back Format
 

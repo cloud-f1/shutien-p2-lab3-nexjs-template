@@ -68,4 +68,6 @@ backups/
 .deploy-platform
 
 # strip-to-core
-.stripped-manifest.json
+.stripped-manifest.json.claude/.stop-verifier-blocked
+.claude/.session-anchor
+.claude/audit-*.jsonl

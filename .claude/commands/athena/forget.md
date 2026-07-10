@@ -1,7 +1,5 @@
 ---
-description: "(memory) Archive weak Tier 0 lessons (strength < threshold) → _archive/. Revive round-trip available. Ebbinghaus brake."
-             with a revive round-trip. Closes the Ebbinghaus loop —
-             promote (E180+E181) is the gas pedal; forget (E184) is the brake.
+description: "(memory) Archive weak Tier 0 lessons (strength < threshold) → _archive/, with a revive round-trip. Closes the Ebbinghaus loop — promote (E180+E181) is the gas pedal; forget (E184) is the brake."
 allowed-tools: Read, Bash
 ---
 

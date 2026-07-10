@@ -15,9 +15,11 @@ You run epics through the full dev pipeline using the **native Workflow engine**
 - `/athena:batch` — headless/cron/plugin; portable (`/loop 5m /athena:batch auto`).
 
 ## Step 0 — Resolve effort
-Run and capture the effort knobs:
+Run and capture the effort knobs. Honor a `--effort <tier>` flag passed in `$ARGUMENTS` — same
+precedence as every other athena command (`--effort` flag > `$ATHENA_EFFORT` env > default
+`standard`), which `resolve.sh` handles when it parses `$ARGUMENTS`:
 ```bash
-source <(bash scripts/effort/resolve.sh --effort "${ATHENA_EFFORT:-standard}")
+eval "$(bash scripts/effort/resolve.sh "$ARGUMENTS" 2>/dev/null || true)"
 # exports: MAX_CONCURRENT, MAX_ITERATIONS, REVIEW_LOOP_BUDGET, ATHENA_MODEL_MAP, ...
 ```
 `ATHENA_MODEL_MAP` now carries three models: `reviewer`, `evaluator`, and **`execute`**
@@ -57,8 +59,10 @@ After the loop: print a summary table. **Do NOT merge any epic** — merge stays
 outer-plane (it can carry a policy/human gate), exactly as `/autopilot` keeps merge gated.
 
 ## Step 4 — Write-back (you do this; the Workflow cannot touch the filesystem)
+**Cell granularity (flow stops at commit — never at merge):** on `success`, mark the **spec, implement, qa, and commit** cells ✅ and **LEAVE the merge cell ⬜** (or `⏸ awaiting human merge (PR #N)` if this run pushed a branch + opened a PR). A later `/athena:loop` (Step 1a) reconciles the merge cell once the human merges. flow NEVER runs `gh pr merge` — merge is human/outer-plane.
+
 For each epic in the returned `AgentReport[]`:
-- `status == "success"` → mark the epic ✅ in `docs/context/epic-progress.md`; then
+- `status == "success"` → mark spec/implement/qa/commit ✅ (merge stays ⬜ or ⏸) in `docs/context/epic-progress.md`; then
   `bash scripts/hooks/audit-emit-pipeline.sh commit epic=<E> branch=<worktreeBranch> || true`
 - `status == "failure"` → mark the epic ❌ in `docs/context/epic-progress.md` (genuine QA/impl failure); then
   `bash scripts/hooks/audit-emit-pipeline.sh qa_result epic=<E> verdict=fail || true`
@@ -196,6 +200,13 @@ chain stops clean; relaunch resumes — completed epics are already committed).
 ```javascript
 // Outer-plane pre-step (before the Workflow): git checkout -b feat/phase-NN-slug
 const CHAIN = [/* {id, slug, type, migration, notes} in dependency order */];
+const MODEL      = { execute: "sonnet", reviewer: "sonnet", evaluator: "sonnet" }; // <-- literal: $ATHENA_MODEL_MAP (Step 0)
+const COMPLEXITY = { /* Exxx: "simple"|"complex" */ };                             // <-- literal: per-epic, from EPIC_INDEX size (Step 2)
+// Per-epic model tiers by complexity — SAME rule as the parallel path (Step 5):
+// reuse COMPLEXITY (from Step 2) + MODEL.execute (from Step 0). Do NOT hardcode opus for
+// every epic — a simple S/M epic runs on MODEL.execute (sonnet at standard); only a
+// "complex" epic (L/XL, or auth/security/migrations/multi-file) escalates to opus.
+const modelForEpic = (E) => (COMPLEXITY[E] === "complex" ? "opus" : MODEL.execute);
 phase('Chain');
 const results = [];
 for (const e of CHAIN) {
@@ -209,7 +220,7 @@ for (const e of CHAIN) {
       + ` && (DATABASE_URL=... AUTH_SECRET=dev pnpm build). On real failure → status="failure", do NOT commit.`,
     `4. COMMIT — only if QA passed: SCOPE the add to owned dirs — \`git add next-app docs\``,
     `   (NOT \`git add -A\`, which sweeps stray repo-root/OS files) then commit "${e.type}(${e.id}): ...".`,
-  ].join("\n"), { schema: REPORT, label: e.id, phase: "Chain", model: "opus" });
+  ].join("\n"), { schema: REPORT, label: e.id, phase: "Chain", model: modelForEpic(e.id) });
   results.push({ epic: e.id, report: r });
   if (!r || r.status !== "success") { log(`CHAIN STOPPED at ${e.id}`); break; }  // stop-on-failure
   log(`${e.id} ✓ committed`);

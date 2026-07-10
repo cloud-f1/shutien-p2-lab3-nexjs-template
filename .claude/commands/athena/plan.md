@@ -1,5 +1,5 @@
 ---
-description: "(planning) @strategist analysis → epic proposals → human approval gate. Use `brainstorm "<idea>"` for dialogue-driven design."
+description: "(planning) @strategist analysis → epic proposals → human approval gate. Use `brainstorm '<idea>'` for dialogue-driven design."
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, WebSearch, WebFetch
 ---
 

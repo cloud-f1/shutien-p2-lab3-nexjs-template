@@ -96,7 +96,11 @@ For the requested epic, walk steps in pipeline order. At each step:
    - `implement` → `Agent(general-purpose, isolation: "worktree")` running `/athena:implement`
    - `qa` → `Agent(general-purpose)` running `/athena:qa`
    - `commit` → inline (Bash + Edit) — branch, stage, commit
-   - `merge` → inline (Bash) — `git push` + `gh pr create` + `gh pr merge --auto`
+   - `merge` → inline (Bash) — the **Publish step (human-merge protocol)** from
+     `loop.md`: `git push` + `gh pr create` + write `⏸ awaiting human merge (PR #N)`
+     + EXIT. Never `gh pr merge` — this environment's GitHub perms are pull-only;
+     even with `AUTOPILOT_ALLOW_MERGE=1` the merge itself is performed by the USER
+     (the flag only authorizes auto-advancing INTO the publish step without pausing).
    - `deploy` → inline (Bash) — `make deploy` (Zeabur via the `deploy-config` skill / `deploy/deploy-zeabur.sh`, or GCP Cloud Run per `docs/guides/deployment-gcp.md`)
 4. **Re-score** the step after execution to confirm signals are still green.
    If post-execution score drops below threshold, treat as pause for the

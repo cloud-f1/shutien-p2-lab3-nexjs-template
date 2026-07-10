@@ -102,8 +102,8 @@ scripts/hooks/audit-emit-verification.sh "acceptance-criteria" 0
 ## Why This Exists
 
 Agents frequently write `feat(E{n}): X complete` without ever having run
-`pytest`, `pnpm test`, or the relevant lint — and the Stop verifier waves it
-through because its 22 structural rules don't check behavior evidence.
+`pnpm test`, `pnpm typecheck`, or the relevant lint — and the Stop verifier waves it
+through because its structural rules (8 in the current Next.js set) don't check behavior evidence.
 
 This is the most common athena failure mode that escapes Stop verifier. Rule #23
 closes that gap.

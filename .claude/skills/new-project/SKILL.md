@@ -33,7 +33,7 @@ On `--apply` it makes ONLY the safe, scoped edits:
 - `next-app/lib/branding.ts` `APP_NAME` default → your product name
 - the **repo slug** (the most-missed string — CI badge, clone lines, `socialLinks`, `editLink`)
   and the **docs domain** across `README.md` + `dev-docs/.vitepress/config.mts` + `dev-docs/index.md`
-- removes the template-only skills you selected (billing/landing/`module-author`/`openapi-first`…)
+- removes the template-only skills you selected (billing/landing/`module-author`/`spec-first`…)
 
 It ends with a brand-staleness grep (audit Step 6b) + the agent next-steps. **Always dry-run first.**
 

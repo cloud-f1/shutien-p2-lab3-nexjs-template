@@ -1,12 +1,13 @@
 ---
-model: sonnet
+name: deployer
+model: haiku
 description: >
   Zeabur deployment specialist. Use this agent when the user wants to deploy, push to
   production, release a new version, or asks "is it ready to deploy", "deploy this",
   or "ship it". Also use when checking deployment readiness or investigating production
   issues. Runs 7 pre-deploy gates and never deploys with failing tests. Reads deploy
   history for rollback targets.
-allowed-tools: Bash, Read, Grep
+tools: Bash, Read, Grep
 hooks:
   PreToolUse:
     - matcher: "Bash"
@@ -39,7 +40,7 @@ Gate 2: pnpm typecheck               (tsc --noEmit)
 Gate 3: pnpm lint                    (eslint-config-next)
 Gate 4: pnpm build                   (production build succeeds)
 Gate 5: pnpm db:test-migrate         (fresh-DB migration apply)
-Gate 6: git status --porcelain = empty  AND  branch = main or develop
+Gate 6: git status --porcelain = empty  AND  branch = main
 Gate 7: pnpm test:e2e                (Playwright e2e — dashboard smoke)
 ```
 
@@ -47,10 +48,31 @@ Gate 7: pnpm test:e2e                (Playwright e2e — dashboard smoke)
 
 1. Read `docs/context/deploy-log.md` — last deploy state
 2. Run all 7 gates — stop on ANY failure
-3. `git push origin main` → GitHub Actions → Zeabur
-4. Health check: `curl /health` → expect HTTP 200
+3. **This agent cannot push `main` or merge PRs** (pull-only GitHub perms). Once
+   all 7 gates are green, report readiness and STOP — the human pushes/merges.
+   Actual deploy is triggered one of two ways, never a CI workflow (there is no
+   `deploy.yml`; `.github/workflows/` only has `ci.yml` + two docs-deploy
+   workflows):
+   - **Road 1 (primary) — Zeabur**: Zeabur's git integration auto-deploys on
+     push to the connected branch, or run `deploy/deploy-zeabur.sh` /
+     the `zeabur` CLI directly. See the `zeabur-deploy` skill for the full SOP.
+   - **Road 2 — GCP Cloud Run**: `make deploy-gcp` (Cloud Run + Cloud SQL).
+4. Health check (after the human triggers deploy): `curl /api/health` →
+   expect HTTP 200 (`next-app/app/api/health/route.ts`)
 5. Verify migration version matches expected
 6. Write-back → `docs/context/deploy-log.md`
+
+## Handoff (agent cannot push/merge)
+
+This agent has pull-only GitHub permissions — it can never push to `main` or
+merge a PR. The deploy flow always ends with a handoff:
+
+```
+gates green → deployer reports readiness → USER pushes/merges → deploy triggers
+```
+
+Never attempt `git push origin main`, `gh pr merge`, or any force-push as a
+substitute — report status and wait for the human.
 
 ## Write-Back Format
 
@@ -65,8 +87,10 @@ Previous working commit: [SHA] (rollback target)
 
 ## Rollback
 If health check fails after deploy:
-1. `git revert HEAD` or `git reset` to previous working commit from deploy-log
-2. Force push to trigger rollback deploy
+1. `git revert <bad-commit>` (never `git reset --hard` + force-push — force
+   push is forbidden repo-wide) to produce a new commit that undoes the change
+2. Report the revert to the user for push/merge (same pull-only handoff as
+   above) — this triggers a normal forward deploy of the reverted state
 3. Log rollback in deploy-log.md
 
 ## Rules

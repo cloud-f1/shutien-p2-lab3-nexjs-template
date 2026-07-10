@@ -76,8 +76,13 @@ Gather these values from the data sources read in Step 1:
 
 - **Epics**: from `epic-progress.md`, count epics with all 5 steps ✅/⏭️ as complete; total = all epics listed
 - **Phases**: count phases where all epics are 100% complete vs total phases
-- **Tests**: from `session-summary.md`, extract server test count and client test count
-- **Agents/Commands/Skills**: from `session-summary.md`, extract counts (or count files: `.claude/agents/*.md`, `.claude/commands/athena/*.md`, `.claude/skills/*.md`)
+- **Tests**: from `session-summary.md`, extract the unit test count and the e2e status
+  (this repo tracks one Vitest unit count + a green/red e2e signal — not separate
+  server/client counts, which belonged to the removed FastAPI/Vite split)
+- **Agents/Commands/Skills**: from `session-summary.md`, extract counts (or count
+  files: `.claude/agents/*.md`, `.claude/commands/athena/*.md` for agents/commands;
+  skills are one directory per skill, not a loose file — count with
+  `ls -d .claude/skills/*/ | wc -l`)
 - **Last commit**: from `git log` output
 - **Last batch**: from `orchestration-log.md`, find the most recent batch entry — extract phase, wave, and status
 - **Last deploy**: from `deploy-log.md`, find the most recent entry — extract date and status
@@ -91,7 +96,7 @@ Render:
 
 Epics:  {complete}/{total} ({pct}%)  ████████░░
 Phases: {complete_phases}/{total_phases} complete
-Tests:  {server_count} server + {client_count} client = {total}
+Tests:  {unit_count} unit · e2e {e2e_status}
 Agents: {N} | Commands: {N} | Skills: {N}
 
 Recent:
@@ -230,12 +235,11 @@ When `--json` is specified, output a single JSON object (no markdown, no tables)
     "epics_pct": 93,
     "phases_complete": 26,
     "phases_total": 27,
-    "tests_server": 269,
-    "tests_client": 230,
-    "tests_total": 499,
+    "tests_unit": 327,
+    "tests_e2e": "pass",
     "agents": "<count via: ls -1 .claude/agents/*.md | grep -v tmpl | wc -l>",
     "commands": "<count via: ls -1 .claude/commands/athena/*.md | wc -l>",
-    "skills": "<count via: ls -1 .claude/skills/*.md | wc -l>",
+    "skills": "<count via: ls -d .claude/skills/*/ | wc -l>",
     "last_commit": { "sha": "8f1cd53", "message": "chore: Phase 29 complete", "age": "2 hours ago" },
     "last_batch": { "phase": 29, "wave": 2, "status": "complete" },
     "last_deploy": { "date": "2026-04-01", "status": "success" }

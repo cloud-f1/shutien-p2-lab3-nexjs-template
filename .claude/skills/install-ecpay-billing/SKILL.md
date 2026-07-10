@@ -1,6 +1,5 @@
 ---
 name: install-ecpay-billing
-version: "1.0.0"
 description: >
   Install the @saas/billing-ecpay module into this Next.js SaaS project.
   Wires ECPay 綠界 全方位金流 AIO 定期定額 recurring billing:
@@ -10,12 +9,12 @@ description: >
   - Registers ecpay in resolver.ts (BILLING_PROVIDER=ecpay)
   - Documents env vars (ECPAY_MERCHANT_ID, ECPAY_HASH_KEY, ECPAY_HASH_IV)
   - Notes on renewal scheduler cron job
-triggers:
-  - "install ecpay billing"
-  - "add ecpay"
-  - "wire ecpay"
-  - "set up ecpay recurring"
-  - "定期定額"
+  Use when: "install ecpay billing", "add ecpay", "wire ecpay", "set up ecpay recurring", "定期定額".
+user-invocable: true
+metadata:
+  author: saas-template
+  version: "1.0.0"
+  epic: E252
 ---
 
 # Install ECPay Billing Module (@saas/billing-ecpay)

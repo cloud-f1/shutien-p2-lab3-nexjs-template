@@ -33,6 +33,30 @@ Do NOT deploy until all pass:
 
 ---
 
+## Pre-deploy readiness gates (fork-safe, always apply)
+
+Beyond the Step 0 preflight, run these before any deploy — all are Critical (blockers)
+unless marked Advisory:
+
+| # | Gate | Check |
+|---|------|-------|
+| 1 | Secrets are real, not placeholders | `AUTH_SECRET` is a random 32+ char value; `DATABASE_URL` points at the real target DB, not localhost |
+| 2 | Tests pass | `cd next-app && pnpm test -- --run` and `pnpm test:e2e` both green |
+| 3 | Working tree is clean | `git status --porcelain` empty; on the correct branch (`main`/`develop` or your release branch) |
+| 4 | Auth flow works end-to-end | After deploy: `curl -sf "$APP/api/auth/session"` returns session JSON (not 500); manual login round-trip against a seed account |
+| 5 | Database + demo/seed accounts work | `pnpm db:seed` (dev only — never on stg/prd, see the "Per-env seeding" rule in CLAUDE.md) then verify login |
+| 6 | Visual consistency | Landing (`/`), Sign In, Sign Up, Dashboard render correctly in light + dark mode, no hydration mismatch |
+| 7 | Branding assets present | `public/favicon.ico`, `public/logo.svg`, `app/layout.tsx` OG image + title metadata all resolve |
+| 8 | No stale Docker/image builds | If deploying a prebuilt image, confirm it was rebuilt after the latest commit (`git log -1 --format=%ci` vs image `Created` timestamp) |
+| 9 | SEO meta tags (Advisory) | `metadata`/`generateMetadata` present on key routes |
+| 10 | Performance baseline (Advisory) | `pnpm build` output — no route unexpectedly >500KB |
+| 11 | Rate limiting (Advisory) | Auth endpoints have rate limiting (middleware, platform WAF, or Auth.js built-in protections) |
+
+Gates 2, 5, and the `NEXT_PUBLIC_*`-before-build gotcha overlap with Step 0 and the
+Gotchas section below — don't re-derive them, just don't skip them.
+
+---
+
 ## Step 1 — Choose the road
 
 | | Road 1 — **Zeabur** (primary) | Road 2 — **GCP Cloud Run + Cloud SQL** |

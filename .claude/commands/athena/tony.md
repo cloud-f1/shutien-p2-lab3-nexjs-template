@@ -1,3 +1,8 @@
+---
+description: "(entry point) TONY chief-of-staff → state a goal in plain language → routed to the right teammate/command."
+allowed-tools: Read, Glob, Grep, Agent
+---
+
 # /athena:tony — TONY Chief-of-Staff
 
 > One-window entry point. State a goal in plain language — TONY routes it to the right teammate.

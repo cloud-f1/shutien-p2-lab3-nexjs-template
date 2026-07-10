@@ -1,6 +1,6 @@
 ---
 description: "(epic) Orchestrator → read state → execute one step → update progress → exit. Use `auto` to suppress phase pauses."
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, CronList, CronDelete
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent
 ---
 
 # Epic Loop Orchestrator
@@ -10,9 +10,14 @@ You are the Epic Loop controller. Your job is to advance the project **one step 
 ## Protocol
 
 1. **READ STATE**: Read `docs/context/epic-progress.md` to determine the current step
+1a. **RECONCILE PENDING MERGES (runs first, every invocation)**: For any epic whose merge cell in `docs/context/epic-progress.md` is `⏸ awaiting human merge (PR #N)`, run `gh pr view N --json state`:
+   - **MERGED** → flip the merge cell to ✅ (both epic-progress.md and EPIC_INDEX.md), and sync local main via `git fetch origin && git reset --hard origin/main` (never `git checkout main && git pull`).
+   - **CLOSED** (unmerged) → mark the merge cell ❌ with reason `PR closed unmerged` and STOP for human input.
+   - **OPEN** → leave `⏸` as-is; the human hasn't merged yet. Do not re-push or re-open.
+1b. **STALL BREAKER**: Before dispatching the chosen epic+step, query `.claude/audit.jsonl` — if the SAME `epic`+`step` has recorded a failure in the last 3 loop invocations, STOP: write `❌ blocked: {step} failed 3× — human required` to epic-progress.md and EXIT. Do not auto-retry a repeatedly-failing step.
 2. **DETERMINE NEXT**: Find the first epic with an incomplete step (in phase order, respecting dependencies).
    **Reconcile from the actual state matrix, not a presumed linear history.** For the chosen epic, the next step is the **first `⬜` cell** scanning `spec → implement → qa → commit → merge` left-to-right. Steps already at ✅ are *done* — never re-run them, even if an earlier step is ⬜ (out-of-order / retro-spec case; see "Out-of-Order Work" below).
-   **If no incomplete step exists across ANY epic in ANY phase** (all work is done): call `CronList` to find active cron jobs, call `CronDelete` on each, then report "All phases complete — cron loop stopped. Run `/athena:plan` to propose new epics." and EXIT.
+   **If no incomplete step exists across ANY epic in ANY phase** (all work is done): report "All phases complete — backlog drained. Please stop the `/loop` schedule yourself. Run `/athena:plan` to propose new epics." and EXIT. (This orchestrator cannot cancel cron jobs — it has no such tool. The human owns the schedule.)
 3. **LOOKUP DETAILS**: Only if needed for subagent prompt — read `docs/epics/EPIC_INDEX.md` to get epic description
 4. **EXECUTE STEP**: Run exactly **ONE step of ONE epic** via subagent delegation:
    - **spec**: Spawn subagent → `/athena:spec "E{n}"`
@@ -22,34 +27,46 @@ You are the Epic Loop controller. Your job is to advance the project **one step 
      ```bash
      bash scripts/hooks/audit-emit-pipeline.sh commit epic=$EPIC sha=$(git rev-parse --short HEAD) || true
      ```
-   - **merge**: Inline — pre-merge gate, push, create PR, enable auto-merge, update docs (no local checkout needed)
-     1. **PRE-MERGE GATE (MANDATORY — runs BEFORE `git push`)**: Run the repo-hygiene + quality gate and **ABORT the merge if it exits non-zero**.
-        ```bash
-        # Add --e2e when the epic touches auth, Server Actions, the DB, or routes.
-        # (heuristic: epic spec mentions login/session/auth, "use server"/actions/,
-        #  prisma/drizzle/migration/schema, or app/ route/route handler changes)
-        if scripts/pre-merge-check.sh ${E2E_FLAG:-}; then
-          echo "pre-merge-check passed — proceeding to push"
-        else
-          echo "❌ pre-merge-check FAILED — aborting merge for $EPIC"
-          # Record the failure in state and STOP (do NOT push). See Safety Guard #6.
-          exit 1
-        fi
-        ```
-        - Set `E2E_FLAG=--e2e` for epics touching **auth / Server Actions / DB / routes**; leave it empty otherwise.
-        - On non-zero exit: update epic-progress.md with `❌ merge blocked: pre-merge-check failed` and STOP. Do **NOT** `git push`, create a PR, or queue auto-merge. The half-migrated-tree class of bug (uncommitted mass deletions, nested `.git`) is exactly what this gate catches.
-     2. `git push -u origin HEAD`
-     3. `gh pr create --title "..." --body "..."` (or find existing PR)
-     4. `gh pr merge --squash --delete-branch --auto` — queues merge on GitHub; does NOT checkout main locally
-     5. Update epic-progress.md + EPIC_INDEX.md with merge ✅
-     6. Do NOT `git checkout main` or `git pull` — the next loop invocation starts fresh
-     7. If `--auto` fails (not enabled on repo), fall back to `gh pr merge --squash --delete-branch` but still skip local checkout — just report "merged on remote, run `git pull` to sync"
-     8. After GitHub confirms the PR was created/merged, emit the audit event:
-        ```bash
-        bash scripts/hooks/audit-emit-pipeline.sh merge epic=$EPIC pr=$PR_NUMBER || true
-        ```
-5. **UPDATE STATE**: Update `docs/context/epic-progress.md` with the completed step
+   - **merge**: Inline — run the **Publish step (human-merge protocol)** below. This orchestrator has **pull-only GitHub permissions**: it can push branches and open PRs but can NEVER merge. The USER merges.
+5. **UPDATE STATE**: Update `docs/context/epic-progress.md` with the completed step, and emit the loop-step observability event:
+   ```bash
+   bash scripts/hooks/audit-emit-pipeline.sh loop_step epic=$EPIC step=$STEP status=$STATUS || true
+   ```
 6. **REPORT**: Show what was done and what's next — then **EXIT**
+
+## Publish step (human-merge protocol) — CANONICAL
+
+> This is the single canonical definition of the "publish" (formerly "merge") step for the entire
+> athena pipeline. `batch.md`, `flow.md`, `ship.md`, and `pr.md` all reference this block.
+> **The agent has pull-only GitHub permissions — it can push and open PRs but can NEVER merge.**
+> **Never run `gh pr merge` in any form.** The USER merges.
+
+1. **PRE-PUBLISH GATE (MANDATORY — runs BEFORE `git push`)**: Run the repo-hygiene + quality gate and **ABORT the publish if it exits non-zero**.
+   ```bash
+   # Add --e2e when the epic touches auth, Server Actions, the DB, or routes.
+   # (heuristic: epic spec mentions login/session/auth, "use server"/actions/,
+   #  prisma/drizzle/migration/schema, or app/ route/route handler changes)
+   if scripts/pre-merge-check.sh ${E2E_FLAG:-}; then
+     echo "pre-merge-check passed — proceeding to push"
+   else
+     echo "❌ pre-merge-check FAILED — aborting publish for $EPIC"
+     exit 1
+   fi
+   ```
+   - Set `E2E_FLAG=--e2e` for epics touching **auth / Server Actions / DB / routes**; leave it empty otherwise.
+   - On non-zero exit: update epic-progress.md with `❌ merge blocked: pre-merge-check failed` and STOP. Do **NOT** `git push` or open a PR. The half-migrated-tree class of bug (uncommitted mass deletions, nested `.git`) is exactly what this gate catches.
+2. **Push the feature branch**: `git push -u origin HEAD`
+3. **Open a PR if none exists** (capture the PR number):
+   ```bash
+   PR=$(gh pr list --head "$(git branch --show-current)" --json number --jq '.[0].number')
+   [ -z "$PR" ] && PR=$(gh pr create --title "..." --body "..." | grep -oE '[0-9]+$')
+   ```
+4. **Write `⏸ awaiting human merge (PR #N)`** into the epic's merge cell in `docs/context/epic-progress.md` (and mirror in EPIC_INDEX.md).
+5. **Emit the publish audit event**:
+   ```bash
+   bash scripts/hooks/audit-emit-pipeline.sh publish epic=$EPIC pr=$PR || true
+   ```
+6. **EXIT** — the USER merges the PR. Never run `gh pr merge`. A later `/athena:loop` invocation reconciles the merge cell (Step 1a) once the human has merged.
 
 ## Context Control (CRITICAL)
 
@@ -72,7 +89,7 @@ The loop command is a **thin orchestrator**. It reads state, delegates ONE step 
 | implement | `Agent(subagent_type="general-purpose", isolation="worktree")` | Heaviest step — gets its own git worktree + full context window |
 | qa | `Agent(subagent_type="general-purpose")` | Review + test execution reads/runs many files |
 | commit | Inline (Bash + Edit) | Just git commands — fast, no context bloat |
-| merge | Inline (Bash) | Push + PR + auto-merge on GitHub — no local checkout needed |
+| merge | Inline (Bash) | Publish protocol: push + open PR, then EXIT for human merge (pull-only perms — never `gh pr merge`) |
 
 ### What the Loop Does NOT Do
 
@@ -149,7 +166,7 @@ After completing a step, update **both** files:
    "Phase {N} complete. Review before continuing. Run `/athena:loop` for next phase."
    Also include: "Consider running `/athena:learn --batch` to capture lessons from this phase."
    Do NOT auto-advance to the next phase.
-   **Exception — `auto` flag**: Phase boundary pause is suppressed; advance to the next pending phase automatically. However, if ALL phases are complete (no pending phase exists), still self-cancel cron jobs (via Step 2 idle check above) and EXIT.
+   **Exception — `auto` flag**: Phase boundary pause is suppressed; advance to the next pending phase automatically. However, if ALL phases are complete (no pending phase exists), report "backlog drained — please stop the `/loop` schedule yourself" and EXIT (this orchestrator has no cron-cancel tool; the human owns the schedule).
 
 3. **QA failure pause**: If QA subagent reports coverage < 80% or critical issues, STOP and report.
    Do NOT auto-advance past a failed QA.

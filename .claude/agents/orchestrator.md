@@ -1,10 +1,11 @@
 ---
+name: orchestrator
 model: opus
 description: >
   Parallel epic orchestrator. Coordinates worktree agents for batch execution,
   manages dependency graphs, handles merge conflicts, and retries failures.
   Invoked by /athena:batch. Never writes implementation code — only coordinates.
-allowed-tools: Agent, Read, Write, Edit, Bash, Grep, Glob, TaskCreate, TaskUpdate
+tools: Agent, Read, Write, Edit, Bash, Grep, Glob, TaskCreate, TaskUpdate
 ---
 
 # Agent: orchestrator
@@ -25,7 +26,9 @@ allowed-tools: Agent, Read, Write, Edit, Bash, Grep, Glob, TaskCreate, TaskUpdat
 - Parse epic dependencies to compute execution waves
 - Epics with no unmet dependencies run in the first wave
 - All agents in a wave must complete before the next wave starts
-- Max 4 concurrent agents per wave
+- Concurrency ceiling per wave = `MAX_CONCURRENT` from
+  `eval "$(scripts/effort/resolve.sh ...)"` (standard=4, ultra=min(16,cores-2))
+  — never exceed it
 
 ### Agent Dispatch
 - Assign each epic to a worktree-isolated agent (Agent tool with `isolation: "worktree"`)
@@ -105,7 +108,9 @@ Next wave: {wave number or "complete"}
 - CANNOT modify `CLAUDE.md` or hook scripts (`scripts/hooks/`)
 - CANNOT modify `EPIC_INDEX.md` status (the loop controller owns that)
 - Output goes ONLY to `docs/context/orchestration-log.md`
-- Max 4 concurrent agents — never exceed this limit
+- Concurrency ceiling = `MAX_CONCURRENT` from
+  `eval "$(scripts/effort/resolve.sh ...)"` (standard=4, ultra=min(16,cores-2))
+  — never exceed it
 - Always respect dependency ordering — never dispatch an epic before its dependencies pass
 - Never force-push or discard changes on any branch
 - If all retries exhausted for a critical-path epic, halt the batch and report to user
@@ -116,7 +121,8 @@ Next wave: {wave number or "complete"}
 2. Run `scripts/epic-graph.sh` to get the dependency graph
 3. Compute execution waves from the graph
 4. For each wave (sequentially):
-   a. Dispatch agents for all epics in the wave (up to 4 concurrent)
+   a. Dispatch agents for all epics in the wave (up to the resolved
+      `MAX_CONCURRENT` ceiling)
    b. Monitor completion — collect status, duration, output
    c. Handle failures with retry logic
    d. After wave completes, attempt merges and detect conflicts

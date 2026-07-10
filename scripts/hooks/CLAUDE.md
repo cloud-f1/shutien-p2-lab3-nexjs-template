@@ -18,24 +18,49 @@ CMD=$(echo "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)
 FILE=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.path // empty' 2>/dev/null)
 ```
 
+## Shared Helper (`lib/audit-common.sh`)
+
+`scripts/hooks/lib/audit-common.sh` (E-batch1) is a sourced-not-executed
+library of three functions, targeting macOS default bash 3.2:
+
+- `repo_root()` — git toplevel, falls back to `$PWD`.
+- `epic_from_branch [branch]` — case-**insensitive** `E{n}` extraction
+  (`feat/e191-x`, `feat/E191-x`, `MH/feat/e12-x` all match), uppercase-
+  normalized output (`"E191"`), `"none"` fallback.
+- `emit_jsonl <log_path> <event> [key=value ...]` — `jq -n`-based JSONL
+  append, mirrors `audit-emit-pipeline.sh`'s bash-3.2-safe empty-array guard.
+
+`post-bash-log.sh`, `subagent-stop-writeback.sh`, `task-completed.sh`, and
+`session-start.sh` source it **for epic extraction only** (their prior logic
+used a case-sensitive `E[0-9]` sed pattern — a lowercase branch like
+`feat/e320-x` silently fell back to `"none"`). Each caller sources it
+best-effort (`. "$LIB" 2>/dev/null || true`) and keeps an inline fallback if
+the source fails, so a missing/broken lib file degrades gracefully rather
+than breaking the hook. `stop-verifier.sh` and `audit-emit-verification.sh`
+already implemented their own case-insensitive matching independently and are
+NOT migrated to source this file (out of scope — minimal diffs).
+
 ## Hook Registry (see .claude/settings.json)
 
 | Event | Script | Purpose |
 |---|---|---|
-| SessionStart | `session-start.sh` | Inject branch, session-summary, active epic phase (~30 lines), recent git, **two-block Tier 0 inject** (E182): Block A always-on PRIMER + Block B cued category excerpts (delegates to `scripts/memory/inject.sh`) |
+| SessionStart | `session-start.sh` | Inject branch, session-summary, active epic phase (~30 lines), recent git, **two-block Tier 0 inject** (E182): Block A always-on PRIMER + Block B cued category excerpts (delegates to `scripts/memory/inject.sh`). Also (E-batch1): writes the `.claude/.session-anchor` line-count snapshot and rotates `.claude/audit.jsonl` past 5MB — see "Session-Scoped Context Health + Log Rotation" below. |
 | UserPromptSubmit | `user-prompt-submit.sh` | Detect write-back phrases |
 | PreToolUse(Bash) | `pre-bash-guard.sh` | Block destructive commands, wrong folder names |
 | PostToolUse(Write,Edit) | `post-edit-lint.sh` | Auto-format Python/TypeScript |
+| PostToolUse(Edit,Write) | `auto-promote-check.sh` | E158 `[GENERALIZABLE]` auto-trigger — watches the three Tier-1 context logs, drafts a promotion proposal once 3+ new tags land since the last-promote watermark |
 | Stop | `stop-verifier.sh` | **Block completion** if rule violations in changed files (8 Next.js rules, retry verifier) |
+| Stop | `archive-context.sh --auto` | (`scripts/archive-context.sh`, not `scripts/hooks/`) Archive stale/oversized Tier 1 context docs |
+| Stop | `check-drift.sh` (`\|\| true`, non-blocking) | (`scripts/state/check-drift.sh`) E196 drift detector — compares `EPIC_INDEX.md` vs `epic-progress.md`; emits one summary `state_drift` event per run (E-batch1 fix — see below) |
 | Stop | `stop-notify.sh` | macOS notification (runs after verifier passes) |
 | SubagentStop | `subagent-stop-writeback.sh` | Timestamp agent docs |
 | PostToolUse(Bash) | `post-bash-log.sh` | JSONL audit log (`.claude/audit.jsonl`) |
 | PostToolUse(Bash) | `post-bash-failure-inject.sh` | Failure detection + @debugger context injection (E88) |
 | PostToolUse(Bash) | `post-commit-bugfix-log.sh` | Auto-log `fix:` commits to `docs/context/bugfix-log.md` (E148) |
 | PostToolUse(Bash) | `pr-created.sh` | Auto-label, assign reviewers, add epic context on `gh pr create` |
-| PostToolUse(`.*`) | `context-health-monitor.sh` | Emit yellow/red context-health warnings from `.claude/audit.jsonl` (E145) |
+| PostToolUse(`.*`) | `context-health-monitor.sh` | Emit yellow/red context-health warnings from `.claude/audit.jsonl` (E145), session-scoped via `.claude/.session-anchor` (E-batch1) |
 | TaskCompleted | `task-completed.sh` | Webhook notification (`$AI_CODING_WEBHOOK_URL`) |
-| WorktreeCreate | `worktree-setup.sh` | Copy env + docs to worktree |
+| _(none — not auto-wired)_ | `worktree-setup.sh` | **Not a registered hook.** There is no `WorktreeCreate` lifecycle event in `.claude/settings.json` (E-batch1 fix — the registry previously claimed one). Copies `.env`/`next-app/.env`/`next-app/.env.local` + `docs/context/` into a new worktree. Must be invoked explicitly by batch worktree setup: `bash scripts/hooks/worktree-setup.sh <worktree-path>`. |
 
 ## Agent-Scoped Hooks (in agent frontmatter, not settings.json)
 
@@ -55,13 +80,13 @@ with that stack. The rules now enforce the CLAUDE.md "NEVER DEVIATE" invariants 
 | # | Rule | Scope | Blocking |
 |---|------|-------|----------|
 | 1 | No inline `style=` colour overrides in `next-app/{app,components}/**.tsx` (excludes the generated `next-app/components/ui/`). Detection: `style={{ ... color\|background\|fill\|stroke\|borderColor ... }}`. Fix: Tailwind classes + `dark:` variants + `cn()` for conditionals; tokens live in `app/globals.css`. | Per file | exit 2 |
-| 2 | RBAC guard on mutating Server Actions — a non-test file under `next-app/actions/*.ts` that calls `db.insert/update/delete(` MUST also call a guard from the recognized family (`requireAuth`/`requireEditor`/`requireAdmin`/`requireRole`/`requireFlag`, or a `guard(...)` helper — see `lib/permissions.ts`). Server Actions are public POST endpoints; UI hiding is not a control. Exempt if the file carries the `// stop-verifier:public-action` marker comment (genuine pre-auth endpoints only, e.g. login/password-reset). E319. | Per file | exit 2 |
+| 2 | RBAC guard on mutating Server Actions — a non-test file under `next-app/actions/*.ts` that calls `db.insert/update/delete(` MUST also call a guard from the recognized family (`requireAuth`/`requireEditor`/`requireAdmin`/`requireRole`/`requireFlag`, or a `guard(...)` helper — see `lib/permissions.ts`), **or** be built entirely through `defineAction(` (`lib/define-action.ts`, E323 — the Server-Action factory that runs the guard as step 1 of its pipeline). Server Actions are public POST endpoints; UI hiding is not a control. Exempt if the file carries the `// stop-verifier:public-action` marker comment (genuine pre-auth endpoints only, e.g. login/password-reset). E319. | Per file | exit 2 |
 | 3 | No raw `<table>` in `next-app/app/**.tsx` pages — use the reusable `<DataTable>` (`components/data-table-generic.tsx`), which ships filter + pagination + page-size. | Per file | warning only |
 | 4 | No `console.log` in next-app RUNTIME code (`next-app/{app,components,hooks,actions,lib}`). Excludes tests AND the CLI tooling dirs `lib/registry` + `lib/openapi` (generators/validators that legitimately print to stdout via `package.json` scripts, not in the browser or a request path). Fix: remove `console.log` before shipping (use a real logger for server logs). | Global | exit 2 |
-| 5 | No new hand-authored files added under `next-app/components/ui/` — shadcn components are generated via `npx shadcn@latest add <name>`; app-specific components belong in `components/` (not `components/ui/`). | Global | warning only |
+| 5 | No new hand-authored files added under `next-app/components/ui/` — shadcn components are generated via `npx shadcn@latest add <name>`; app-specific components belong in `components/` (not `components/ui/`). Sees both staged additions (`git diff --cached --diff-filter=A`) AND untracked new files (`git ls-files --others --exclude-standard`, E-batch1 fix — a file added but never `git add`-ed previously slipped past this rule entirely). | Global | warning only |
 | 6 | Large file warning — modified files > 500 lines. | Global | warning only |
 | 18 | QA Gate Enforcement — on an epic branch (`is_epic_branch`), refuse Stop when `epic-progress.md` shows `impl=✅` but `qa≠✅` (mechanizes the batch.md Mandatory Pipeline Order contract). UNCHANGED. | Global | exit 2 |
-| 23 | Verification Discipline (E188) — block completion-verb commits (`feat:`, `fix:`, `refactor:`, `perf:`, `test:`, `style:`) when no `verification_check` event with `exit=0` exists in `.claude/audit.jsonl` within the last 10 min. Whitelisted prefixes bypass: `wip:`, `chore(state):`, `docs:`, `chore:`, `chore(memory):`, `chore(roadmap):`, `build:`, `ci:`. Pilot mode: gated behind `STOP_RULE_23_ENABLED=1` env var. Emit: `scripts/hooks/audit-emit-verification.sh <check> 0`. Skill: `.claude/skills/verification-discipline.md`. UNCHANGED. | Global | exit 2 |
+| 23 | Verification Discipline (E188) — block completion-verb commits (`feat:`, `fix:`, `refactor:`, `perf:`, `test:`, `style:`) when no `verification_check` event with `exit=0` exists in `.claude/audit.jsonl` within the last 10 min. Whitelisted prefixes bypass: `wip:`, `chore(state):`, `docs:`, `chore:`, `chore(memory):`, `chore(roadmap):`, `build:`, `ci:`. Pilot mode: gated behind `STOP_RULE_23_ENABLED=1` env var. Emit: `scripts/hooks/audit-emit-verification.sh <check> 0`. Skill: `.claude/skills/verification-discipline/SKILL.md`. Portable N-minutes-ago cutoff (E-batch1 fix): BSD `date -v` → GNU `date -d` → `python3` last resort → if all fail, emit a degraded-window warning and fall back to unbounded lookback (previously: silent python3-only, accept-any-history on failure). | Global | exit 2 |
 
 > **E204 — epic-branch detection + fail-open canary.** Rule 18 (the only remaining
 > epic-safety gate — old Rules 19/20 were removed with the FastAPI/Vite stack) uses the
@@ -197,7 +222,11 @@ The hook determines `status` in this precedence order:
 1. **`failure`** — the file at `$STOP_VERIFIER_BLOCK_FLAG` (default
    `.claude/.stop-verifier-blocked`) exists and is newer than the window's
    start. The hook consumes (deletes) the flag on read so it never leaks into
-   the next agent.
+   the next agent. `stop-verifier.sh` writes this flag itself on any blocking
+   violation (`exit 2`) — regression-covered by
+   `scripts/hooks/tests/test-block-flag.sh` (E-batch1), which drives a real
+   Rule 1 violation and asserts the flag file is created, then asserts a
+   clean run leaves none.
 2. **`partial`** — otherwise, if `retries > 0` for the window.
 3. **`success`** — otherwise.
 
@@ -734,6 +763,44 @@ jq -s 'map(select(.event == "coverage_dropped")) | group_by(.tier) | map({tier: 
 jq 'select(.event == "coverage_dropped" and .what == "batch_concurrency")' .claude/audit.jsonl
 ```
 
+### State Drift Events (E196 / E-batch1 summary-event fix)
+
+`scripts/state/check-drift.sh` (Stop hook, `|| true` — never blocks) compares
+`docs/epics/EPIC_INDEX.md` against `docs/context/epic-progress.md` and emits a
+`state_drift` event when they disagree. It used to emit **one event per
+drifted row per run** — on a repo with real drift that was ~98% of the live
+audit log. It now emits **exactly one summary event per run**:
+
+```json
+{"ts":"2026-06-01T10:00:00Z","event":"state_drift","source":"check-drift.sh","mismatches":6,"first":"Phase 1 ✅→⬜; E12 Impl:✅→⬜; E13 QA:⬜→🔄; ..."}
+```
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `ts` | ISO 8601 UTC | |
+| `event` | string | Always `"state_drift"` |
+| `source` | string | Always `"check-drift.sh"` |
+| `mismatches` | int | Total mismatch count across both the Phase Status and Epic Step Matrix sections |
+| `first` | string | A `"; "`-joined digest of every mismatch (`<label> <expected>→<found>`), **capped to ~200 chars** (`...` suffix when truncated) |
+
+The **full**, uncapped detail string is always printed to stdout/stderr (not
+just the capped `first` field) — run `scripts/state/check-drift.sh` directly
+to see every mismatch when triaging drift.
+
+Built via `jq -n` (never `printf`/string-concat) — markdown table cells can
+carry embedded quotes (e.g. a Notes column referencing `"foo"`) that would
+otherwise produce invalid JSONL.
+
+Test injection env vars (unchanged from pre-E-batch1):
+
+| Variable | Purpose |
+|----------|---------|
+| `PROGRESS_FILE` | Override `docs/context/epic-progress.md` path |
+| `INDEX_FILE` | Override `docs/epics/EPIC_INDEX.md` path |
+| `AUDIT_LOG` | Override `.claude/audit.jsonl` path |
+
+Tests live in `scripts/state/tests/test-check-drift.sh`.
+
 ### Selective SessionStart Inject (E182)
 
 `session-start.sh` injects Tier 0 wisdom in **two blocks** instead of the
@@ -878,10 +945,35 @@ Non-blocking (always exits 0).
 | Yellow (~70% proxy) | `tool_calls >= 200` OR `bytes_read >= 500000` | `⚠️ Session context filling up ({calls} calls, {KB} KB read). Consider `/athena:save` to checkpoint.` |
 | Red (~85% proxy) | `tool_calls >= 400` OR `bytes_read >= 1000000` | `🔴 Session context critical ({calls} calls, {KB} KB). Recommend `/athena:save` + fresh agent handoff.` |
 
-- `tool_calls` = line count of `.claude/audit.jsonl`
+- `tool_calls` = line count of `.claude/audit.jsonl`, **offset by the session
+  anchor** (see below) — `current_line_count - anchor`, floored at 0. Falls
+  back to the raw total when no anchor file exists (e.g. hook run standalone).
 - `bytes_read` = sum of file sizes for `tool_input.file_path` values recorded
   in the audit log (only counted when the path still exists on disk; portable
   across GNU `stat -c %s` and BSD `stat -f %z`)
+
+### Session-Scoped Context Health + Log Rotation (E-batch1)
+
+`tool_calls` used to be the **lifetime** line count of `.claude/audit.jsonl` —
+in a long-lived repo the monitor sticks at yellow/red permanently once enough
+history accumulates, even in a brand-new session. Two fixes, both driven by
+`session-start.sh` at the top of every session (before anything else appends
+to the audit log):
+
+1. **Session anchor.** `session-start.sh` snapshots the current line count of
+   `.claude/audit.jsonl` into `.claude/.session-anchor` (just the number).
+   `context-health-monitor.sh` then computes `tool_calls` as
+   `current_line_count - anchor` instead of the raw total, so the yellow/red
+   thresholds track **this session's** activity, not the repo's entire
+   history. Override the anchor path with `SESSION_ANCHOR_PATH` (mirrors the
+   `AUDIT_LOG_PATH` / `HEALTH_STATE_PATH` test-injection convention).
+2. **Audit-log rotation.** If `.claude/audit.jsonl` exceeds 5MB at
+   SessionStart, it's moved to `.claude/audit-<YYYYMM>.jsonl` and a fresh
+   (empty) log is started. Rotation also resets `.claude/.health-state` to
+   `none` (a fresh log has nothing to be red/yellow about) and the anchor to
+   `0`.
+
+Both are best-effort — a failure in either step never blocks SessionStart.
 
 ### Deduplication
 
@@ -902,6 +994,7 @@ Unit tests drive the hook with fixture audit logs via two env vars:
 |----------|---------|
 | `AUDIT_LOG_PATH` | Override the default `.claude/audit.jsonl` path |
 | `HEALTH_STATE_PATH` | Override the default `.claude/.health-state` path |
+| `SESSION_ANCHOR_PATH` | Override the default `.claude/.session-anchor` path (E-batch1) |
 
 Fixture-driven cases live in `scripts/hooks/tests/test-context-health-monitor.sh`
 (9 cases, runs in ~0.4s). Run directly:

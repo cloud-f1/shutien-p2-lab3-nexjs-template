@@ -67,8 +67,8 @@ STOP — fix the route or handler, then re-run.
 ## Phase 0 — Test Plan (--plan flag only)
 1. Identify the feature scope from $ARGUMENTS or current epic
 2. Generate a test plan document at `docs/specs/test-plan-{feature}.md`
-4. Include: test categories, acceptance criteria, edge cases, integration points
-5. STOP — plan is documentation only, does not execute tests
+3. Include: test categories, acceptance criteria, edge cases, integration points
+4. STOP — plan is documentation only, does not execute tests
 
 ## Phase 1 — Code Review (dispatch to @reviewer)
 

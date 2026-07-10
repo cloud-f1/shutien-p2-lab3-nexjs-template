@@ -315,7 +315,7 @@ pnpm db:migrate
 ```
 
 ### Using `upgrade-stripe` skill for SDK upgrades
-Run `/upgrade-stripe` or read `.claude/skills/upgrade-stripe.md` for guidance on:
+Run `/upgrade-stripe` or read `.claude/skills/upgrade-stripe/SKILL.md` for guidance on:
 - Upgrading the Stripe SDK version
 - Updating the pinned API version (`apiVersion: "2026-02-25.clover"`)
 - Migrating webhook handlers between API versions

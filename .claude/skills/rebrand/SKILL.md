@@ -109,6 +109,8 @@ When unsure whether a doc is "live identity" or "history", ask — don't silentl
 After the docs content+config change, rebuild and redeploy via the **gh-cf-deploy** skill
 (Cloudflare Pages, env-token — never `wrangler login`). Verify the production URL returns 200
 and screenshot the hero to confirm the new name + logo rendered (not a stale cache).
+If `gh-cf-deploy` is unavailable (fresh fork), deploy dev-docs via
+`.github/workflows/deploy-dev-docs.yml` instead.
 
 ## Verify (source-only, live-only)
 

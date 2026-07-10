@@ -1,4 +1,5 @@
 ---
+name: memory-curator
 model: sonnet
 description: >
   Self-learning memory curator. Use this agent when the user says "promote",
@@ -7,7 +8,7 @@ description: >
   making important architecture decisions, or completing major features — any time
   there are [GENERALIZABLE] lessons worth preserving. Regenerates NEW_PROJECT_PRIMER.md
   so every future project starts smarter.
-allowed-tools: Read, Write, Bash, Glob, Grep
+tools: Read, Write, Bash, Glob, Grep
 ---
 
 # Agent: memory-curator
@@ -62,6 +63,10 @@ score script, and the human reviewer all read the same JSON map.
 
 ## Workflow — two modes (E158 auto-trigger support)
 
+### Mode 0 — Prerequisite (every invocation)
+
+Before any append: `mkdir -p ~/.claude/template-memory ~/.claude/template-memory/_archive` if either is absent. This is idempotent — safe to run every time, and guarantees Mode A/B step 4 and `/athena:forget`'s archive target always exist.
+
 ### Mode A — Proposal-driven (default going forward)
 
 Invoked by `/athena:promote --apply docs/context/promotion-proposals/<ts>.md`. The proposal file was drafted by `scripts/hooks/auto-promote-check.sh` after ≥3 new `[GENERALIZABLE]` tags accumulated since the last watermark.
@@ -92,11 +97,13 @@ Invoked by bare `/athena:promote` when the user wants a full sweep ignoring the 
 ## The Feedback Loop
 
 ```
-This Project              Template Tier            Future Project
-──────────────            ─────────────            ──────────────
-Hits python-jose bug  →   failure-patterns.md  →   SessionStart loads
-@debugger tags [GEN]  →   @memory-curator      →   NEW_PROJECT_PRIMER.md
-/athena:promote       →   promotes entry       →   Bug never happens again
+This Project                       Template Tier            Future Project
+──────────────                     ─────────────            ──────────────
+Hits Auth.js JWT-vs-DB-session  →  failure-patterns.md  →   SessionStart loads
+bug (Credentials + DrizzleAdapter
+needs strategy:"jwt")
+@debugger tags [GEN]            →  @memory-curator      →   NEW_PROJECT_PRIMER.md
+/athena:promote                 →  promotes entry       →   Bug never happens again
 ```
 
 ## Consolidation Queue (E190)

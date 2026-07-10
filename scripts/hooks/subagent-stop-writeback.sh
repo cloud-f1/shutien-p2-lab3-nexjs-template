@@ -2,6 +2,9 @@
 # Stamps agent doc + session-summary.md on every SubagentStop.
 # Also appends an `agent_complete` event to .claude/audit.jsonl (E146).
 # Compatible with macOS bash 3.2 (no associative arrays).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/audit-common.sh
+. "$SCRIPT_DIR/lib/audit-common.sh" 2>/dev/null || true
 cd "$(git rev-parse --show-toplevel 2>/dev/null || echo ".")" || exit 0
 
 INPUT=$(cat); AGENT=$(echo "$INPUT" | jq -r '.agent_name // empty' 2>/dev/null)
@@ -30,10 +33,15 @@ AUDIT_LOG="${AUDIT_LOG_PATH:-.claude/audit.jsonl}"
 BLOCK_FLAG="${STOP_VERIFIER_BLOCK_FLAG:-.claude/.stop-verifier-blocked}"
 mkdir -p "$(dirname "$AUDIT_LOG")"
 
-# Epic ID from branch name (matches feat/E82-slug or E82).
-BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
-EPIC=$(echo "$BRANCH" | sed -n 's/.*\(E[0-9]\{1,\}\).*/\1/p')
-[ -z "$EPIC" ] && EPIC="none"
+# Epic ID from branch name (matches feat/E82-slug or E82; case-insensitive,
+# uppercase-normalized — see scripts/hooks/lib/audit-common.sh).
+if command -v epic_from_branch >/dev/null 2>&1; then
+  EPIC=$(epic_from_branch)
+else
+  BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+  EPIC=$(echo "$BRANCH" | sed -n 's/.*\([Ee][0-9]\{1,\}\).*/\1/p' | tr '[:lower:]' '[:upper:]')
+  [ -z "$EPIC" ] && EPIC="none"
+fi
 
 # Walk the audit log to find the most recent `agent_complete` row for this
 # agent. Everything newer than that row represents the current run's activity

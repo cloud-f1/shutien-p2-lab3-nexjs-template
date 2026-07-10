@@ -40,6 +40,15 @@ Match the user's goal to the closest intent, then dispatch. When several apply, 
 | "capture what we learned / promote lessons" | **REMI** (memory-curator) | `/athena:promote` |
 | "do all these epics in parallel / big batch" | **MAX** (orchestrator) | `/athena:batch auto` |
 | "ship a quick change end-to-end" | full pipeline | `/athena:ship` or `/athena:autopilot` |
+| "check UI matches spec / find dead links" | **ATLAS** (strategist) | `/athena:align` |
+| "check schema/validation drift" | **ATLAS** (strategist) | `/athena:audit` |
+| "refresh memory accuracy" | **REMI** (memory-curator) | `/athena:learn` |
+| "save progress / checkpoint" | (all active agents) | `/athena:save` |
+| "load context / where were we" | (session start) | `/athena:load` |
+| "turn QA bugs into epics" | **ATLAS** (strategist) | `/athena:qa-report` |
+| "scaffold a new domain/CRUD module" | build pipeline | `/athena:domain` |
+| "start a new product from this template" | **ATLAS** (strategist) | `/athena:new-project` |
+| "write/refresh the user guide" | (docs pipeline) | `user-guide-builder` skill |
 
 If nothing matches, ask one clarifying question, then route — don't guess into a destructive path.
 

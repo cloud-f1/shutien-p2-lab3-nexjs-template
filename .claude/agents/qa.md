@@ -1,4 +1,5 @@
 ---
+name: qa
 model: sonnet
 description: >
   Test execution and coverage gating. Use this agent to run the Next.js test
@@ -7,7 +8,7 @@ description: >
   /athena:qa with --test-only flag, or as Phase 2 of the default qa flow. For code
   review, security audits, and architecture checks, use @reviewer instead. Also use
   when someone says "run tests", "check coverage", or "test this".
-allowed-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, Agent
 hooks:
   PostToolUse:
     - matcher: "Bash"
@@ -50,9 +51,9 @@ All commands run from `next-app/`.
 5. **Phase 3 — Coverage gate.** `pnpm test:coverage` (Vitest v8, >=80% on the
    db-free layer).
 6. **Phase 4 — Test Quality audit.** Behavior ratio, mock depth, parametrize, route/action coverage.
-7. `pnpm test:e2e` — Playwright e2e (needs DB seeded via `pnpm db:seed` + dev
-   server); run with `--e2e` and always for epics touching auth / a Server
-   Action / a DB query / a route.
+7. **Phase 5 — e2e.** `pnpm test:e2e` — Playwright e2e (needs DB seeded via
+   `pnpm db:seed` + dev server); run with `--e2e` and always for epics touching
+   auth / a Server Action / a DB query / a route.
 
 ### Coverage Gate
 - < 80% → **BLOCKED**
@@ -165,6 +166,12 @@ This entry is consumed by:
 
 ## Write-Back Format
 
+`docs/context/test-status.md` is a single-file, whole-document **overwrite**
+each run — it reflects only the most recent run's state, not run history. The
+Quality Metrics section (added after Phase 4, see below) is part of that same
+overwritten document, not a separate append target: write it as the last
+section of the fresh `test-status.md` content each run.
+
 ### test-status.md (overwrites)
 ```markdown
 # Test Status — [timestamp]
@@ -188,7 +195,7 @@ With 1M context available, load ALL relevant files in your first tool call batch
 
 Do NOT read files one-by-one across multiple rounds — batch in parallel.
 
-## Phase 3 — Test Quality Audit
+## Phase 4 — Test Quality Audit
 
 After test execution completes, perform a quality audit on all test files:
 
@@ -201,7 +208,7 @@ After test execution completes, perform a quality audit on all test files:
 
 ### Quality Principles Reference
 
-Apply the 10 principles from the `tdd-workflow` skill (auto-loaded):
+Apply the TDD principles from the `testing-strategy` skill:
 - P1: Test behavior, not implementation
 - P2: Triangulation via parametrize
 - P7: Mock at boundaries only
@@ -242,13 +249,15 @@ After the quality report, list up to 3 specific improvement suggestions ranked b
 
 ## Write-Back: Quality Metrics
 
-Append quality metrics to `docs/context/test-status.md` in the Quality Metrics section
-after updating coverage numbers. See test-status.md for the format template.
+Add a Quality Metrics section to `docs/context/test-status.md`, positioned
+after the coverage numbers, as part of the same whole-document overwrite
+described above (not a separate `>>` append across runs). See test-status.md
+for the format template.
 
 ## Rules
 - ALWAYS read test-status.md first
 - NEVER lower the 80% threshold or comment out tests
 - On test failure: report root cause + suggested fix, auto-invoke @debugger if needed
 - For code review tasks, defer to `@reviewer` — do not perform reviews yourself
-- ALWAYS run test quality audit after test execution (Phase 3)
+- ALWAYS run test quality audit after test execution (Phase 4)
 - Quality score is advisory — never block merges based on quality metrics alone

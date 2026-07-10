@@ -63,8 +63,16 @@ t1_rule_map_valid() {
   fi
 }
 
-# ---- t2: stop-verifier emits rule_fired when rule 21 trips ----
-t2_rule_fired_on_rule_21() {
+# ---- t2: stop-verifier emits rule_fired when a rule trips ----
+# NOTE (E-batch1 fix): this originally staged a `client/src/pages/foo/Foo.css`
+# file to trip the old FastAPI/Vite-era "Rule 21" (design-system CSS rule).
+# That rule — and the client/src/ tree itself — was removed with the E282
+# migration to next-app/ (see scripts/hooks/CLAUDE.md, "Stop Verifier Rules").
+# This was silently orphaned: the fixture staged a file that no rule scans
+# anymore, so it always fell through to "no audit log written". Retargeted to
+# trip the still-live Rule 4 (console.log in next-app runtime code), which
+# also carries a rule-to-lesson.json mapping (anti-patterns.md).
+t2_rule_fired_on_rule_4() {
   local cwd
   cwd=$(mktemp -d -p "$TMP" t2.XXXXXX)
   local audit="$cwd/audit.jsonl"
@@ -74,32 +82,32 @@ t2_rule_fired_on_rule_21() {
     git config user.email test@test.example
     git config user.name Test
     git commit -q --allow-empty -m "init"
-    # Stage a forbidden new pages CSS file (Rule 21).
-    mkdir -p client/src/pages/foo
-    echo ".foo { color: red; }" > client/src/pages/foo/Foo.css
-    git add client/src/pages/foo/Foo.css
+    # Rule 4 scans next-app/{app,components,lib,actions,hooks} directly on
+    # disk (not the git diff) — no `git add` needed to trip it.
+    mkdir -p next-app/lib
+    echo 'console.log("debug")' > next-app/lib/foo.ts
 
     AUDIT_LOG_PATH="$audit" \
       RULE_TO_LESSON_PATH="$RULE_MAP" \
       bash "$STOP_VERIFIER" >/dev/null 2>&1
   )
   if [ ! -f "$audit" ]; then
-    fail "rule_fired emitted on rule 21 trip" "no audit log written"
+    fail "rule_fired emitted on rule 4 trip" "no audit log written"
     return
   fi
   local hit
-  hit=$(jq -c 'select(.event == "rule_fired" and (.rule_id|tostring) == "21")' "$audit" 2>/dev/null | tail -1)
+  hit=$(jq -c 'select(.event == "rule_fired" and (.rule_id|tostring) == "4")' "$audit" 2>/dev/null | tail -1)
   if [ -z "$hit" ]; then
-    fail "rule_fired emitted on rule 21 trip" "no matching event in $audit"
+    fail "rule_fired emitted on rule 4 trip" "no matching event in $audit"
     return
   fi
   local lesson severity
   lesson=$(echo "$hit" | jq -r .lesson)
   severity=$(echo "$hit" | jq -r .severity)
   if [ "$severity" = "block" ] && [ "$lesson" = "anti-patterns.md" ]; then
-    pass "rule 21 -> rule_fired (severity=block, lesson=anti-patterns.md)"
+    pass "rule 4 -> rule_fired (severity=block, lesson=anti-patterns.md)"
   else
-    fail "rule 21 -> rule_fired event" "severity=$severity lesson=$lesson hit=$hit"
+    fail "rule 4 -> rule_fired event" "severity=$severity lesson=$lesson hit=$hit"
   fi
 }
 
@@ -277,6 +285,8 @@ t7_no_tier0_loaded_when_primer_missing() {
 }
 
 # ---- t8: rule_fired carries empty lesson when rule has no mapping ----
+# (See t2's note — retargeted from the removed "Rule 21" to the still-live
+# Rule 4, using a stub map that deliberately omits it.)
 t8_rule_fired_unmapped_rule() {
   local cwd
   cwd=$(mktemp -d -p "$TMP" t8.XXXXXX)
@@ -290,9 +300,8 @@ t8_rule_fired_unmapped_rule() {
     git config user.email test@test.example
     git config user.name Test
     git commit -q --allow-empty -m "init"
-    mkdir -p client/src/pages/foo
-    echo ".foo { color: red; }" > client/src/pages/foo/Foo.css
-    git add client/src/pages/foo/Foo.css
+    mkdir -p next-app/lib
+    echo 'console.log("debug")' > next-app/lib/foo.ts
 
     AUDIT_LOG_PATH="$audit" \
       RULE_TO_LESSON_PATH="$stub_map" \
@@ -303,9 +312,9 @@ t8_rule_fired_unmapped_rule() {
     return
   fi
   local hit
-  hit=$(jq -c 'select(.event == "rule_fired" and (.rule_id|tostring) == "21")' "$audit" 2>/dev/null | tail -1)
+  hit=$(jq -c 'select(.event == "rule_fired" and (.rule_id|tostring) == "4")' "$audit" 2>/dev/null | tail -1)
   if [ -z "$hit" ]; then
-    fail "rule_fired with empty lesson when unmapped" "no rule 21 event"
+    fail "rule_fired with empty lesson when unmapped" "no rule 4 event"
     return
   fi
   local lesson
@@ -336,12 +345,12 @@ t9_all_three_event_types_in_log() {
     HOME="$fake_home" AUDIT_LOG_PATH="$audit" \
       bash "$SESSION_START" >/dev/null 2>&1
   )
-  # 2) Trigger rule_fired via stop-verifier (rule 21)
+  # 2) Trigger rule_fired via stop-verifier (rule 4 — see t2's note on why
+  #    this no longer uses the removed "rule 21")
   (
     cd "$cwd"
-    mkdir -p client/src/pages/foo
-    echo ".foo { color: red; }" > client/src/pages/foo/Foo.css
-    git add client/src/pages/foo/Foo.css
+    mkdir -p next-app/lib
+    echo 'console.log("debug")' > next-app/lib/foo.ts
     AUDIT_LOG_PATH="$audit" RULE_TO_LESSON_PATH="$RULE_MAP" \
       bash "$STOP_VERIFIER" >/dev/null 2>&1 || true
   )
@@ -371,7 +380,7 @@ t9_all_three_event_types_in_log() {
 
 # Run
 t1_rule_map_valid
-t2_rule_fired_on_rule_21
+t2_rule_fired_on_rule_4
 t3_no_rule_fired_on_clean_tree
 t4_agent_cited_on_lesson_reference
 t5_no_agent_cited_when_no_refs

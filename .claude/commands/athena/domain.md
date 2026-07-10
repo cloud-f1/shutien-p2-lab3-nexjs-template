@@ -117,7 +117,28 @@ pnpm db:migrate      # apply to the database
 There is no Alembic and no autogenerate-vs-handwrite split — Drizzle diffs the
 schema against the journal and writes the SQL.
 
-### Step 5 — Write / confirm the dashboard page + modals
+### Step 5 — Apply `--fields`
+The scaffold script itself takes no `--fields`/`--agent` flags — it only clones the
+`title`-only items shape (see Step 2's script invocation, which has just
+`<singular> [plural]`). If the user requested fields beyond the `title` default,
+apply them **by hand now**, using the Field Type Mapping table above, across all
+four places in lockstep (the scaffold alone is title-only and will not typecheck
+against a form asking for fields that don't exist in the schema):
+
+1. `next-app/lib/schema/<plural>.ts` — add each field as a Drizzle column per the
+   mapping table (type, `.notNull()`/nullable, default).
+2. `next-app/lib/validations/<plural>.ts` — add the matching Zod rule to both
+   `create<Pascal>Schema` and `update<Pascal>Schema`.
+3. `next-app/app/(dashboard)/dashboard/<plural>/_<singular>-form.tsx` — add the
+   corresponding form field (input/textarea/checkbox/date-picker per type) wired
+   to the same RHF + zodResolver schema.
+4. `next-app/lib/validations/<plural>.test.ts` — extend the unit test to cover the
+   new field(s) (valid case + at least one invalid case per added constraint).
+
+Skip this step entirely if `--fields` was omitted (starter `title` column is
+already correct).
+
+### Step 6 — Write / confirm the dashboard page + modals
 Ensure `app/(dashboard)/dashboard/<plural>/page.tsx` and its `_*` client
 components follow the items pattern: list via `<DataTable>`
 (`components/data-table-generic.tsx`), create/edit via a shadcn `Dialog`,
@@ -126,7 +147,7 @@ delete via `components/confirm-dialog.tsx`. Deep-link modals with `?new=1` /
 `routeMap.ts` / `App.tsx` edit. Add a sidebar link in
 `components/app-sidebar.tsx` if the domain should appear in nav.
 
-### Step 6 — Verify
+### Step 7 — Verify
 From `next-app/`:
 
 ```bash
@@ -138,7 +159,7 @@ pnpm typecheck && pnpm lint && pnpm test
 `next-app/e2e/<plural>.spec.ts` (model on `e2e/items-crud.spec.ts`) and run
 `pnpm test:e2e`. Output the full list of files created / edited.
 
-### Step 7 (Optional) — Generate Domain Agent
+### Step 8 (Optional) — Generate Domain Agent
 If `--agent` is provided:
 1. Read `docs/templates/domain/agent.md.tmpl`
 2. Replace variables (`{{SNAKE}}`, `{{SNAKE_PLURAL}}`, `{{PASCAL}}`, `{{PASCAL_PLURAL}}`)

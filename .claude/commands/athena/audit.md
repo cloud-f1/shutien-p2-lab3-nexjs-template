@@ -130,3 +130,6 @@ Write the audit report to stdout (not to a file). The user decides what to do wi
 - Do NOT write the report to a file unless the user explicitly asks.
 - If `$ARGUMENTS` is provided, use it to filter (e.g., `billing` audits only the
   billing schema/validation/actions; `auth` only the auth surface).
+- This command covers the **data-layer + docs/brand** half of drift. For the
+  **UI-surface** half — dead links, orphan pages, missing tabs/sections/deep-links,
+  RBAC-vs-nav mismatches — run `/athena:align` instead (or in addition).
