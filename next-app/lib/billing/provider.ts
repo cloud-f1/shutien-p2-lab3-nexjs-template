@@ -92,6 +92,23 @@ export interface CreateCheckoutArgs {
   /** The gateway's own price identifier (Stripe price_xxx / ECPay plan encoding). */
   planId: string
   /**
+   * Checkout intent (E327). `"one-time"` opens a single-charge checkout;
+   * `"subscription"` (default) opens a recurring sign-up. Optional and additive:
+   * existing providers may ignore it, so adding it changes no current behaviour.
+   */
+  mode?: "subscription" | "one-time"
+  /** One-time charge amount in the smallest currency unit (E327). */
+  amount?: number
+  /** ISO-4217 currency for a one-time charge (E327). */
+  currency?: Currency
+  /** Human-readable line-item / product name for a one-time charge (E327). */
+  productName?: string
+  /**
+   * Our own `orders.id` (E327). Carried into the gateway session metadata so the
+   * settlement webhook can map the gateway callback back to the pending order.
+   */
+  orderId?: string
+  /**
    * The `plans.id` UUID (FK target for `subscriptions.planId`). Carried into the
    * gateway session metadata so the webhook can write the UUID — NOT the
    * providerPriceId — into `subscriptions.planId`. (E274 plan-identity FK fix.)
@@ -175,18 +192,30 @@ export interface ReconcileResult {
 }
 
 // ---------------------------------------------------------------------------
-// PaymentProvider interface — every gateway must implement this
+// Capability interfaces — Interface Segregation Principle (E327)
+//
+// The fat single-contract PaymentProvider is split into two capability
+// interfaces so a gateway need only implement what it actually supports:
+//   - OneTimePaymentGateway — hosted checkout + webhook verification
+//   - SubscriptionGateway   — recurring lifecycle + reconcile
+//
+// A gateway that only does one-time charges (e.g. 藍新 NewebPay, E329) implements
+// ONLY OneTimePaymentGateway — no NotImplemented stubs, no LSP violation.
+// `PaymentProvider` is preserved as the backward-compatible intersection alias,
+// so every existing adapter (stripe.ts / ecpay.ts) and consumer keeps working
+// with ZERO changes.
+//
+// Rules for implementors (unchanged):
+// - All methods are async.
+// - All errors must throw a `PaymentProviderError` (or a subclass).
+// - No method may import from another provider's module.
 // ---------------------------------------------------------------------------
 
 /**
- * The single contract for every payment gateway adapter.
- *
- * Rules for implementors:
- * - All methods are async.
- * - All errors must throw a `PaymentProviderError` (or a subclass).
- * - No method may import from another provider's module.
+ * A gateway that can open a hosted checkout and verify its settlement webhook.
+ * This is the minimum surface required for one-time product purchases (E327).
  */
-export interface PaymentProvider {
+export interface OneTimePaymentGateway {
   /** Human-readable provider name (e.g. "stripe", "ecpay"). */
   readonly name: string
 
@@ -195,6 +224,27 @@ export interface PaymentProvider {
    * Suitable for one-time payments and new subscription sign-ups.
    */
   createCheckout(args: CreateCheckoutArgs): Promise<CheckoutResult>
+
+  /**
+   * Verify a gateway webhook signature and return the parsed event.
+   * Must be idempotent — callers persist provider_event_id for deduplication.
+   *
+   * @param rawBody  Raw request body bytes (before any JSON parsing).
+   * @param headers  Request headers map (for signature verification).
+   */
+  verifyWebhook(
+    rawBody: Buffer | string,
+    headers: Record<string, string | string[] | undefined>,
+  ): Promise<WebhookVerifyResult>
+}
+
+/**
+ * A gateway that can manage the full recurring-subscription lifecycle.
+ * Gateways without recurring support simply do not implement this interface.
+ */
+export interface SubscriptionGateway {
+  /** Human-readable provider name (e.g. "stripe", "ecpay"). */
+  readonly name: string
 
   /**
    * Create a subscription for an existing customer.
@@ -214,23 +264,19 @@ export interface PaymentProvider {
   cancelSubscription(args: CancelSubscriptionArgs): Promise<Subscription>
 
   /**
-   * Verify a gateway webhook signature and return the parsed event.
-   * Must be idempotent — callers persist provider_event_id for deduplication.
-   *
-   * @param rawBody  Raw request body bytes (before any JSON parsing).
-   * @param headers  Request headers map (for signature verification).
-   */
-  verifyWebhook(
-    rawBody: Buffer | string,
-    headers: Record<string, string | string[] | undefined>,
-  ): Promise<WebhookVerifyResult>
-
-  /**
    * Reconcile subscription statuses with the gateway's ground truth.
    * Call this from a scheduled job to catch missed webhooks.
    */
   reconcile(): Promise<ReconcileResult>
 }
+
+/**
+ * The full contract for a gateway that supports BOTH one-time and subscription
+ * flows. Preserved as a backward-compatible alias (intersection of the two
+ * capability interfaces) so existing adapters and call sites are unchanged —
+ * `PaymentProvider` still means "implements every method".
+ */
+export type PaymentProvider = OneTimePaymentGateway & SubscriptionGateway
 
 // ---------------------------------------------------------------------------
 // Error class

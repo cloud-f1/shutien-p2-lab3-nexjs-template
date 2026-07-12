@@ -24,6 +24,18 @@ export interface ActionCtx {
   role: Role
 }
 
+/**
+ * Execution context for a PUBLIC action (E327). A public action skips the login
+ * gate, so both fields are nullable: `actorId`/`role` are populated when a session
+ * happens to exist (so a logged-in buyer's order can still be linked), and null for
+ * a genuine guest. Only for pre-auth / guest-allowed endpoints (marked in the file
+ * with `// stop-verifier:public-action`).
+ */
+export interface PublicActionCtx {
+  actorId: string | null
+  role: Role | null
+}
+
 /** logAudit's parameter type (single source of truth — avoids re-declaring it). */
 type AuditEntry = Parameters<typeof logAudit>[0]
 
@@ -54,6 +66,8 @@ export interface DefineActionConfig<
   O extends Record<string, unknown>,
   R = undefined,
 > {
+  /** Marks this as an authenticated action (the default). Omit or set false. */
+  public?: false
   /**
    * Role-level gate (the flag/role layer). Return `true` to allow; omit = login only.
    * Compose the template's helpers, e.g. `allow: canEdit` or `allow: isAdmin`.
@@ -89,25 +103,79 @@ export interface DefineActionConfig<
 }
 
 /**
+ * Config for a PUBLIC (guest-allowed) action (E327). No login gate and no role
+ * gate; the handler/authorize hooks receive a `PublicActionCtx` (nullable actor).
+ * Reserve for genuine pre-auth / guest endpoints and mark the file with
+ * `// stop-verifier:public-action`.
+ */
+export interface DefinePublicActionConfig<
+  S extends ZodType,
+  O extends Record<string, unknown>,
+  R = undefined,
+> {
+  /** Discriminant — opts this action out of the login/role gate. */
+  public: true
+  /** Input validation schema. */
+  schema: S
+  /** Resource-level authorization hook (see DefineActionConfig for semantics). */
+  authorize?: (
+    input: z.output<S>,
+    ctx: PublicActionCtx,
+  ) => Promise<{ error: string } | { ok: R }>
+  /** Paths to revalidate on success. */
+  revalidate?: string[]
+  /** Business logic — `ctx` is a PublicActionCtx (actorId/role may be null). */
+  handler: (
+    input: z.output<S>,
+    ctx: PublicActionCtx,
+    resource: R,
+  ) => Promise<{ error: string } | HandlerOutcome<O>>
+}
+
+/**
  * Build a factory-guarded Server Action. Returns `(rawInput) => ActionResult<O>`.
+ *
+ * Two shapes:
+ * - default — login + live-role guard runs first (authenticated actions).
+ * - `{ public: true }` — no auth gate (guest/pre-auth endpoints); the ctx is a
+ *   PublicActionCtx and a session, when present, is linked opportunistically.
  */
 export function defineAction<
   S extends ZodType,
   O extends Record<string, unknown>,
   R = undefined,
->(cfg: DefineActionConfig<S, O, R>): (raw: unknown) => Promise<ActionResult<O>> {
+>(cfg: DefinePublicActionConfig<S, O, R>): (raw: unknown) => Promise<ActionResult<O>>
+export function defineAction<
+  S extends ZodType,
+  O extends Record<string, unknown>,
+  R = undefined,
+>(cfg: DefineActionConfig<S, O, R>): (raw: unknown) => Promise<ActionResult<O>>
+export function defineAction<
+  S extends ZodType,
+  O extends Record<string, unknown>,
+  R = undefined,
+>(
+  cfg: DefineActionConfig<S, O, R> | DefinePublicActionConfig<S, O, R>,
+): (raw: unknown) => Promise<ActionResult<O>> {
   return async (raw: unknown): Promise<ActionResult<O>> => {
     try {
-      // 1) guard — login + live role (always re-read from the DB, never trust the JWT).
+      // 1) guard — public actions skip the login/role gate; authenticated actions
+      //    always re-read the live role from the DB (never trust the JWT).
       const session = await auth()
-      const actorId = session?.user?.id
-      if (!actorId) return { error: "請先登入。" }
-      const role = await getLiveRole(actorId)
-      if (!role) return { error: "請先登入。" }
-      if (cfg.allow && !cfg.allow(role)) {
-        return { error: cfg.denyMessage ?? "您沒有執行此操作的權限。" }
+      const actorId = session?.user?.id ?? null
+      let role: Role | null = null
+
+      if (cfg.public) {
+        // Opportunistically link a logged-in caller, but never require it.
+        if (actorId) role = (await getLiveRole(actorId)) ?? null
+      } else {
+        if (!actorId) return { error: "請先登入。" }
+        role = (await getLiveRole(actorId)) ?? null
+        if (!role) return { error: "請先登入。" }
+        if (cfg.allow && !cfg.allow(role)) {
+          return { error: cfg.denyMessage ?? "您沒有執行此操作的權限。" }
+        }
       }
-      const ctx: ActionCtx = { actorId, role }
 
       // 2) validate
       const parsed = cfg.schema.safeParse(raw)
@@ -115,7 +183,11 @@ export function defineAction<
         return { error: parsed.error.issues[0]?.message ?? "輸入有誤。" }
       }
 
-      // 3) resource-level authorization (omit = role-only)
+      // The two ctx shapes are structurally compatible for the public path
+      // (nullable) vs authenticated path (guaranteed non-null by the guard above).
+      const ctx = { actorId, role } as ActionCtx & PublicActionCtx
+
+      // 3) resource-level authorization (omit = role-only / public)
       let resource = undefined as R
       if (cfg.authorize) {
         const verdict = await cfg.authorize(parsed.data, ctx)

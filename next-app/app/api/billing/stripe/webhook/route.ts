@@ -118,12 +118,14 @@ async function processStripeEvent(event: Stripe.Event, rawBody: string): Promise
   // 4b. Dispatch based on event type
   switch (event.type) {
     case "checkout.session.completed": {
-      await handleCheckoutCompleted(
-        event.data.object as Stripe.Checkout.Session,
-        db,
-        subscriptionsTable,
-        eq,
-      )
+      const session = event.data.object as Stripe.Checkout.Session
+      // E327: one-time product purchases use mode "payment" — settle the order.
+      // Subscriptions keep the existing mode "subscription" path untouched.
+      if (session.mode === "payment") {
+        await handleOneTimePaid(session, event.id)
+      } else {
+        await handleCheckoutCompleted(session, db, subscriptionsTable)
+      }
       break
     }
 
@@ -164,14 +166,38 @@ async function processStripeEvent(event: Stripe.Event, rawBody: string): Promise
 // Event handlers
 // ---------------------------------------------------------------------------
 
+/**
+ * E327 — settle a one-time product order from a Stripe `mode: "payment"`
+ * checkout session. The order id rides `metadata.orderId` (stamped by the
+ * provider's one-time branch). Delegates the pending→paid transition +
+ * idempotency to the shared settleOrder() helper.
+ */
+async function handleOneTimePaid(
+  session: Stripe.Checkout.Session,
+  eventId: string,
+): Promise<void> {
+  const orderId = session.metadata?.orderId
+  if (!orderId) return
+
+  const { settleOrder } = await import("@/lib/billing/orders")
+  await settleOrder({
+    provider: "stripe",
+    providerEventId: `order:${eventId}`,
+    eventType: "checkout.session.completed",
+    orderId,
+    providerOrderId: session.id,
+    payload: { sessionId: session.id, mode: session.mode },
+    // A completed Checkout Session with payment_status "paid" (or "no_payment_required").
+    success: session.payment_status !== "unpaid",
+  })
+}
+
 async function handleCheckoutCompleted(
   session: Stripe.Checkout.Session,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   db: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   subscriptionsTable: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  eq: any,
 ): Promise<void> {
   if (session.mode !== "subscription" || !session.subscription) return
 

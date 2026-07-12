@@ -124,6 +124,85 @@ export const usageEventsTable = pgTable(
   ],
 )
 
+// ---------------------------------------------------------------------------
+// One-time purchases — E327 products + orders (unified checkout)
+// ---------------------------------------------------------------------------
+
+/**
+ * Order status values — the single source of truth for the `order_status` pgEnum.
+ * A one-time order is created `pending`, transitions to `paid` exactly once on
+ * settlement, or `failed` on a declined payment; `refunded` is a manual terminal.
+ */
+export const ORDER_STATUSES = ["pending", "paid", "failed", "refunded"] as const
+
+/** Status values for a one-time order; providers/settlement MUST map to these. */
+export type OrderStatus = (typeof ORDER_STATUSES)[number]
+
+export const orderStatusEnum = pgEnum("order_status", ORDER_STATUSES)
+
+/**
+ * products — one row per sellable one-time digital product (course, template, …).
+ * `amount` is in the smallest currency unit; `entitlement_key` is consumed by E328
+ * to grant access once an order is paid.
+ */
+export const productsTable = pgTable("products", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  /** URL-safe unique identifier used by the sales page + checkout. */
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  description: text("description"),
+  /** Price in the smallest currency unit (e.g. cents for USD; NTD is 1:1 for TWD). */
+  amount: integer("amount").notNull(),
+  /** ISO-4217 three-letter currency code. Defaults to TWD (sales gateway = ECPay). */
+  currency: text("currency").notNull().default("TWD"),
+  active: boolean("active").notNull().default(true),
+  /** Entitlement granted on paid purchase (consumed by E328). */
+  entitlementKey: text("entitlement_key"),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+})
+
+/**
+ * orders — one row per one-time purchase attempt. `user_id` is NULLABLE to allow
+ * guest checkout (purchase-by-email); `customer_email` is always captured.
+ * Idempotent settlement rides the existing `payment_events.provider_event_id`
+ * UNIQUE constraint — no new idempotency machinery (see lib/billing/orders.ts).
+ */
+export const ordersTable = pgTable(
+  "orders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => productsTable.id, { onDelete: "restrict" }),
+    /** Nullable — guest checkout keeps user_id null and links only by email. */
+    userId: uuid("user_id").references(() => usersTable.id, { onDelete: "set null" }),
+    customerEmail: text("customer_email").notNull(),
+    customerName: text("customer_name"),
+    /** Which gateway processed the order (e.g. "stripe", "ecpay"). */
+    provider: text("provider").notNull(),
+    /** The gateway's own order/session/trade identifier (set on settlement). */
+    providerOrderId: text("provider_order_id"),
+    /** Amount charged in the smallest currency unit (snapshot of product.amount). */
+    amount: integer("amount").notNull(),
+    currency: text("currency").notNull().default("TWD"),
+    status: orderStatusEnum("status").notNull().default("pending"),
+    paidAt: timestamp("paid_at", { mode: "date" }),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("orders_product_id_idx").on(t.productId),
+    index("orders_user_id_idx").on(t.userId),
+    index("orders_provider_order_id_idx").on(t.providerOrderId),
+  ],
+)
+
+export type Product = typeof productsTable.$inferSelect
+export type NewProduct = typeof productsTable.$inferInsert
+export type Order = typeof ordersTable.$inferSelect
+export type NewOrder = typeof ordersTable.$inferInsert
+
 export type Plan = typeof plansTable.$inferSelect
 export type NewPlan = typeof plansTable.$inferInsert
 export type Subscription = typeof subscriptionsTable.$inferSelect

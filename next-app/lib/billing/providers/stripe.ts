@@ -126,9 +126,18 @@ export class StripeProvider {
   /**
    * Create a Stripe Checkout Session and return the redirect URL.
    * The session is in subscription mode with the specified price ID.
+   *
+   * E327 — `mode: "one-time"` branches to a `mode: "payment"` session priced
+   * inline via `price_data` (no Stripe price id needed). The subscription path
+   * below is unchanged.
    */
   async createCheckout(args: CreateCheckoutArgs): Promise<CheckoutResult> {
     const stripe = getStripe()
+
+    // E327 additive branch — one-time product purchase.
+    if (args.mode === "one-time") {
+      return this.createOneTimeCheckoutSession(args, stripe)
+    }
 
     const providerPriceId = args.planId // planId is used as provider price ID at checkout
     // E274 plan-identity FK fix: carry the plans.id UUID in metadata so the
@@ -175,6 +184,72 @@ export class StripeProvider {
       if (err instanceof PaymentProviderError) throw err
       throw new PaymentProviderError(
         `Failed to create Stripe Checkout Session: ${(err as Error).message}`,
+        "stripe",
+        "checkout_create_failed",
+      )
+    }
+  }
+
+  /**
+   * E327 — one-time purchase: a `mode: "payment"` Checkout Session priced
+   * inline with `price_data` ({ currency, unit_amount, product_data.name }) —
+   * no pre-registered Stripe price id required. `args.orderId` (our orders.id)
+   * rides `metadata.orderId` so the `checkout.session.completed` webhook can
+   * settle the matching order via settleOrder().
+   */
+  private async createOneTimeCheckoutSession(
+    args: CreateCheckoutArgs,
+    stripe: Stripe,
+  ): Promise<CheckoutResult> {
+    const amount = args.amount ?? 0
+    if (!Number.isInteger(amount) || amount <= 0) {
+      throw new PaymentProviderError(
+        `Invalid one-time amount "${String(args.amount)}". Pass a positive integer in the smallest currency unit.`,
+        "stripe",
+        "invalid_one_time_amount",
+      )
+    }
+
+    try {
+      const session = await stripe.checkout.sessions.create({
+        mode: "payment",
+        line_items: [
+          {
+            price_data: {
+              currency: (args.currency ?? "usd").toLowerCase(),
+              unit_amount: amount,
+              product_data: {
+                name: args.productName ?? "One-time purchase",
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        success_url: args.successUrl,
+        cancel_url: args.cancelUrl,
+        ...(args.customerEmail ? { customer_email: args.customerEmail } : {}),
+        metadata: {
+          orderId: args.orderId ?? "",
+          userId: args.userId,
+        },
+      })
+
+      if (!session.url) {
+        throw new PaymentProviderError(
+          "Stripe Checkout Session created but returned no URL",
+          "stripe",
+          "no_checkout_url",
+        )
+      }
+
+      return {
+        checkoutUrl: session.url,
+        sessionId: session.id,
+      }
+    } catch (err) {
+      if (err instanceof PaymentProviderError) throw err
+      throw new PaymentProviderError(
+        `Failed to create Stripe one-time Checkout Session: ${(err as Error).message}`,
         "stripe",
         "checkout_create_failed",
       )

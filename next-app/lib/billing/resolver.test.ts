@@ -11,7 +11,12 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { resolvePaymentProvider, resolveProviderKey } from "./resolver"
+import {
+  resolveOneTime,
+  resolvePaymentProvider,
+  resolveProviderKey,
+  resolveSubscription,
+} from "./resolver"
 
 // Mock the Stripe provider so resolver tests don't need STRIPE_SECRET_KEY
 vi.mock("./providers/stripe", () => ({
@@ -124,5 +129,56 @@ describe("resolvePaymentProvider() — reserved slot errors", () => {
     setEnv(undefined)
     const provider = await resolvePaymentProvider()
     expect(provider.name).toBe("stripe")
+  })
+})
+
+// ---------------------------------------------------------------------------
+// E327 — capability-narrowed resolvers (ISP + OCP)
+// ---------------------------------------------------------------------------
+
+describe("resolveOneTime() — one-time capability dispatch", () => {
+  afterEach(() => delete process.env[ENV_KEY])
+
+  it("returns the Stripe gateway for stripe", async () => {
+    expect((await resolveOneTime("stripe")).name).toBe("stripe")
+  })
+
+  it("returns the ECPay gateway for ecpay", async () => {
+    expect((await resolveOneTime("ecpay")).name).toBe("ecpay")
+  })
+
+  it("defaults to the BILLING_PROVIDER env when no key is passed", async () => {
+    setEnv("ecpay")
+    expect((await resolveOneTime()).name).toBe("ecpay")
+  })
+
+  it("fails fast for newebpay (藍新 adapter lands in E329)", async () => {
+    await expect(resolveOneTime("newebpay")).rejects.toThrowError(/newebpay.*E329/i)
+  })
+
+  it("fails fast for the reserved tappay slot", async () => {
+    await expect(resolveOneTime("tappay")).rejects.toThrowError(/tappay.*reserved/i)
+  })
+})
+
+describe("resolveSubscription() — subscription capability dispatch", () => {
+  afterEach(() => delete process.env[ENV_KEY])
+
+  it("returns the Stripe gateway for stripe", async () => {
+    expect((await resolveSubscription("stripe")).name).toBe("stripe")
+  })
+
+  it("returns the ECPay gateway for ecpay", async () => {
+    expect((await resolveSubscription("ecpay")).name).toBe("ecpay")
+  })
+
+  it("fails fast for newebpay with a capability error (one-time-only gateway)", async () => {
+    await expect(resolveSubscription("newebpay")).rejects.toThrowError(
+      /newebpay.*one-time-only.*SubscriptionGateway/i,
+    )
+  })
+
+  it("fails fast for the reserved tappay slot", async () => {
+    await expect(resolveSubscription("tappay")).rejects.toThrowError(/tappay.*reserved/i)
   })
 })

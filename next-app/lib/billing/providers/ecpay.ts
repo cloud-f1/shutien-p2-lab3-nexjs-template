@@ -356,8 +356,16 @@ export class EcpayProvider {
    * CreateCheckoutArgs (extended via planId convention: "interval:amount:desc").
    *
    * planId format: "{interval}:{amountTWD}:{description}" e.g. "month:299:Pro Plan"
+   *
+   * E327 — `mode: "one-time"` branches to a PLAIN AioCheckOut order (single
+   * charge, NO 定期定額 fields). The subscription path below is unchanged.
    */
   async createCheckout(args: CreateCheckoutArgs): Promise<CheckoutResult> {
+    // E327 additive branch — one-time product purchase (單筆訂單，非定期定額).
+    if (args.mode === "one-time") {
+      return this.createOneTimeOrder(args)
+    }
+
     const config = getEcpayConfig()
 
     // Parse planId: "interval:amount:description"
@@ -408,6 +416,63 @@ export class EcpayProvider {
       CustomField3: (args.planUuid ?? "").slice(0, 50),
       // ClientBackURL for browser redirect after payment
       ClientBackURL: args.cancelUrl,
+    }
+
+    const actionUrl = `${config.apiBaseUrl}/Cashier/AioCheckOut/V5`
+    const checkoutUrl = buildCheckoutUrl(params, actionUrl, config.hashKey, config.hashIv)
+
+    return {
+      checkoutUrl,
+      sessionId: tradeNo,
+    }
+  }
+
+  /**
+   * E327 — one-time purchase: a PLAIN ECPay AioCheckOut order.
+   *
+   * Single charge only — no PeriodAmount / PeriodType / Frequency / ExecTimes /
+   * PeriodReturnURL (the 定期定額 fields), so ECPay treats it as a normal order.
+   * Amount/currency come from `args.amount` (the order snapshot, server-owned);
+   * `args.orderId` (our orders.id) rides CustomField3 so the ReturnURL webhook
+   * can settle the matching order via settleOrder().
+   */
+  private async createOneTimeOrder(args: CreateCheckoutArgs): Promise<CheckoutResult> {
+    const config = getEcpayConfig()
+
+    const amount = args.amount ?? 0
+    if (!Number.isInteger(amount) || amount <= 0) {
+      throw new PaymentProviderError(
+        `Invalid one-time amount "${String(args.amount)}". Pass a positive integer TotalAmount (NTD).`,
+        "ecpay",
+        "invalid_one_time_amount",
+      )
+    }
+
+    const description = (args.productName ?? "One-time purchase").slice(0, 200)
+    const tradeNo = generateTradeNo("ORD")
+
+    // Server-to-server settlement notify — same route the subscription flow uses;
+    // the route disambiguates one-time orders by the CustomField3 orders.id.
+    const origin = process.env.NEXT_PUBLIC_APP_URL ?? new URL(args.successUrl).origin
+    const returnUrl = `${origin}/api/billing/ecpay/return`
+
+    const params: Record<string, string> = {
+      MerchantID: config.merchantId,
+      MerchantTradeNo: tradeNo,
+      MerchantTradeDate: formatEcpayDate(new Date()),
+      PaymentType: "aio",
+      TotalAmount: String(amount),
+      TradeDesc: description,
+      ItemName: description,
+      ReturnURL: returnUrl,
+      ChoosePayment: "Credit",
+      EncryptType: "1",
+      // Metadata (CustomField1-4, 50 chars each) — NO 定期定額 fields.
+      CustomField1: args.userId.slice(0, 50),
+      // orders.id — the settlement route maps the notify back to the order.
+      CustomField3: (args.orderId ?? "").slice(0, 50),
+      // After paying, the buyer's "return to merchant" lands on the thanks page.
+      ClientBackURL: args.successUrl,
     }
 
     const actionUrl = `${config.apiBaseUrl}/Cashier/AioCheckOut/V5`

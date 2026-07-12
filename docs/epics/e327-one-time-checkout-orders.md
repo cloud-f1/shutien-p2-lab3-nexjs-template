@@ -33,7 +33,10 @@ decision 2026-07-12）— Stripe stays the code-level resolver default; deployme
 - **ISP** — 拆成能力介面：`OneTimePaymentGateway`（`createCheckout` + `verifyWebhook`）與
   `SubscriptionGateway`（`createSubscription` + `chargeRecurring` + `cancelSubscription` +
   `reconcile`）；保留 `PaymentProvider = OneTimePaymentGateway & SubscriptionGateway` 作為
-  向後相容別名 — **stripe.ts / ecpay.ts 一行不改**。
+  向後相容別名 — **介面切分本身 stripe.ts / ecpay.ts 零修改**。
+  （實作註記 2026-07-12：**一次性收款路徑**經 QA 判定需在兩個 provider 各加一個 additive 的
+  `mode: "one-time"` 分支 — ECPay 走純 AioCheckOut 單筆訂單（無任何定期定額欄位）、Stripe 走
+  `mode: 'payment'` + inline `price_data`；既有訂閱行為與既有測試完全不動。）
 - **LSP** — 不再有「實作了介面卻 throw」的方法：做不到的能力就不實作該介面。
 - **DIP** — `createOneTimeCheckout` / `settleOrder()` 只依賴 `OneTimePaymentGateway`，
   透過 resolver 取得，不 import 任何具體 provider。

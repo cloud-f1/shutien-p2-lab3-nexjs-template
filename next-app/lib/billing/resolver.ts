@@ -12,7 +12,11 @@
  *   newebpay   — reserved; throws until implemented
  */
 
-import type { PaymentProvider } from "./provider"
+import type {
+  OneTimePaymentGateway,
+  PaymentProvider,
+  SubscriptionGateway,
+} from "./provider"
 
 /** All provider keys recognized by this resolver. */
 export type ProviderKey = "stripe" | "ecpay" | "tappay" | "newebpay"
@@ -55,6 +59,111 @@ export async function resolvePaymentProvider(): Promise<PaymentProvider> {
       throw new Error(
         `[billing] Unknown BILLING_PROVIDER value: "${key}". ` +
           `Valid values: stripe (default), ecpay, tappay (reserved), newebpay (reserved).`,
+      )
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Capability-narrowed resolvers — Open/Closed + Interface Segregation (E327)
+//
+// Instead of resolving the fat PaymentProvider and discovering mid-request that a
+// gateway can't do what you need, these entry points resolve the exact capability
+// and FAIL FAST at resolve time with a descriptive error. Adding a gateway = one
+// new case here; the checkout / settlement flow never changes (OCP).
+// ---------------------------------------------------------------------------
+
+/** Normalize the requested key (explicit arg wins; else env; else default). */
+function normalizeKey(key?: ProviderKey): ProviderKey {
+  if (key) return key.toLowerCase() as ProviderKey
+  return resolveProviderKey()
+}
+
+/**
+ * Resolve a gateway able to process a ONE-TIME hosted checkout + settlement
+ * webhook (E327). Stripe and ECPay both qualify today. NewebPay (藍新) is
+ * one-time-only but its adapter lands in E329, so it fails fast until then;
+ * TapPay is a reserved slot.
+ *
+ * @param key Optional explicit provider key; defaults to `BILLING_PROVIDER`.
+ * @throws {Error} With a descriptive, capability-aware message for any gateway
+ *   that cannot (yet) act as a one-time payment gateway.
+ */
+export async function resolveOneTime(
+  key?: ProviderKey,
+): Promise<OneTimePaymentGateway> {
+  const k = normalizeKey(key)
+
+  switch (k) {
+    case "stripe": {
+      const { getStripeProvider } = await import("./providers/stripe")
+      return getStripeProvider()
+    }
+    case "ecpay": {
+      const { getEcpayProvider } = await import("./providers/ecpay")
+      return getEcpayProvider()
+    }
+    case "newebpay": {
+      throw new Error(
+        `[billing] One-time gateway "newebpay" (藍新) is not yet implemented — ` +
+          `its adapter is tracked in E329. Use BILLING_PROVIDER=ecpay (default sales gateway) ` +
+          `or stripe for one-time checkout.`,
+      )
+    }
+    case "tappay": {
+      throw new Error(
+        `[billing] Provider "tappay" is a reserved slot with no one-time adapter yet. ` +
+          `Use ecpay or stripe.`,
+      )
+    }
+    default: {
+      throw new Error(
+        `[billing] Unknown BILLING_PROVIDER value: "${k}". ` +
+          `Valid one-time values: stripe, ecpay.`,
+      )
+    }
+  }
+}
+
+/**
+ * Resolve a gateway able to manage the recurring-SUBSCRIPTION lifecycle (E327).
+ * Stripe and ECPay qualify. NewebPay (藍新) is a one-time-only gateway and can
+ * NEVER be a subscription gateway, so it fails fast with a capability error (not
+ * a "not implemented" error); TapPay is a reserved slot.
+ *
+ * @param key Optional explicit provider key; defaults to `BILLING_PROVIDER`.
+ * @throws {Error} With a descriptive, capability-aware message.
+ */
+export async function resolveSubscription(
+  key?: ProviderKey,
+): Promise<SubscriptionGateway> {
+  const k = normalizeKey(key)
+
+  switch (k) {
+    case "stripe": {
+      const { getStripeProvider } = await import("./providers/stripe")
+      return getStripeProvider()
+    }
+    case "ecpay": {
+      const { getEcpayProvider } = await import("./providers/ecpay")
+      return getEcpayProvider()
+    }
+    case "newebpay": {
+      throw new Error(
+        `[billing] "newebpay" (藍新) is a one-time-only gateway and cannot be resolved ` +
+          `as a SubscriptionGateway. Use BILLING_PROVIDER=stripe or ecpay for subscriptions.`,
+      )
+    }
+    case "tappay": {
+      throw new Error(
+        `[billing] Provider "tappay" is a reserved slot with no subscription adapter yet. ` +
+          `Use stripe or ecpay for subscriptions.`,
+      )
+    }
+    default: {
+      throw new Error(
+        `[billing] Unknown BILLING_PROVIDER value: "${k}". ` +
+          `Valid subscription values: stripe, ecpay.`,
       )
     }
   }

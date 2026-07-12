@@ -79,6 +79,37 @@ async function processReturnNotification(
   const rtnCode = params["RtnCode"] ?? ""
   const tradeNo = params["TradeNo"] ?? ""
 
+  // ── E327: one-time order settlement ──────────────────────────────────────
+  // A one-time checkout carries our orders.id in CustomField3 (the checkout
+  // action repurposes the plan-UUID slot). Subscriptions carry a plans.id there,
+  // which never matches an orders row — so this lookup cleanly disambiguates
+  // without breaking the existing subscription path below.
+  const orderIdField = params["CustomField3"] ?? ""
+  if (orderIdField && isUuid(orderIdField)) {
+    const { db } = await import("@/lib/db")
+    const { ordersTable } = await import("@/lib/schema")
+    const { eq } = await import("drizzle-orm")
+    const [order] = await db
+      .select({ id: ordersTable.id })
+      .from(ordersTable)
+      .where(eq(ordersTable.id, orderIdField))
+      .limit(1)
+
+    if (order) {
+      const { settleOrder } = await import("@/lib/billing/orders")
+      await settleOrder({
+        provider: "ecpay",
+        providerEventId: `order-return:${merchantTradeNo}`,
+        eventType: "ecpay.return.payment",
+        orderId: order.id,
+        providerOrderId: tradeNo || merchantTradeNo,
+        payload: { rawBody, params } as unknown as Record<string, unknown>,
+        success: rtnCode === "1",
+      })
+      return
+    }
+  }
+
   // provider_event_id = "return:{MerchantTradeNo}" for ReturnURL events
   const providerEventId = `return:${merchantTradeNo}`
 
@@ -172,6 +203,11 @@ async function processReturnNotification(
     .update(paymentEventsTable)
     .set({ processedAt: new Date() })
     .where(eq(paymentEventsTable.providerEventId, providerEventId))
+}
+
+/** True for a canonical UUID string — guards the orders lookup (E327). */
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
 }
 
 // ---------------------------------------------------------------------------

@@ -9,6 +9,7 @@ import {
   itemsTable,
   notificationsTable,
   plansTable,
+  productsTable,
   subscriptionsTable,
   paymentEventsTable,
   usersTable,
@@ -109,6 +110,20 @@ async function enrich(adminId: string, editorId: string | undefined) {
     currentPeriodEnd: daysFromNow(18),
     providerMeta: { current_period_end: Math.floor(daysFromNow(18).getTime() / 1000) },
   })
+
+  // ── E327: one example one-time product (unified checkout / sales page) ────
+  await db
+    .insert(productsTable)
+    .values({
+      slug: "nextjs-course",
+      name: "Next.js 全端實戰課程",
+      description: "從 0 到上線：以本 SaaS 範本打造並部署一套完整的 Next.js 產品。",
+      amount: 1200, // NT$1,200 (TWD is whole-unit; ECPay 綠界 is the sales gateway)
+      currency: "TWD",
+      active: true,
+      entitlementKey: "course.nextjs", // consumed by E328 to grant access
+    })
+    .onConflictDoNothing({ target: productsTable.slug })
 
   await db.insert(paymentEventsTable).values([
     {
@@ -218,6 +233,7 @@ async function enrich(adminId: string, editorId: string | undefined) {
   ])
 
   console.log("   • 3 plans + an active Pro subscription (admin)")
+  console.log("   • 1 one-time product (nextjs-course)")
   console.log("   • 2 API keys, 1 webhook (+3 deliveries), 4 audit entries")
   console.log("   • 1 pending invite, 7 notifications, 5 items")
   console.log(`   ℹ︎ demo API key (test the bearer auth): ${prodKey.plaintext}`)
