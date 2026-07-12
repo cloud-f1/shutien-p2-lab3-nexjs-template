@@ -37,6 +37,8 @@ export default defineConfig({
         "lib/registry/validate-manifest.ts",
         "lib/billing/provider.ts",
         "lib/billing/billing-utils.ts",
+        "lib/billing/pagination.ts",
+        "lib/billing/admin-revenue.ts",
         "lib/billing/resolver.ts",
         "lib/billing/providers/**",
         "lib/security-headers.ts",
