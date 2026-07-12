@@ -62,7 +62,7 @@ The batch command is a **thin orchestrator**. It reads state, computes waves via
 | implement | `Agent(subagent_type="general-purpose", isolation="worktree", model=<by complexity>)` | Heaviest step — gets its own git worktree |
 | qa | `Agent(subagent_type="general-purpose", model=$reviewer)` | Review + test execution reads/runs many files |
 | commit | Inline (Bash + Edit) | Just git commands — fast, no subagent needed |
-| merge | Inline (Bash) | Publish protocol (loop.md canonical): push + open PR; default = human merge, `ATHENA_AUTO_MERGE=1` = auto-merge after QA + pre-publish gates |
+| merge | Inline (Bash) | Publish protocol (loop.md canonical): push + open PR; default = auto-merge after QA + pre-publish gates, `ATHENA_AUTO_MERGE=0` = human merge |
 
 **IMPORTANT**: Only spec/implement/qa steps are dispatched to parallel agents. Commit and merge steps run **inline sequentially** after the parallel wave completes.
 
@@ -148,23 +148,24 @@ After all three agents complete (or timeout at 30 min):
 
 **Step 4 — publish/verify sequence** (inline, not parallel):
 ```bash
-# For each successfully QA'd epic branch — follow the Publish step (human-merge protocol)
-# in loop.md (CANONICAL). This executor has PULL-ONLY GitHub perms — push + open PR, then
-# leave it for the human. NEVER `gh pr merge`.
+# For each successfully QA'd epic branch — follow the Publish step (auto-merge by default)
+# in loop.md (CANONICAL). Push + open PR, then merge per the canonical block.
 git push -u origin feat/E83-dashboard-widget
 PR=$(gh pr list --head feat/E83-dashboard-widget --json number --jq '.[0].number')
 [ -z "$PR" ] && gh pr create --title "feat(E83): dashboard widget" --body "..."
-# → write "⏸ awaiting human merge (PR #$PR)" into the epic's merge cell — primary mechanism:
-bash scripts/state/state-update.sh E83 merge awaiting-merge --note "PR #$PR"
+# Default (auto-merge): gh pr merge "$PR" --merge → state-update E83 merge done --note "auto-merged PR #$PR"
+#   on merge failure degrade: state-update E83 merge awaiting-merge --note "PR #$PR (auto-merge failed — human required)"
+# HUMAN-MERGE MODE (ATHENA_AUTO_MERGE=0): stop at
+#   bash scripts/state/state-update.sh E83 merge awaiting-merge --note "PR #$PR"
 # (fall back to manually editing epic-progress.md + EPIC_INDEX.md only if the script errors)
 # → emit publish event; move on.
 
-# The integration test (Step 4c) runs only against whatever the HUMAN has already merged to
-# origin/main; open PRs stay open. Sync local main via: git fetch origin && git reset --hard origin/main
+# The integration test (Step 4c) runs against whatever is merged to origin/main (auto-merged
+# PRs included); unmerged ⏸ PRs stay open. Sync local main via: git fetch origin && git reset --hard origin/main
 cd next-app && pnpm typecheck && pnpm lint && pnpm test:coverage && pnpm test:e2e
 ```
 
-Publishing is **sequential** — push one branch and open its PR, then the next. Default: record `⏸` and the USER merges (a later invocation reconciles via Step 5a). With `ATHENA_AUTO_MERGE=1`: merge each PR immediately after creation per the loop.md canonical auto-merge block (QA + pre-publish gates already passed; on merge failure degrade to `⏸`, never force).
+Publishing is **sequential** — push one branch and open its PR, then the next. Default (auto-merge): merge each PR immediately after creation per the loop.md canonical block (QA + pre-publish gates already passed; on merge failure degrade to `⏸`, never force). With `ATHENA_AUTO_MERGE=0` (human-merge mode): record `⏸` and the USER merges (a later invocation reconciles via Step 5a).
 
 ---
 
@@ -504,7 +505,7 @@ Agent(
      echo '{"epic_id":"E{n}","step":"commit","status":"completed","duration_seconds":N}' | bash scripts/hooks/task-completed.sh
      bash scripts/hooks/audit-emit-pipeline.sh commit epic=E{n} sha=$(git rev-parse --short HEAD) || true
      ```
-   - **merge (publish)**: Run the **Publish step (human-merge protocol)** from `loop.md` (CANONICAL) — `git push -u origin HEAD`, then `gh pr create` if no PR exists (capture PR number), then `bash scripts/state/state-update.sh E{n} merge awaiting-merge --note "PR #$PR"` to write `⏸ awaiting human merge (PR #N)` into the epic's merge cell (primary mechanism; fall back to manually editing epic-progress.md + EPIC_INDEX.md if the script errors). Default mode: do NOT `gh pr merge` — the USER merges. **AUTO-MERGE MODE (`ATHENA_AUTO_MERGE=1`)**: instead run `gh pr merge $PR --merge` → on success `state-update E{n} merge done --note "auto-merged PR #$PR"` + `git pull --ff-only` + emit `auto_merge` event; on failure degrade to `⏸ awaiting human merge`. After the PR is pushed/created (and possibly merged): **fire**:
+   - **merge (publish)**: Run the **Publish step (auto-merge by default)** from `loop.md` (CANONICAL) — `git push -u origin HEAD`, then `gh pr create` if no PR exists (capture PR number). **Default (AUTO-MERGE)**: run `gh pr merge $PR --merge` → on success `state-update E{n} merge done --note "auto-merged PR #$PR"` + `git pull --ff-only` + emit `auto_merge` event; on failure degrade to `⏸ awaiting human merge`, never force. **HUMAN-MERGE MODE (`ATHENA_AUTO_MERGE=0`)**: do NOT `gh pr merge` — instead `bash scripts/state/state-update.sh E{n} merge awaiting-merge --note "PR #$PR"` to write `⏸ awaiting human merge (PR #N)` (primary mechanism; fall back to manually editing epic-progress.md + EPIC_INDEX.md if the script errors) and the USER merges. After the PR is pushed/created (and possibly merged): **fire**:
      ```bash
      echo '{"epic_id":"E{n}","step":"publish","status":"awaiting_merge","duration_seconds":N}' | bash scripts/hooks/task-completed.sh
      bash scripts/hooks/audit-emit-pipeline.sh publish epic=E{n} pr=$PR_NUMBER || true
@@ -746,7 +747,7 @@ Append an entry to `docs/context/orchestration-log.md`:
 | **Shell-layer probe fails (Step 3.5a)** | **Auto-fallback to `--max-concurrent 1`; do NOT abort. Skips 3.5b.** |
 | **Agent-layer probe fails (Step 3.5b — Phase 45 failure mode)** | **Auto-fallback to `--max-concurrent 1`; do NOT abort. Wave runs sequentially, no implement-agent time wasted.** |
 | **Cross-contamination detected (Step 4a-detect)** | **STOP wave, fire `status=blocked` hook, print untangle protocol, exit 0. Should be unreachable if 3.5b is honest, but kept as third-line backstop.** |
-| **Push rejected / PR create fails** | **Report and stop for that epic — do not force. The human resolves and merges (pull-only perms; this executor never merges).** |
+| **Push rejected / PR create fails** | **Report and stop for that epic — do not force; the human resolves. (Auto-merge only runs after a successful push + PR create.)** |
 | Merge conflict | STOP batch, report conflicting files |
 | Integration test failure | STOP batch, report suspects (E91 gate) |
 | Coverage below 80% | Treated as integration test failure — STOP batch |
@@ -803,7 +804,7 @@ git switch feat/e{n}-{slug}
 # Run /athena:qa --test-only locally OR rely on CI
 git push -u origin feat/e{n}-{slug}
 gh pr create --title "feat(E{n}): ..." --body "..."
-# STOP here — the USER merges the PR (pull-only perms; never `gh pr merge`).
+# Default: gh pr merge "$PR" --merge (auto-merge). With ATHENA_AUTO_MERGE=0 STOP here — the USER merges.
 ```
 
 ### 5. Reconcile state on main
@@ -844,7 +845,7 @@ Three invariants hold regardless of where they're referenced in this file:
 2. **Main-sync method** — ALWAYS `git fetch origin && git reset --hard origin/main`. NEVER `git checkout main && git pull`. Local main is only ever synced to already-human-merged state.
 3. **Barrier semantics** — standard posture = full wave barrier; parallel posture (`--effort thorough|ultra`) = per-epic `pipeline()` with only the Step 4c integration-gate barrier.
 
-Publishing default is human-merge: push + open PR + write `⏸ awaiting human merge (PR #N)`. `ATHENA_AUTO_MERGE=1` opts into auto-merge AFTER the unchanged QA + pre-publish gates (loop.md canonical block); merge failures always degrade to `⏸`, never force.
+Publishing default is AUTO-MERGE: push + open PR + `gh pr merge` AFTER the unchanged QA + pre-publish gates (loop.md canonical block); merge failures always degrade to `⏸ awaiting human merge`, never force. `ATHENA_AUTO_MERGE=0` opts out to human-merge (push + PR + `⏸`, the USER merges).
 
 ## Safety Guards
 

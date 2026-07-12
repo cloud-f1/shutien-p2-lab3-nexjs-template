@@ -64,7 +64,7 @@ After the loop: print a summary table. **Do NOT merge any epic** — merge stays
 outer-plane (it can carry a policy/human gate), exactly as `/autopilot` keeps merge gated.
 
 ## Step 4 — Write-back (you do this; the Workflow cannot touch the filesystem)
-**Cell granularity (flow stops at commit — never at merge):** on `success`, mark the **spec, implement, qa, and commit** cells ✅ and **LEAVE the merge cell ⬜** (or `⏸ awaiting human merge (PR #N)` if this run pushed a branch + opened a PR). A later `/athena:loop` (Step 1a) reconciles the merge cell once the human merges. flow NEVER runs `gh pr merge` — merge is human/outer-plane.
+**Cell granularity (flow stops at commit — never at merge):** on `success`, mark the **spec, implement, qa, and commit** cells ✅ and **LEAVE the merge cell ⬜** (or `⏸ awaiting human merge (PR #N)` if this run pushed a branch + opened a PR). A later `/athena:loop` run performs the merge (auto-merge by default per the loop.md canonical publish step) or reconciles it via Step 1a. flow itself NEVER runs `gh pr merge` — the merge step is outer-plane (loop/batch).
 
 For each epic in the returned `AgentReport[]`, use `scripts/state/state-update.sh` as the primary
 write-back mechanism (it updates `docs/context/epic-progress.md` and syncs `docs/epics/EPIC_INDEX.md`

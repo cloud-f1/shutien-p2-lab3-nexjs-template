@@ -30,7 +30,7 @@ For each changed file:
 - Check if PR already exists: `gh pr list --head $(git branch --show-current) --json url --jq '.[0].url'`
   - If PR exists: push only, report existing PR URL
   - If no PR: create with `gh pr create` (title + summary bullets + test plan)
-- Follow the **Publish step (human-merge protocol)** in `loop.md` (CANONICAL): the USER merges the PR. ship has **pull-only GitHub perms** — it NEVER merges and NEVER pushes to `main`.
+- Follow the **Publish step (auto-merge by default)** in `loop.md` (CANONICAL): after the mandatory gates pass, `gh pr merge` the PR; with `ATHENA_AUTO_MERGE=0` stop at `⏸ awaiting human merge` and the USER merges. NEVER push directly to `main`.
 
 **Rules:**
 - ship NEVER pushes to `main` and NEVER runs `gh pr merge` — always a branch + PR for the human to merge.
