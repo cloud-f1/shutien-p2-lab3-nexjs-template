@@ -28,6 +28,11 @@ vi.mock("./providers/ecpay", () => ({
   getEcpayProvider: () => ({ name: "ecpay" }),
 }))
 
+// Mock the NewebPay provider so resolver tests don't need NEWEBPAY_* env vars
+vi.mock("./providers/newebpay", () => ({
+  getNewebPayProvider: () => ({ name: "newebpay" }),
+}))
+
 const ENV_KEY = "BILLING_PROVIDER"
 
 function setEnv(value: string | undefined) {
@@ -152,8 +157,13 @@ describe("resolveOneTime() — one-time capability dispatch", () => {
     expect((await resolveOneTime()).name).toBe("ecpay")
   })
 
-  it("fails fast for newebpay (藍新 adapter lands in E329)", async () => {
-    await expect(resolveOneTime("newebpay")).rejects.toThrowError(/newebpay.*E329/i)
+  it("returns the NewebPay gateway for newebpay (藍新 MPG one-time, E329)", async () => {
+    expect((await resolveOneTime("newebpay")).name).toBe("newebpay")
+  })
+
+  it("resolves newebpay from the BILLING_PROVIDER env too", async () => {
+    setEnv("newebpay")
+    expect((await resolveOneTime()).name).toBe("newebpay")
   })
 
   it("fails fast for the reserved tappay slot", async () => {
