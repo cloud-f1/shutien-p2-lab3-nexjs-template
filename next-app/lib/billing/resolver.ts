@@ -81,9 +81,8 @@ function normalizeKey(key?: ProviderKey): ProviderKey {
 
 /**
  * Resolve a gateway able to process a ONE-TIME hosted checkout + settlement
- * webhook (E327). Stripe and ECPay both qualify today. NewebPay (藍新) is
- * one-time-only but its adapter lands in E329, so it fails fast until then;
- * TapPay is a reserved slot.
+ * webhook (E327). Stripe, ECPay and NewebPay (藍新 MPG 幕前支付, one-time-only,
+ * E329) all qualify today; TapPay is a reserved slot.
  *
  * @param key Optional explicit provider key; defaults to `BILLING_PROVIDER`.
  * @throws {Error} With a descriptive, capability-aware message for any gateway
@@ -104,11 +103,9 @@ export async function resolveOneTime(
       return getEcpayProvider()
     }
     case "newebpay": {
-      throw new Error(
-        `[billing] One-time gateway "newebpay" (藍新) is not yet implemented — ` +
-          `its adapter is tracked in E329. Use BILLING_PROVIDER=ecpay (default sales gateway) ` +
-          `or stripe for one-time checkout.`,
-      )
+      // 藍新 NewebPay MPG 幕前支付 — one-time-only gateway (E329).
+      const { getNewebPayProvider } = await import("./providers/newebpay")
+      return getNewebPayProvider()
     }
     case "tappay": {
       throw new Error(

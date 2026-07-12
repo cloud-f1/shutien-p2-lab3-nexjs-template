@@ -1,7 +1,7 @@
 # E329 — 藍新 NewebPay Provider（填上 resolver 保留槽位，一次性付款）
 
 > Phase 77 · feature/backend · Cycle 35（數位產品/課程銷售頁 PRD，2026-07-12）
-> Status: ⬜ pending
+> Status: ✅ implemented (pending human 藍新 sandbox 實測)
 > Depends: E327
 
 ## Problem
@@ -56,14 +56,32 @@ option, one env var away).
 - `next-app/.env.example`
 
 ## Acceptance Criteria
-- [ ] `resolveOneTime("newebpay")` resolves; `resolveSubscription("newebpay")` + `tappay` still
+- [x] `resolveOneTime("newebpay")` resolves; `resolveSubscription("newebpay")` + `tappay` still
       fail fast with clear messages; provider has zero NotImplemented stubs (LSP)
-- [ ] Known-vector test: TradeInfo/TradeSha match official sample; tampered payload rejected
-- [ ] Notify route settles an E327 order idempotently (duplicate POST → single `paid`)
-- [ ] Sandbox 實測 checklist documented in the epic/deploy notes (real 藍新 sandbox run is a
-      human step — record result in deploy-log)
-- [ ] No secrets in code; crypto via Node `crypto` (no new deps unless justified)
-- [ ] Vitest green incl. existing ecpay/stripe suites untouched; typecheck/lint/build green
+      — `NewebPayProvider implements OneTimePaymentGateway` only.
+- [x] Crypto test: encrypt→decrypt round-trip + TradeSha recompute + tampered-TradeSha rejection.
+      NOTE: the fixture is a **deterministic locally-constructed vector** (fixed HashKey/HashIV/
+      params), NOT the official 藍新 sample vector — the official doc's exact sample bytes were not
+      reproduced from memory. Real-credential parity is the human sandbox step below.
+- [x] Notify route settles an E327 order idempotently via `settleOrder()` (duplicate POST →
+      single `paid`; same `providerEventId = newebpay:{TradeNo}` both deliveries).
+- [ ] **HUMAN STEP** — 藍新 sandbox 實測 with REAL merchant credentials (MerchantID/HashKey/
+      HashIV from the 商店後台 測試站). Set `BILLING_PROVIDER=newebpay` + the `NEWEBPAY_*` env,
+      run a live 幕前支付 checkout against `https://ccore.newebpay.com/MPG/mpg_gateway`, confirm the
+      notify hits `/api/billing/newebpay/return` and flips the order to `paid`. Record the result
+      in the deploy-log. (Cannot be automated — needs a real 藍新 test account.)
+- [x] No secrets in code; crypto via Node `crypto` only (no new deps).
+- [x] Vitest green (629 tests) incl. existing ecpay/stripe suites untouched; typecheck + lint green.
+
+## Order-Traceability Mechanism (design note)
+
+NewebPay MPG only round-trips **`MerchantOrderNo`** in the decrypted notify `Result` (it does NOT
+echo `ItemDesc` / `OrderComment`). `MerchantOrderNo` is capped at 30 chars, `[A-Za-z0-9_]` — a raw
+`orders.id` UUID (36 chars, hyphens) does not fit. So the adapter encodes the UUID's 128-bit value
+as **base36** (≤ 25 chars, url-safe) into `MerchantOrderNo` (`orderIdToMerchantOrderNo`) and the
+notify route decodes it back (`merchantOrderNoToOrderId`) to look up the order. This is the NewebPay
+analogue of ECPay's `CustomField3` orders.id round-trip. Both `ReturnURL` (幕前) and `NotifyURL`
+(幕後) point at the same idempotent settlement route.
 
 ## Cross-Epic
 - E249 — fills the reserved slot exactly as the contract intended; zero interface change

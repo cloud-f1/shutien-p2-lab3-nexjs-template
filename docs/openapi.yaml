@@ -3,7 +3,7 @@
 openapi: 3.1.0
 info:
   title: AI App Template API
-  version: 0.3.0
+  version: 0.4.0
   description: Server Actions (actions/*.ts) are typed RPC — their contract is TypeScript + the shared Zod schemas in lib/validations, enforced at compile time; this OpenAPI documents the HTTP route-handler surface only. Auth.js routes under /api/auth/[...nextauth] are framework-owned and omitted. This file is GENERATED from Zod (the single source of truth) via `pnpm openapi:generate` — never hand-edit it; a smoke drift gate fails if it is stale.
 servers:
   - url: http://localhost:3000
@@ -160,6 +160,21 @@ components:
         RtnCode:
           type: string
         CheckMacValue:
+          type: string
+      additionalProperties:
+        type: string
+    NewebPayCallback:
+      type: object
+      properties:
+        Status:
+          type: string
+        MerchantID:
+          type: string
+        Version:
+          type: string
+        TradeInfo:
+          type: string
+        TradeSha:
           type: string
       additionalProperties:
         type: string
@@ -347,6 +362,37 @@ paths:
                 type: string
         "500":
           description: Config or processing error — "0|Error" (ECPay retries).
+          content:
+            text/plain:
+              schema:
+                type: string
+  /api/billing/newebpay/return:
+    post:
+      summary: NewebPay 藍新 MPG notify (ReturnURL + NotifyURL)
+      description: Receives the 藍新 MPG 幕前支付 notification (one-time purchase). Recomputes TradeSha (constant-time), AES-decrypts TradeInfo, then settles the matching order idempotently via settleOrder(). NewebPay only requires an HTTP 200 ack.
+      tags:
+        - billing
+      requestBody:
+        description: NewebPay MPG callback — application/x-www-form-urlencoded with an AES-256-CBC TradeInfo + SHA256 TradeSha. Verified, not schema-parsed.
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/NewebPayCallback"
+      responses:
+        "200":
+          description: Acknowledged (settled or idempotent no-op).
+          content:
+            text/plain:
+              schema:
+                type: string
+        "400":
+          description: Invalid TradeSha — "0|TradeSha invalid".
+          content:
+            text/plain:
+              schema:
+                type: string
+        "500":
+          description: Config or processing error — "0|Error" (NewebPay retries).
           content:
             text/plain:
               schema:

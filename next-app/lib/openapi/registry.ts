@@ -253,6 +253,50 @@ export function buildOpenApiDocument() {
     responses: ecpayAckResponses,
   })
 
+  // POST /api/billing/newebpay/return → app/api/billing/newebpay/return/route.ts
+  registry.registerPath({
+    method: "post",
+    path: "/api/billing/newebpay/return",
+    summary: "NewebPay 藍新 MPG notify (ReturnURL + NotifyURL)",
+    description:
+      "Receives the 藍新 MPG 幕前支付 notification (one-time purchase). Recomputes TradeSha (constant-time), AES-decrypts TradeInfo, then settles the matching order idempotently via settleOrder(). NewebPay only requires an HTTP 200 ack.",
+    tags: ["billing"],
+    request: {
+      body: {
+        description:
+          "NewebPay MPG callback — application/x-www-form-urlencoded with an AES-256-CBC TradeInfo + SHA256 TradeSha. Verified, not schema-parsed.",
+        content: {
+          "application/x-www-form-urlencoded": {
+            schema: z
+              .object({
+                Status: z.string().optional(),
+                MerchantID: z.string().optional(),
+                Version: z.string().optional(),
+                TradeInfo: z.string().optional(),
+                TradeSha: z.string().optional(),
+              })
+              .catchall(z.string())
+              .openapi("NewebPayCallback"),
+          },
+        },
+      },
+    },
+    responses: {
+      200: {
+        description: "Acknowledged (settled or idempotent no-op).",
+        content: { "text/plain": { schema: z.string() } },
+      },
+      400: {
+        description: 'Invalid TradeSha — "0|TradeSha invalid".',
+        content: { "text/plain": { schema: z.string() } },
+      },
+      500: {
+        description: 'Config or processing error — "0|Error" (NewebPay retries).',
+        content: { "text/plain": { schema: z.string() } },
+      },
+    },
+  })
+
   // POST /api/billing/ecpay/renew → app/api/billing/ecpay/renew/route.ts (cron)
   registry.registerPath({
     method: "post",
