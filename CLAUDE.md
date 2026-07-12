@@ -178,7 +178,7 @@ FastAPI/Vite skills were removed; vendor `next-best-practices` + `vercel-*` rema
 
 **Phases 75–76 ✅ Complete (Backport Wave 2 + follow-up, shipped in v0.4.0) — backlog drained.**
 Latest work (2026-07-10): full athena-pipeline audit + hardening — human-merge publish protocol
-(loop/batch/ship/pr/autopilot no longer attempt `gh pr merge`; pull-only perms), agent frontmatter
+(loop/batch/ship/pr/autopilot 預設不 `gh pr merge`；`ATHENA_AUTO_MERGE=1` 可選擇性開啟 auto-merge，QA + pre-publish gates 不變 — user-authorized 2026-07-12), agent frontmatter
 standardized (`name:` + `tools:`), telemetry fixes (bash/agent_complete events now actually land),
 skills directory normalized (no loose `.md` files), 3 new skills (security-audit ·
 drizzle-migration-safety · release-versioning). See `docs/context/athena-pipeline-audit-2026-07-10.md`.

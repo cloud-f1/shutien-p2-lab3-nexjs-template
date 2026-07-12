@@ -62,7 +62,7 @@ The batch command is a **thin orchestrator**. It reads state, computes waves via
 | implement | `Agent(subagent_type="general-purpose", isolation="worktree", model=<by complexity>)` | Heaviest step — gets its own git worktree |
 | qa | `Agent(subagent_type="general-purpose", model=$reviewer)` | Review + test execution reads/runs many files |
 | commit | Inline (Bash + Edit) | Just git commands — fast, no subagent needed |
-| merge | Inline (Bash) | Publish protocol (loop.md canonical): push + open PR, then leave for human merge — pull-only perms, never `gh pr merge` |
+| merge | Inline (Bash) | Publish protocol (loop.md canonical): push + open PR; default = human merge, `ATHENA_AUTO_MERGE=1` = auto-merge after QA + pre-publish gates |
 
 **IMPORTANT**: Only spec/implement/qa steps are dispatched to parallel agents. Commit and merge steps run **inline sequentially** after the parallel wave completes.
 
@@ -164,7 +164,7 @@ bash scripts/state/state-update.sh E83 merge awaiting-merge --note "PR #$PR"
 cd next-app && pnpm typecheck && pnpm lint && pnpm test:coverage && pnpm test:e2e
 ```
 
-Publishing is **sequential** — push one branch and open its PR, record `⏸`, then the next. The USER merges the PRs (pull-only perms); a later `/athena:batch auto` or `/athena:loop` reconciles the `⏸` merge cells once the human has merged (Step 5a).
+Publishing is **sequential** — push one branch and open its PR, then the next. Default: record `⏸` and the USER merges (a later invocation reconciles via Step 5a). With `ATHENA_AUTO_MERGE=1`: merge each PR immediately after creation per the loop.md canonical auto-merge block (QA + pre-publish gates already passed; on merge failure degrade to `⏸`, never force).
 
 ---
 
@@ -504,7 +504,7 @@ Agent(
      echo '{"epic_id":"E{n}","step":"commit","status":"completed","duration_seconds":N}' | bash scripts/hooks/task-completed.sh
      bash scripts/hooks/audit-emit-pipeline.sh commit epic=E{n} sha=$(git rev-parse --short HEAD) || true
      ```
-   - **merge (publish)**: Run the **Publish step (human-merge protocol)** from `loop.md` (CANONICAL) — `git push -u origin HEAD`, then `gh pr create` if no PR exists (capture PR number), then `bash scripts/state/state-update.sh E{n} merge awaiting-merge --note "PR #$PR"` to write `⏸ awaiting human merge (PR #N)` into the epic's merge cell (primary mechanism; fall back to manually editing epic-progress.md + EPIC_INDEX.md if the script errors). **NEVER `gh pr merge`** — this executor has pull-only GitHub perms; the USER merges. After the PR is pushed/created: **fire**:
+   - **merge (publish)**: Run the **Publish step (human-merge protocol)** from `loop.md` (CANONICAL) — `git push -u origin HEAD`, then `gh pr create` if no PR exists (capture PR number), then `bash scripts/state/state-update.sh E{n} merge awaiting-merge --note "PR #$PR"` to write `⏸ awaiting human merge (PR #N)` into the epic's merge cell (primary mechanism; fall back to manually editing epic-progress.md + EPIC_INDEX.md if the script errors). Default mode: do NOT `gh pr merge` — the USER merges. **AUTO-MERGE MODE (`ATHENA_AUTO_MERGE=1`)**: instead run `gh pr merge $PR --merge` → on success `state-update E{n} merge done --note "auto-merged PR #$PR"` + `git pull --ff-only` + emit `auto_merge` event; on failure degrade to `⏸ awaiting human merge`. After the PR is pushed/created (and possibly merged): **fire**:
      ```bash
      echo '{"epic_id":"E{n}","step":"publish","status":"awaiting_merge","duration_seconds":N}' | bash scripts/hooks/task-completed.sh
      bash scripts/hooks/audit-emit-pipeline.sh publish epic=E{n} pr=$PR_NUMBER || true
@@ -844,7 +844,7 @@ Three invariants hold regardless of where they're referenced in this file:
 2. **Main-sync method** — ALWAYS `git fetch origin && git reset --hard origin/main`. NEVER `git checkout main && git pull`. Local main is only ever synced to already-human-merged state.
 3. **Barrier semantics** — standard posture = full wave barrier; parallel posture (`--effort thorough|ultra`) = per-epic `pipeline()` with only the Step 4c integration-gate barrier.
 
-Publishing is always human-merge (pull-only perms): push + open PR + write `⏸ awaiting human merge (PR #N)`; never `gh pr merge`.
+Publishing default is human-merge: push + open PR + write `⏸ awaiting human merge (PR #N)`. `ATHENA_AUTO_MERGE=1` opts into auto-merge AFTER the unchanged QA + pre-publish gates (loop.md canonical block); merge failures always degrade to `⏸`, never force.
 
 ## Safety Guards
 
