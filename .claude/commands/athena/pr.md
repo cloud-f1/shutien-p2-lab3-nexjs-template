@@ -23,7 +23,7 @@ Pre-PR pipeline. Run all gates before creating a pull request.
 - Analyze all commits since divergence from main (`git log main..HEAD`)
 - Generate PR title (short, conventional commit style) + body (summary + test plan)
 - `gh pr create` (or update existing PR if one exists for this branch)
-- Follow the **Publish step (human-merge protocol)** in `loop.md` (CANONICAL): the USER merges. This command has **pull-only GitHub perms** — it NEVER runs `gh pr merge` and NEVER pushes to `main`.
+- Follow the **Publish step (auto-merge by default)** in `loop.md` (CANONICAL): after the mandatory gates pass, `gh pr merge` the PR; with `ATHENA_AUTO_MERGE=0` stop at `⏸ awaiting human merge` and the USER merges. NEVER push directly to `main`.
 
 **Rules:**
 - Stop on ANY gate failure. Do not skip gates.

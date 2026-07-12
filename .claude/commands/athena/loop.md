@@ -27,19 +27,28 @@ You are the Epic Loop controller. Your job is to advance the project **one step 
      ```bash
      bash scripts/hooks/audit-emit-pipeline.sh commit epic=$EPIC sha=$(git rev-parse --short HEAD) || true
      ```
-   - **merge**: Inline — run the **Publish step (human-merge protocol)** below. This orchestrator has **pull-only GitHub permissions**: it can push branches and open PRs but can NEVER merge. The USER merges.
+   - **merge**: Inline — run the **Publish step** below. Default: push branch + open PR + **auto-merge** after the mandatory gates. With `ATHENA_AUTO_MERGE=0` the publish step stops at `⏸ awaiting human merge` and the USER merges (see the canonical block).
 5. **UPDATE STATE**: `bash scripts/state/state-update.sh $EPIC $STEP $STATUS` — the primary mechanism for flipping the step cell (writes epic-progress.md, syncs EPIC_INDEX.md via render-index.sh, emits its own `state_update` audit event). Fall back to manually editing both `docs/context/epic-progress.md` and `docs/epics/EPIC_INDEX.md` only if the script errors. Then emit the loop-step observability event:
    ```bash
    bash scripts/hooks/audit-emit-pipeline.sh loop_step epic=$EPIC step=$STEP status=$STATUS || true
    ```
 6. **REPORT**: Show what was done and what's next — then **EXIT**
 
-## Publish step (human-merge protocol) — CANONICAL
+## Publish step — CANONICAL (auto-merge by default; opt-out human-merge)
 
 > This is the single canonical definition of the "publish" (formerly "merge") step for the entire
 > athena pipeline. `batch.md`, `flow.md`, `ship.md`, and `pr.md` all reference this block.
-> **The agent has pull-only GitHub permissions — it can push and open PRs but can NEVER merge.**
-> **Never run `gh pr merge` in any form.** The USER merges.
+> **Default: AUTO-MERGE (user-authorized 2026-07-13).** After the mandatory gates pass, step 4
+> below merges the PR automatically via `gh pr merge`.
+>
+> Preconditions are non-negotiable: the epic must have `qa=✅` (mandatory QA gate) and the
+> PRE-PUBLISH GATE (step 1) must pass — auto-merge changes WHO clicks merge, never WHAT gets
+> merged. The post-merge integration gate still runs. On any merge failure (conflict / branch
+> protection / API error) fall back to `⏸ awaiting human merge` — never force.
+>
+> **HUMAN-MERGE MODE (opt-out)**: set `ATHENA_AUTO_MERGE=0` (env) or pass `--no-auto-merge` to
+> stop at push + PR: write `⏸ awaiting human merge (PR #N)` and let the USER merge; a later
+> invocation reconciles via Step 1a.
 
 1. **PRE-PUBLISH GATE (MANDATORY — runs BEFORE `git push`)**: Run the repo-hygiene + quality gate and **ABORT the publish if it exits non-zero**.
    ```bash
@@ -61,12 +70,28 @@ You are the Epic Loop controller. Your job is to advance the project **one step 
    PR=$(gh pr list --head "$(git branch --show-current)" --json number --jq '.[0].number')
    [ -z "$PR" ] && PR=$(gh pr create --title "..." --body "..." | grep -oE '[0-9]+$')
    ```
-4. **Write `⏸ awaiting human merge (PR #N)`** into the epic's merge cell: `bash scripts/state/state-update.sh $EPIC merge awaiting-merge --note "PR #$PR"` — the primary mechanism (updates epic-progress.md and syncs EPIC_INDEX.md via render-index.sh). Fall back to manually editing both files only if the script errors.
+4. **Merge cell update — mode-dependent**:
+   - **Default (AUTO-MERGE)**:
+     ```bash
+     if gh pr merge "$PR" --merge; then
+       bash scripts/state/state-update.sh $EPIC merge done --note "auto-merged PR #$PR"
+       git fetch origin && git pull --ff-only   # sync local main to the merged state
+       bash scripts/hooks/audit-emit-pipeline.sh auto_merge epic=$EPIC pr=$PR || true
+     else
+       # conflict / branch protection / API failure → degrade to human-merge, never force
+       bash scripts/state/state-update.sh $EPIC merge awaiting-merge --note "PR #$PR (auto-merge failed — human required)"
+     fi
+     ```
+   - **HUMAN-MERGE MODE (`ATHENA_AUTO_MERGE=0`)**: write `⏸ awaiting human merge (PR #N)` via
+     `bash scripts/state/state-update.sh $EPIC merge awaiting-merge --note "PR #$PR"` (primary
+     mechanism; fall back to manually editing both state files only if the script errors).
 5. **Emit the publish audit event**:
    ```bash
    bash scripts/hooks/audit-emit-pipeline.sh publish epic=$EPIC pr=$PR || true
    ```
-6. **EXIT** — the USER merges the PR. Never run `gh pr merge`. A later `/athena:loop` invocation reconciles the merge cell (Step 1a) once the human has merged.
+6. **EXIT** — in default (auto-merge) mode the pipeline continues directly to the next step/wave
+   (integration gate included); in human-merge mode the USER merges and a later invocation
+   reconciles via Step 1a.
 
 ## Context Control (CRITICAL)
 
@@ -89,7 +114,7 @@ The loop command is a **thin orchestrator**. It reads state, delegates ONE step 
 | implement | `Agent(subagent_type="general-purpose", isolation="worktree")` | Heaviest step — gets its own git worktree + full context window |
 | qa | `Agent(subagent_type="general-purpose")` | Review + test execution reads/runs many files |
 | commit | Inline (Bash + Edit) | Just git commands — fast, no context bloat |
-| merge | Inline (Bash) | Publish protocol: push + open PR, then EXIT for human merge (pull-only perms — never `gh pr merge`) |
+| merge | Inline (Bash) | Publish protocol: push + open PR; default = auto-merge after gates, `ATHENA_AUTO_MERGE=0` = EXIT for human merge (canonical block) |
 
 ### What the Loop Does NOT Do
 
