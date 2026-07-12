@@ -12,7 +12,7 @@
 | Cycle | 35 |
 | State | APPROVED |
 | Date | 2026-07-12 |
-| Notes | Phase 77 (高轉換銷售頁 + 統一一次性金流) — 4 epics E326–E329 APPROVED 2026-07-12 from a user-supplied sales-page PRD (AIDA copy structure + unified ECPay/NewebPay/Stripe one-time payment interface). User decisions: **ECPay 綠界 = launch gateway** (deploys set `BILLING_PROVIDER=ecpay`; resolver code default stays stripe) · scope = 結帳+訂單+**交付開通** (full) · formal epics via /athena:plan. ~70% infra pre-existed (E249 provider contract, E250/E261 landing sections, ecpay/stripe providers, payment_events idempotency) — epics cover only the true gaps: sales route+4 sections (E326), products/orders+checkout+SOLID interface segregation (E327), entitlement delivery+自動建帳/啟用信 (E328), NewebPay slot (E329). Wave 1: E326+E327 → Wave 2: E328+E329. **Addendum (同日)**: CRM 整合 → **Phase 78 E330** (order.completed + system-scoped webhook egress reusing E268 + Google Sheet/MailerLite recipes; first-party @saas/crm-* connectors = backlog). **Addendum 2 (同日)**: 後台 audit → **Phase 79 E331+E332** (admin 營收後台: 會員/訂單/訂閱台 + 多銷售頁管理 sales_pages+CRUD+ISR; E326 amended with resolver 解耦 constraint). |
+| Notes | Phase 77 (高轉換銷售頁 + 統一一次性金流) — 4 epics E326–E329 APPROVED 2026-07-12 from a user-supplied sales-page PRD (AIDA copy structure + unified ECPay/NewebPay/Stripe one-time payment interface). User decisions: **ECPay 綠界 = launch gateway** (deploys set `BILLING_PROVIDER=ecpay`; resolver code default stays stripe) · scope = 結帳+訂單+**交付開通** (full) · formal epics via /athena:plan. ~70% infra pre-existed (E249 provider contract, E250/E261 landing sections, ecpay/stripe providers, payment_events idempotency) — epics cover only the true gaps: sales route+4 sections (E326), products/orders+checkout+SOLID interface segregation (E327), entitlement delivery+自動建帳/啟用信 (E328), NewebPay slot (E329). Wave 1: E326+E327 → Wave 2: E328+E329. **Addendum (同日)**: CRM 整合 → **Phase 78 E330** (order.completed + system-scoped webhook egress reusing E268 + Google Sheet/MailerLite recipes; first-party @saas/crm-* connectors = backlog). **Addendum 2 (同日)**: 後台 audit → **Phase 79 E331+E332** (admin 營收後台: 會員/訂單/訂閱台 + 多銷售頁管理 sales_pages+CRUD+ISR; E326 amended with resolver 解耦 constraint). **Addendum 3 (同日)**: 風格多樣化 → 三層渲染架構 (preset/variant/custom) — E326 +3 style presets, E332 +style 選擇+render_mode, 新 **Phase 80 E333** sales-page-builder skill (HTML ingest → custom TSX + registry). |
 | Prev34 | Phase 75 (Backport Wave 2) — 5 epics E319–E323 APPROVED + **EXECUTED** 2026-07-08 (implement→QA→commit→push→PR each; merges pending user, pull-only perms). Ran as a **sequential PR stack** (shared files: stop-verifier/CLAUDE/package.json) — dogfooding E319's own in-repo-chain mode. PRs: **#72 E320 · #73 E319 · #74 E321 · #75 E322 · #76 E323**, stacked. E323 scoped to Part A + @saas/{scheduler,audit-log}; **E324 follow-up** = @saas/{rbac-scoped-visibility,sentry-pii,csv-io} + the 8 orphans E320 found. |
 | Prev33 | Phase 73 (Template Enhancement Backport from ai-rc-engineer-pm, E311–E317) — 7 epics, all parallel. TONY chief-of-staff · new-project wizard · docs reorg · service-map+dead-code (docs-level) · testing-strategy skill · scripts tooling · zeabur-deploy skill. APPROVED + merged (PRs #59–#66). |
 | Prev32 | Phase 72 (Follow-ups from /athena:align, E307–E310) — TOTP e2e, usage limits, export expansion, 2FA recovery + onboarding persistence. Merged via PR #57 (#58 for state flip). 518 tests, migration 0010. |
@@ -63,6 +63,19 @@ Registered **E331** (13 SP, deps E327+E328): admin → tabs (會員 DataTable+�
 `sales_pages` table (JSONB validated by E326's same Zod contract) + `admin/sales-pages` CRUD
 (modal/DataTable convention) + ISR revalidate-on-publish + signed draft-preview token + config
 fallback. Parallel (disjoint file ownership; only E332 migrates).
+
+### Addendum 3（同日）— 銷售頁風格多樣化 → 三層渲染架構 + Phase 80 (E333)
+
+User requirement: 不同產品要有不同風格的銷售頁（單一版型換文案的轉化天花板低），且保留
+「一個 HTML 各顯神通 → code/agent-skill 接手」的路徑。Design: **三層渲染架構** —
+(1) structured content（E332 DB）、(2) **style preset + 區塊 variant/順序**（E326 amended:
+`lib/sales/styles.ts` 內建 bold/premium/clean 三 preset，全走 design tokens + `dark:`，
+`SalesPageContent.style` 契約；E332 後台加 preset 下拉 + `render_mode` 欄位）、(3) **custom
+TSX page**（新 **E333**, Phase 80, 8 SP, deps E326+E327+E332）：`sales-page-builder` skill —
+HTML 一頁式 ingest → 客製 `/p/[slug]` TSX（custom page registry 優先於 structured renderer；
+CTA→E327 結帳、倒數/影片機能自動接上；沿用 mockup-to-epics + @designer + design-system 慣例，
+不重造）+ reference 實作 + 三層架構 playbook（何時用哪層的決策表）。Runtime HTML 上傳被明確
+排除（XSS/CSP/token 漂移 — 客製頁一律 code + PR）。A/B 分流仍列 future（registry 預留擴充）。
 
 ---
 

@@ -24,7 +24,17 @@ Data-driven sales page route reusing existing marketing primitives, plus the mis
    （不只是 TS type — E332 的 DB JSONB 內容用同一份 schema 驗證），且 route 取內容只透過**單一
    resolver `getSalesPageContent(slug)`**；所有區塊元件是 pure（吃 content prop，不知道內容來源）。
    E332 把 resolver 換成 DB-backed（config 降級為 fallback/seed）時，元件層零修改。
-3. **New sections** under `components/marketing/sales/`:
+3. **Style presets + 區塊 variants（user requirement 2026-07-12：不同產品要長得不一樣）** —
+   `lib/sales/styles.ts`: `SalesPageStyle` preset 系統（每個 preset = 一組 Tailwind class 組合：
+   配色強調、字級節奏、區塊底色/間距、CTA 樣式），內建 3 個轉化導向 preset：
+   - `bold` — 高對比促購型（亮色 CTA、大字痛點、緊湊節奏）
+   - `premium` — 深色質感型（適合高單價課程）
+   - `clean` — 極簡信任型（適合 B2B/專業受眾）
+   全部走 design tokens + `dark:` variants（**不產生 inline style 色彩** — stop-verifier 規則），
+   `cn()` 組合。每個區塊元件收 `variant` prop（如 hero: `video-left | video-top | minimal`）。
+   content 契約加 `style: { preset, sectionVariants?, sectionOrder? }` — **區塊順序可重排/可省略**
+   （不是每個產品都要全部 7 區塊）。
+4. **New sections** under `components/marketing/sales/`:
    - `pain-points.tsx` — 痛點共鳴 checklist (「你是否也正深陷這些困境？」)
    - `solution.tsx` — 解決方案 + product mockup slot
    - `modules-table.tsx` — 模組/章節 → 核心內容 → 預期收穫 (marketing content table, not a record
@@ -32,11 +42,11 @@ Data-driven sales page route reusing existing marketing primitives, plus the mis
    - `countdown-timer.tsx` — `"use client"`, counts to `deadline` from config; hides gracefully when
      expired (no fake-reset dark pattern)
    - `risk-reversal.tsx` — 30 天退款保證 badge + 信任小字（學員數）
-4. **Hook video** — extend/reuse `components/marketing/video-demo.tsx`: `muted autoPlay playsInline
+5. **Hook video** — extend/reuse `components/marketing/video-demo.tsx`: `muted autoPlay playsInline
    loop` + `<track kind="captions">` slot + poster; lazy below-fold.
-5. **Reuse as-is**: `hero`(variant props if needed), `social-proof`, `testimonials`, `faq`, `cta`.
+6. **Reuse as-is**: `hero`(variant props if needed), `social-proof`, `testimonials`, `faq`, `cta`.
    CTA accepts an `href`/`onCheckout` binding point — actual checkout wiring lands in E327.
-6. Metadata: OG/Twitter tags per product for ad-traffic sharing.
+7. Metadata: OG/Twitter tags per product for ad-traffic sharing.
 
 ## Key Files
 - `next-app/app/p/[slug]/page.tsx`
@@ -48,6 +58,8 @@ Data-driven sales page route reusing existing marketing primitives, plus the mis
 - [ ] `/p/<example-slug>` renders all 7 PRD sections in order, zh-TW placeholder copy from config
 - [ ] `SalesPageContent` is a Zod schema; page/route reads content ONLY via `getSalesPageContent(slug)`;
       section components are pure (no config/DB imports — grep 佐證)
+- [ ] 3 style presets (`bold`/`premium`/`clean`) 可切換且皆過 dark-mode 檢查；`sectionOrder` 重排/
+      省略區塊正常渲染（example config 展示至少 2 個 preset 的差異）
 - [ ] Page is statically generated; only countdown/CTA are client components (`"use client"` count ≤ 2 new)
 - [ ] Countdown renders remaining time and hides after deadline (unit test on the pure time helper)
 - [ ] Video: muted autoplay + captions track slot + poster; no CLS (fixed aspect ratio)
