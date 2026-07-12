@@ -82,3 +82,15 @@
 **Files:** .claude/commands/athena/loop.md
 **Root Cause:** _(pending — enrich during /athena:save)_
 **Test Added:** _(pending)_
+
+## 2026-07-10T13:20:12+08:00 — 662424d
+**Message:** fix(athena): align deploy.md Gate 6 + health path with deployer.md
+**Files:** .claude/commands/athena/deploy.md
+**Root Cause:** _(pending — enrich during /athena:save)_
+**Test Added:** _(pending)_
+
+## 2026-07-10T13:46:17+08:00 — 46446ca
+**Message:** fix(ci): add packageManager to dev-docs/user-docs package.json
+**Files:** dev-docs/package.json,user-docs/package.json
+**Root Cause:** _(pending — enrich during /athena:save)_
+**Test Added:** _(pending)_

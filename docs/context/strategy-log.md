@@ -9,13 +9,84 @@
 
 | Field | Value |
 |-------|-------|
-| Cycle | 34 |
+| Cycle | 35 |
 | State | APPROVED |
-| Date | 2026-07-08 |
-| Notes | Phase 75 (Backport Wave 2) — 5 epics E319–E323 APPROVED + **EXECUTED** 2026-07-08 (implement→QA→commit→push→PR each; merges pending user, pull-only perms). Ran as a **sequential PR stack** (shared files: stop-verifier/CLAUDE/package.json) — dogfooding E319's own in-repo-chain mode. PRs: **#72 E320 · #73 E319 · #74 E321 · #75 E322 · #76 E323**, stacked (each based on prior; merge in that order). E323 scoped to Part A + @saas/{scheduler,audit-log}; **E324 follow-up** = @saas/{rbac-scoped-visibility,sentry-pii,csv-io} + the 8 orphans E320 found. Cron loop skipped (can't self-advance without merge rights). |
+| Date | 2026-07-12 |
+| Notes | Phase 77 (高轉換銷售頁 + 統一一次性金流) — 4 epics E326–E329 APPROVED 2026-07-12 from a user-supplied sales-page PRD (AIDA copy structure + unified ECPay/NewebPay/Stripe one-time payment interface). User decisions: **ECPay 綠界 = launch gateway** (deploys set `BILLING_PROVIDER=ecpay`; resolver code default stays stripe) · scope = 結帳+訂單+**交付開通** (full) · formal epics via /athena:plan. ~70% infra pre-existed (E249 provider contract, E250/E261 landing sections, ecpay/stripe providers, payment_events idempotency) — epics cover only the true gaps: sales route+4 sections (E326), products/orders+checkout+SOLID interface segregation (E327), entitlement delivery+自動建帳/啟用信 (E328), NewebPay slot (E329). Wave 1: E326+E327 → Wave 2: E328+E329. **Addendum (同日)**: CRM 整合 → **Phase 78 E330** (order.completed + system-scoped webhook egress reusing E268 + Google Sheet/MailerLite recipes; first-party @saas/crm-* connectors = backlog). **Addendum 2 (同日)**: 後台 audit → **Phase 79 E331+E332** (admin 營收後台: 會員/訂單/訂閱台 + 多銷售頁管理 sales_pages+CRUD+ISR; E326 amended with resolver 解耦 constraint). **Addendum 3 (同日)**: 風格多樣化 → 三層渲染架構 (preset/variant/custom) — E326 +3 style presets, E332 +style 選擇+render_mode, 新 **Phase 80 E333** sales-page-builder skill (HTML ingest → custom TSX + registry). |
+| Prev34 | Phase 75 (Backport Wave 2) — 5 epics E319–E323 APPROVED + **EXECUTED** 2026-07-08 (implement→QA→commit→push→PR each; merges pending user, pull-only perms). Ran as a **sequential PR stack** (shared files: stop-verifier/CLAUDE/package.json) — dogfooding E319's own in-repo-chain mode. PRs: **#72 E320 · #73 E319 · #74 E321 · #75 E322 · #76 E323**, stacked. E323 scoped to Part A + @saas/{scheduler,audit-log}; **E324 follow-up** = @saas/{rbac-scoped-visibility,sentry-pii,csv-io} + the 8 orphans E320 found. |
 | Prev33 | Phase 73 (Template Enhancement Backport from ai-rc-engineer-pm, E311–E317) — 7 epics, all parallel. TONY chief-of-staff · new-project wizard · docs reorg · service-map+dead-code (docs-level) · testing-strategy skill · scripts tooling · zeabur-deploy skill. APPROVED + merged (PRs #59–#66). |
 | Prev32 | Phase 72 (Follow-ups from /athena:align, E307–E310) — TOTP e2e, usage limits, export expansion, 2FA recovery + onboarding persistence. Merged via PR #57 (#58 for state flip). 518 tests, migration 0010. |
 | Prev31 | Phase 71 (Athena Toolchain, E302–E306) — rebrand skill, mockup-to-epics + /athena:plan mockup, alignment-audit + /athena:align, user-guide-builder + VitePress dev-docs (deployed to Cloudflare Pages), zeabur-deploy skill. Merged via PR #54. |
+
+---
+
+## Cycle 35 — 2026-07-12 — Mode: register-user-prd (source: 數位產品/課程銷售頁 PRD)
+
+**Theme**: **High-conversion sales page + unified one-time payments.** User supplied a complete PRD (AIDA sales-page copy structure · 3-sec hook video spec · `UnifiedCheckoutPayload`/`PaymentGatewayProvider` interface for ECPay/NewebPay/Stripe · SSG/ISR perf strategy). Gap analysis found the template already implements ~70%: E249's `PaymentProvider` contract *is* the PRD's gateway interface (createCheckout explicitly one-time-capable, verifyWebhook, payment_events idempotency), ECPay + Stripe providers are live, and 8/9 AIDA sections exist in `components/marketing/*`.
+
+**User decisions (2026-07-12)**: launch gateway = **ECPay 綠界** (webhook test priority; deploys set `BILLING_PROVIDER=ecpay`, resolver default untouched) · purchase scope = **full delivery** (checkout + orders + entitlement 開通) · execution = formal epics.
+
+### Registered Epics (Phase 77)
+
+| # | Epic | Pts | Deps | Scope |
+|---|------|-----|------|-------|
+| **E326** | 高轉換銷售頁模組 | 8 | none | `/p/[slug]` SSG route + `lib/sales/content.ts` typed copy config + new sections (pain-points · solution · modules-table · countdown · risk-reversal) + hook-video muted-autoplay/captions. Reuses hero/social-proof/testimonials/faq/cta. |
+| **E327** | 一次性購買 products/orders + 統一結帳 | 13 | none | `products`/`orders` tables · `createOneTimeCheckout` defineAction (guest OK) · shared `settleOrder()` webhook settlement (idempotent via payment_events) · 感謝頁 · ECPay-first ops docs. |
+| **E328** | 交付開通 entitlement | 8 | E327 | `lib/entitlements.ts` guard (order = ownership; live DB re-read) · dashboard/library 內容庫 (DataTable) · guest-order claim-by-email · confirmation email. |
+| **E329** | 藍新 NewebPay provider | 8 | E327 | Fill E249's reserved resolver slot: MPG AES TradeInfo + SHA256 TradeSha, one-time only, auto-submit form, notify route → settleOrder(); known-vector tests. |
+
+**Total**: 37 SP · Wave 1: E326+E327 (disjoint files) → Wave 2: E328+E329. **State: APPROVED** (user-gated via AskUserQuestion, 3/3 decisions recorded).
+
+### Addendum（同日）— CRM 整合 → Phase 78 (E330)
+
+User followed up with a CRM requirement (3 use cases: Google Sheet slim · MailerLite automation ·
+內部單一真相來源) + an event-driven PRD revision. Gap analysis: the PRD's 「內部 Webhook 事件分發器」
+**already exists** (E268 — `lib/webhooks.ts`: HMAC, retry/backoff, deliveries log, dashboard), and
+UC3 *is* E327/E328. **User decisions**: 會員開通 = 自動建帳 + 啟用信 (E290 token infra — PRD 的隨機密碼
+寄送被安全修正，E328 spec amended) · UC1/UC2 = webhook + Make/Zapier recipe 先行 (first-party
+`@saas/crm-google-sheets`/`@saas/crm-mailerlite` connectors → **backlog**) · 排程 = **另開 Phase 78**。
+Registered **E330** (8 SP, deps E327+E328): webhooks.scope=system (admin CRUD, expand-only migration) +
+`order.completed` emitted from settleOrder's single paid transition (exactly-once, never blocks
+settlement) + 兩份 recipe 文件. PRD 的 Supabase-vs-Prisma 問題不適用 — 模板已有 Drizzle+postgres-js+Auth.js。
+
+### Addendum 2（同日）— 後台管理面 audit → Phase 79 (E331+E332)
+
+User asked to re-audit the **admin backoffice** coverage. Findings: `dashboard/admin` has basic member
+management (roles/delete/TOTP/invites, raw `<Table>`); subscriptions only exist as the user's own
+`dashboard/system` Billing tab (E292) — **no admin-wide orders/subscriptions console**; third-party
+integration admin UI already covered by E330; multi sales-page has no admin surface (E326 is code
+config). **User decisions**: E326 content-source = resolver 解耦 (Zod schema + single
+`getSalesPageContent`, config first — E332 swaps to DB with zero component rework) · E331 depth =
+讀 + 基本操作 (重寄啟用信/標記退款/撤銷權限 — 金流端退款留在金流商後台) · register Phase 79 now.
+Registered **E331** (13 SP, deps E327+E328): admin → tabs (會員 DataTable+詳情 · 全站訂單台 ·
+全站訂閱台 read-only) + admin-revenue actions + audit-logged. **E332** (13 SP, deps E326+E327):
+`sales_pages` table (JSONB validated by E326's same Zod contract) + `admin/sales-pages` CRUD
+(modal/DataTable convention) + ISR revalidate-on-publish + signed draft-preview token + config
+fallback. Parallel (disjoint file ownership; only E332 migrates).
+
+### Addendum 3（同日）— 銷售頁風格多樣化 → 三層渲染架構 + Phase 80 (E333)
+
+User requirement: 不同產品要有不同風格的銷售頁（單一版型換文案的轉化天花板低），且保留
+「一個 HTML 各顯神通 → code/agent-skill 接手」的路徑。Design: **三層渲染架構** —
+(1) structured content（E332 DB）、(2) **style preset + 區塊 variant/順序**（E326 amended:
+`lib/sales/styles.ts` 內建 bold/premium/clean 三 preset，全走 design tokens + `dark:`，
+`SalesPageContent.style` 契約；E332 後台加 preset 下拉 + `render_mode` 欄位）、(3) **custom
+TSX page**（新 **E333**, Phase 80, 8 SP, deps E326+E327+E332）：`sales-page-builder` skill —
+HTML 一頁式 ingest → 客製 `/p/[slug]` TSX（custom page registry 優先於 structured renderer；
+CTA→E327 結帳、倒數/影片機能自動接上；沿用 mockup-to-epics + @designer + design-system 慣例，
+不重造）+ reference 實作 + 三層架構 playbook（何時用哪層的決策表）。Runtime HTML 上傳被明確
+排除（XSS/CSP/token 漂移 — 客製頁一律 code + PR）。A/B 分流仍列 future（registry 預留擴充）。
+
+### Addendum 4（同日）— 創作者價值評估 → 補測量層，Phase 81 (E334)
+
+User asked the honest question: does this plan actually give creators/instructors a **thinking
+framework**, not just tooling? Assessment: 開店/交付/CRM 完整；思考框架部分內建（AIDA 範本、
+三層 playbook、preset 選擇即受眾決策）；**真缺口 = 測量** — 沒有漏斗數據，preset/文案迭代全靠猜，
+「假設→測量→迭代」斷在中間。不解決的部分（流量獲取、內容品質）已明示。Registered **E334**
+(Phase 81, 8 SP, deps E326+E327+E331): `sales_page_events`（page_view/cta_click/checkout_started，
+first-party、無 PII、無第三方 cookie、90 天保留）+ `orders.utm`（渠道→付款歸因）+ E331 admin
+「轉化」tab（漏斗率 + UTM 分解）。三層渲染模式一視同仁被測量；本 epic 是未來 A/B 的前置。
+**Blueprint 定稿：E326–E334，Phases 77–81** — 執行入口：merge PR #88 → `/athena:batch auto`。
 
 ---
 
