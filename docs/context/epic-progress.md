@@ -73,7 +73,8 @@
 | Phase 74 | E318 | ✅ Complete (Dev-Docs Cloudflare Pages Deploy Enhancement) — Cloudflare Pages SOP + user-guide-mode flip guide + Makefile targets + GitHub Actions CI; merged PR #68 |
 | Phase 76 | E324, E325 | ✅ Complete (Backport Wave 2 follow-up) — E324 orphan remediation (wire/delete the 8 tested-but-unwired guards E320 found; behavior-changing) · E325 remaining @saas modules (rbac-scoped-visibility · sentry-pii · csv-io). Independent PRs off main. Registered 2026-07-08. |
 | Phase 75 | E319, E320, E321, E322, E323 | ✅ Complete (Backport Wave 2 — executable tooling + patterns from ai-rc-engineer-pm) — all parallel, no cross-deps; E321 + E323 run in-repo (devDeps + shadcn). Approved 2026-07-08 via /athena:plan Cycle 34. |
-| Phase 77 | E326, E327, E328, E329 | ⬜ Pending (高轉換銷售頁 + 統一一次性金流 — sales-page PRD) — E326 sales page route + AIDA sections + hook video · E327 products/orders + unified one-time checkout (ECPay-first, `BILLING_PROVIDER=ecpay` in deploys; resolver default unchanged) · E328 entitlement guard + 內容庫 delivery · E329 NewebPay provider fills the E249 reserved slot. Wave 1: E326+E327 parallel → Wave 2: E328+E329 (both need E327's settleOrder/orders). Approved 2026-07-12 via /athena:plan Cycle 35. |
+| Phase 77 | E326, E327, E328, E329 | ⬜ Pending (高轉換銷售頁 + 統一一次性金流 — sales-page PRD) — E326 sales page route + AIDA sections + hook video · E327 products/orders + unified one-time checkout (ECPay-first, `BILLING_PROVIDER=ecpay` in deploys; resolver default unchanged) · E328 entitlement guard + 內容庫 delivery + 自動建帳/啟用信 · E329 NewebPay provider fills the E249 reserved slot. Wave 1: E326+E327 parallel → Wave 2: E328+E329 (both need E327's settleOrder/orders). Approved 2026-07-12 via /athena:plan Cycle 35. |
+| Phase 78 | E330 | ⬜ Pending (CRM 整合 — order.completed 事件 + 系統級 webhook egress + UC1/UC2 recipes) — reuses E268 dispatcher (HMAC/retry/deliveries); adds webhooks.scope (system, admin-managed) + settleOrder emit + Make/Zapier recipes (Google Sheet 對帳 · MailerLite 打標籤). UC3 (單一真相來源) = E327/E328 本身. First-party @saas/crm-* connectors = backlog. Approved 2026-07-12 via /athena:plan Cycle 35 addendum. |
 
 ## Epic Step Matrix
 
@@ -384,6 +385,7 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E327 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 77 — 一次性購買: products/orders schema + createOneTimeCheckout (defineAction, guest OK) + settleOrder() webhook settlement + 感謝頁. ECPay-first ops. Spec: docs/epics/e327-one-time-checkout-orders.md |
 | E328 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 77 — 交付開通: lib/entitlements.ts guard + dashboard/library 內容庫 + guest-order claim + confirmation email. Spec: docs/epics/e328-purchase-entitlement-delivery.md |
 | E329 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 77 — 藍新 NewebPay provider: AES TradeInfo + SHA256 TradeSha, one-time only, notify route → settleOrder(); resolver slot unlocked. Spec: docs/epics/e329-newebpay-provider.md |
+| E330 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 78 — CRM webhook egress: webhooks.scope=system (admin CRUD) + order.completed emit from settleOrder + Google Sheet/MailerLite recipes. Spec: docs/epics/e330-crm-webhook-egress.md |
 
 
 ## Dependency Rules
@@ -699,6 +701,7 @@ E326: no deps (soft: E327 wires the CTA to real checkout — E326 ships placehol
 E327: no deps (builds on E249 PaymentProvider contract + existing ecpay/stripe providers)
 E328: E327
 E329: E327
+E330: E327, E328
 ```
 
 ## Phase Parallelism
@@ -762,11 +765,14 @@ Phase 74: E318 (single epic — dev-docs Cloudflare Pages)
 Phase 75: E319 + E320 + E321 + E322 + E323 (ALL PARALLEL — backport wave 2)
 Phase 76: E324 + E325 (PARALLEL — disjoint files: E324 next-app/lib+actions, E325 next-app/registry; independent PRs off main)
 Phase 77: E326 + E327 (PARALLEL — disjoint: E326 app/p+components/marketing/sales, E327 schema/actions/api) → E328 + E329 (PARALLEL after E327 — E328 dashboard/library+entitlements, E329 providers/newebpay; both consume E327's orders + settleOrder)
+Phase 78: E330 (single epic — after Phase 77's E327+E328 merge; touches lib/webhooks + lib/billing/orders + webhooks dashboard)
 ```
 
 ## Next Action
 
-**⬜ Phase 77 (E326–E329) PENDING — 高轉換銷售頁 + 統一一次性金流 (Cycle 35, 2026-07-12).** Sales-page PRD approved: E326 sales page (/p/[slug] + AIDA sections + countdown + hook video) · E327 products/orders + unified one-time checkout (ECPay-first) · E328 entitlement delivery (內容庫) · E329 NewebPay provider. Wave 1: E326+E327 → Wave 2: E328+E329. Run `/athena:batch auto` or `/athena:loop` to begin. Specs: `docs/epics/e32{6,7,8,9}-*.md`.
+**⬜ Phase 77 (E326–E329) PENDING — 高轉換銷售頁 + 統一一次性金流 (Cycle 35, 2026-07-12).** Sales-page PRD approved: E326 sales page (/p/[slug] + AIDA sections + countdown + hook video) · E327 products/orders + unified one-time checkout (ECPay-first, SOLID interface segregation) · E328 entitlement delivery (內容庫 + 自動建帳/啟用信) · E329 NewebPay provider. Wave 1: E326+E327 → Wave 2: E328+E329. Run `/athena:batch auto` or `/athena:loop` to begin. Specs: `docs/epics/e32{6,7,8,9}-*.md`.
+
+**⬜ Phase 78 (E330) QUEUED — CRM webhook egress (Cycle 35 addendum, 2026-07-12).** After Phase 77 merges: order.completed event + system-scoped webhooks (reuse E268 dispatcher) + Google Sheet / MailerLite recipes. Spec: `docs/epics/e330-crm-webhook-egress.md`.
 
 ---
 

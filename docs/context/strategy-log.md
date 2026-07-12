@@ -12,7 +12,7 @@
 | Cycle | 35 |
 | State | APPROVED |
 | Date | 2026-07-12 |
-| Notes | Phase 77 (高轉換銷售頁 + 統一一次性金流) — 4 epics E326–E329 APPROVED 2026-07-12 from a user-supplied sales-page PRD (AIDA copy structure + unified ECPay/NewebPay/Stripe one-time payment interface). User decisions: **ECPay 綠界 = launch gateway** (deploys set `BILLING_PROVIDER=ecpay`; resolver code default stays stripe) · scope = 結帳+訂單+**交付開通** (full) · formal epics via /athena:plan. ~70% infra pre-existed (E249 provider contract, E250/E261 landing sections, ecpay/stripe providers, payment_events idempotency) — epics cover only the true gaps: sales route+4 sections (E326), products/orders+checkout (E327), entitlement delivery (E328), NewebPay slot (E329). Wave 1: E326+E327 → Wave 2: E328+E329. |
+| Notes | Phase 77 (高轉換銷售頁 + 統一一次性金流) — 4 epics E326–E329 APPROVED 2026-07-12 from a user-supplied sales-page PRD (AIDA copy structure + unified ECPay/NewebPay/Stripe one-time payment interface). User decisions: **ECPay 綠界 = launch gateway** (deploys set `BILLING_PROVIDER=ecpay`; resolver code default stays stripe) · scope = 結帳+訂單+**交付開通** (full) · formal epics via /athena:plan. ~70% infra pre-existed (E249 provider contract, E250/E261 landing sections, ecpay/stripe providers, payment_events idempotency) — epics cover only the true gaps: sales route+4 sections (E326), products/orders+checkout+SOLID interface segregation (E327), entitlement delivery+自動建帳/啟用信 (E328), NewebPay slot (E329). Wave 1: E326+E327 → Wave 2: E328+E329. **Addendum (同日)**: CRM 整合 → **Phase 78 E330** (order.completed + system-scoped webhook egress reusing E268 + Google Sheet/MailerLite recipes; first-party @saas/crm-* connectors = backlog). |
 | Prev34 | Phase 75 (Backport Wave 2) — 5 epics E319–E323 APPROVED + **EXECUTED** 2026-07-08 (implement→QA→commit→push→PR each; merges pending user, pull-only perms). Ran as a **sequential PR stack** (shared files: stop-verifier/CLAUDE/package.json) — dogfooding E319's own in-repo-chain mode. PRs: **#72 E320 · #73 E319 · #74 E321 · #75 E322 · #76 E323**, stacked. E323 scoped to Part A + @saas/{scheduler,audit-log}; **E324 follow-up** = @saas/{rbac-scoped-visibility,sentry-pii,csv-io} + the 8 orphans E320 found. |
 | Prev33 | Phase 73 (Template Enhancement Backport from ai-rc-engineer-pm, E311–E317) — 7 epics, all parallel. TONY chief-of-staff · new-project wizard · docs reorg · service-map+dead-code (docs-level) · testing-strategy skill · scripts tooling · zeabur-deploy skill. APPROVED + merged (PRs #59–#66). |
 | Prev32 | Phase 72 (Follow-ups from /athena:align, E307–E310) — TOTP e2e, usage limits, export expansion, 2FA recovery + onboarding persistence. Merged via PR #57 (#58 for state flip). 518 tests, migration 0010. |
@@ -36,6 +36,18 @@
 | **E329** | 藍新 NewebPay provider | 8 | E327 | Fill E249's reserved resolver slot: MPG AES TradeInfo + SHA256 TradeSha, one-time only, auto-submit form, notify route → settleOrder(); known-vector tests. |
 
 **Total**: 37 SP · Wave 1: E326+E327 (disjoint files) → Wave 2: E328+E329. **State: APPROVED** (user-gated via AskUserQuestion, 3/3 decisions recorded).
+
+### Addendum（同日）— CRM 整合 → Phase 78 (E330)
+
+User followed up with a CRM requirement (3 use cases: Google Sheet slim · MailerLite automation ·
+內部單一真相來源) + an event-driven PRD revision. Gap analysis: the PRD's 「內部 Webhook 事件分發器」
+**already exists** (E268 — `lib/webhooks.ts`: HMAC, retry/backoff, deliveries log, dashboard), and
+UC3 *is* E327/E328. **User decisions**: 會員開通 = 自動建帳 + 啟用信 (E290 token infra — PRD 的隨機密碼
+寄送被安全修正，E328 spec amended) · UC1/UC2 = webhook + Make/Zapier recipe 先行 (first-party
+`@saas/crm-google-sheets`/`@saas/crm-mailerlite` connectors → **backlog**) · 排程 = **另開 Phase 78**。
+Registered **E330** (8 SP, deps E327+E328): webhooks.scope=system (admin CRUD, expand-only migration) +
+`order.completed` emitted from settleOrder's single paid transition (exactly-once, never blocks
+settlement) + 兩份 recipe 文件. PRD 的 Supabase-vs-Prisma 問題不適用 — 模板已有 Drizzle+postgres-js+Auth.js。
 
 ---
 
