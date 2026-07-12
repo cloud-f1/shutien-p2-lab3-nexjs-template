@@ -572,3 +572,15 @@ One-branch sequential (migration coupling + agent can't merge between). 518 test
 | Integration | Wave 2 | ✅ PASS | — | vitest: 84.85% (635/635), e2e: 41/42 pass on saas_dev_e2e — single failure two-factor.spec.ts:103 ruled pre-existing (TOTP env window, Phase 72 #51; zero TOTP-file diff in PRs 91–93), typecheck/lint: 0 errors |
 
 **Phase 77 ✅ Complete** — E326/E327/E328/E329 all-✅. Next: Phase 78 (E330 CRM webhook egress). **Triggered by**: user 「merge PR 91 92 93」 + /athena:batch auto
+
+### 2026-07-13 — Batch: Phase 78 (E330, single-epic wave)
+
+| Epic | Step | Status | Duration | Summary |
+|------|------|--------|----------|---------|
+| E330 | implement | ✅ | 12m | dispatchSystemEvent reusing E268 dispatcher; order.completed exactly-once from settleOrder; expand-only scope migration 0012; admin CRUD; UC1/UC2 recipes (opus) |
+| E330 | qa | ✅ | 6m | PASS — 645 vitest @ 84.85%, e2e 41/47 on saas_dev_e2e (TOTP cluster pre-existing), typecheck/lint clean (sonnet) |
+| E330 | merge | ✅ | — | PR #95 auto-merged (default publish mode) |
+
+| Integration | Wave 1 | ✅ PASS | — | vitest: 84.85% (±0), 645/645 on merged main; e2e ruling carried from QA run (identical tree) |
+
+**Phase 78 ✅ Complete** — next: Phase 79 (E331+E332 parallel). **Triggered by**: /athena:batch auto (cron)

@@ -795,3 +795,27 @@ Harness end-to-end (isolated tmp `AUDIT_FILE` / `AUTOPILOT_LOG`):
 - `pages/auth/components/SocialButtons.tsx` — shim, 0% (re-export only)
 - These contribute uncovered branch tokens. Either delete shims (AC#3 says so) or add to `vite.config.ts` coverage `exclude` list.
 
+## E330 QA — 2026-07-12 (CRM webhook egress — order.completed + system webhooks + UC1/UC2 recipes)
+
+**Branch**: `feat/E330-crm-webhook-egress` · **Spec**: `docs/epics/e330-crm-webhook-egress.md` · **Step**: qa
+
+### Test gates (all from `next-app/`)
+
+| Check | Result |
+|---|---|
+| `pnpm typecheck` | PASS — 0 errors |
+| `pnpm lint` | PASS — 0 errors, 8 pre-existing warnings (2× TanStack-table React-Compiler skip notes on `data-table.tsx`/`data-table-generic.tsx`; 1× unused eslint-disable in `coverage/block-navigation.js`; 5× `'_a' is defined but never used` — one in the new `orders-egress.test.ts`, matching the identical pre-existing pattern already present in `settle-delivery.test.ts` and `test/int/entitlements.int.test.ts`, so not a new convention violation) |
+| `pnpm test:coverage` | PASS — **645/645 tests, 63 files**. All-files: **Statements 84.85%, Branches 79.87%, Functions 92.92%, Lines 85.02%** (≥80% gate — Stmts/Funcs/Lines clear it comfortably; Branches 79.87% is the same pre-existing whole-repo aggregate shortfall as E329's report, driven by `stripe.ts`/`ecpay.ts`/`registry-module-manifest.ts`, not by this epic's files). First run hit 1 flaky failure in `lib/rate-limit.test.ts` ("resets the window after it expires" — a 1ms-window timing race, file untouched by the E330 diff); re-run was 645/645 green. |
+| `pnpm test:e2e` (against `saas_dev_e2e`, migrated + seeded fresh) | **41/47 passed.** 1 failed + 5 skipped, all in the **known pre-existing cluster**: `e2e/two-factor.spec.ts:103` "enable 2FA from Settings → Security" (TOTP env-window issue, Phase 72 #51) fails and takes its 5 dependent tests down with it. Confirmed the E330 diff touches zero `two-factor`/TOTP files (`git diff main...feat/E330-crm-webhook-egress --stat \| grep -i "two-factor\|totp\|2fa"` → no output). Excluding that known cluster: **41/41 relevant e2e tests pass**, including auth-flow, dashboard-smoke, RBAC (viewer/editor), items-crud, billing, and cobalt-ui suites — none of which regressed. |
+
+### New tests added by E330 (all passing)
+- `next-app/lib/billing/orders-egress.test.ts` (7 tests) — locks `settleOrder()`'s CRM-egress contract: exactly-once emit on the pending→paid transition, correct PRD payload shape incl. `isNewUser`, duplicate-gateway-webhook emits nothing, second distinct event on an already-paid order emits nothing, failed payment emits nothing, dispatch failure never fails settlement.
+- `next-app/lib/webhooks-dispatch.test.ts` (4 tests) — locks `dispatchSystemEvent()`: fan-out only to system-scoped endpoints subscribed to the event (or `"*"`), HMAC signature header format unchanged (`t=…,v1=…`), best-effort (DB lookup failure → returns 0, never throws), 0 endpoints when none subscribed.
+- `next-app/lib/billing/orders.test.ts` / `settle-delivery.test.ts` — minor additions/updates (+4 lines) to keep the existing `settleOrder()` suites green alongside the new egress step.
+
+### Migration/schema check
+- `next-app/drizzle/migrations/0012_fair_carmella_unuscione.sql` applied cleanly to the fresh e2e DB via `pnpm db:migrate` (no errors; idempotent re-run just skips the already-applied `drizzle` schema/table). Journal (`meta/_journal.json` idx 12) and snapshot (`meta/0012_snapshot.json`) are consistent with the migration file.
+
+### Verdict
+**PASS.** Typecheck clean, lint clean (0 errors), coverage gate cleared (84.85% statements ≥ 80%), e2e green outside the known pre-existing TOTP cluster (unrelated to this epic's diff). See `review-findings.md` Round 0 (2026-07-12T17:00Z) for the full code-review writeup against all 7 acceptance criteria.
+
