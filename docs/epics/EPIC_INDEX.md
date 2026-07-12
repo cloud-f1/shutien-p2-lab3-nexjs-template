@@ -93,6 +93,7 @@
 | Phase 78 | E330 | ⬜ Pending (CRM 整合 — Cycle 35 addendum, 2026-07-12) — order.completed 事件 + 系統級 webhook egress (reuse E268 dispatcher; webhooks.scope + admin CRUD) + UC1 Google Sheet / UC2 MailerLite recipes; UC3 單一真相來源 = E327/E328 本身. Deps: E327+E328 |
 | Phase 79 | E331, E332 | ⬜ Pending (Admin 管理後台 — Cycle 35 addendum 2, 2026-07-12) — E331 營收後台 (admin tabs: 會員 DataTable+詳情 · 全站訂單+重寄啟用信/標記退款 · 全站訂閱 read-only; deps E327+E328) · E332 多銷售頁管理 (sales_pages JSONB+Zod 契約 + style preset + render_mode + admin CRUD + ISR + draft preview; deps E326+E327). PARALLEL — disjoint files |
 | Phase 80 | E333 | ⬜ Pending (銷售頁風格多樣化 — Cycle 35 addendum 3, 2026-07-12) — sales-page-builder skill: HTML 一頁式 ingest → 客製 TSX page + custom registry (優先於 structured renderer)，CTA/倒數/影片機能自動接上；reference 實作 + 三層架構 playbook (preset/variant/custom). E326 同步補 3 style presets. Deps: E326+E327+E332 |
+| Phase 81 | E334 | ⬜ Pending (轉化漏斗數據迴路 — Cycle 35 addendum 4, 2026-07-12) — sales_page_events (page_view/cta_click/checkout_started, first-party 無 PII) + orders.utm 落單 + admin 轉化 tab (漏斗率 + UTM 渠道分解, 7/30 天). 三層渲染一視同仁被測量; A/B 的前置. Deps: E326+E327+E331 |
 <!-- PHASE_STATUS_END -->
 
 <!-- EPIC_MATRIX_START -->
@@ -654,6 +655,7 @@ Phase 77: E326 + E327 (parallel, disjoint files) → E328 + E329 (parallel after
 Phase 78: E330 (single epic, after E327+E328)
 Phase 79: E331 + E332 (parallel, disjoint files — E331 admin tabs, E332 admin/sales-pages + migration)
 Phase 80: E333 (single epic, after E332)
+Phase 81: E334 (single epic, after E331)
 ```
 
 ---

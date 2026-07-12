@@ -77,6 +77,7 @@
 | Phase 78 | E330 | ⬜ Pending (CRM 整合 — order.completed 事件 + 系統級 webhook egress + UC1/UC2 recipes) — reuses E268 dispatcher (HMAC/retry/deliveries); adds webhooks.scope (system, admin-managed) + settleOrder emit + Make/Zapier recipes (Google Sheet 對帳 · MailerLite 打標籤). UC3 (單一真相來源) = E327/E328 本身. First-party @saas/crm-* connectors = backlog. Approved 2026-07-12 via /athena:plan Cycle 35 addendum. |
 | Phase 79 | E331, E332 | ⬜ Pending (Admin 管理後台 — 後台 audit 缺口) — E331 營收後台 (dashboard/admin → tabs: 會員 DataTable+詳情 · 全站訂單台+重寄啟用信/標記退款 · 全站訂閱台 read-only) · E332 多銷售頁管理 (sales_pages 表 JSONB+Zod 單一契約 + style preset 選擇 + render_mode + admin/sales-pages CRUD + ISR revalidate + draft preview; E326 resolver 只換資料源). PARALLEL (disjoint: E331 獨佔 admin tabs 檔, E332 獨佔 admin/sales-pages/**). Approved 2026-07-12 via /athena:plan Cycle 35 addendum 2. |
 | Phase 80 | E333 | ⬜ Pending (銷售頁風格多樣化 — custom page 路徑) — sales-page-builder skill: HTML 一頁式 ingest → 客製 TSX `/p/[slug]`（custom page registry 優先於 structured renderer；CTA/倒數/影片機能自動接上；沿用 mockup-to-epics + @designer 慣例）+ reference 實作 + 三層架構 playbook. E326 同步補 3 個 style preset (bold/premium/clean) + 區塊 variant/順序系統. Approved 2026-07-12 via /athena:plan Cycle 35 addendum 3. |
+| Phase 81 | E334 | ⬜ Pending (轉化漏斗數據迴路 — 創作者「假設→測量→迭代」的測量層) — sales_page_events (page_view/cta_click/checkout_started, first-party 無 PII 無第三方 cookie) + orders.utm 落單 + E331 admin 轉化 tab (漏斗率/UTM 渠道分解). 三層渲染模式一視同仁被測量; A/B 的前置. Approved 2026-07-12 via /athena:plan Cycle 35 addendum 4. |
 
 ## Epic Step Matrix
 
@@ -391,6 +392,7 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E331 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 79 — Admin 營收後台: admin page → tabs (會員 DataTable+詳情/全站訂單/全站訂閱) + 重寄啟用信 + 標記退款 (entitlement 自動失效). Spec: docs/epics/e331-admin-revenue-console.md |
 | E332 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 79 — 多銷售頁管理: sales_pages 表 (JSONB + E326 Zod 契約 + style preset + render_mode) + admin CRUD (modal/DataTable) + ISR revalidate + draft preview token; resolver DB-first + config fallback. Spec: docs/epics/e332-sales-pages-manager.md |
 | E333 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 80 — sales-page-builder skill: HTML ingest → custom TSX page + registry (custom → structured 渲染順序) + reference 實作 + 三層架構 playbook. Spec: docs/epics/e333-sales-page-builder-skill.md |
+| E334 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 81 — 轉化漏斗: sales_page_events + orders.utm + admin 轉化 tab (瀏覽→CTA→結帳→付款, UTM 分解). First-party, 無 PII. Spec: docs/epics/e334-conversion-funnel-analytics.md |
 
 
 ## Dependency Rules
@@ -710,6 +712,7 @@ E330: E327, E328
 E331: E327, E328
 E332: E326, E327
 E333: E326, E327, E332
+E334: E326, E327, E331
 ```
 
 ## Phase Parallelism
@@ -776,6 +779,7 @@ Phase 77: E326 + E327 (PARALLEL — disjoint: E326 app/p+components/marketing/sa
 Phase 78: E330 (single epic — after Phase 77's E327+E328 merge; touches lib/webhooks + lib/billing/orders + webhooks dashboard)
 Phase 79: E331 + E332 (PARALLEL — disjoint: E331 owns dashboard/admin tabs + actions/admin-revenue, E332 owns admin/sales-pages/** + sales_pages migration; only E332 migrates)
 Phase 80: E333 (single epic — after E332; touches app/p/[slug] resolver + skill + playbook, no migration)
+Phase 81: E334 (single epic — after E331; sales_page_events + orders.utm migrations + admin 轉化 tab + E326 beacon 掛點)
 ```
 
 ## Next Action
@@ -787,6 +791,8 @@ Phase 80: E333 (single epic — after E332; touches app/p/[slug] resolver + skil
 **⬜ Phase 79 (E331+E332) QUEUED — Admin 管理後台 (Cycle 35 addendum 2, 2026-07-12).** After Phase 77: E331 營收後台 (會員/訂單/訂閱台 + 重寄啟用信/標記退款) · E332 多銷售頁管理 (sales_pages + style preset + admin CRUD + ISR + draft preview). Parallel, disjoint files. Specs: `docs/epics/e33{1,2}-*.md`.
 
 **⬜ Phase 80 (E333) QUEUED — 銷售頁風格多樣化 custom 路徑 (Cycle 35 addendum 3, 2026-07-12).** sales-page-builder skill (HTML ingest → custom TSX page + registry) + reference 實作 + 三層架構 playbook (preset / variant / custom). Spec: `docs/epics/e333-sales-page-builder-skill.md`.
+
+**⬜ Phase 81 (E334) QUEUED — 轉化漏斗數據迴路 (Cycle 35 addendum 4, 2026-07-12).** sales_page_events + orders.utm + admin 轉化 tab — 創作者「假設→測量→迭代」的測量層; A/B 前置. Spec: `docs/epics/e334-conversion-funnel-analytics.md`.
 
 ---
 

@@ -77,6 +77,17 @@ CTA→E327 結帳、倒數/影片機能自動接上；沿用 mockup-to-epics + @
 不重造）+ reference 實作 + 三層架構 playbook（何時用哪層的決策表）。Runtime HTML 上傳被明確
 排除（XSS/CSP/token 漂移 — 客製頁一律 code + PR）。A/B 分流仍列 future（registry 預留擴充）。
 
+### Addendum 4（同日）— 創作者價值評估 → 補測量層，Phase 81 (E334)
+
+User asked the honest question: does this plan actually give creators/instructors a **thinking
+framework**, not just tooling? Assessment: 開店/交付/CRM 完整；思考框架部分內建（AIDA 範本、
+三層 playbook、preset 選擇即受眾決策）；**真缺口 = 測量** — 沒有漏斗數據，preset/文案迭代全靠猜，
+「假設→測量→迭代」斷在中間。不解決的部分（流量獲取、內容品質）已明示。Registered **E334**
+(Phase 81, 8 SP, deps E326+E327+E331): `sales_page_events`（page_view/cta_click/checkout_started，
+first-party、無 PII、無第三方 cookie、90 天保留）+ `orders.utm`（渠道→付款歸因）+ E331 admin
+「轉化」tab（漏斗率 + UTM 分解）。三層渲染模式一視同仁被測量；本 epic 是未來 A/B 的前置。
+**Blueprint 定稿：E326–E334，Phases 77–81** — 執行入口：merge PR #88 → `/athena:batch auto`。
+
 ---
 
 ## Cycle 34 — 2026-07-08 — Mode: register-backport (source: ../ai-rc-engineer-pm downstream product)
