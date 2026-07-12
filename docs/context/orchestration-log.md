@@ -530,3 +530,45 @@ Old-phase check: Phases 63–68 ✅ on main; Phase 69 ✅ (PR #51 merged mid-ses
 | E310 | impl+qa+commit+push+PR | ✅ | 2FA admin reset + regen codes + onboarding DB persistence + migration 0010 (fresh-DB verified) → eb29a60 |
 
 One-branch sequential (migration coupling + agent can't merge between). 518 tests green; build clean. All in PR #57 (base main, merge-pending). Triggered by /athena:flow → /athena:align found no surface gaps → these 4 documented deferrals became the cycle.
+
+### 2026-07-12 17:36 — Batch: Phase 77 Wave 1
+
+| Epic | Step | Status | Duration | Summary |
+|------|------|--------|----------|---------|
+| E326 | implement | ✅ | 14m | /p/[slug] AIDA sales page + 3 style presets + hook video (sonnet, worktree) |
+| E326 | qa | ✅ | 4m | PASS — 560/560, coverage 82.9%; advisory: add lib/sales/** to vitest coverage.include |
+| E326 | publish | ⏸ | — | PR #89 awaiting human merge |
+| E327 | implement | ✅ | 21m | products/orders + SOLID ISP split + settleOrder (opus, worktree) |
+| E327 | qa | ❌→🔄 | 5m | Round 1 BLOCKED: providers ignored one-time mode (ECPay recurring form; Stripe hardcoded subscription) |
+| E327 | implement | 🔄 retry 1 | 8m | Additive one-time branches both providers + 11 shape tests; hack removed |
+| E327 | qa | ✅ | 3m | Round 2 PASS — 583/583, coverage 83.94%, test:int 14/14, provider tests byte-identical |
+| E327 | publish | ⏸ | — | PR #90 awaiting human merge |
+
+**Waves**: 1/2 published (integration gate runs after human merges) | **Retries**: 1 attempted, 1 recovered | **Triggered by**: /athena:batch auto (cron)
+
+| Integration | Wave 1 | ✅ PASS (ruling) | — | vitest: 83.94%, typecheck/lint ✅, e2e 41/42 — the 1 failure (two-factor enable) is NOT wave-attributable: zero diff on actions/user.ts + lib/totp.ts in both merges; consistent 2× fail = pre-existing env TOTP-window issue (known deferred item since Phase 72 #51). Stale saas_dev DB drift found (journal 17 vs repo 12 migrations) — gate ran on fresh saas_dev_e2e DB. Follow-up: fix 2FA e2e determinism; user may rebuild local dev DB via docker compose down -v && up. |
+
+### 2026-07-12 18:12 — Batch: Phase 77 Wave 2
+
+| Epic | Step | Status | Duration | Summary |
+|------|------|--------|----------|---------|
+| E328 | implement | ✅ | 12m | entitlement guard + 內容庫 + auto-provision/activation email (opus, worktree) |
+| E328 | qa | ✅ | 4m | PASS — 610/610, 83.94%, int 18/18; security: no login path pre-password; advisory: E290 requestPasswordReset no-ops for null-password users (fast-follow) |
+| E328 | publish | ⏸ | — | PR #91 awaiting human merge |
+| E329 | implement | ✅ | 14m | NewebPay MPG one-time provider, OneTimePaymentGateway only, base36 orderId round-trip (opus, worktree) |
+| E329 | qa | ✅ | 3m | PASS — 629/629, int 14/14; crypto verified (timingSafeEqual length guard); LSP zero stubs; fixture honesty confirmed |
+| E329 | publish | ⏸ | — | PR #92 awaiting human merge; 藍新 sandbox 實測 = human step |
+
+**Waves**: 2/2 published | **Retries**: 0 | **Triggered by**: /athena:batch auto (cron) | Phase 77 fully published — integration gate runs after #91/#92 merge
+
+### 2026-07-13 — Batch: Phase 77 close-out (Wave 2 merge + integration gate)
+
+| Epic | Step | Status | Duration | Summary |
+|------|------|--------|----------|---------|
+| E328 | merge | ✅ | — | PR #91 merged (user-authorized 2026-07-13) |
+| E329 | merge | ✅ | — | PR #92 merged (user-authorized 2026-07-13) |
+| — | pipeline | ✅ | — | PR #93 merged — auto-merge is now the DEFAULT publish mode (ATHENA_AUTO_MERGE=0 opts out) |
+
+| Integration | Wave 2 | ✅ PASS | — | vitest: 84.85% (635/635), e2e: 41/42 pass on saas_dev_e2e — single failure two-factor.spec.ts:103 ruled pre-existing (TOTP env window, Phase 72 #51; zero TOTP-file diff in PRs 91–93), typecheck/lint: 0 errors |
+
+**Phase 77 ✅ Complete** — E326/E327/E328/E329 all-✅. Next: Phase 78 (E330 CRM webhook egress). **Triggered by**: user 「merge PR 91 92 93」 + /athena:batch auto

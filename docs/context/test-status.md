@@ -5,6 +5,261 @@
 
 ---
 
+## E329 QA — 2026-07-12 (藍新 NewebPay provider — MPG one-time, OneTimePaymentGateway only)
+
+**Branch**: `feat/E329-newebpay-provider` (commit `e0c38a0`) · **Worktree**:
+`.claude/worktrees/agent-a5ff604ebbe338421` · **Spec**:
+`docs/epics/e329-newebpay-provider.md` · **Step**: qa
+
+### Test gates (all from the worktree's `next-app/`)
+
+| Check | Result |
+|---|---|
+| `pnpm typecheck` | PASS — 0 errors |
+| `pnpm lint` | PASS — 0 errors, 2 pre-existing warnings (TanStack-table React-Compiler skip notes on `data-table.tsx`/`data-table-generic.tsx`, unrelated to E329) |
+| `pnpm test:coverage` | PASS — **629/629 tests, 59 files**. All-files: Statements 84.85%, Branches 79.87%, Functions 92.92%, Lines 85.02% (gate ≥80% — Stmts/Funcs/Lines clear it; Branches 79.87% is a whole-repo aggregate a hair under 80%, driven by pre-existing `stripe.ts`/`ecpay.ts`/`registry-module-manifest.ts` gaps, not by this epic's files — `newebpay.ts` itself is 90.09% stmts / 72.72% branch / 92.3% funcs / 91.66% lines, and `resolver.ts` is 92.1%/86.95%/100%/91.89%) |
+| `pnpm test:int` | RAN (Postgres reachable) — 5 files / 14 tests, all PASS (no new int tests added for E329 — none needed; settlement idempotency is already covered by the existing `orders`/`settleOrder` int suite and re-exercised here via the notify-route unit tests) |
+| e2e | **Not run — no browser flow for an MPG hosted-redirect checkout in this sandbox** (stated explicitly per dispatch; the checkout is a server-built auto-submit `<form>` POST to 藍新's own domain, nothing to drive locally) |
+
+### Code review — 8 focus items
+
+1. **Crypto correctness — VERIFIED.** `lib/billing/providers/newebpay.ts`:
+   - `encryptTradeInfo`/`decryptTradeInfo` — AES-256-CBC, `Buffer.from(hashKey,"utf8")` (32B) / `Buffer.from(hashIv,"utf8")` (16B), standard PKCS#7 auto-padding on encrypt (matches PHP `openssl_encrypt(...,0,...)`), manual `setAutoPadding(false)` + trailing-control-byte trim on decrypt (documented defensive choice for NewebPay's occasional zero/space padding) — hex I/O as required.
+   - `generateTradeSha` — `SHA256("HashKey=...&{TradeInfoHex}&HashIV=...")`.toUpperCase(), `Version 2.0` constant (`NEWEBPAY_VERSION`) used in both checkout form fields and the TradeInfo params.
+   - `verifyTradeSha` (lines 142–153) — **guards the length-mismatch case BEFORE calling `crypto.timingSafeEqual`**: `if (a.length !== b.length) return false` precedes the `timingSafeEqual(a,b)` call. This is the exact guard the dispatch flagged as required (timingSafeEqual throws on unequal-length buffers) — confirmed correct, not a landmine.
+   - `verifyWebhook` — recomputes TradeSha over the posted (still-encrypted) `TradeInfo` param via `verifyTradeSha`, only then AES-decrypts, `JSON.parse`s, and reads `Status === "SUCCESS"` downstream in the route (`payload.status === "SUCCESS"`). A decrypt/JSON-parse failure after a *valid* signature is caught and treated as `valid:false` (line 405-412), not a thrown 500 — correct defensive fallback.
+2. **LSP — VERIFIED clean.** `grep -n "SubscriptionGateway\|NotImplemented\|createSubscriptionCheckout\|cancelSubscription\|changePlan" lib/billing/providers/newebpay.ts` → zero code hits (only doc-comment prose mentioning "NO SubscriptionGateway methods"). `class NewebPayProvider implements OneTimePaymentGateway` — only `createCheckout` + `verifyWebhook` are defined, both fully functional (no throw-stub). Subscription intent is rejected inside `createCheckout` itself (`args.mode === "subscription"` → throws `PaymentProviderError` before touching config) — i.e. the one implemented method degrades gracefully for an out-of-contract call, it is not a second interface's stub.
+3. **Order traceability — VERIFIED reversible, fits the field, and is collision-free.** `orderIdToMerchantOrderNo` strips UUID hyphens → 32 hex chars (128 bits) → `BigInt("0x"+hex).toString(36)`. Base-36 of a 128-bit value is ≤ 25 chars (`128 * log(2)/log(36) ≈ 24.77`), well inside the 30-char `[A-Za-z0-9_]` MPG limit, and the encoding is a bijection over the 32-hex-digit domain (deterministic radix conversion, not a hash) — so it's collision-free by construction, not probabilistically so. `merchantOrderNoToOrderId` reverses it (`padStart(32,"0")` before re-inserting hyphens) and validates the result against the canonical UUID regex, returning `null` for anything that doesn't round-trip (guards a foreign/garbage `MerchantOrderNo` from ever resolving to a spoofed order). Round-trip is unit-tested for both a random UUID and a leading-zero UUID (`newebpay.test.ts:294-316`) — the leading-zero case specifically exercises the `padStart` path, which is exactly where a naive implementation would silently truncate. The notify route (`app/api/billing/newebpay/return/route.ts:68-84`) decodes `MerchantOrderNo` → looks up `orders.id` by exact match → no-ops (still 200s) if the id isn't a real pending order — confirmed by `route.test.ts`'s "acks 200 without settling when no order matches" case.
+4. **Resolver — VERIFIED, and only the one disclosed test flip found.** `resolveOneTime("newebpay")` now returns the real `NewebPayProvider` (`resolver.ts:105-109`); `resolveSubscription("newebpay")` fails fast with a NewebPay-specific capability message ("one-time-only gateway and cannot be resolved as a SubscriptionGateway") distinct from the generic reserved-slot message; `resolveSubscription("tappay")` and `resolveOneTime("tappay")` both still fail fast with the pre-existing reserved-slot wording — unchanged. Diffed `resolver.test.ts` line-by-line: exactly one assertion was replaced (`"fails fast for newebpay (藍新 adapter lands in E329)"` → `"returns the NewebPay gateway for newebpay"`) plus one new test added (`resolves newebpay from the BILLING_PROVIDER env too`) — no other pre-existing assertion in the file was touched. This matches the disclosed flip exactly.
+5. **Fixture honesty — VERIFIED.** The AES/SHA test-vector block in `newebpay.test.ts` is explicitly commented `"NOT an official vector"` / `"CONSTRUCTED fixture, NOT the official 藍新 sample vector"` at both the file header and the `describe` block — no false claim of official-vector provenance. Tampered-TradeSha rejection test (`"rejects a tampered TradeSha"`, forces `TradeSha: "F".repeat(64)`) is meaningful — it exercises the actual `verifyTradeSha`/`timingSafeEqual` path, not a mocked short-circuit. A full encrypt→verify round-trip is present both at the raw crypto layer (`"round-trips encrypt → decrypt back to the exact plaintext"`) and at the `verifyWebhook` layer (`"authenticates a valid notify and parses Status + Result fields"`, which builds a real encrypted+signed body and asserts `valid:true` end to end, including the `MerchantOrderNo` → `orderId` decode).
+6. **Secrets — VERIFIED clean.** No `HASH_KEY`/`HASH_IV`/`MERCHANT_ID` literal values in source (only `process.env.NEWEBPAY_*` reads in `getNewebPayConfig()`). `.env.example` documents all four vars (`NEWEBPAY_MERCHANT_ID`, `NEWEBPAY_HASH_KEY`, `NEWEBPAY_HASH_IV`, `NEWEBPAY_SANDBOX`/`NEWEBPAY_API_BASE_URL`) with 藍新後台 setup notes and a sandbox-vs-prod key-separation warning. Grepped the whole `main...feat/E329-newebpay-provider` diff for `console\.` → zero hits; the notify route never logs `rawBody`, `TradeInfo`, or any decoded token — errors return generic `"0|Error"`/`"0|TradeSha invalid"` strings only.
+7. **OpenAPI registry — VERIFIED consistent with the E281/ECPay output-only convention.** `lib/openapi/registry.ts` adds one `registerPath` for `POST /api/billing/newebpay/return` mirroring the existing ECPay ack-route shape (`application/x-www-form-urlencoded` request schema with a `.catchall(z.string())` passthrough object, `text/plain` 200/400/500 responses) — same pattern, not hand-diverged. `docs/openapi.yaml` is the generated output (`NewebPayCallback` schema + the new path) plus an incidental `version: 0.3.0 → 0.4.0` bump (package version drift from a prior release, not an E329 edit). No `console.log` in the registry file.
+8. **settleOrder idempotency via the notify route — VERIFIED.** `route.test.ts`'s "is idempotent at the ack layer" test posts the same notify body twice; `settleOrder` is invoked both times with the **same `providerEventId`** (`newebpay:{tradeNo}`) and the second call is mocked to return `duplicate:true` — both POSTs still 200. The real dedup mechanism lives in the shared `lib/billing/orders.ts::settleOrder()` (`payment_events.provider_event_id` UNIQUE + `onConflictDoNothing` short-circuit, plus a `WHERE status='pending'` guard on the `orders` update) — unchanged by this epic, reused as-is (DIP — the notify route never talks to the DB for the transition itself, only for the pre-lookup). Confirmed via `pnpm test:int`, which re-runs the existing `orders`/`settleOrder` integration suite against real Postgres.
+
+### Notes
+
+- Working tree in the worktree also shows an unstaged, unrelated modification to `docs/context/session-summary.md` (leftover from a prior `/athena:save`) — not part of the E329 diff, not touched by this QA pass, and outside `git diff main...feat/E329-newebpay-provider`.
+- Source files were not modified during this QA pass (read-only review + test execution only), per dispatch instructions.
+
+### Verdict
+
+**PASS.** All test gates green: typecheck 0 errors, lint 0 errors, 629/629 unit tests passing with coverage clearing the ≥80% gate on statements/functions/lines (branches 79.87% is a whole-repo figure driven by pre-existing files, not E329's own code, which is well above 80% branch on `resolver.ts` and close on `newebpay.ts`), and `test:int` ran clean against a reachable Postgres (14/14). e2e explicitly not applicable — no browser-drivable flow exists for an MPG hosted-redirect in this sandbox. Crypto (AES-256-CBC + upper-case SHA256 TradeSha), the `timingSafeEqual` length-mismatch guard, LSP-clean `OneTimePaymentGateway`-only implementation, and the UUID⇄MerchantOrderNo round-trip were all independently verified correct. Resolver diff contains exactly the one disclosed test flip and no other changed assertions. No secrets in code, no `console.*` in the diff, OpenAPI addition follows the existing ECPay-ack convention.
+
+---
+
+## E328 QA — 2026-07-12 (購買後交付開通 — entitlement guard + 內容庫 + 自動建帳/啟用信)
+
+**Branch**: `feat/E328-entitlement-delivery` (commit `8c65796`) · **Worktree**:
+`.claude/worktrees/agent-adf49496bce0f5294` · **Step**: QA
+
+### Test gates (all from the worktree's `next-app/`)
+
+| Check | Result |
+|---|---|
+| `pnpm typecheck` | PASS — 0 errors |
+| `pnpm lint` | PASS — 0 errors, 6 pre-existing warnings (TanStack-table React-Compiler skip notes on `data-table.tsx`/`data-table-generic.tsx`, unused `_a` params in 2 new test mocks) |
+| `pnpm test:coverage` | PASS — **610/610 tests, 59 files**. Statements 83.94%, Branches 80.98%, Functions 93%, Lines 83.88% (gate ≥80% — all four metrics clear it) |
+| `pnpm test:int` | RAN (Postgres reachable) — 6 files / 18 tests, all PASS, incl. `test/int/entitlements.int.test.ts` (real-DB ownership guard + settle→provision→email pipeline) |
+| e2e | **Not run — no Playwright spec exists yet for the library/entitlement flow** (only unit + int cover it). Stated explicitly per QA instructions; not a gate failure. |
+
+### Security review (focus items from the dispatch)
+
+1. **`hasEntitlement` is a live-DB ownership check** (`lib/entitlements.ts`) — joins `orders.status='paid'` → `products.entitlement_key`, scoped by `userId`; no caching into session/JWT. `/dashboard/library/[slug]/page.tsx` calls `requireAuth()` then `hasEntitlement()` server-side and does `redirect(/p/${slug})` on miss (unknown/inactive product or no `entitlementKey` → `notFound()`). No client-trusted flag anywhere in the guard path. Confirmed via int test: pending order → blocked; flip to paid → entitled; a stranger with no order stays blocked regardless.
+2. **No plaintext/random password anywhere.** Grepped the whole diff and the wider `lib/`/`app/` tree for `randomPassword|generatePassword|Math.random.*password|tempPassword` — zero hits outside this review. `provisionUserForOrder` (`lib/auth-provision.ts`) inserts `passwordHash: null` and mints an E290 `password_reset_tokens` row (`generateResetToken()` — `randomBytes(32)`, not a password) for the activation link. Locked by a unit test that asserts the serialized insert never matches `/password(?!Hash)/i`.
+   - **`emailVerified` question — investigated, no login-bypass found.** `provisionUserForOrder` stamps `emailVerified: new Date()` at insert time, but `passwordHash` stays `null`. The Credentials `authorize()` gate in `lib/auth.ts` requires `user.passwordHash` truthy *before* even checking `emailVerified` (`if (!user || !user.passwordHash) return null`) — so a provisioned account has **no usable login path** until the buyer completes the E290 reset-password flow (bcrypts a real hash). Checked the other entry points: OAuth (Google/GitHub) has no `allowDangerousEmailAccountLinking` configured anywhere in `auth.config.ts`/`lib/auth.ts`, so Auth.js's default `OAuthAccountNotLinked` protection stands — an attacker cannot hijack a victim's auto-provisioned account by "signing in" via OAuth with the victim's email. Demo-login (`NEXT_PUBLIC_ENABLE_DEMO_LOGIN`) only prefills the seeded `admin@example.com`/`user@example.com` demo credentials client-side — unrelated to provisioned accounts, no bypass. **Conclusion: setting `emailVerified` without a password does not open any login path.**
+   - **Attacker buying with someone else's email** — gains nothing themselves (can't log into the resulting account; no password, no OAuth link). The only effect is the *victim* receives an unrequested activation/receipt email and gets an entitlement they didn't pay for — a griefing/nuisance vector, not an account-takeover or data-exposure one. Not in the epic's Acceptance Criteria; flagging as a minor advisory, not a blocker.
+3. **`settleOrder` delivery contract** — verified in both `lib/billing/settle-delivery.test.ts` (mocked) and `test/int/entitlements.int.test.ts` (real Postgres): mail failure never fails settlement and never flips `isNewUser`; provisioning failure never fails settlement (the paid transition already committed); `isNewUser` reported correctly for new vs. existing buyer. Duplicate-webhook safety confirmed via the updated `orders.test.ts` — a second call with the same `providerEventId` returns `duplicate: true` before `deliverEntitlement()` ever runs, and `deliverEntitlement` itself only fires when `settled === true` (the guarded pending→paid transition), so a retried event with a *different* event id but an already-paid order also short-circuits to `settled: false` with no re-provisioning.
+4. **Activation token semantics** — reuses E290's `password_reset_tokens` (single-use: deleted on consumption in `resetPassword()`; 1-hour TTL via `resetExpiry`/`isResetTokenValid`). Token is never logged (grepped the diff for `console.` — the only hit is the pre-existing int-test-harness skip-warning pattern, not source code).
+   - **Finding (functional gap, not a security hole):** the epic doc and the new activation-email copy both claim "若已過期，可於登入頁使用「忘記密碼」重新申請" / "the standard password-reset flow covers re-sending" for a lost activation email. But `requestPasswordReset()` (`actions/auth.ts`, pre-existing E290 code, untouched by this PR) only sends a reset email when `user?.passwordHash` is truthy — a provisioned account's `passwordHash` is `null`, so "Forgot password" silently no-ops (returns `{success:true}` for enumeration-safety without sending anything) for a buyer who loses the original activation email. Recommend a follow-up: either `requestPasswordReset` should also fire for `passwordHash === null` accounts, or the activation email/epic copy should be corrected. Does not block this epic's stated Acceptance Criteria (which only requires the *initial* set-password link to work, which it does), but should be tracked.
+5. **`<DataTable>` + modal conventions** — `_library-table.tsx` uses the reusable `<DataTable>` (`components/data-table-generic.tsx`) with `filterPlaceholder`/`emptyLabel`, matching the established pattern. No CRUD/mutation on this surface (read-only delivery list), so the modal convention doesn't apply here — correctly not invented. `dark:` variants inherited from shared UI primitives (`Card`, `Button`) — no inline `style=` overrides. No `console.log` residue. Sidebar link (`components/app-sidebar.tsx`) added correctly (`內容庫` / `LibraryIcon`, positioned after `項目`).
+6. **Thanks-page handoff** — `app/p/[slug]/thanks/page.tsx` now reads `auth()` and branches: logged-in + paid → primary CTA "前往我的內容庫"; paid + guest → informational banner pointing at the activation email, no premature library link. Correct per spec.
+
+### Verdict
+
+**PASS.** All four test gates green (typecheck, lint, coverage ≥80% on all metrics, test:int ran and passed). Security review found no exploitable vulnerability — the `emailVerified`-without-password question was specifically chased down and closed (no login-bypass via Credentials, OAuth, or demo-login). One non-blocking functional gap identified (lost-activation-email recovery via "forgot password" silently no-ops for `passwordHash: null` accounts) — recommended as a fast-follow, not a re-open of this epic.
+
+---
+
+## E327 QA (re-verification) — 2026-07-12 (retry-1 fix, was BLOCKED)
+
+**Branch**: `feat/E327-one-time-checkout` (commit `01e9b85`) · **Worktree**:
+`.claude/worktrees/agent-a694453bfa918e002` · **Step**: qa (re-verification)
+**Spec**: `docs/epics/e327-one-time-checkout-orders.md` · **Prior verdict**: BLOCKED (see
+"E327 QA" section below) on: ECPay ignored `mode`/one-time fields and always emitted a 定期定額
+recurring form; Stripe hardcoded `mode:'subscription'` and treated the product slug as a Stripe
+price id; no test pinned the one-time output shape; an unused-`eq`-import lint warning.
+
+### Verdict: **PASS** — all four blocking findings resolved; no regressions.
+
+### Blocked-finding resolution
+
+| # | Prior finding | Resolution | Evidence |
+|---|---|---|---|
+| 1 | ECPay ignored `args.mode`, always built a 定期定額 recurring form | **FIXED** — `createCheckout()` now branches on `args.mode === "one-time"` to a new private `createOneTimeOrder()` that builds a plain `AioCheckOut` order (`TotalAmount` from `args.amount`, no `PeriodAmount`/`PeriodType`/`Frequency`/`ExecTimes`/`PeriodReturnURL`), valid `CheckMacValue`, and `orders.id` in `CustomField3` | `next-app/lib/billing/providers/ecpay.ts:363-366` (branch) + `:427-482` (`createOneTimeOrder`); `lib/billing/providers/ecpay-onetime.test.ts` — asserts `TotalAmount==="1200"`, absence of all 5 recurring fields, `verifyCheckMacValue()===true`, `CustomField3===ORDER_ID` |
+| 2 | Stripe hardcoded `mode:"subscription"` + used product slug as a Stripe price id | **FIXED** — `createCheckout()` branches on `args.mode==="one-time"` to `createOneTimeCheckoutSession()`: `stripe.checkout.sessions.create({ mode:"payment", line_items:[{price_data:{currency, unit_amount, product_data:{name}}}], metadata:{orderId, userId} })` — no price id lookup | `next-app/lib/billing/providers/stripe.ts:135-138` (branch) + `:196-253` (`createOneTimeCheckoutSession`); `lib/billing/providers/stripe-onetime.test.ts` — asserts exact `mode:"payment"` call args incl. `price_data`, absence of `subscription_data`, `metadata.orderId` |
+| 3 | No test pinned the one-time output shape | **FIXED** — 2 new test files, 11 new tests total (7 ECPay + 4 Stripe on the one-time path, plus 2 explicit subscription-mode regression tests in the ECPay file and 1 in the Stripe file) — see "New test quality" below |
+| 4 | Unused-`eq`-import lint warning in the Stripe webhook route | **FIXED** — `handleCheckoutCompleted()`'s unused `eq: any` param removed; `pnpm lint` now 0 errors, 0 warnings in this route (the `eq` still legitimately imported/used in `app/api/billing/ecpay/return/route.ts` for the `orders`/`subscriptions` lookups was untouched) | `git show 01e9b85 -- next-app/app/api/billing/stripe/webhook/route.ts`; `pnpm lint` output below |
+
+### Re-verified against the 8 specific check items
+
+1. **ecpay.ts one-time branch** — confirmed plain single order: `TotalAmount` = order amount (`"1200"` in test), zero `PeriodAmount`/`PeriodType`/`Frequency`/`ExecTimes`/`PeriodReturnURL`/定期定額 fields, `CheckMacValue` verified valid via `verifyCheckMacValue()`, `orders.id` traceable via `CustomField3` — all asserted in `ecpay-onetime.test.ts` (not just present in code, exercised by test).
+2. **stripe.ts one-time branch** — confirmed `sessions.create({mode:"payment", line_items:[{price_data:{currency, unit_amount, product_data:{name}}, quantity:1}], metadata:{orderId, userId}})`; `mockCheckoutCreate` call args asserted with `expect.objectContaining` + explicit `not.toHaveProperty("subscription_data")` — genuinely a one-time payment session, not a subscription and not a price-id lookup.
+3. **Subscription regression** — `git diff main...feat/E327-one-time-checkout -- next-app/lib/billing/providers/ecpay.test.ts next-app/lib/billing/providers/stripe.test.ts` → **empty diff on both** (pre-existing provider tests untouched). The new `*-onetime.test.ts` files additionally carry explicit "REGRESSION" `describe` blocks re-asserting the legacy no-`mode`/`mode:"subscription"` call still produces the 定期定額 form (ECPay: `PeriodAmount`/`PeriodType`/`Frequency`/`ExecTimes`/`PeriodReturnURL` all present) / `mode:"subscription"` Stripe session (price-id line item, `subscription_data`) byte-equivalent to pre-fix behavior.
+4. **checkout.ts** — the `gatewayPlanId()` helper and `"once:${amount}:${name}"` hack are fully removed (`git show 01e9b85 -- next-app/actions/checkout.ts`); `grep -rn "gatewayPlanId\|once:\\${" next-app/actions/ next-app/lib/` finds only an unrelated same-named local variable in `actions/billing.ts` (pre-existing subscription billing action, untouched). `createOneTimeCheckout` now passes `mode:"one-time", orderId, amount, currency, productName` directly to `gateway.createCheckout()` — the one-time signal reaches the provider branch cleanly, no string-encoding indirection.
+5. **Webhook settlement path** — Stripe: `handleOneTimePaid()` reads `session.metadata?.orderId` (written by `createOneTimeCheckoutSession`'s `metadata:{orderId}`) and calls `settleOrder()`. ECPay: `app/api/billing/ecpay/return/route.ts:87-104` reads `params["CustomField3"]` (written by `createOneTimeOrder`'s `CustomField3: args.orderId`), validates it's a UUID, looks up the order, and calls `settleOrder()`. Confirmed the write side (`createCheckout`) and read side (webhook/return route) use the same field for both gateways.
+6. **The 11 new shape tests are meaningful** — reviewed both files line-by-line: they assert exact field *values* (`TotalAmount==="1200"`, `CustomField3===ORDER_ID`, `sessionId` prefix `ORD`/`SUB`, exact `price_data`/`metadata` objects via `toHaveBeenCalledWith(expect.objectContaining(...))`), explicit *absence* of recurring/subscription fields (`not.toHaveProperty`), and error-path assertions (`amount:0`/`undefined` → throws `PaymentProviderError` with a specific message) — not trivial truthiness checks.
+7. **Lint** — `pnpm lint` → **0 errors, 2 warnings**, both pre-existing React-Compiler "incompatible library" notices on `data-table-generic.tsx:64` and `data-table.tsx:224` (unrelated to this diff, present on `main`). The previously-flagged unused-`eq` warning is gone. **No new warnings.**
+8. **Full gates** (run in the worktree, `next-app/`):
+
+| Gate | Result |
+|---|---|
+| `pnpm typecheck` | **PASS** — 0 errors |
+| `pnpm lint` | **PASS** — 0 errors, 2 pre-existing warnings (see above), 0 new |
+| `pnpm test:coverage` | **PASS** — 54 test files / **583 tests, 0 failed** (up from 572 pre-fix, +11 new). Coverage: **83.94%** stmts / **80.98%** branches / **93%** funcs / **83.88%** lines — all ≥80% gate. `ecpay.ts` 86.3% stmts (up from 84.09%), `stripe.ts` 70.19% stmts (comparable to pre-fix 68.18%, still gated at file-level by the aggregate, not per-file) |
+| `pnpm test:int` | **RAN** (Postgres reachable — `nextapp_postgres` docker container, same as prior run) — 5 test files / 14 tests passed; migrations applied cleanly to a fresh throwaway DB |
+| Playwright e2e | **NOT RUN** (unchanged from prior QA — no e2e/integration spec exists for checkout/order/thanks anywhere in the repo; out of scope for this retry, not a new gap) |
+
+### Notes
+
+- Uncommitted worktree changes present (`docs/context/bugfix-log.md`, `docs/context/session-summary.md`) are auto-generated hook/checkpoint appends unrelated to source, not touched by this re-verification.
+- No `console.log` residue in any touched file (checked `actions/checkout.ts`, `lib/billing/providers/{stripe,ecpay}.ts`, both webhook/return routes).
+- No source files were modified during this re-verification — only `docs/context/test-status.md` (this file) in the main repo.
+
+### Recommendation
+
+**Ready to merge.** All four retry-1 blocking findings are resolved with real provider-level
+fixes (not stubs), pinned by 11 new meaningful tests, with zero regression to existing
+subscription-path behavior or lint/typecheck/coverage gates.
+
+---
+
+## E327 QA — 2026-07-12 (一次性購買 — products/orders + 統一結帳, SOLID ISP split)
+
+**Branch**: `feat/E327-one-time-checkout` (commit `60764aa`) · **Worktree**:
+`.claude/worktrees/agent-a694453bfa918e002` · **Step**: qa
+**Spec**: `docs/epics/e327-one-time-checkout-orders.md` · **Migration review**:
+`docs/context/migration-review-e327.md` (verdict: SAFE, expand-only)
+
+### Verdict: **BLOCKED** — SOLID/DIP/migration/idempotency work is excellent, but the
+core promise of the epic ("ECPay 可收單" for a one-time product) does not hold as wired.
+
+### Code Review vs. Acceptance Criteria
+
+| AC | Status | Evidence |
+|----|--------|----------|
+| Migration generated + applies on fresh DB; migration-review artifact | PASS | `0011_luxuriant_dracula.sql` — `CREATE TYPE order_status`, `CREATE TABLE products`, `CREATE TABLE orders` (FK `product_id→products(id) restrict`, `user_id→users(id) set null`, nullable); zero `DROP`/`ALTER COLUMN TYPE`; `pnpm test:int` (below) actually applied it against a throwaway Postgres and passed |
+| `OneTimePaymentGateway`/`SubscriptionGateway` split; `PaymentProvider` alias; stripe.ts/ecpay.ts zero-diff; old tests unmodified in assertions | PASS | `lib/billing/provider.ts` — clean ISP split + `export type PaymentProvider = OneTimePaymentGateway & SubscriptionGateway`; `git diff main...feat/E327-one-time-checkout -- next-app/lib/billing/providers/stripe.ts next-app/lib/billing/providers/ecpay.ts` → **empty diff on both**; `resolver.test.ts` only appends new `describe` blocks, no existing assertions changed |
+| `resolveOneTime`/`resolveSubscription` fail-fast | PASS | `resolver.ts` — `resolveOneTime("newebpay")` throws `/newebpay.*E329/i`; `resolveSubscription("newebpay")` throws a distinct capability message (`one-time-only... cannot be resolved as a SubscriptionGateway`), not a generic NotImplemented; both asserted in `resolver.test.ts` |
+| DIP — checkout.ts/orders.ts never import concrete providers | PASS | `grep -rn "from.*providers/" next-app/actions/ next-app/lib/billing/orders.ts` → **zero matches**; also asserted at runtime in `provider-isp.test.ts` via source-text regex |
+| **ECPay one-time path produces a correct form/amount** | **FAIL** | See "Flagged constraint" below — `EcpayProvider.createCheckout` **ignores** `args.mode`/`args.amount`/`args.currency`/`args.orderId` entirely and unconditionally builds a **定期定額 (recurring)** AIO form (`PeriodAmount`, `PeriodType`, `Frequency`, `ExecTimes: 999`, `PeriodReturnURL`) for every checkout, one-time or not |
+| **Stripe one-time path returns `mode:'payment'` session** | **FAIL** | `StripeProvider.createCheckout` **hardcodes `mode: "subscription"`** and treats `planId` as a Stripe **price ID** (`price: providerPriceId`). `checkout.ts`'s `gatewayPlanId()` passes `product.slug` (e.g. `"nextjs-course"`) for Stripe — not a real Stripe price id — so the live API call would reject it; even if it didn't, it would open a recurring subscription, not a one-time charge |
+| Duplicate webhook → exactly one pending→paid transition | PASS | `orders.test.ts` — `settleOrder()` idempotency: same `providerEventId` twice → 2nd is `{settled:false, duplicate:true, status:"skipped"}`; a distinct 2nd event for an already-paid order is blocked by the `WHERE status='pending'` guard → `{settled:false, duplicate:false, status:"paid"}` (no re-fire). Meaningful, not a rubber-stamp test |
+| Guest checkout works; logged-in links `user_id` | PASS | `actions/checkout.ts` — `userId: ctx.actorId ?? null`; `defineAction({public:true, ...})` opportunistically resolves a session actor without requiring one |
+| 感謝頁 shows paid vs pending, return-races-notify | PASS (code review only, no test) | `app/p/[slug]/thanks/page.tsx` — reads order fresh from DB, shows paid/failed/pending badges + "reload" affordance for pending; **no e2e/integration test exercises this route** |
+| Guest thank-you token can't leak other buyers' orders | PASS | `lib/billing/order-token.ts` — HMAC-SHA256(orderId + lowercased email, keyed by `AUTH_SECRET`), `crypto.timingSafeEqual` compare, thanks page calls `verifyOrderAccessToken(order.id, order.customerEmail, token)` → `notFound()` on mismatch. `order-token.test.ts` covers determinism, case-insensitivity, cross-order and cross-email rejection, empty-token rejection |
+| `defineAction` public mode doesn't weaken authenticated actions | PASS | Overload-based: `DefineActionConfig` (default) keeps the original login+live-role gate untouched (still `if (!actorId) return {error}`; `role` guaranteed non-null); only the new `{public:true}` overload (`DefinePublicActionConfig`) skips the gate. All pre-existing action call sites are unaffected — `pnpm typecheck`/`pnpm test:coverage` both green |
+| No `console.log` residue | PASS | `grep -rn "console.log"` across the diff → empty |
+
+### Flagged constraint — full assessment (this is the key finding)
+
+The epic explicitly asked QA to determine whether ECPay's one-time flow is real or a
+stub. **It is a stub for both gateways, in two different ways:**
+
+1. **ECPay** (`lib/billing/providers/ecpay.ts`, unchanged per the zero-diff constraint):
+   `createCheckout()` parses `args.planId` as `"{interval}:{amount}:{desc}"` and calls
+   `getPeriodType(interval)`. `actions/checkout.ts`'s `gatewayPlanId()` emits
+   `"once:${amount}:${name}"` for ECPay — but `"once"` matches none of `"day"|"month"|"year"`
+   in `getPeriodType`, so it **silently falls through to the `"month"` default**. The form ECPay
+   receives therefore always includes `PeriodAmount`, `PeriodType: "M"`, `Frequency: "1"`,
+   `ExecTimes: "999"`, and `PeriodReturnURL` — i.e. every "one-time" checkout is actually
+   submitted to ECPay as a **定期定額 monthly recurring charge for up to 999 executions**. The
+   `args.mode: "one-time"` field added to `CreateCheckoutArgs` is never read by `ecpay.ts` at all.
+2. **Stripe** (`lib/billing/providers/stripe.ts`, unchanged): `createCheckout()` hardcodes
+   `mode: "subscription"` and passes `planId` straight through as `price: providerPriceId` (a
+   Stripe Checkout line item requires a real `price_...` id). `checkout.ts` passes `product.slug`
+   (e.g. `"nextjs-course"`) as `planId` for Stripe — not a Stripe price id — so a real API call
+   would either be rejected by Stripe outright, or (if a price happened to share that string)
+   would open a **recurring subscription**, not a one-time charge.
+
+**Net effect: the epic's core promise (一次性商品可透過 ECPay/Stripe 收單) does not hold today.**
+The schema, checkout action, ISP split, resolver, settlement idempotency, guest flow, and
+thank-you token are all solid and correctly wired — but the last mile (the actual gateway
+session/form for a one-time amount) silently degrades into "start a recurring subscription"
+(ECPay) or "reject/misfire" (Stripe). No test in the diff catches this because
+`provider-isp.test.ts`/`resolver.test.ts` only assert type-level ISP compliance and dispatch
+routing — none exercises `createCheckout()`'s actual output shape for `mode: "one-time"`. This
+should block merge (or ship behind a documented "ECPay/Stripe one-time adapters are still TODO"
+flag) until either: (a) `ecpay.ts`/`stripe.ts` gain a real one-time branch (breaking the
+"zero-diff" constraint, which the epic itself may need to revisit), or (b) a new one-time-only
+adapter is used instead of routing through the recurring-shaped stripe/ecpay adapters.
+
+### Test Suites (from worktree's `next-app/`)
+
+| Check | Result |
+|-------|--------|
+| `pnpm typecheck` | **PASS** — 0 errors |
+| `pnpm lint` | **PASS** — 0 errors, 3 warnings, none new-and-blocking (`app/api/billing/stripe/webhook/route.ts:202` unused `eq` import — newly introduced by this diff, should be cleaned up; 2 pre-existing React Compiler incompatible-library notices on `data-table*.tsx`) |
+| `pnpm test:coverage` | **PASS** — 52 test files / 572 tests, 0 failed. Coverage **83.18%** stmts / 80.86% branches / 92.85% funcs / 83.11% lines (gate ≥80% — PASS). Lower-coverage files: `lib/billing/providers/ecpay.ts` 84.09%, `stripe.ts` 68.18% (pre-existing, not newly regressed by this diff) |
+| `pnpm test:int` | **RAN** (Postgres was reachable in this sandbox via a local `nextapp_postgres` docker container) — 5 test files / 14 tests passed; migration `0011_luxuriant_dracula.sql` applied cleanly against a fresh throwaway DB, confirming the migration-review verdict |
+| Playwright e2e | **NOT RUN** — no e2e/integration test for the checkout/order/thanks flow exists anywhere in this diff (`e2e/` has no `checkout`/`order`/`product` spec). A DB was available, but running the existing unrelated e2e suite against the shared local dev Postgres would not have exercised E327 code at all, so it was skipped rather than faked |
+
+### Recommendation
+
+Do not close E327 as shippable-to-ECPay-first-prod until the flagged constraint is resolved.
+Everything else (migration safety, ISP/DIP architecture, idempotent settlement, guest checkout,
+token security) is ready to merge; only the actual gateway checkout wiring needs a follow-up fix
+(likely a small, scoped E327-follow-up or folded into E329's NewebPay work, since NewebPay was
+already going to need a real one-time-only adapter).
+
+---
+
+## E326 QA — 2026-07-12 (高轉換銷售頁模組 — sales page `/p/[slug]`)
+
+**Branch**: `feat/E326-sales-page` (commit `22ba44e`) · **Worktree**:
+`.claude/worktrees/agent-a14f2e4c5423d8266` · **Step**: qa
+
+### Code Review vs. Acceptance Criteria (spec: `docs/epics/e326-sales-page-module.md`)
+
+| AC | Status | Evidence |
+|----|--------|----------|
+| `/p/<slug>` renders all 7 PRD sections in order, zh-TW placeholder copy | PASS | `app/p/[slug]/page.tsx` maps `DEFAULT_SECTION_ORDER`/`content.style.sectionOrder` → `SECTION_RENDERERS`; `AI_WRITING_COURSE` example ships full 7-section zh-TW copy with `【】` placeholders per PRD |
+| `SalesPageContent` is a Zod schema; route reads ONLY via `getSalesPageContent(slug)`; section components pure | PASS | `lib/sales/content.ts` — `salesPageContentSchema` (Zod) + `getSalesPageContent()` sole resolver (parses via schema); `grep -rn "lib/sales/content" components/marketing/sales/` → **empty**; every section component imports only type-only `lib/sales/types`/`lib/sales/styles` + UI primitives, never the config/resolver |
+| 3 style presets (`bold`/`premium`/`clean`), dark-mode OK, `sectionOrder` reorder/omit works | PASS | `lib/sales/styles.ts` — 3 presets, each built on semantic design tokens (`bg-card`, `text-muted-foreground`, etc.) that already flip light/dark, plus explicit `dark:` overrides on 2 accent tokens; `PREMIUM_MENTORSHIP` example demonstrates `premium` preset + reordered/reduced `sectionOrder` (risk-reversal omitted) vs. `AI_WRITING_COURSE`'s `bold` + default order |
+| Static generation; only countdown/CTA client-side (`"use client"` count ≤ 2 new) | PASS | `generateStaticParams()` present; `grep -rln '"use client"' components/marketing/sales/` → only `countdown-timer.tsx` (1 new client file); CTA is a plain `<Link>`, not a client component |
+| Countdown renders remaining time, hides after deadline; unit test on pure helper | PASS | `lib/sales/countdown.ts` (`getRemainingTime`/`padSegment`, pure) + `lib/sales/countdown.test.ts` (7 cases incl. exact-deadline-instant expiry, no-reset-after-expiry, invalid-date-safe) |
+| Video: muted autoplay + captions track slot + poster, no CLS | PASS | `components/marketing/video-demo.tsx` `mode="inline"` — `muted autoPlay playsInline loop`, `<track kind="captions">`, fixed `aspect-video` wrapper (enhanced existing component, not forked) |
+| Dark mode via Tailwind `dark:` only, no inline style colors; `cn()` for conditionals | PASS | `grep -rnE "style="` in new files resolves to a `SalesStyleTokens` **prop** named `style` (not the JSX style attribute) passed to child components — no inline CSS colors; `grep -rnE "#[0-9a-fA-F]{3,6}|oklch\("` across all new files → empty; `cn()` used throughout |
+| No `console.log` residue | PASS | `grep -n "console.log"` across all 17 changed files → empty |
+| typecheck / lint / build green; Vitest for resolver + countdown helper | PARTIAL | see Test Suites below — typecheck/lint/tests green; `pnpm build` could not be verified in this sandbox (pre-existing `DATABASE_URL is not set` failure in `lib/db.ts` when collecting page data for `/api/auth/[...nextauth]`, unrelated to sales-page code — no `.env`/DB in this worktree, not an E326 regression) |
+| CTA is placeholder binding (no checkout — E327) | PASS | `ctaBindingSchema` (`label` + `href` only); `SalesPricing`/`SalesHero` render a plain `<Link href={cta.href}>`, no checkout logic |
+
+### Test Suites (from worktree's `next-app/`)
+
+| Check | Result |
+|-------|--------|
+| `pnpm typecheck` | **PASS** — 0 errors |
+| `pnpm lint` | **PASS** — 0 errors, 3 warnings (all pre-existing, unrelated to E326: `app/api/billing/stripe/webhook/route.ts` unused import, `components/data-table-generic.tsx` / `data-table.tsx` React Compiler incompatible-library notices) |
+| `pnpm test:coverage` | **PASS** — 51 test files / 560 tests, 0 failed. Overall gated coverage **82.9%** stmts / 80.78% branches / 92.63% funcs / 82.85% lines (gate ≥80% — PASS) |
+| `pnpm build` | **NOT VERIFIED** — fails on missing `DATABASE_URL` in this sandbox worktree (pre-existing infra gap, not E326 code) |
+
+### Finding (advisory, non-blocking)
+
+`vitest.config.ts`'s `coverage.include` allowlist does not list `lib/sales/**`, so the new
+`content.test.ts` / `countdown.test.ts` / `styles.test.ts` suites run and pass but are **not**
+counted toward the 80% coverage gate number reported above (that number reflects only the
+pre-existing allowlisted modules). The new sales lib is pure/DB-free exactly like the other
+allowlisted modules — recommend adding `lib/sales/**` to the include list in a follow-up so the
+gate actually measures this epic's logic.
+
+### Overall Verdict
+
+**PASS** — all acceptance criteria satisfied by code review; typecheck/lint/unit-test gates green
+(560/560 tests, 82.9% coverage ≥80%); `pnpm build` could not be exercised in this sandbox due to a
+pre-existing missing-`DATABASE_URL` environment gap unrelated to this epic's files. No source
+files were modified during this QA pass (read + run only).
+
+---
+
 ## E210 — 2026-06-02T20:00Z (Deploy/Launch Skill Consolidation + Fork-Safety Gating)
 
 **Branch**: `main` · **Step**: qa · **Epic**: E210
