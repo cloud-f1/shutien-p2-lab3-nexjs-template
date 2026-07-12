@@ -137,6 +137,142 @@ export async function exportWebhooks(): Promise<
   return { success: true, data, filename, contentType: "text/csv" }
 }
 
+// ---------------------------------------------------------------------------
+// System-scoped webhooks (E330 — CRM egress). Admin-only: every action gates on
+// requireAdmin() (which re-reads the live role from the DB), and each mutation is
+// additionally scoped to `scope = 'system'` so it can never touch a user webhook.
+// ---------------------------------------------------------------------------
+
+/** Site-wide events a system endpoint may subscribe to (E330). */
+const VALID_SYSTEM_EVENTS = ["*", "order.completed"] as const
+
+function sanitizeSystemEvents(events: string[]): string[] {
+  const set = new Set(
+    events.filter((e) => (VALID_SYSTEM_EVENTS as readonly string[]).includes(e)),
+  )
+  return set.size ? [...set] : ["order.completed"]
+}
+
+async function ensureAdmin(): Promise<{ userId: string } | { error: string }> {
+  try {
+    const session = await requireAdmin()
+    return { userId: session.user.id }
+  } catch {
+    return { error: "權限不足。" }
+  }
+}
+
+/**
+ * Create a system-scoped webhook endpoint (admin only). Returns the signing
+ * secret ONCE. These endpoints receive site-wide events (e.g. `order.completed`)
+ * for CRM egress — the payload contains buyer PII, so the URL is a secret.
+ */
+export async function createSystemWebhook(input: {
+  url: string
+  events?: string[]
+}): Promise<{ secret?: string; error?: string }> {
+  const guard = await ensureAdmin()
+  if ("error" in guard) return guard
+
+  const limited = rateLimitGuard(`webhook:sys:create:${guard.userId}`, 10, MINUTE_MS)
+  if (limited) return limited
+
+  const url = input.url?.trim()
+  if (!url || !isHttpsUrl(url)) return { error: "請輸入有效的 HTTPS URL。" }
+  if (url.length > 2048) return { error: "URL 過長（最多 2048 個字元）。" }
+
+  const secret = generateWebhookSecret()
+  const [row] = await db
+    .insert(webhooksTable)
+    .values({
+      userId: guard.userId,
+      url,
+      events: sanitizeSystemEvents(input.events ?? ["order.completed"]),
+      secret,
+      scope: "system",
+    })
+    .returning({ id: webhooksTable.id })
+  await logAudit({
+    actorId: guard.userId,
+    action: "system_webhook.created",
+    targetType: "webhook",
+    targetId: row?.id,
+    metadata: { url, scope: "system" },
+  })
+
+  revalidatePath("/dashboard/system")
+  return { secret }
+}
+
+/** Toggle a system webhook's active flag (admin only, system-scope-guarded). */
+export async function setSystemWebhookActive(
+  id: string,
+  active: boolean,
+): Promise<{ error?: string }> {
+  const guard = await ensureAdmin()
+  if ("error" in guard) return guard
+
+  const limited = rateLimitGuard(`webhook:sys:toggle:${guard.userId}`, 10, MINUTE_MS)
+  if (limited) return limited
+
+  await db
+    .update(webhooksTable)
+    .set({ active })
+    .where(and(eq(webhooksTable.id, id), eq(webhooksTable.scope, "system")))
+  await logAudit({
+    actorId: guard.userId,
+    action: active ? "system_webhook.enabled" : "system_webhook.disabled",
+    targetType: "webhook",
+    targetId: id,
+  })
+  revalidatePath("/dashboard/system")
+  return {}
+}
+
+/** Delete a system webhook endpoint (admin only, system-scope-guarded). */
+export async function deleteSystemWebhook(id: string): Promise<{ error?: string }> {
+  const guard = await ensureAdmin()
+  if ("error" in guard) return guard
+
+  const limited = rateLimitGuard(`webhook:sys:delete:${guard.userId}`, 10, MINUTE_MS)
+  if (limited) return limited
+
+  await db
+    .delete(webhooksTable)
+    .where(and(eq(webhooksTable.id, id), eq(webhooksTable.scope, "system")))
+  await logAudit({
+    actorId: guard.userId,
+    action: "system_webhook.deleted",
+    targetType: "webhook",
+    targetId: id,
+  })
+  revalidatePath("/dashboard/system")
+  return {}
+}
+
+/** Send a signed `ping` to a system endpoint and record the delivery (admin only). */
+export async function sendSystemTestEvent(id: string): Promise<{ status?: string; error?: string }> {
+  const guard = await ensureAdmin()
+  if ("error" in guard) return guard
+
+  const limited = rateLimitGuard(`webhook:sys:test:${guard.userId}`, 3, MINUTE_MS)
+  if (limited) return limited
+
+  const [endpoint] = await db
+    .select({ id: webhooksTable.id, url: webhooksTable.url, secret: webhooksTable.secret })
+    .from(webhooksTable)
+    .where(and(eq(webhooksTable.id, id), eq(webhooksTable.scope, "system")))
+    .limit(1)
+  if (!endpoint) return { error: "找不到此系統 Webhook。" }
+
+  const result = await deliverToEndpoint(endpoint, "ping", {
+    message: "test",
+    at: new Date().toISOString(),
+  })
+  revalidatePath("/dashboard/system")
+  return { status: result.status }
+}
+
 /** Send a signed `ping` to one of the user's endpoints and record the delivery. */
 export async function sendTestEvent(id: string): Promise<{ status?: string; error?: string }> {
   const session = await requireAuth()
