@@ -20,16 +20,58 @@ const SAFE_COLUMNS = {
   url: webhooksTable.url,
   events: webhooksTable.events,
   active: webhooksTable.active,
+  scope: webhooksTable.scope,
   createdAt: webhooksTable.createdAt,
 }
 
-/** List a user's webhook endpoints (newest first), never selecting the secret. */
+/**
+ * List a user's OWN (user-scoped) webhook endpoints (newest first), never
+ * selecting the secret. System-scoped endpoints (E330) are intentionally
+ * excluded — even an admin's personal webhooks panel shows only their user
+ * subscriptions; system endpoints have their own admin-only surface.
+ */
 export async function listWebhooks(userId: string): Promise<SafeWebhook[]> {
   return db
     .select(SAFE_COLUMNS)
     .from(webhooksTable)
-    .where(eq(webhooksTable.userId, userId))
+    .where(and(eq(webhooksTable.userId, userId), eq(webhooksTable.scope, "user")))
     .orderBy(desc(webhooksTable.createdAt))
+}
+
+/**
+ * List every system-scoped webhook endpoint (E330), newest first, never
+ * selecting the secret. Admin-only — callers MUST gate with `requireAdmin()`.
+ */
+export async function listSystemWebhooks(): Promise<SafeWebhook[]> {
+  return db
+    .select(SAFE_COLUMNS)
+    .from(webhooksTable)
+    .where(eq(webhooksTable.scope, "system"))
+    .orderBy(desc(webhooksTable.createdAt))
+}
+
+/**
+ * Recent delivery attempts for a system-scoped webhook (E330). Verifies the
+ * endpoint is system-scoped before reading its deliveries. Admin-only — callers
+ * MUST gate with `requireAdmin()`.
+ */
+export async function listSystemDeliveries(
+  webhookId: string,
+  limit = 50,
+): Promise<WebhookDelivery[]> {
+  const [row] = await db
+    .select({ id: webhooksTable.id })
+    .from(webhooksTable)
+    .where(and(eq(webhooksTable.id, webhookId), eq(webhooksTable.scope, "system")))
+    .limit(1)
+  if (!row) return []
+
+  return db
+    .select()
+    .from(webhookDeliveriesTable)
+    .where(eq(webhookDeliveriesTable.webhookId, webhookId))
+    .orderBy(desc(webhookDeliveriesTable.createdAt))
+    .limit(limit)
 }
 
 /** Recent delivery attempts for one of a user's webhooks (owner-scoped). */
@@ -67,7 +109,7 @@ export async function deliverToEndpoint(
   event: string,
   payload: Record<string, unknown>,
 ): Promise<{ status: "success" | "failed"; responseCode: number | null; attempts: number }> {
-  const body = JSON.stringify({ event, data: payload })
+  const body = JSON.stringify({ event, timestamp: new Date().toISOString(), data: payload })
   let responseCode: number | null = null
   let attempts = 0
 
@@ -125,6 +167,41 @@ export async function dispatchEvent(
   const targets = endpoints.filter((e) => e.events.includes(event) || e.events.includes("*"))
   await Promise.all(targets.map((e) => deliverToEndpoint(e, event, payload)))
   return targets.length
+}
+
+/**
+ * Dispatch a SITE-WIDE event to every active system-scoped endpoint (E330).
+ *
+ * The CRM-egress counterpart to `dispatchEvent`: instead of a single user's
+ * subscriptions, it fans out to admin-managed `scope = 'system'` endpoints that
+ * subscribe to `event` (or `"*"`). Reuses `deliverToEndpoint` wholesale (HMAC
+ * signing, bounded retry + backoff, delivery log) — no new dispatcher.
+ *
+ * Fire-and-forget and best-effort: never throws, so an emit from `settleOrder`
+ * can NEVER block or fail order settlement. Returns the number of endpoints hit.
+ */
+export async function dispatchSystemEvent(
+  event: string,
+  payload: Record<string, unknown>,
+): Promise<number> {
+  try {
+    const endpoints = await db
+      .select({
+        id: webhooksTable.id,
+        url: webhooksTable.url,
+        secret: webhooksTable.secret,
+        events: webhooksTable.events,
+      })
+      .from(webhooksTable)
+      .where(and(eq(webhooksTable.scope, "system"), eq(webhooksTable.active, true)))
+
+    const targets = endpoints.filter((e) => e.events.includes(event) || e.events.includes("*"))
+    await Promise.all(targets.map((e) => deliverToEndpoint(e, event, payload)))
+    return targets.length
+  } catch {
+    // Best-effort: a lookup/dispatch failure must never surface to the caller.
+    return 0
+  }
 }
 
 async function recordDelivery(

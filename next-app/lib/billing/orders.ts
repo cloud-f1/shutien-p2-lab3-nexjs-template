@@ -19,6 +19,7 @@ import { db } from "@/lib/db"
 import { ordersTable, paymentEventsTable, productsTable } from "@/lib/schema"
 import { provisionUserForOrder } from "@/lib/auth-provision"
 import { sendActivationEmail, sendReceiptEmail } from "@/lib/email"
+import { dispatchSystemEvent } from "@/lib/webhooks"
 
 export interface SettleOrderInput {
   /** Gateway name — "stripe" | "ecpay" | … (for the payment_events row). */
@@ -104,6 +105,13 @@ export async function settleOrder(
     //    whole step is best-effort: settlement NEVER fails on a provisioning or
     //    mail error (deliverEntitlement swallows everything and reports isNewUser).
     const isNewUser = settled ? await deliverEntitlement(input.orderId) : false
+
+    // 4. CRM egress (E330) — emit `order.completed` to system-scoped webhooks,
+    //    bound to THIS single pending→paid transition so exactly-once holds
+    //    (a duplicate gateway webhook re-enters via the idempotency/guard above
+    //    and never reaches here). Best-effort: NEVER blocks/fails settlement.
+    if (settled) await emitOrderCompleted(input.orderId, isNewUser)
+
     return { settled, duplicate: false, status: "paid", isNewUser }
   }
 
@@ -174,6 +182,52 @@ async function deliverEntitlement(orderId: string): Promise<boolean> {
   } catch {
     // Provisioning/link failure must not fail settlement (already committed).
     return false
+  }
+}
+
+/**
+ * Emit `order.completed` to system-scoped webhooks (E330 — CRM egress). Runs
+ * exactly once, right after a pending order flips to paid. The payload carries
+ * NO secrets — just order/product/buyer identifiers per the PRD contract, plus
+ * `isNewUser` from the E328 auto-provision result. `phone` is null until a phone
+ * is captured at checkout (column not yet modeled — shape kept PRD-stable).
+ *
+ * Entirely best-effort: any failure is swallowed so settlement is never
+ * affected. The paid transition (and entitlement delivery) already committed.
+ */
+async function emitOrderCompleted(orderId: string, isNewUser: boolean): Promise<void> {
+  try {
+    const [row] = await db
+      .select({
+        amount: ordersTable.amount,
+        currency: ordersTable.currency,
+        provider: ordersTable.provider,
+        customerEmail: ordersTable.customerEmail,
+        customerName: ordersTable.customerName,
+        productName: productsTable.name,
+      })
+      .from(ordersTable)
+      .innerJoin(productsTable, eq(ordersTable.productId, productsTable.id))
+      .where(eq(ordersTable.id, orderId))
+      .limit(1)
+
+    if (!row) return
+
+    await dispatchSystemEvent("order.completed", {
+      orderId,
+      amount: row.amount,
+      currency: row.currency,
+      productName: row.productName,
+      gateway: row.provider,
+      customer: {
+        email: row.customerEmail,
+        name: row.customerName ?? null,
+        phone: null,
+        isNewUser,
+      },
+    })
+  } catch {
+    // Best-effort — an egress failure must never affect settlement.
   }
 }
 

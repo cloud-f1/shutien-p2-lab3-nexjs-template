@@ -71,6 +71,10 @@ vi.mock("@/lib/schema", () => ({
   paymentEventsTable: { __t: "payment_events", providerEventId: "provider_event_id" },
   ordersTable: { __t: "orders", id: "id", status: "status", productId: "product_id" },
   productsTable: { __t: "products", id: "id" },
+  // E330 — orders.ts now transitively imports lib/webhooks (order.completed
+  // egress). Its module init reads these columns, so the mock must expose them.
+  webhooksTable: { __t: "webhooks", id: "id", userId: "user_id", url: "url", events: "events", secret: "secret", active: "active", scope: "scope", createdAt: "created_at" },
+  webhookDeliveriesTable: { __t: "webhook_deliveries" },
 }))
 vi.mock("drizzle-orm", () => ({
   eq: (...a: unknown[]) => ({ __eq: a }),

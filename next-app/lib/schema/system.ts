@@ -39,7 +39,15 @@ export const apiKeysTable = pgTable(
   ],
 )
 
-/** E268 — outbound webhook subscriptions. */
+/**
+ * E268 — outbound webhook subscriptions.
+ *
+ * E330 adds `scope`: `'user'` endpoints are subscribed & managed by their owner
+ * (the original E268 behavior); `'system'` endpoints are admin-managed and
+ * receive site-wide events (e.g. `order.completed`) for CRM egress. The column
+ * is NOT NULL with a `'user'` default so the migration is expand-only — every
+ * pre-existing row stays user-scoped with no data touched.
+ */
 export const webhooksTable = pgTable(
   "webhooks",
   {
@@ -51,10 +59,18 @@ export const webhooksTable = pgTable(
     events: text("events").array().notNull().default([]),
     secret: text("secret").notNull(), // HMAC-SHA256 signing secret
     active: boolean("active").notNull().default(true),
+    /** 'user' (owner-subscribed, E268) | 'system' (admin-managed, site-wide — E330). */
+    scope: text("scope").notNull().default("user"),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   },
-  (t) => [index("webhooks_user_id_idx").on(t.userId)],
+  (t) => [
+    index("webhooks_user_id_idx").on(t.userId),
+    index("webhooks_scope_idx").on(t.scope),
+  ],
 )
+
+/** Webhook ownership scope — see `webhooksTable.scope` (E330). */
+export type WebhookScope = "user" | "system"
 
 /** E268 — per-attempt delivery record for a webhook. */
 export const webhookDeliveriesTable = pgTable(
