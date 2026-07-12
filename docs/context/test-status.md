@@ -819,3 +819,56 @@ Harness end-to-end (isolated tmp `AUDIT_FILE` / `AUTOPILOT_LOG`):
 ### Verdict
 **PASS.** Typecheck clean, lint clean (0 errors), coverage gate cleared (84.85% statements ≥ 80%), e2e green outside the known pre-existing TOTP cluster (unrelated to this epic's diff). See `review-findings.md` Round 0 (2026-07-12T17:00Z) for the full code-review writeup against all 7 acceptance criteria.
 
+## E331 QA — 2026-07-13 (Admin 營收後台 — 會員/訂單/訂閱 console)
+
+**Branch**: `feat/E331-admin-revenue-console` · **Spec**: `docs/epics/e331-admin-revenue-console.md` · **Step**: qa · **Worktree**: `.claude/worktrees/agent-a33bba6536444fb2e`
+
+### Test gates (all from the worktree's `next-app/`)
+
+| Check | Result |
+|---|---|
+| `pnpm typecheck` | PASS — 0 errors |
+| `pnpm lint` | PASS — 0 errors, 8 pre-existing warnings (2× TanStack-table React-Compiler skip notes on `data-table.tsx`/`data-table-generic.tsx`; 6× `'_a' is defined but never used` across `orders-egress.test.ts`, `settle-delivery.test.ts` (×2), the new `admin-revenue.int.test.ts`, and `entitlements.int.test.ts` (×2) — same pre-existing test-mock pattern, not a new convention violation) |
+| `pnpm test:coverage` | PASS — **661/661 tests, 65 files**. All-files: **Statements 85.31%, Branches 80.62%, Functions 93.27%, Lines 85.4%** (≥80% gate — all four metrics clear it, including Branches this round). Remaining under-covered files (`rate-limit.ts`, `billing/resolver.ts`, `billing/providers/{ecpay,newebpay,stripe}.ts`, `registry-module-manifest.ts`) are all pre-existing and untouched by the E331 diff. |
+| `pnpm test:e2e` (against `saas_dev_e2e`, migrated + seeded fresh) | **41/47 passed.** 1 failed + 5 skipped, all in the **known pre-existing cluster**: `e2e/two-factor.spec.ts:103` "enable 2FA from Settings → Security" (TOTP env-window issue, Phase 72 #51) fails and takes its 5 dependent tests down with it. Confirmed the E331 diff touches zero `two-factor`/TOTP files (`git diff main...feat/E331-admin-revenue-console --stat` shows only `actions/admin-revenue.ts`, `app/(dashboard)/dashboard/admin/**`, `lib/billing/*`, `test/int/admin-revenue.int.test.ts`, `vitest.config.ts`). Excluding that known cluster: **41/41 relevant e2e tests pass**, including `dashboard-smoke.spec.ts`'s admin-page tests ("admin page shows role selector", "admin page lists users") which exercise the migrated 會員 tab's `<DataTable>` and confirm zero regression to the pre-existing admin user-list UI. |
+
+### New tests added by E331 (all passing)
+- `next-app/lib/billing/admin-revenue.test.ts` (unit) — pure guard functions `canMarkRefunded()` (paid→refunded allowed; pending/failed rejected; double-refund rejected) and `canResendActivation()` (no-password allowed; has-password refused).
+- `next-app/lib/billing/pagination.test.ts` (unit, 76 lines) — `resolvePagination()` defaults/clamping (page floor to 1, pageSize clamp to `[1, MAX_PAGE_SIZE]`, NaN/undefined fallback) and `totalPages()` edge cases (0/negative total or pageSize → 0 pages).
+- `next-app/test/int/admin-revenue.int.test.ts` (integration, real Postgres, 6 cases) — the acceptance-critical path: 標記退款 flips `orders.status` to `refunded`, writes exactly one `audit_log` row, and **immediately** flips `hasEntitlement()` to `false` (the implicit E328 revocation); rejects non-paid orders and double-refunds (no extra audit rows); non-admin actor is blocked server-side with zero DB writes (status unchanged, 0 audit rows) on both `markRefunded` and `resendActivation`; 重寄啟用信 mints exactly one token + calls the mailer once for a no-password account, and is refused (0 tokens, 0 mail calls) once a password exists.
+
+### Migration/schema check
+- No schema migration in this epic's diff (`lib/billing/queries.ts` only adds new query functions against existing `orders`/`subscriptions`/`products`/`users` tables) — `pnpm db:migrate` against the fresh `saas_dev_e2e` DB was a clean no-op re-run (idempotent, only the pre-existing 0012 migration applied).
+
+### Verdict
+**PASS.** Typecheck clean, lint clean (0 errors), coverage gate cleared on all four metrics (85.31% statements ≥ 80%), int test proves the refund → entitlement-revocation → audit-log chain against a real Postgres, e2e green outside the known pre-existing TOTP cluster (unrelated to this epic's diff — confirmed via diff stat). See `review-findings.md` Round 0 — 2026-07-13 (E331) for the full code-review writeup against all 5 acceptance criteria.
+
+## E332 QA — 2026-07-13 (多銷售頁管理 — sales_pages 表 + admin CRUD + ISR/preview)
+
+**Branch**: `feat/E332-sales-pages-manager` · **Spec**: `docs/epics/e332-sales-pages-manager.md` · **Step**: qa · **Worktree**: `.claude/worktrees/agent-a64e13d3247520691`
+
+### Test gates (all from the worktree's `next-app/`)
+
+| Check | Result |
+|---|---|
+| `pnpm typecheck` | PASS — 0 errors |
+| `pnpm lint` | PASS — 0 errors, 9 pre-existing warnings (3× TanStack/RHF React-Compiler "incompatible library" skip notes — 2 pre-existing on `data-table.tsx`/`data-table-generic.tsx`, 1 new on the E332 `_sales-page-form.tsx`'s `watch()` call, same established pattern; 1× unused eslint-disable in `coverage/block-navigation.js`; 4× `'_a' is defined but never used` in pre-existing test files, untouched by this diff) |
+| `pnpm test:coverage` | PASS — **684/684 tests, 66 files**. All-files: **Statements 85.61%, Branches 80.58%, Functions 93.27%, Lines 85.69%** (≥80% gate — all four metrics clear it). `lib/sales` (the new module) is at **100% statements/functions/lines, 94.73% branches** — only `preview-token.ts` line 26 (an unreachable defensive branch) uncovered. Remaining under-covered files (`rate-limit.ts`, `billing/resolver.ts`, `billing/providers/{ecpay,newebpay,stripe}.ts`, `registry-module-manifest.ts`) are all pre-existing and untouched by the E332 diff. |
+| `pnpm test:e2e` (against `saas_dev_e2e` — DB dropped/recreated, migrated fresh incl. 0013, then seeded fresh) | **41/47 passed.** 1 failed + 5 skipped, all in the **known pre-existing cluster**: `e2e/two-factor.spec.ts:103` "enable 2FA from Settings → Security" (TOTP env-window issue, Phase 72 #51) fails and takes its 5 dependent tests down with it. Confirmed the E332 diff touches zero `two-factor`/TOTP files (diff stat shows only `actions/sales-pages.ts`, `app/(dashboard)/dashboard/admin/sales-pages/**`, `app/p/[slug]/page.tsx`, `components/app-sidebar.tsx`, `drizzle/migrations/0013_*`, `drizzle/seed.ts`, `lib/sales/**`, `lib/schema/**`, `lib/validations/sales-pages.*`, `vitest.config.ts`). Excluding that known cluster: **41/41 relevant e2e tests pass** — no regression to auth-flow, dashboard-smoke, RBAC (viewer/editor), items-crud, billing, or cobalt-ui suites. No e2e test exists specifically for the new sales-pages admin UI or the DB-backed `/p/[slug]` render/preview path (see gap noted below and in `review-findings.md`). |
+
+### e2e DB note
+The `saas_dev_e2e` Postgres database already existed from a prior session with demo data seeded **before** this epic's migration — `pnpm db:seed` against it printed "Demo data already present — skipping enrichment," which meant the new `sales_pages` seed row was never inserted (0 rows). Dropped + recreated `saas_dev_e2e`, re-ran `pnpm db:migrate` (applies 0013 cleanly) + `pnpm db:seed` fresh, which correctly ran full enrichment including the new `ai-writing-course` DB-backed row (`status=published`, `render_mode=structured`) — confirmed via a direct `SELECT` against the container. This is an artifact of DB state hygiene between QA runs, not a bug in the seed script itself (its own printed message names the fix).
+
+### New tests added by E332 (all passing)
+- `lib/sales/preview-token.test.ts` (87 lines) — mint/verify round-trip, tampered signature rejected, wrong-slug token rejected, expired token rejected, malformed/missing token rejected.
+- `lib/sales/visibility.test.ts` (26 lines) — `canServeSalesPageRow()`: published always served; draft served only with a valid preview flag; `custom` render mode never served by the structured renderer regardless of status/preview.
+- `lib/validations/sales-pages.test.ts` (92 lines) — slug regex (rejects uppercase/spaces/leading-hyphen), `productId` "" /null/undefined→null normalization, full `createSalesPageSchema`/`updateSalesPageSchema` acceptance of a valid `SalesPageContent` payload and rejection of a malformed one.
+- `lib/sales/content.test.ts` — refactored (not net-new) to target the renamed config-only resolver (`getConfigSalesPageContent`/`getConfigSalesPageSlugs`) after the DB-first resolver moved to `lib/sales/resolver.ts`; still asserts both example slugs parse cleanly and demonstrate distinct `style.preset`/`sectionOrder` values.
+
+**Gap** (see `review-findings.md` for full writeup): no integration test (`test/int/*.int.test.ts`) proves the "非 admin 無法 CRUD/預覽 draft" acceptance criterion against a real Postgres — `lib/sales/resolver.ts` and `actions/sales-pages.ts` (both `@/lib/db`-importing) are correctly excluded from the unit-coverage `include` list per the established convention, but no substitute int/e2e test was added in their place, unlike the concurrently-merged E331's `admin-revenue.int.test.ts` which covered the analogous case.
+
+### Migration/schema check
+`next-app/drizzle/migrations/0013_vengeful_blue_marvel.sql` applied cleanly to the freshly-recreated `saas_dev_e2e` DB via `pnpm db:migrate` — pure `CREATE TYPE`/`CREATE TABLE`/`ADD CONSTRAINT`/`CREATE INDEX`, no destructive statements. `meta/_journal.json` (idx 13) and `meta/0013_snapshot.json` (`prevId` matches `meta/0012_snapshot.json`'s `id` exactly) are consistent with the migration file — generated via `db:generate`, not hand-edited.
+
+### Verdict
+**PASS.** Typecheck clean, lint clean (0 errors), coverage gate cleared on all four metrics (85.61% statements ≥ 80%, `lib/sales` itself at 100%/94.73%), e2e green outside the known pre-existing TOTP cluster (unrelated to this epic's diff — confirmed via diff stat). One advisory gap: no int/e2e test proves the RBAC acceptance criterion for the new Server Actions — recommend a follow-up `test/int/sales-pages.int.test.ts` before treating E332's acceptance criteria as fully closed. See `review-findings.md` Round 0 — 2026-07-13 (E332) for the full code-review writeup against all six focus areas.
