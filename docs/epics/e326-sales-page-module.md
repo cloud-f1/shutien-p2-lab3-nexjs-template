@@ -20,6 +20,10 @@ Data-driven sales page route reusing existing marketing primitives, plus the mis
    solution, modules[], testimonials[], price/originalPrice/deadline, faq[]) keyed by slug. Ship one
    example product with the PRD's zh-TW 文案範本 as placeholder copy (【】markers kept). DB-backed
    products/pricing come from E327 — this config owns *copy*, not SKUs.
+   **設計約束（E332 鋪路，user decision 2026-07-12）**：`SalesPageContent` 必須是 **Zod schema**
+   （不只是 TS type — E332 的 DB JSONB 內容用同一份 schema 驗證），且 route 取內容只透過**單一
+   resolver `getSalesPageContent(slug)`**；所有區塊元件是 pure（吃 content prop，不知道內容來源）。
+   E332 把 resolver 換成 DB-backed（config 降級為 fallback/seed）時，元件層零修改。
 3. **New sections** under `components/marketing/sales/`:
    - `pain-points.tsx` — 痛點共鳴 checklist (「你是否也正深陷這些困境？」)
    - `solution.tsx` — 解決方案 + product mockup slot
@@ -42,6 +46,8 @@ Data-driven sales page route reusing existing marketing primitives, plus the mis
 
 ## Acceptance Criteria
 - [ ] `/p/<example-slug>` renders all 7 PRD sections in order, zh-TW placeholder copy from config
+- [ ] `SalesPageContent` is a Zod schema; page/route reads content ONLY via `getSalesPageContent(slug)`;
+      section components are pure (no config/DB imports — grep 佐證)
 - [ ] Page is statically generated; only countdown/CTA are client components (`"use client"` count ≤ 2 new)
 - [ ] Countdown renders remaining time and hides after deadline (unit test on the pure time helper)
 - [ ] Video: muted autoplay + captions track slot + poster; no CLS (fixed aspect ratio)
@@ -54,4 +60,5 @@ Data-driven sales page route reusing existing marketing primitives, plus the mis
 
 ## Out of Scope
 - Purchasable SKUs / checkout / orders → E327；交付開通 → E328
+- Admin 多銷售頁管理（DB-backed content + CRUD）→ E332（resolver 已為其解耦）
 - A/B testing, analytics events (future epic)

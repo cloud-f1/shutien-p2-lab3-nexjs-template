@@ -75,6 +75,7 @@
 | Phase 75 | E319, E320, E321, E322, E323 | ✅ Complete (Backport Wave 2 — executable tooling + patterns from ai-rc-engineer-pm) — all parallel, no cross-deps; E321 + E323 run in-repo (devDeps + shadcn). Approved 2026-07-08 via /athena:plan Cycle 34. |
 | Phase 77 | E326, E327, E328, E329 | ⬜ Pending (高轉換銷售頁 + 統一一次性金流 — sales-page PRD) — E326 sales page route + AIDA sections + hook video · E327 products/orders + unified one-time checkout (ECPay-first, `BILLING_PROVIDER=ecpay` in deploys; resolver default unchanged) · E328 entitlement guard + 內容庫 delivery + 自動建帳/啟用信 · E329 NewebPay provider fills the E249 reserved slot. Wave 1: E326+E327 parallel → Wave 2: E328+E329 (both need E327's settleOrder/orders). Approved 2026-07-12 via /athena:plan Cycle 35. |
 | Phase 78 | E330 | ⬜ Pending (CRM 整合 — order.completed 事件 + 系統級 webhook egress + UC1/UC2 recipes) — reuses E268 dispatcher (HMAC/retry/deliveries); adds webhooks.scope (system, admin-managed) + settleOrder emit + Make/Zapier recipes (Google Sheet 對帳 · MailerLite 打標籤). UC3 (單一真相來源) = E327/E328 本身. First-party @saas/crm-* connectors = backlog. Approved 2026-07-12 via /athena:plan Cycle 35 addendum. |
+| Phase 79 | E331, E332 | ⬜ Pending (Admin 管理後台 — 後台 audit 缺口) — E331 營收後台 (dashboard/admin → tabs: 會員 DataTable+詳情 · 全站訂單台+重寄啟用信/標記退款 · 全站訂閱台 read-only) · E332 多銷售頁管理 (sales_pages 表 JSONB+Zod 單一契約 + admin/sales-pages CRUD + ISR revalidate + draft preview; E326 resolver 只換資料源). PARALLEL (disjoint: E331 獨佔 admin tabs 檔, E332 獨佔 admin/sales-pages/**). Approved 2026-07-12 via /athena:plan Cycle 35 addendum 2. |
 
 ## Epic Step Matrix
 
@@ -386,6 +387,8 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E328 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 77 — 交付開通: lib/entitlements.ts guard + dashboard/library 內容庫 + guest-order claim + confirmation email. Spec: docs/epics/e328-purchase-entitlement-delivery.md |
 | E329 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 77 — 藍新 NewebPay provider: AES TradeInfo + SHA256 TradeSha, one-time only, notify route → settleOrder(); resolver slot unlocked. Spec: docs/epics/e329-newebpay-provider.md |
 | E330 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 78 — CRM webhook egress: webhooks.scope=system (admin CRUD) + order.completed emit from settleOrder + Google Sheet/MailerLite recipes. Spec: docs/epics/e330-crm-webhook-egress.md |
+| E331 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 79 — Admin 營收後台: admin page → tabs (會員 DataTable+詳情/全站訂單/全站訂閱) + 重寄啟用信 + 標記退款 (entitlement 自動失效). Spec: docs/epics/e331-admin-revenue-console.md |
+| E332 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 79 — 多銷售頁管理: sales_pages 表 (JSONB + E326 Zod 契約) + admin CRUD (modal/DataTable) + ISR revalidate + draft preview token; resolver DB-first + config fallback. Spec: docs/epics/e332-sales-pages-manager.md |
 
 
 ## Dependency Rules
@@ -702,6 +705,8 @@ E327: no deps (builds on E249 PaymentProvider contract + existing ecpay/stripe p
 E328: E327
 E329: E327
 E330: E327, E328
+E331: E327, E328
+E332: E326, E327
 ```
 
 ## Phase Parallelism
@@ -766,6 +771,7 @@ Phase 75: E319 + E320 + E321 + E322 + E323 (ALL PARALLEL — backport wave 2)
 Phase 76: E324 + E325 (PARALLEL — disjoint files: E324 next-app/lib+actions, E325 next-app/registry; independent PRs off main)
 Phase 77: E326 + E327 (PARALLEL — disjoint: E326 app/p+components/marketing/sales, E327 schema/actions/api) → E328 + E329 (PARALLEL after E327 — E328 dashboard/library+entitlements, E329 providers/newebpay; both consume E327's orders + settleOrder)
 Phase 78: E330 (single epic — after Phase 77's E327+E328 merge; touches lib/webhooks + lib/billing/orders + webhooks dashboard)
+Phase 79: E331 + E332 (PARALLEL — disjoint: E331 owns dashboard/admin tabs + actions/admin-revenue, E332 owns admin/sales-pages/** + sales_pages migration; only E332 migrates)
 ```
 
 ## Next Action
@@ -773,6 +779,8 @@ Phase 78: E330 (single epic — after Phase 77's E327+E328 merge; touches lib/we
 **⬜ Phase 77 (E326–E329) PENDING — 高轉換銷售頁 + 統一一次性金流 (Cycle 35, 2026-07-12).** Sales-page PRD approved: E326 sales page (/p/[slug] + AIDA sections + countdown + hook video) · E327 products/orders + unified one-time checkout (ECPay-first, SOLID interface segregation) · E328 entitlement delivery (內容庫 + 自動建帳/啟用信) · E329 NewebPay provider. Wave 1: E326+E327 → Wave 2: E328+E329. Run `/athena:batch auto` or `/athena:loop` to begin. Specs: `docs/epics/e32{6,7,8,9}-*.md`.
 
 **⬜ Phase 78 (E330) QUEUED — CRM webhook egress (Cycle 35 addendum, 2026-07-12).** After Phase 77 merges: order.completed event + system-scoped webhooks (reuse E268 dispatcher) + Google Sheet / MailerLite recipes. Spec: `docs/epics/e330-crm-webhook-egress.md`.
+
+**⬜ Phase 79 (E331+E332) QUEUED — Admin 管理後台 (Cycle 35 addendum 2, 2026-07-12).** After Phase 77: E331 營收後台 (會員/訂單/訂閱台 + 重寄啟用信/標記退款) · E332 多銷售頁管理 (sales_pages + admin CRUD + ISR + draft preview). Parallel, disjoint files. Specs: `docs/epics/e33{1,2}-*.md`.
 
 ---
 

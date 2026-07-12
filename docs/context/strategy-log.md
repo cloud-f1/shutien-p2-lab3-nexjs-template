@@ -12,7 +12,7 @@
 | Cycle | 35 |
 | State | APPROVED |
 | Date | 2026-07-12 |
-| Notes | Phase 77 (高轉換銷售頁 + 統一一次性金流) — 4 epics E326–E329 APPROVED 2026-07-12 from a user-supplied sales-page PRD (AIDA copy structure + unified ECPay/NewebPay/Stripe one-time payment interface). User decisions: **ECPay 綠界 = launch gateway** (deploys set `BILLING_PROVIDER=ecpay`; resolver code default stays stripe) · scope = 結帳+訂單+**交付開通** (full) · formal epics via /athena:plan. ~70% infra pre-existed (E249 provider contract, E250/E261 landing sections, ecpay/stripe providers, payment_events idempotency) — epics cover only the true gaps: sales route+4 sections (E326), products/orders+checkout+SOLID interface segregation (E327), entitlement delivery+自動建帳/啟用信 (E328), NewebPay slot (E329). Wave 1: E326+E327 → Wave 2: E328+E329. **Addendum (同日)**: CRM 整合 → **Phase 78 E330** (order.completed + system-scoped webhook egress reusing E268 + Google Sheet/MailerLite recipes; first-party @saas/crm-* connectors = backlog). |
+| Notes | Phase 77 (高轉換銷售頁 + 統一一次性金流) — 4 epics E326–E329 APPROVED 2026-07-12 from a user-supplied sales-page PRD (AIDA copy structure + unified ECPay/NewebPay/Stripe one-time payment interface). User decisions: **ECPay 綠界 = launch gateway** (deploys set `BILLING_PROVIDER=ecpay`; resolver code default stays stripe) · scope = 結帳+訂單+**交付開通** (full) · formal epics via /athena:plan. ~70% infra pre-existed (E249 provider contract, E250/E261 landing sections, ecpay/stripe providers, payment_events idempotency) — epics cover only the true gaps: sales route+4 sections (E326), products/orders+checkout+SOLID interface segregation (E327), entitlement delivery+自動建帳/啟用信 (E328), NewebPay slot (E329). Wave 1: E326+E327 → Wave 2: E328+E329. **Addendum (同日)**: CRM 整合 → **Phase 78 E330** (order.completed + system-scoped webhook egress reusing E268 + Google Sheet/MailerLite recipes; first-party @saas/crm-* connectors = backlog). **Addendum 2 (同日)**: 後台 audit → **Phase 79 E331+E332** (admin 營收後台: 會員/訂單/訂閱台 + 多銷售頁管理 sales_pages+CRUD+ISR; E326 amended with resolver 解耦 constraint). |
 | Prev34 | Phase 75 (Backport Wave 2) — 5 epics E319–E323 APPROVED + **EXECUTED** 2026-07-08 (implement→QA→commit→push→PR each; merges pending user, pull-only perms). Ran as a **sequential PR stack** (shared files: stop-verifier/CLAUDE/package.json) — dogfooding E319's own in-repo-chain mode. PRs: **#72 E320 · #73 E319 · #74 E321 · #75 E322 · #76 E323**, stacked. E323 scoped to Part A + @saas/{scheduler,audit-log}; **E324 follow-up** = @saas/{rbac-scoped-visibility,sentry-pii,csv-io} + the 8 orphans E320 found. |
 | Prev33 | Phase 73 (Template Enhancement Backport from ai-rc-engineer-pm, E311–E317) — 7 epics, all parallel. TONY chief-of-staff · new-project wizard · docs reorg · service-map+dead-code (docs-level) · testing-strategy skill · scripts tooling · zeabur-deploy skill. APPROVED + merged (PRs #59–#66). |
 | Prev32 | Phase 72 (Follow-ups from /athena:align, E307–E310) — TOTP e2e, usage limits, export expansion, 2FA recovery + onboarding persistence. Merged via PR #57 (#58 for state flip). 518 tests, migration 0010. |
@@ -48,6 +48,21 @@ UC3 *is* E327/E328. **User decisions**: 會員開通 = 自動建帳 + 啟用信 
 Registered **E330** (8 SP, deps E327+E328): webhooks.scope=system (admin CRUD, expand-only migration) +
 `order.completed` emitted from settleOrder's single paid transition (exactly-once, never blocks
 settlement) + 兩份 recipe 文件. PRD 的 Supabase-vs-Prisma 問題不適用 — 模板已有 Drizzle+postgres-js+Auth.js。
+
+### Addendum 2（同日）— 後台管理面 audit → Phase 79 (E331+E332)
+
+User asked to re-audit the **admin backoffice** coverage. Findings: `dashboard/admin` has basic member
+management (roles/delete/TOTP/invites, raw `<Table>`); subscriptions only exist as the user's own
+`dashboard/system` Billing tab (E292) — **no admin-wide orders/subscriptions console**; third-party
+integration admin UI already covered by E330; multi sales-page has no admin surface (E326 is code
+config). **User decisions**: E326 content-source = resolver 解耦 (Zod schema + single
+`getSalesPageContent`, config first — E332 swaps to DB with zero component rework) · E331 depth =
+讀 + 基本操作 (重寄啟用信/標記退款/撤銷權限 — 金流端退款留在金流商後台) · register Phase 79 now.
+Registered **E331** (13 SP, deps E327+E328): admin → tabs (會員 DataTable+詳情 · 全站訂單台 ·
+全站訂閱台 read-only) + admin-revenue actions + audit-logged. **E332** (13 SP, deps E326+E327):
+`sales_pages` table (JSONB validated by E326's same Zod contract) + `admin/sales-pages` CRUD
+(modal/DataTable convention) + ISR revalidate-on-publish + signed draft-preview token + config
+fallback. Parallel (disjoint file ownership; only E332 migrates).
 
 ---
 

@@ -91,6 +91,7 @@
 | Phase 75 | E319, E320, E321, E322, E323 | ✅ Complete (Backport Wave 2 — executable tooling + patterns from ai-rc-engineer-pm) — E319 orchestration & guardrail hardening (flow Step 6 · audit Step 6 · stop-verifier public-action marker) · E320 executable dead-code & arch guards (real service-map.cjs + check:orphans) · E321 test pyramid middle layer (test:int + component tests + docs/qa) · E322 CI/deploy/release hardening + doctrine · E323 reusable patterns (Hybrid: bake-in primitives + @saas modules) |
 | Phase 77 | E326, E327, E328, E329 | ⬜ Pending (高轉換銷售頁 + 統一一次性金流 — sales-page PRD, Cycle 35, 2026-07-12) — E326 sales page /p/[slug] (AIDA sections + countdown + hook video) · E327 products/orders + unified one-time checkout (ECPay-first) · E328 entitlement guard + 內容庫 delivery + 自動建帳/啟用信 · E329 NewebPay provider (fills E249 reserved slot). Wave 1: E326+E327 → Wave 2: E328+E329 |
 | Phase 78 | E330 | ⬜ Pending (CRM 整合 — Cycle 35 addendum, 2026-07-12) — order.completed 事件 + 系統級 webhook egress (reuse E268 dispatcher; webhooks.scope + admin CRUD) + UC1 Google Sheet / UC2 MailerLite recipes; UC3 單一真相來源 = E327/E328 本身. Deps: E327+E328 |
+| Phase 79 | E331, E332 | ⬜ Pending (Admin 管理後台 — Cycle 35 addendum 2, 2026-07-12) — E331 營收後台 (admin tabs: 會員 DataTable+詳情 · 全站訂單+重寄啟用信/標記退款 · 全站訂閱 read-only; deps E327+E328) · E332 多銷售頁管理 (sales_pages JSONB+Zod 契約 + admin CRUD + ISR + draft preview; deps E326+E327). PARALLEL — disjoint files |
 <!-- PHASE_STATUS_END -->
 
 <!-- EPIC_MATRIX_START -->
@@ -650,6 +651,7 @@ Phase 74: E318 (single epic — dev-docs Cloudflare Pages deploy)
 Phase 75: E319 + E320 + E321 + E322 + E323 (ALL PARALLEL — backport wave 2, no cross-deps; run E321 + E323 IN-REPO, not worktree — they add devDeps + shadcn components)
 Phase 77: E326 + E327 (parallel, disjoint files) → E328 + E329 (parallel after E327 — both consume orders + settleOrder)
 Phase 78: E330 (single epic, after E327+E328)
+Phase 79: E331 + E332 (parallel, disjoint files — E331 admin tabs, E332 admin/sales-pages + migration)
 ```
 
 ---
