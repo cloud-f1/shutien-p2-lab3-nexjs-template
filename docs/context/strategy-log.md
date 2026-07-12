@@ -9,13 +9,33 @@
 
 | Field | Value |
 |-------|-------|
-| Cycle | 34 |
+| Cycle | 35 |
 | State | APPROVED |
-| Date | 2026-07-08 |
-| Notes | Phase 75 (Backport Wave 2) — 5 epics E319–E323 APPROVED + **EXECUTED** 2026-07-08 (implement→QA→commit→push→PR each; merges pending user, pull-only perms). Ran as a **sequential PR stack** (shared files: stop-verifier/CLAUDE/package.json) — dogfooding E319's own in-repo-chain mode. PRs: **#72 E320 · #73 E319 · #74 E321 · #75 E322 · #76 E323**, stacked (each based on prior; merge in that order). E323 scoped to Part A + @saas/{scheduler,audit-log}; **E324 follow-up** = @saas/{rbac-scoped-visibility,sentry-pii,csv-io} + the 8 orphans E320 found. Cron loop skipped (can't self-advance without merge rights). |
+| Date | 2026-07-12 |
+| Notes | Phase 77 (高轉換銷售頁 + 統一一次性金流) — 4 epics E326–E329 APPROVED 2026-07-12 from a user-supplied sales-page PRD (AIDA copy structure + unified ECPay/NewebPay/Stripe one-time payment interface). User decisions: **ECPay 綠界 = launch gateway** (deploys set `BILLING_PROVIDER=ecpay`; resolver code default stays stripe) · scope = 結帳+訂單+**交付開通** (full) · formal epics via /athena:plan. ~70% infra pre-existed (E249 provider contract, E250/E261 landing sections, ecpay/stripe providers, payment_events idempotency) — epics cover only the true gaps: sales route+4 sections (E326), products/orders+checkout (E327), entitlement delivery (E328), NewebPay slot (E329). Wave 1: E326+E327 → Wave 2: E328+E329. |
+| Prev34 | Phase 75 (Backport Wave 2) — 5 epics E319–E323 APPROVED + **EXECUTED** 2026-07-08 (implement→QA→commit→push→PR each; merges pending user, pull-only perms). Ran as a **sequential PR stack** (shared files: stop-verifier/CLAUDE/package.json) — dogfooding E319's own in-repo-chain mode. PRs: **#72 E320 · #73 E319 · #74 E321 · #75 E322 · #76 E323**, stacked. E323 scoped to Part A + @saas/{scheduler,audit-log}; **E324 follow-up** = @saas/{rbac-scoped-visibility,sentry-pii,csv-io} + the 8 orphans E320 found. |
 | Prev33 | Phase 73 (Template Enhancement Backport from ai-rc-engineer-pm, E311–E317) — 7 epics, all parallel. TONY chief-of-staff · new-project wizard · docs reorg · service-map+dead-code (docs-level) · testing-strategy skill · scripts tooling · zeabur-deploy skill. APPROVED + merged (PRs #59–#66). |
 | Prev32 | Phase 72 (Follow-ups from /athena:align, E307–E310) — TOTP e2e, usage limits, export expansion, 2FA recovery + onboarding persistence. Merged via PR #57 (#58 for state flip). 518 tests, migration 0010. |
 | Prev31 | Phase 71 (Athena Toolchain, E302–E306) — rebrand skill, mockup-to-epics + /athena:plan mockup, alignment-audit + /athena:align, user-guide-builder + VitePress dev-docs (deployed to Cloudflare Pages), zeabur-deploy skill. Merged via PR #54. |
+
+---
+
+## Cycle 35 — 2026-07-12 — Mode: register-user-prd (source: 數位產品/課程銷售頁 PRD)
+
+**Theme**: **High-conversion sales page + unified one-time payments.** User supplied a complete PRD (AIDA sales-page copy structure · 3-sec hook video spec · `UnifiedCheckoutPayload`/`PaymentGatewayProvider` interface for ECPay/NewebPay/Stripe · SSG/ISR perf strategy). Gap analysis found the template already implements ~70%: E249's `PaymentProvider` contract *is* the PRD's gateway interface (createCheckout explicitly one-time-capable, verifyWebhook, payment_events idempotency), ECPay + Stripe providers are live, and 8/9 AIDA sections exist in `components/marketing/*`.
+
+**User decisions (2026-07-12)**: launch gateway = **ECPay 綠界** (webhook test priority; deploys set `BILLING_PROVIDER=ecpay`, resolver default untouched) · purchase scope = **full delivery** (checkout + orders + entitlement 開通) · execution = formal epics.
+
+### Registered Epics (Phase 77)
+
+| # | Epic | Pts | Deps | Scope |
+|---|------|-----|------|-------|
+| **E326** | 高轉換銷售頁模組 | 8 | none | `/p/[slug]` SSG route + `lib/sales/content.ts` typed copy config + new sections (pain-points · solution · modules-table · countdown · risk-reversal) + hook-video muted-autoplay/captions. Reuses hero/social-proof/testimonials/faq/cta. |
+| **E327** | 一次性購買 products/orders + 統一結帳 | 13 | none | `products`/`orders` tables · `createOneTimeCheckout` defineAction (guest OK) · shared `settleOrder()` webhook settlement (idempotent via payment_events) · 感謝頁 · ECPay-first ops docs. |
+| **E328** | 交付開通 entitlement | 8 | E327 | `lib/entitlements.ts` guard (order = ownership; live DB re-read) · dashboard/library 內容庫 (DataTable) · guest-order claim-by-email · confirmation email. |
+| **E329** | 藍新 NewebPay provider | 8 | E327 | Fill E249's reserved resolver slot: MPG AES TradeInfo + SHA256 TradeSha, one-time only, auto-submit form, notify route → settleOrder(); known-vector tests. |
+
+**Total**: 37 SP · Wave 1: E326+E327 (disjoint files) → Wave 2: E328+E329. **State: APPROVED** (user-gated via AskUserQuestion, 3/3 decisions recorded).
 
 ---
 

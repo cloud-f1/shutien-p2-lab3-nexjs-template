@@ -89,6 +89,7 @@
 | Phase 74 | E318 | ✅ Complete (Dev-Docs Cloudflare Pages Deploy Enhancement) — Cloudflare Pages SOP guide + user-guide-mode flip guide + Makefile targets (dev-docs-preview/build/deploy) + GitHub Actions CI (path: dev-docs/**) + fixed dead gh-cf-deploy ref; merged PR #68 |
 | Phase 76 | E324, E325 | ✅ Complete (Backport Wave 2 follow-up) — E324 orphan remediation (wire/delete 8 tested-but-unwired guards E320 found; behavior-changing) · E325 remaining @saas modules (rbac-scoped-visibility · sentry-pii · csv-io) |
 | Phase 75 | E319, E320, E321, E322, E323 | ✅ Complete (Backport Wave 2 — executable tooling + patterns from ai-rc-engineer-pm) — E319 orchestration & guardrail hardening (flow Step 6 · audit Step 6 · stop-verifier public-action marker) · E320 executable dead-code & arch guards (real service-map.cjs + check:orphans) · E321 test pyramid middle layer (test:int + component tests + docs/qa) · E322 CI/deploy/release hardening + doctrine · E323 reusable patterns (Hybrid: bake-in primitives + @saas modules) |
+| Phase 77 | E326, E327, E328, E329 | ⬜ Pending (高轉換銷售頁 + 統一一次性金流 — sales-page PRD, Cycle 35, 2026-07-12) — E326 sales page /p/[slug] (AIDA sections + countdown + hook video) · E327 products/orders + unified one-time checkout (ECPay-first) · E328 entitlement guard + 內容庫 delivery · E329 NewebPay provider (fills E249 reserved slot). Wave 1: E326+E327 → Wave 2: E328+E329 |
 <!-- PHASE_STATUS_END -->
 
 <!-- EPIC_MATRIX_START -->
@@ -646,6 +647,7 @@ Phase 72: E309 → E307 → E308 → E310 (SEQUENTIAL on one branch — E308+E31
 Phase 73: E311 + E312 + E313 + E314 + E315 + E316 + E317 (ALL PARALLEL — template backport, no deps)
 Phase 74: E318 (single epic — dev-docs Cloudflare Pages deploy)
 Phase 75: E319 + E320 + E321 + E322 + E323 (ALL PARALLEL — backport wave 2, no cross-deps; run E321 + E323 IN-REPO, not worktree — they add devDeps + shadcn components)
+Phase 77: E326 + E327 (parallel, disjoint files) → E328 + E329 (parallel after E327 — both consume orders + settleOrder)
 ```
 
 ---
