@@ -11,26 +11,37 @@ import { Solution } from "@/components/marketing/sales/solution"
 import { SalesTestimonials } from "@/components/marketing/sales/testimonials"
 import {
   DEFAULT_SECTION_ORDER,
-  getAllSalesPageSlugs,
-  getSalesPageContent,
   type SalesPageContent,
   type SalesSectionKey,
 } from "@/lib/sales/content"
+import { getAllSalesPageSlugs, getSalesPageContent } from "@/lib/sales/resolver"
 import { getSalesStyleTokens, type SalesStyleTokens } from "@/lib/sales/styles"
 import { cn } from "@/lib/utils"
 
 interface PageProps {
   params: Promise<{ slug: string }>
+  searchParams: Promise<{ preview?: string }>
 }
 
-/** Static params for every configured sales page — SSG at build time. */
-export function generateStaticParams() {
-  return getAllSalesPageSlugs().map((slug) => ({ slug }))
+/**
+ * The route reads a `?preview` search param (draft-preview tokens), which makes
+ * it render on demand — so publish/unpublish/edit take effect immediately with
+ * NO redeploy (the whole point of moving off build-time-only config). Publish
+ * actions still `revalidatePath('/p/<slug>')` to drop any cached data fetch.
+ * `generateStaticParams` (DB published ∪ config) seeds known slugs; unknown
+ * slugs still render because `dynamicParams` is true.
+ */
+export const dynamicParams = true
+
+export async function generateStaticParams() {
+  const slugs = await getAllSalesPageSlugs()
+  return slugs.map((slug) => ({ slug }))
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const { slug } = await params
-  const content = getSalesPageContent(slug)
+  const { preview } = await searchParams
+  const content = await getSalesPageContent(slug, { previewToken: preview })
   if (!content) return {}
 
   const images = content.meta.ogImage ? [content.meta.ogImage] : undefined
@@ -80,10 +91,12 @@ const SECTION_RENDERERS: Record<
   faq: (content, style) => <SalesFaq key="faq" {...content.faq} style={style} />,
 }
 
-export default async function SalesPage({ params }: PageProps) {
+export default async function SalesPage({ params, searchParams }: PageProps) {
   const { slug } = await params
-  // Route reads content ONLY through this resolver — never the raw config map.
-  const content = getSalesPageContent(slug)
+  const { preview } = await searchParams
+  // Route reads content ONLY through this resolver — DB-first, config fallback.
+  // A draft page renders only with a valid `?preview=<token>`; otherwise 404.
+  const content = await getSalesPageContent(slug, { previewToken: preview })
   if (!content) notFound()
 
   const style = getSalesStyleTokens(content.style.preset)

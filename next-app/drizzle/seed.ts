@@ -10,12 +10,14 @@ import {
   notificationsTable,
   plansTable,
   productsTable,
+  salesPagesTable,
   subscriptionsTable,
   paymentEventsTable,
   usersTable,
   webhookDeliveriesTable,
   webhooksTable,
 } from "../lib/schema"
+import { getConfigSalesPageContent } from "../lib/sales/content"
 import { generateApiKey } from "../lib/api-keys-utils"
 import { generateWebhookSecret } from "../lib/webhooks-utils"
 import { generateInviteToken, inviteExpiry } from "../lib/team-utils"
@@ -124,6 +126,21 @@ async function enrich(adminId: string, editorId: string | undefined) {
       entitlementKey: "course.nextjs", // consumed by E328 to grant access
     })
     .onConflictDoNothing({ target: productsTable.slug })
+
+  // ── E332: seed the E326 example config as the first DB-backed sales page ──
+  const exampleContent = getConfigSalesPageContent("ai-writing-course")
+  if (exampleContent) {
+    await db
+      .insert(salesPagesTable)
+      .values({
+        slug: exampleContent.slug,
+        content: exampleContent,
+        renderMode: "structured",
+        status: "published",
+        publishedAt: now,
+      })
+      .onConflictDoNothing({ target: salesPagesTable.slug })
+  }
 
   await db.insert(paymentEventsTable).values([
     {

@@ -2,39 +2,39 @@ import { describe, expect, it } from "vitest"
 
 import {
   DEFAULT_SECTION_ORDER,
-  getAllSalesPageSlugs,
-  getSalesPageContent,
+  getConfigSalesPageSlugs,
+  getConfigSalesPageContent,
   salesPageContentSchema,
 } from "@/lib/sales/content"
 
-describe("getSalesPageContent (resolver)", () => {
+describe("getConfigSalesPageContent (resolver)", () => {
   it("returns validated content for a known slug", () => {
-    const content = getSalesPageContent("ai-writing-course")
+    const content = getConfigSalesPageContent("ai-writing-course")
     expect(content).toBeDefined()
     expect(content?.slug).toBe("ai-writing-course")
     expect(content?.style.preset).toBe("bold")
   })
 
   it("returns undefined for an unknown slug (route should 404)", () => {
-    expect(getSalesPageContent("does-not-exist")).toBeUndefined()
+    expect(getConfigSalesPageContent("does-not-exist")).toBeUndefined()
   })
 
   it("exposes at least two example slugs demonstrating different presets", () => {
-    const slugs = getAllSalesPageSlugs()
+    const slugs = getConfigSalesPageSlugs()
     expect(slugs.length).toBeGreaterThanOrEqual(2)
-    const presets = new Set(slugs.map((slug) => getSalesPageContent(slug)?.style.preset))
+    const presets = new Set(slugs.map((slug) => getConfigSalesPageContent(slug)?.style.preset))
     expect(presets.size).toBeGreaterThanOrEqual(2)
   })
 
   it("every registered slug parses cleanly against the Zod schema", () => {
-    for (const slug of getAllSalesPageSlugs()) {
-      const content = getSalesPageContent(slug)
+    for (const slug of getConfigSalesPageSlugs()) {
+      const content = getConfigSalesPageContent(slug)
       expect(() => salesPageContentSchema.parse(content)).not.toThrow()
     }
   })
 
   it("second example demonstrates a reordered/reduced sectionOrder", () => {
-    const content = getSalesPageContent("premium-mentorship")
+    const content = getConfigSalesPageContent("premium-mentorship")
     expect(content?.style.sectionOrder).toBeDefined()
     expect(content?.style.sectionOrder).not.toEqual(DEFAULT_SECTION_ORDER)
     expect(content?.style.sectionOrder?.length).toBeLessThan(DEFAULT_SECTION_ORDER.length)

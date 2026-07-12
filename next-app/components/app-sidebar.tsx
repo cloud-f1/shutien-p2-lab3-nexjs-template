@@ -21,6 +21,7 @@ import {
   LayoutDashboardIcon,
   LibraryIcon,
   ListIcon,
+  MegaphoneIcon,
   Settings2Icon,
   ShieldIcon,
   ServerIcon,
@@ -44,7 +45,10 @@ export function AppSidebar({
     { title: "設定", url: "/dashboard/settings", icon: <Settings2Icon /> },
     { title: "系統", url: "/dashboard/system", icon: <ServerIcon /> },
     ...(isAdmin(user.role)
-      ? [{ title: "管理", url: "/dashboard/admin", icon: <ShieldIcon /> }]
+      ? [
+          { title: "管理", url: "/dashboard/admin", icon: <ShieldIcon /> },
+          { title: "銷售頁", url: "/dashboard/admin/sales-pages", icon: <MegaphoneIcon /> },
+        ]
       : []),
   ]
 

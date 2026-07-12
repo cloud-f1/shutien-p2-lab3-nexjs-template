@@ -324,19 +324,19 @@ const SALES_PAGE_CONFIG: Record<string, SalesPageContent> = {
 }
 
 /**
- * Single resolver for sales-page content. The route (and only the route)
- * calls this — never `SALES_PAGE_CONFIG` directly, and section components
- * never import it at all. E332 swaps the body of this function for a
- * DB-backed lookup (validated through the same `salesPageContentSchema`);
- * callers don't change.
+ * Config-only resolver for sales-page content. Pure (no DB), so it stays
+ * unit-testable and is the backward-compatible fallback source. E332's
+ * DB-first resolver (`lib/sales/resolver.ts`) calls this when a slug has no
+ * `sales_pages` row — every pre-existing config page keeps working unchanged.
+ * Section components never import this; only the resolver does.
  */
-export function getSalesPageContent(slug: string): SalesPageContent | undefined {
+export function getConfigSalesPageContent(slug: string): SalesPageContent | undefined {
   const raw = SALES_PAGE_CONFIG[slug]
   if (!raw) return undefined
   return salesPageContentSchema.parse(raw)
 }
 
-/** All slugs with static config — feeds `generateStaticParams`. */
-export function getAllSalesPageSlugs(): string[] {
+/** All slugs with static config — the config half of `generateStaticParams`. */
+export function getConfigSalesPageSlugs(): string[] {
   return Object.keys(SALES_PAGE_CONFIG)
 }
