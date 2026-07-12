@@ -16,6 +16,7 @@ import { notFound } from "next/navigation"
 import { eq } from "drizzle-orm"
 
 import { db } from "@/lib/db"
+import { auth } from "@/lib/auth"
 import { ordersTable, productsTable } from "@/lib/schema"
 import { verifyOrderAccessToken } from "@/lib/billing/order-token"
 import {
@@ -76,6 +77,12 @@ export default async function ThanksPage({
   const isFailed = order.status === "failed"
   const isPending = order.status === "pending"
 
+  // Delivery handoff (E328): a logged-in buyer goes straight to their 內容庫; a
+  // guest buyer was auto-provisioned and must set a password via the activation
+  // email before the library unlocks.
+  const session = await auth()
+  const isLoggedIn = Boolean(session?.user?.id)
+
   return (
     <main className="mx-auto flex min-h-svh w-full max-w-lg flex-col items-center justify-center px-4 py-16">
       <Card className="w-full">
@@ -131,6 +138,13 @@ export default async function ThanksPage({
           </dl>
           <Separator />
 
+          {isPaid && !isLoggedIn && (
+            <p className="rounded-md bg-muted px-3 py-2 text-center text-sm text-muted-foreground">
+              啟用信已寄至 <span className="font-medium">{order.customerEmail}</span>
+              ，設定密碼即可進入內容庫。
+            </p>
+          )}
+
           <div className="flex flex-col gap-2 sm:flex-row">
             {isPending && (
               <Button asChild variant="outline" className="flex-1">
@@ -140,7 +154,16 @@ export default async function ThanksPage({
                 </Link>
               </Button>
             )}
-            <Button asChild className="flex-1">
+            {isPaid && isLoggedIn && (
+              <Button asChild className="flex-1">
+                <Link href="/dashboard/library">前往我的內容庫</Link>
+              </Button>
+            )}
+            <Button
+              asChild
+              variant={isPaid && isLoggedIn ? "outline" : "default"}
+              className="flex-1"
+            >
               <Link href={`/p/${product?.slug ?? slug}`}>返回商品頁</Link>
             </Button>
           </div>

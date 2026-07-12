@@ -82,7 +82,9 @@ function paidEvent(providerEventId: string) {
 describe("settleOrder", () => {
   it("settles a pending order to paid exactly once", async () => {
     const r = await settleOrder(paidEvent("evt-1"))
-    expect(r).toEqual({ settled: true, duplicate: false, status: "paid" })
+    // isNewUser is false here: delivery (E328) runs against the unmocked
+    // select/provision path and is swallowed best-effort, never affecting settle.
+    expect(r).toEqual({ settled: true, duplicate: false, status: "paid", isNewUser: false })
     expect(state.orderStatus).toBe("paid")
   })
 
@@ -91,7 +93,7 @@ describe("settleOrder", () => {
     expect(first.settled).toBe(true)
 
     const second = await settleOrder(paidEvent("evt-dup"))
-    expect(second).toEqual({ settled: false, duplicate: true, status: "skipped" })
+    expect(second).toEqual({ settled: false, duplicate: true, status: "skipped", isNewUser: false })
     // Still exactly one paid transition.
     expect(state.orderStatus).toBe("paid")
   })
@@ -102,7 +104,7 @@ describe("settleOrder", () => {
 
     // Different event id → passes idempotency, but the pending guard blocks it.
     const second = await settleOrder(paidEvent("evt-b"))
-    expect(second).toEqual({ settled: false, duplicate: false, status: "paid" })
+    expect(second).toEqual({ settled: false, duplicate: false, status: "paid", isNewUser: false })
     expect(state.orderStatus).toBe("paid")
   })
 
@@ -114,7 +116,7 @@ describe("settleOrder", () => {
       orderId: ORDER_ID,
       success: false,
     })
-    expect(r).toEqual({ settled: false, duplicate: false, status: "failed" })
+    expect(r).toEqual({ settled: false, duplicate: false, status: "failed", isNewUser: false })
     expect(state.orderStatus).toBe("failed")
   })
 })
