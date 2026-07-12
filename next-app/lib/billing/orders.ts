@@ -16,7 +16,9 @@
 import { and, eq } from "drizzle-orm"
 
 import { db } from "@/lib/db"
-import { ordersTable, paymentEventsTable } from "@/lib/schema"
+import { ordersTable, paymentEventsTable, productsTable } from "@/lib/schema"
+import { provisionUserForOrder } from "@/lib/auth-provision"
+import { sendActivationEmail, sendReceiptEmail } from "@/lib/email"
 
 export interface SettleOrderInput {
   /** Gateway name — "stripe" | "ecpay" | … (for the payment_events row). */
@@ -45,6 +47,12 @@ export interface SettleOrderResult {
   duplicate: boolean
   /** The terminal effect of this call. */
   status: "paid" | "failed" | "skipped"
+  /**
+   * True only when THIS settlement auto-provisioned a new account for the buyer
+   * (E328). False for an existing user, a duplicate/failed/skipped event, or when
+   * delivery could not run. E330's `order.completed` payload consumes this.
+   */
+  isNewUser: boolean
 }
 
 /**
@@ -70,7 +78,7 @@ export async function settleOrder(
     .returning({ id: paymentEventsTable.id })
 
   if (inserted.length === 0) {
-    return { settled: false, duplicate: true, status: "skipped" }
+    return { settled: false, duplicate: true, status: "skipped", isNewUser: false }
   }
 
   // 2. Transition the order (guarded to the pending state so it fires once).
@@ -91,7 +99,12 @@ export async function settleOrder(
     const settled = (result as { count?: number }).count
       ? (result as { count: number }).count > 0
       : false
-    return { settled, duplicate: false, status: "paid" }
+
+    // 3. Delivery (E328) — only when THIS call flipped the order to paid. The
+    //    whole step is best-effort: settlement NEVER fails on a provisioning or
+    //    mail error (deliverEntitlement swallows everything and reports isNewUser).
+    const isNewUser = settled ? await deliverEntitlement(input.orderId) : false
+    return { settled, duplicate: false, status: "paid", isNewUser }
   }
 
   const failed = await db
@@ -101,7 +114,67 @@ export async function settleOrder(
   void failed
 
   await markEventProcessed(input.providerEventId)
-  return { settled: false, duplicate: false, status: "failed" }
+  return { settled: false, duplicate: false, status: "failed", isNewUser: false }
+}
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
+
+/**
+ * Post-settlement delivery (E328) — runs exactly once, right after a pending
+ * order transitions to paid. Auto-provisions or links the buyer's account,
+ * points `orders.user_id` at it, and sends the activation (new user) or receipt
+ * (existing user) email. Returns whether a NEW account was created.
+ *
+ * Entirely best-effort: any failure (provisioning OR mail) is swallowed so the
+ * settlement result is never affected — the paid transition already committed,
+ * and a lost activation mail degrades to the standard forgot-password flow.
+ */
+async function deliverEntitlement(orderId: string): Promise<boolean> {
+  try {
+    const [row] = await db
+      .select({
+        customerEmail: ordersTable.customerEmail,
+        customerName: ordersTable.customerName,
+        userId: ordersTable.userId,
+        productName: productsTable.name,
+      })
+      .from(ordersTable)
+      .innerJoin(productsTable, eq(ordersTable.productId, productsTable.id))
+      .where(eq(ordersTable.id, orderId))
+      .limit(1)
+
+    if (!row) return false
+
+    const prov = await provisionUserForOrder(row.customerEmail, row.customerName)
+
+    // Link the order to the (existing or newly created) account if not already.
+    if (row.userId !== prov.userId) {
+      await db
+        .update(ordersTable)
+        .set({ userId: prov.userId, updatedAt: new Date() })
+        .where(eq(ordersTable.id, orderId))
+    }
+
+    // Email is a further best-effort layer: a mail failure must NOT change the
+    // reported isNewUser (the account + link already succeeded).
+    try {
+      if (prov.isNewUser && prov.activationToken) {
+        const activationUrl = `${APP_URL}/reset-password?token=${encodeURIComponent(
+          prov.activationToken,
+        )}`
+        await sendActivationEmail(row.customerEmail, activationUrl, row.productName)
+      } else {
+        await sendReceiptEmail(row.customerEmail, row.productName, `${APP_URL}/dashboard/library`)
+      }
+    } catch {
+      // mail is best-effort — never blocks settlement or flips isNewUser.
+    }
+
+    return prov.isNewUser
+  } catch {
+    // Provisioning/link failure must not fail settlement (already committed).
+    return false
+  }
 }
 
 async function markEventProcessed(providerEventId: string): Promise<void> {

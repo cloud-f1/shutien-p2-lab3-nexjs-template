@@ -70,6 +70,72 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string) {
   })
 }
 
+/**
+ * Activation email for a buyer whose account was auto-provisioned on purchase
+ * (E328). Links to the set-password page (reuses the E290 reset-token flow) so
+ * the buyer chooses their own password — we NEVER email a plaintext/random one.
+ */
+export async function sendActivationEmail(
+  to: string,
+  activationUrl: string,
+  productName: string,
+) {
+  await transporter.sendMail({
+    from: FROM,
+    to,
+    subject: "設定密碼即可開通您的內容",
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px">
+        <h2 style="margin:0 0 8px">感謝您購買「${productName}」</h2>
+        <p style="color:#555;margin:0 0 24px">
+          我們已為您建立帳號。點擊下方按鈕設定密碼，即可登入並進入您的內容庫。<br>
+          此連結將於 <strong>1 小時</strong>後失效；若已過期，可於登入頁使用「忘記密碼」重新申請。
+        </p>
+        <a href="${activationUrl}"
+           style="display:inline-block;padding:12px 28px;background:#000;color:#fff;
+                  text-decoration:none;border-radius:6px;font-weight:500">
+          設定密碼並開通
+        </a>
+        <p style="color:#aaa;font-size:12px;margin:24px 0 0">
+          或複製此連結：<span style="word-break:break-all">${activationUrl}</span>
+        </p>
+      </div>
+    `,
+  })
+}
+
+/**
+ * Receipt / access email for a buyer who already had an account (E328). Points
+ * straight at the 內容庫 — no password setup needed, they can just log in.
+ */
+export async function sendReceiptEmail(
+  to: string,
+  productName: string,
+  libraryUrl: string,
+) {
+  await transporter.sendMail({
+    from: FROM,
+    to,
+    subject: `您的訂單已完成 — ${productName}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px">
+        <h2 style="margin:0 0 8px">感謝您購買「${productName}」</h2>
+        <p style="color:#555;margin:0 0 24px">
+          付款已完成，內容已開通至您的帳號。點擊下方按鈕登入即可進入您的內容庫。
+        </p>
+        <a href="${libraryUrl}"
+           style="display:inline-block;padding:12px 28px;background:#000;color:#fff;
+                  text-decoration:none;border-radius:6px;font-weight:500">
+          前往我的內容庫
+        </a>
+        <p style="color:#aaa;font-size:12px;margin:24px 0 0">
+          或複製此連結：<span style="word-break:break-all">${libraryUrl}</span>
+        </p>
+      </div>
+    `,
+  })
+}
+
 export async function sendInviteEmail(to: string, inviteUrl: string, inviterName: string) {
   await transporter.sendMail({
     from: FROM,

@@ -19,6 +19,7 @@ import { Logo } from "@/components/logo"
 import Link from "next/link"
 import {
   LayoutDashboardIcon,
+  LibraryIcon,
   ListIcon,
   Settings2Icon,
   ShieldIcon,
@@ -39,6 +40,7 @@ export function AppSidebar({
   const navMain = [
     { title: "儀表板", url: "/dashboard", icon: <LayoutDashboardIcon /> },
     { title: "項目", url: "/dashboard/items", icon: <ListIcon /> },
+    { title: "內容庫", url: "/dashboard/library", icon: <LibraryIcon /> },
     { title: "設定", url: "/dashboard/settings", icon: <Settings2Icon /> },
     { title: "系統", url: "/dashboard/system", icon: <ServerIcon /> },
     ...(isAdmin(user.role)
