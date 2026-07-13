@@ -392,7 +392,7 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E331 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 79 — auto-merged PR #97 |
 | E332 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 79 — PR #98 human-merged 2026-07-13 |
 | E333 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 80 — PR #100 merged (user-authorized) |
-| E334 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 81 — 轉化漏斗: sales_page_events + orders.utm + admin 轉化 tab (瀏覽→CTA→結帳→付款, UTM 分解). First-party, 無 PII. Spec: docs/epics/e334-conversion-funnel-analytics.md |
+| E334 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 81 — committed in worktree by implement agent |
 
 
 ## Dependency Rules

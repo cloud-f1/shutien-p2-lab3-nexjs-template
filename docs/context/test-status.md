@@ -900,3 +900,36 @@ No schema migration in this epic's diff — `lib/sales/resolver.ts`'s new `getSa
 
 ### Verdict
 **PASS.** Typecheck clean, lint clean (0 errors), coverage gate cleared on all four metrics (85.99% statements ≥ 80%), e2e green outside the known pre-existing TOTP cluster (unrelated to this epic's diff), plus a clean production build. Two advisory (non-blocking) findings — playbook overstates tier 1/2 checkout wiring as "automatic" when it's actually still a placeholder link, and the reference page's video/image assets aren't committed — are documented in `review-findings.md` Round 0 — 2026-07-13 (E333) but do not block this epic's own acceptance criteria, all of which concern the tier-3/custom path and are met with concrete evidence.
+
+## E334 QA — 2026-07-13 (轉化漏斗數據迴路 — 銷售頁 first-party analytics + UTM)
+
+**Branch**: `feat/E334-conversion-funnel` · **Spec**: `docs/epics/e334-conversion-funnel-analytics.md` · **Step**: qa · **Worktree**: `.claude/worktrees/agent-aa99312c694e147c7`
+
+### Test gates (all from the worktree's `next-app/`)
+
+| Check | Result |
+|---|---|
+| `pnpm typecheck` | PASS — 0 errors |
+| `pnpm lint` | PASS — 0 errors, 10 pre-existing warnings (3× React-Compiler "incompatible library" skip notes on `_sales-page-form.tsx`/`data-table-generic.tsx`/`data-table.tsx`; 1× unused eslint-disable in `coverage/block-navigation.js`; 6× `'_a' is defined but never used` in pre-existing test files) — none touch any E334 file |
+| `pnpm test:coverage` | PASS — **731/731 tests, 73 files**. All-files: **Statements 87.03%, Branches 81.81%, Functions 93.91%, Lines 87.03%** (≥80% gate cleared on all four metrics). New `lib/analytics/` (db-free half, in the coverage `include` list): `funnel-utils.ts` 98.41%/87.75%/100%/100%, `session-hash.ts` 100%/77.77%/100%/100%. `lib/analytics/funnel.ts` (the `@/lib/db`-importing half) is correctly excluded from `include` per the established per-file allowlist convention (same as `lib/sales/resolver.ts`, `actions/*`) — it's mock-tested instead in `funnel.test.ts` (db mocked, asserts UTM normalization on insert + that a DB throw is swallowed). |
+| `pnpm test:e2e` (against `saas_dev_e2e`, `pnpm db:migrate` then `pnpm db:seed`, Postgres container `nextapp_postgres`) | **43/49 passed.** 1 failed + 5 skipped, all in the **known pre-existing cluster**: `e2e/two-factor.spec.ts:103` "enable 2FA from Settings → Security" (TOTP env-window issue, Phase 72 #51 — pre-authorized carve-out for this QA round, confirmed the E334 diff touches zero `two-factor`/TOTP files). **Zero regressions** — all 43 non-TOTP specs (auth-flow, cobalt-ui, billing, dashboard-smoke, RBAC viewer/editor, items-crud, sales-pages) remain green. No new e2e spec was added by this epic (see gap below). |
+| `pnpm build` (extra gate — the epic's own AC #5 names "build" explicitly) | PASS with `DATABASE_URL`/`AUTH_SECRET` set — Turbopack production build compiles clean, typechecks clean, all routes generate incl. the new `ƒ /api/analytics/collect`. Without `DATABASE_URL` set the build fails at the page-data-collection step for that route — this is the pre-existing `lib/db.ts` lazy-init-required-at-build-time posture shared by every `@/lib/db`-importing route in the app (auth, billing, sales-pages, items), not a regression. |
+
+### Migration/schema check
+
+`next-app/drizzle/migrations/0014_handy_malice.sql` — `CREATE TYPE sales_page_event` (enum) + `CREATE TABLE sales_page_events` (id/slug/event/utm_source/utm_medium/utm_campaign/session_hash/created_at) + `ALTER TABLE orders ADD COLUMN utm jsonb` (nullable) + 3 indexes. Applied cleanly to the freshly-migrated `saas_dev_e2e` DB via `pnpm db:migrate` — no destructive statement, no in-place enum edit. `meta/0014_snapshot.json`'s `prevId` chains correctly from `meta/0013_snapshot.json`. `drizzle/test-migrate.ts`'s `EXPECTED` table list was extended to include `sales_page_events` (plus `products`/`orders`/`sales_pages`, a backfill of pre-existing tables that check had been missing).
+
+### New tests added by E334 (all passing)
+
+- `lib/analytics/funnel-utils.test.ts` (139 lines) — `normalizeUtm`/`isEmptyUtm`/`channelKey`/`channelLabel`, `rate()` clamping ([0,1], 0-denominator → 0), `computeStats()` derived rates, `aggregateFunnelRows()` / `aggregateChannelRows()` folding synthetic event+paid rows into per-slug/per-channel funnel rows.
+- `lib/analytics/session-hash.test.ts` (46 lines) — `dayScopedSessionHash()` is deterministic for the same (day, ip, ua), differs across days and across clients, never throws on missing AUTH_SECRET (dev fallback).
+- `lib/analytics/funnel.test.ts` (67 lines) — `recordSalesPageEvent()` against a mocked `@/lib/db`: normalizes UTM before insert, and swallows a DB throw so telemetry never surfaces an error.
+- `lib/validations/analytics.test.ts` (41 lines) — `collectEventSchema` accepts a minimal valid beacon payload, rejects a missing/oversized slug and an unsupported event name, accepts/normalizes an optional UTM bag.
+
+### Gap (see `review-findings.md` Round 0 — 2026-07-13 (E334) for full detail)
+
+Two of the epic's five acceptance criteria name specific evidence forms that are **not present** in this diff: AC #1 asks for "seed 數據驗證" (the admin 轉化 tab shown correct against seeded data) but `drizzle/seed.ts` inserts zero `sales_page_events` rows, so there is no seeded funnel data to validate against; AC #2 asks for "e2e 或 int test 佐證" that UTM rides from page-entry through to `orders.utm`, but no int test touches `actions/checkout.ts` and no e2e spec appends a `utm_source` query param and asserts the resulting order row. The wiring itself (beacon → sessionStorage → checkout action → `orders.utm` jsonb column) is present and code-reviews as correct — this is a test-evidence gap, not a suspected functional defect. Recommend a fast-follow: extend `drizzle/seed.ts` with a small funnel fixture + one UTM-tagged paid order, then add either an int test (`test/int/checkout.int.test.ts`) or an e2e spec asserting the UTM round-trip, before treating E334 as fully closed.
+
+### Verdict
+
+**PASS with one advisory-but-should-block-merge gap.** Typecheck clean, lint clean (0 errors), coverage gate cleared on all four metrics (87.03% statements ≥ 80%), e2e green outside the known pre-existing TOTP cluster, clean production build, migration expand-only. Privacy guarantees (no PII, no raw IP/UA storage, no third-party request, no cross-site cookie, beacon-never-blocks-checkout), RBAC (admin-only via `requireAdmin()` re-reading the live DB role), and UI conventions (`<DataTable>`, Server Components by default, `cn()`, 繁中 copy, no console.log/inline-style residue) all check out clean via code review — see `review-findings.md` for the full writeup. The one open item is the missing test evidence for AC #1/#2's named seed/e2e/int requirements; recommend closing that gap before merge rather than after.
