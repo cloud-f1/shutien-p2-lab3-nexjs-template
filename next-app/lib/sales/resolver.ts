@@ -1,8 +1,9 @@
 import { and, eq } from "drizzle-orm"
 
 import { db } from "@/lib/db"
-import { salesPagesTable } from "@/lib/schema/sales"
+import { productsTable, salesPagesTable } from "@/lib/schema"
 import { getConfigSalesPageContent, getConfigSalesPageSlugs, salesPageContentSchema, type SalesPageContent } from "@/lib/sales/content"
+import { getCustomSalesSlugs, type SalesPageProduct } from "@/lib/sales/custom-pages"
 import { verifyPreviewToken } from "@/lib/sales/preview-token"
 import { canServeSalesPageRow } from "@/lib/sales/visibility"
 
@@ -57,13 +58,14 @@ export async function getSalesPageContent(
 }
 
 /**
- * Union of slugs to pre-render — published+structured DB rows plus every static
- * config slug. Feeds `generateStaticParams`. If the DB is unreachable at build
- * time (e.g. a CI build with no Postgres), fall back to config slugs only;
+ * Union of slugs to pre-render — published+structured DB rows, every static
+ * config slug, and every E333 custom-registry slug. Feeds `generateStaticParams`.
+ * If the DB is unreachable at build time (e.g. a CI build with no Postgres), fall
+ * back to config + custom slugs (both are code-derived, so always available);
  * `dynamicParams` keeps unknown slugs renderable on demand via ISR.
  */
 export async function getAllSalesPageSlugs(): Promise<string[]> {
-  const configSlugs = getConfigSalesPageSlugs()
+  const codeSlugs = [...getConfigSalesPageSlugs(), ...getCustomSalesSlugs()]
   try {
     const rows = await db
       .select({ slug: salesPagesTable.slug })
@@ -72,8 +74,36 @@ export async function getAllSalesPageSlugs(): Promise<string[]> {
         and(eq(salesPagesTable.status, "published"), eq(salesPagesTable.renderMode, "structured")),
       )
     const dbSlugs = rows.map((r) => r.slug)
-    return Array.from(new Set([...dbSlugs, ...configSlugs]))
+    return Array.from(new Set([...dbSlugs, ...codeSlugs]))
   } catch {
-    return configSlugs
+    return Array.from(new Set(codeSlugs))
+  }
+}
+
+/**
+ * Resolve the E327 product linked to a sales-page slug (via `sales_pages.product_id`)
+ * — the checkout binding a custom page (E333) needs to display price and drive
+ * `createOneTimeCheckout`. Returns `null` when the slug has no row, no linked
+ * product, the product is inactive, or the DB is unreachable — callers must
+ * degrade gracefully (price/CTA disabled). Only the server-owned fields are
+ * selected; a custom page never sees or trusts anything else.
+ */
+export async function getSalesPageProduct(slug: string): Promise<SalesPageProduct | null> {
+  try {
+    const [row] = await db
+      .select({
+        slug: productsTable.slug,
+        name: productsTable.name,
+        description: productsTable.description,
+        amount: productsTable.amount,
+        currency: productsTable.currency,
+      })
+      .from(salesPagesTable)
+      .innerJoin(productsTable, eq(salesPagesTable.productId, productsTable.id))
+      .where(and(eq(salesPagesTable.slug, slug), eq(productsTable.active, true)))
+      .limit(1)
+    return row ?? null
+  } catch {
+    return null
   }
 }

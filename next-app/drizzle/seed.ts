@@ -142,6 +142,42 @@ async function enrich(adminId: string, editorId: string | undefined) {
       .onConflictDoNothing({ target: salesPagesTable.slug })
   }
 
+  // ── E333: a one-time product + a `custom` sales page for the reference page ─
+  // `ai-launch-intensive` is claimed by the custom-page registry
+  // (components/sales-pages/ai-launch-intensive). The row is render_mode=custom
+  // so the E332 admin shows the "由 code 管理" badge + read-only content, and the
+  // linked product supplies the checkout binding the custom page injects.
+  const [customProduct] = await db
+    .insert(productsTable)
+    .values({
+      slug: "ai-launch-intensive",
+      name: "AI 上線特訓營",
+      description: "3 週實作陪跑，把 AI 功能真正做進你的產品並上線收錢。",
+      amount: 6800, // NT$6,800 (TWD is whole-unit)
+      currency: "TWD",
+      active: true,
+      entitlementKey: "course.ai-launch-intensive",
+    })
+    .onConflictDoNothing({ target: productsTable.slug })
+    .returning({ id: productsTable.id })
+
+  // `content` still satisfies salesPageContentSchema (a custom row keeps a valid
+  // structured payload for fallback/preview), but the registry renders the TSX.
+  const customFallback = getConfigSalesPageContent("ai-writing-course")
+  if (customFallback) {
+    await db
+      .insert(salesPagesTable)
+      .values({
+        slug: "ai-launch-intensive",
+        productId: customProduct?.id ?? null,
+        content: { ...customFallback, slug: "ai-launch-intensive" },
+        renderMode: "custom",
+        status: "published",
+        publishedAt: now,
+      })
+      .onConflictDoNothing({ target: salesPagesTable.slug })
+  }
+
   await db.insert(paymentEventsTable).values([
     {
       provider: "stripe",

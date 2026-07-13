@@ -14,7 +14,12 @@ import {
   type SalesPageContent,
   type SalesSectionKey,
 } from "@/lib/sales/content"
-import { getAllSalesPageSlugs, getSalesPageContent } from "@/lib/sales/resolver"
+import { getCustomSalesPageLoader } from "@/lib/sales/custom-pages"
+import {
+  getAllSalesPageSlugs,
+  getSalesPageContent,
+  getSalesPageProduct,
+} from "@/lib/sales/resolver"
 import { getSalesStyleTokens, type SalesStyleTokens } from "@/lib/sales/styles"
 import { cn } from "@/lib/utils"
 
@@ -41,6 +46,14 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const { slug } = await params
   const { preview } = await searchParams
+
+  // Custom registry wins (E333): a registered slug owns its own metadata.
+  const customLoader = getCustomSalesPageLoader(slug)
+  if (customLoader) {
+    const mod = await customLoader()
+    return mod.metadata ?? {}
+  }
+
   const content = await getSalesPageContent(slug, { previewToken: preview })
   if (!content) return {}
 
@@ -94,6 +107,18 @@ const SECTION_RENDERERS: Record<
 export default async function SalesPage({ params, searchParams }: PageProps) {
   const { slug } = await params
   const { preview } = await searchParams
+
+  // Render order (E333): custom registry FIRST → structured renderer (DB/config).
+  // A registered slug renders its hand-authored page; the route resolves the
+  // linked E327 product and injects it (checkout binding), so custom pages never
+  // query prices or wire payment themselves.
+  const customLoader = getCustomSalesPageLoader(slug)
+  if (customLoader) {
+    const { default: CustomSalesPage } = await customLoader()
+    const product = await getSalesPageProduct(slug)
+    return <CustomSalesPage slug={slug} product={product} />
+  }
+
   // Route reads content ONLY through this resolver — DB-first, config fallback.
   // A draft page renders only with a valid `?preview=<token>`; otherwise 404.
   const content = await getSalesPageContent(slug, { previewToken: preview })

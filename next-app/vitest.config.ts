@@ -44,6 +44,7 @@ export default defineConfig({
         "lib/security-headers.ts",
         "lib/sales/preview-token.ts",
         "lib/sales/visibility.ts",
+        "lib/sales/custom-pages.ts",
         "lib/validations/sales-pages.ts",
       ],
       exclude: ["**/*.test.ts", "e2e/**"],
