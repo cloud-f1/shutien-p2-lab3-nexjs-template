@@ -59,6 +59,10 @@ const EXPECTED = [
   "audit_log",
   "invitations",
   "notifications",
+  "products",
+  "orders",
+  "sales_pages",
+  "sales_page_events",
 ]
 
 async function main(): Promise<void> {

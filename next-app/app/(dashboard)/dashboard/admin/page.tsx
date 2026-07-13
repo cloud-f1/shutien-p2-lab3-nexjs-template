@@ -4,8 +4,10 @@ import { getAllUsers } from "@/actions/admin"
 import { requireAdmin } from "@/lib/permissions"
 import { listInvitations } from "@/lib/team"
 import { listAllOrders, listAllSubscriptions } from "@/lib/billing/queries"
+import { getSalesPageFunnels } from "@/lib/analytics/funnel"
 
 import { AdminTabs } from "./_admin-tabs"
+import { FunnelTab } from "./_funnel-tab"
 import { MembersTab, type MemberRow } from "./_members-tab"
 import { OrdersTab, type OrderRow } from "./_orders-tab"
 import { SubscriptionsTab, type SubscriptionRow } from "./_subscriptions-tab"
@@ -20,12 +22,16 @@ const LIST_CAP = 500
 
 export default async function AdminPage() {
   const session = await requireAdmin()
-  const [users, invitations, ordersPage, subscriptionsPage] = await Promise.all([
+  const [users, invitations, ordersPage, subscriptionsPage, funnel7, funnel30] = await Promise.all([
     getAllUsers(),
     listInvitations(),
     listAllOrders({ pageSize: LIST_CAP }),
     listAllSubscriptions({ pageSize: LIST_CAP }),
+    getSalesPageFunnels(7),
+    getSalesPageFunnels(30),
   ])
+
+  const funnelRowsByWindow = { "7": funnel7.rows, "30": funnel30.rows }
 
   const members: MemberRow[] = users.map((u) => ({
     id: u.id,
@@ -68,6 +74,7 @@ export default async function AdminPage() {
         }
         orders={<OrdersTab orders={orders} />}
         subscriptions={<SubscriptionsTab subscriptions={subscriptions} />}
+        funnel={<FunnelTab rowsByWindow={funnelRowsByWindow} />}
       />
     </div>
   )

@@ -23,6 +23,7 @@ import { ordersTable, productsTable } from "@/lib/schema"
 import { and, eq } from "drizzle-orm"
 
 import { defineAction } from "@/lib/define-action"
+import { normalizeUtm, isEmptyUtm } from "@/lib/analytics/funnel-utils"
 import {
   oneTimeCheckoutSchema,
   type OneTimeCheckoutInput,
@@ -56,7 +57,10 @@ const createOneTimeCheckoutAction = defineAction<typeof oneTimeCheckoutSchema, C
     // Gateway override (validated to stripe/ecpay) or the deployment default.
     const providerKey: ProviderKey = input.gateway ?? resolveProviderKey()
 
-    // 3. Create the pending order (guest checkout keeps user_id null).
+    // 3. Create the pending order (guest checkout keeps user_id null). First-party
+    //    UTM (E334) rides along so the funnel can attribute the eventual payment;
+    //    an all-empty bag persists as null (direct traffic).
+    const utm = normalizeUtm(input.utm ?? null)
     const [order] = await db
       .insert(ordersTable)
       .values({
@@ -68,6 +72,7 @@ const createOneTimeCheckoutAction = defineAction<typeof oneTimeCheckoutSchema, C
         amount: product.amount,
         currency: product.currency,
         status: "pending",
+        utm: isEmptyUtm(utm) ? null : utm,
       })
       .returning({ id: ordersTable.id })
 

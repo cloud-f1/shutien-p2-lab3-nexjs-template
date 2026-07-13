@@ -12,10 +12,12 @@ export function AdminTabs({
   members,
   orders,
   subscriptions,
+  funnel,
 }: {
   members: ReactNode
   orders: ReactNode
   subscriptions: ReactNode
+  funnel: ReactNode
 }) {
   return (
     <Tabs defaultValue="members" className="gap-6">
@@ -23,10 +25,12 @@ export function AdminTabs({
         <TabsTrigger value="members">會員</TabsTrigger>
         <TabsTrigger value="orders">訂單</TabsTrigger>
         <TabsTrigger value="subscriptions">訂閱</TabsTrigger>
+        <TabsTrigger value="funnel">轉化</TabsTrigger>
       </TabsList>
       <TabsContent value="members">{members}</TabsContent>
       <TabsContent value="orders">{orders}</TabsContent>
       <TabsContent value="subscriptions">{subscriptions}</TabsContent>
+      <TabsContent value="funnel">{funnel}</TabsContent>
     </Tabs>
   )
 }

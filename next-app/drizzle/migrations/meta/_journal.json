@@ -99,6 +99,13 @@
       "when": 1783876237787,
       "tag": "0013_vengeful_blue_marvel",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1783952106378,
+      "tag": "0014_handy_malice",
+      "breakpoints": true
     }
   ]
 }
