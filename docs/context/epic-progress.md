@@ -77,7 +77,7 @@
 | Phase 78 | E330 | ✅ Complete 2026-07-13 (CRM 整合 — order.completed 事件 + 系統級 webhook egress + UC1/UC2 recipes) — reuses E268 dispatcher (HMAC/retry/deliveries); adds webhooks.scope (system, admin-managed) + settleOrder emit + Make/Zapier recipes (Google Sheet 對帳 · MailerLite 打標籤). UC3 (單一真相來源) = E327/E328 本身. First-party @saas/crm-* connectors = backlog. Approved 2026-07-12 via /athena:plan Cycle 35 addendum. |
 | Phase 79 | E331, E332 | ✅ Complete 2026-07-13 (Admin 管理後台 — E331 PR #97 auto-merged · E332 PR #98 human-merged; integration gate PASS on merged main: typecheck/lint clean, 700/700 unit 86.03% cov, e2e 41/42 — 2FA TOTP failure pre-existing. Follow-up: sales-pages RBAC int test advisory) — E331 營收後台 (dashboard/admin → tabs: 會員 DataTable+詳情 · 全站訂單台+重寄啟用信/標記退款 · 全站訂閱台 read-only) · E332 多銷售頁管理 (sales_pages 表 JSONB+Zod 單一契約 + style preset 選擇 + render_mode + admin/sales-pages CRUD + ISR revalidate + draft preview; E326 resolver 只換資料源). PARALLEL (disjoint: E331 獨佔 admin tabs 檔, E332 獨佔 admin/sales-pages/**). Approved 2026-07-12 via /athena:plan Cycle 35 addendum 2. |
 | Phase 80 | E333 | ✅ Complete (銷售頁風格多樣化 — custom page 路徑, PR #100 merged 2026-07-13, integration gate PASS 85.99%) — sales-page-builder skill: HTML 一頁式 ingest → 客製 TSX `/p/[slug]`（custom page registry 優先於 structured renderer；CTA/倒數/影片機能自動接上；沿用 mockup-to-epics + @designer 慣例）+ reference 實作 + 三層架構 playbook. E326 同步補 3 個 style preset (bold/premium/clean) + 區塊 variant/順序系統. Approved 2026-07-12 via /athena:plan Cycle 35 addendum 3. |
-| Phase 81 | E334 | ⬜ Pending (轉化漏斗數據迴路 — 創作者「假設→測量→迭代」的測量層) — sales_page_events (page_view/cta_click/checkout_started, first-party 無 PII 無第三方 cookie) + orders.utm 落單 + E331 admin 轉化 tab (漏斗率/UTM 渠道分解). 三層渲染模式一視同仁被測量; A/B 的前置. Approved 2026-07-12 via /athena:plan Cycle 35 addendum 4. |
+| Phase 81 | E334 | ✅ Complete (轉化漏斗數據迴路 — sales_page_events + orders.utm + admin 轉化 tab, PR #102 merged 2026-07-17, integration gate PASS 87.03%) |
 
 ## Epic Step Matrix
 
@@ -392,7 +392,7 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E331 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 79 — auto-merged PR #97 |
 | E332 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 79 — PR #98 human-merged 2026-07-13 |
 | E333 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 80 — PR #100 merged (user-authorized) |
-| E334 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 81 — committed in worktree by implement agent |
+| E334 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 81 — PR #102 merged 2026-07-17 (user-authorized) |
 
 
 ## Dependency Rules
@@ -792,7 +792,7 @@ Phase 81: E334 (single epic — after E331; sales_page_events + orders.utm migra
 
 **✅ Phase 80 (E333) COMPLETE — 銷售頁風格多樣化 custom 路徑 (PR #100 merged 2026-07-13).** sales-page-builder skill (HTML ingest → custom TSX page + registry) + reference 實作 + 三層架構 playbook (preset / variant / custom). Spec: `docs/epics/e333-sales-page-builder-skill.md`.
 
-**⬜ Phase 81 (E334) QUEUED — 轉化漏斗數據迴路 (Cycle 35 addendum 4, 2026-07-12).** sales_page_events + orders.utm + admin 轉化 tab — 創作者「假設→測量→迭代」的測量層; A/B 前置. Spec: `docs/epics/e334-conversion-funnel-analytics.md`.
+**✅ Phase 81 (E334) COMPLETE (2026-07-17)** — 轉化漏斗數據迴路 shipped: sales_page_events (first-party 無 PII) + orders.utm + admin 轉化 tab. PR #102 merged; integration gate PASS (87.03%, 731/731, e2e 43/49 TOTP carve-out). Fast-follow: UTM→orders.utm seed/e2e 佐證. Spec: `docs/epics/e334-conversion-funnel-analytics.md`.
 
 ---
 
