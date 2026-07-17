@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
+import { FunnelTracker } from "@/components/marketing/sales/funnel-tracker"
 import { PainPoints } from "@/components/marketing/sales/pain-points"
 import { ModulesTable } from "@/components/marketing/sales/modules-table"
 import { SalesFaq } from "@/components/marketing/sales/faq"
@@ -116,7 +117,12 @@ export default async function SalesPage({ params, searchParams }: PageProps) {
   if (customLoader) {
     const { default: CustomSalesPage } = await customLoader()
     const product = await getSalesPageProduct(slug)
-    return <CustomSalesPage slug={slug} product={product} />
+    return (
+      <>
+        <FunnelTracker slug={slug} />
+        <CustomSalesPage slug={slug} product={product} />
+      </>
+    )
   }
 
   // Route reads content ONLY through this resolver — DB-first, config fallback.
@@ -129,6 +135,7 @@ export default async function SalesPage({ params, searchParams }: PageProps) {
 
   return (
     <main className={cn("min-h-screen", style.page)}>
+      <FunnelTracker slug={slug} />
       {order.map((key) => SECTION_RENDERERS[key](content, style))}
     </main>
   )

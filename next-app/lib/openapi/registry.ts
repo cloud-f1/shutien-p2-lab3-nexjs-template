@@ -35,6 +35,7 @@ import {
   createItemSchema,
   updateItemSchema,
 } from "@/lib/validations/items"
+import { collectEventSchema } from "@/lib/validations/analytics"
 
 import pkg from "@/package.json" with { type: "json" }
 
@@ -473,6 +474,34 @@ export function buildOpenApiDocument() {
     },
   })
 
+  // ── First-party funnel analytics — app/api/analytics/collect (E334) ──────────
+
+  // POST /api/analytics/collect → app/api/analytics/collect/route.ts
+  registry.registerPath({
+    method: "post",
+    path: "/api/analytics/collect",
+    summary: "Sales-page funnel beacon sink",
+    description:
+      "Receives a navigator.sendBeacon POST from a /p/[slug] sales page and records ONE first-party funnel event (page_view | cta_click | checkout_started). Fire-and-forget: ALWAYS returns 204 (even on a malformed body) so a beacon never blocks page/checkout code. Stores NO PII — the client IP / User-Agent are used only to derive a day-scoped one-way session hash server-side and are never persisted; no cookie is read or set. The session hash is NOT accepted from the body.",
+    tags: ["analytics"],
+    request: {
+      body: {
+        description: "Funnel event payload (validated by the shared collectEventSchema).",
+        content: {
+          "application/json": {
+            schema: collectEventSchema.openapi("CollectEventInput"),
+          },
+        },
+      },
+    },
+    responses: {
+      204: {
+        description:
+          "Accepted (no content). Returned unconditionally — a rejected/malformed body is silently dropped so telemetry never affects the visitor.",
+      },
+    },
+  })
+
   // ── Generate the 3.1 document ────────────────────────────────────────────────
   const generator = new OpenApiGeneratorV31(registry.definitions)
 
@@ -493,6 +522,7 @@ export function buildOpenApiDocument() {
       { name: "billing", description: "Payment provider callbacks + cron jobs" },
       { name: "cron", description: "CRON_SECRET-protected scheduled jobs" },
       { name: "items", description: "Public REST API — API-key authenticated" },
+      { name: "analytics", description: "First-party sales-page funnel analytics (E334)" },
     ],
   })
 }

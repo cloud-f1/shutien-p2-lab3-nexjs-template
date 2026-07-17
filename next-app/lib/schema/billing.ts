@@ -12,6 +12,7 @@ import {
 } from "drizzle-orm/pg-core"
 
 import { BILLING_INTERVALS, SUBSCRIPTION_STATUSES } from "@/lib/billing/provider"
+import type { UtmParams } from "@/lib/analytics/funnel-utils"
 
 import { usersTable } from "./auth"
 
@@ -187,6 +188,12 @@ export const ordersTable = pgTable(
     amount: integer("amount").notNull(),
     currency: text("currency").notNull().default("TWD"),
     status: orderStatusEnum("status").notNull().default("pending"),
+    /**
+     * First-party UTM attribution captured on the sales-page visit and carried
+     * through checkout (E334). Nullable JSONB — direct traffic / pre-E334 orders
+     * have none. Powers the "which channel actually PAID" funnel breakdown.
+     */
+    utm: jsonb("utm").$type<UtmParams>(),
     paidAt: timestamp("paid_at", { mode: "date" }),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),

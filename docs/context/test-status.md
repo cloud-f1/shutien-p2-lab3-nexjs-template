@@ -872,3 +872,31 @@ The `saas_dev_e2e` Postgres database already existed from a prior session with d
 
 ### Verdict
 **PASS.** Typecheck clean, lint clean (0 errors), coverage gate cleared on all four metrics (85.61% statements ≥ 80%, `lib/sales` itself at 100%/94.73%), e2e green outside the known pre-existing TOTP cluster (unrelated to this epic's diff — confirmed via diff stat). One advisory gap: no int/e2e test proves the RBAC acceptance criterion for the new Server Actions — recommend a follow-up `test/int/sales-pages.int.test.ts` before treating E332's acceptance criteria as fully closed. See `review-findings.md` Round 0 — 2026-07-13 (E332) for the full code-review writeup against all six focus areas.
+
+## E333 QA — 2026-07-13 (sales-page-builder skill — custom sales-page registry + reference page + skill + playbook)
+
+**Branch**: `feat/E333-sales-page-builder` · **Spec**: `docs/epics/e333-sales-page-builder-skill.md` · **Step**: qa · **Worktree**: `.claude/worktrees/agent-a79c8fe824723be1e`
+
+### Test gates (all from the worktree's `next-app/`)
+
+| Check | Result |
+|---|---|
+| `pnpm typecheck` | PASS — 0 errors |
+| `pnpm lint` | PASS — 0 errors, 10 pre-existing warnings (3× React-Compiler "incompatible library" skip notes on `_sales-page-form.tsx` (`watch()`)/`data-table-generic.tsx`/`data-table.tsx`; 1× unused eslint-disable in `coverage/block-navigation.js`; 6× `'_a' is defined but never used` across pre-existing test files) — none touch any E333 file |
+| `pnpm test:coverage` | PASS — **705/705 tests, 69 files**. All-files: **Statements 85.99%, Branches 81.34%, Functions 93.02%, Lines 85.99%** (≥80% gate cleared on all four metrics). `lib/sales` module: **96.87%/95.23%/88.88%/96.15%**; the new `lib/sales/custom-pages.ts` is 80%/100%/75%/80% (only the lazy `import()` thunk body, line 74, uncovered by design — the unit test intentionally never invokes the loader to avoid pulling `@/lib/db`; the e2e run below exercises that exact line at runtime). |
+| `pnpm test:e2e` (against `saas_dev_e2e` — dropped/recreated via `docker exec nextapp_postgres psql`, migrated fresh, seeded fresh) | **43/49 passed.** 1 failed + 5 skipped, all in the **known pre-existing cluster**: `e2e/two-factor.spec.ts:103` "enable 2FA from Settings → Security" (TOTP env-window issue, Phase 72 #51). Confirmed the E333 diff touches zero `two-factor`/TOTP files. **New `e2e/sales-pages.spec.ts`: 2/2 passing** — custom slug (`/p/ai-launch-intensive`) renders the hand-authored TSX + CTA opens the guest-email checkout dialog; unregistered slug (`/p/ai-writing-course`) renders the structured section renderer with no custom marker. |
+| `pnpm build` (extra gate, not strictly required by the QA brief but run for confidence since the epic names it) | PASS — Turbopack production build compiles clean, typechecks clean, all 26 routes generate (static + dynamic), including `/p/[slug]` and the E332 admin `/dashboard/admin/sales-pages`. |
+
+### e2e DB note
+
+Same artifact as the E332 round: `saas_dev_e2e` already had demo data from a prior session, so the first `pnpm db:seed` printed "Demo data already present — skipping enrichment" and the new E333 product/sales-page seed rows were never inserted. Dropped + recreated the DB (`DROP SCHEMA public CASCADE; CREATE SCHEMA public; DROP SCHEMA drizzle CASCADE` via `docker exec nextapp_postgres psql`), re-ran `pnpm db:migrate` + `pnpm db:seed` fresh — full enrichment ran, including the new `ai-launch-intensive` product + `render_mode=custom` sales-page row that the new e2e spec depends on.
+
+### New tests added by E333 (all passing)
+- `next-app/lib/sales/custom-pages.test.ts` (5 tests) — registry resolution order: registered slug returns a loader, unregistered slug returns `undefined`, `isCustomSalesSlug` agrees with the loader lookup, immune to inherited `Object.prototype` keys (`"toString"`/`"constructor"`), and every slug from `getCustomSalesSlugs()` round-trips back to a loader.
+- `next-app/e2e/sales-pages.spec.ts` (2 tests) — the render-mode fork, one assertion per tier (custom vs structured), described above.
+
+### Migration/schema check
+No schema migration in this epic's diff — `lib/sales/resolver.ts`'s new `getSalesPageProduct()` only adds a read query against the existing `sales_pages`/`products` tables (both from E332/E327). `pnpm db:migrate` against the freshly-recreated `saas_dev_e2e` DB was a clean no-op re-run of the pre-existing 0012/0013 migrations.
+
+### Verdict
+**PASS.** Typecheck clean, lint clean (0 errors), coverage gate cleared on all four metrics (85.99% statements ≥ 80%), e2e green outside the known pre-existing TOTP cluster (unrelated to this epic's diff), plus a clean production build. Two advisory (non-blocking) findings — playbook overstates tier 1/2 checkout wiring as "automatic" when it's actually still a placeholder link, and the reference page's video/image assets aren't committed — are documented in `review-findings.md` Round 0 — 2026-07-13 (E333) but do not block this epic's own acceptance criteria, all of which concern the tier-3/custom path and are met with concrete evidence.

@@ -33,6 +33,19 @@ export const oneTimeCheckoutSchema = z.object({
   name: z.string().trim().min(1, "姓名不可為空白。").max(100, "姓名過長。").optional(),
   /** Optional gateway override (stripe / ecpay). */
   gateway: z.enum(ONE_TIME_GATEWAYS, { message: "不支援的付款方式。" }).optional(),
+  /**
+   * First-party UTM attribution captured on the sales-page visit (E334). Optional
+   * — direct traffic sends none. Persisted to `orders.utm` so the funnel can show
+   * which channel actually PAID, not just which brought traffic.
+   */
+  utm: z
+    .object({
+      source: z.string().trim().max(200).nullish(),
+      medium: z.string().trim().max(200).nullish(),
+      campaign: z.string().trim().max(200).nullish(),
+    })
+    .partial()
+    .optional(),
 })
 
 export type OneTimeCheckoutInput = z.infer<typeof oneTimeCheckoutSchema>

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react"
 import { Loader2 } from "lucide-react"
 
 import { createOneTimeCheckout } from "@/actions/checkout"
+import { getStoredSlug, getStoredUtm, sendFunnelBeacon } from "@/lib/analytics/beacon"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -63,20 +64,33 @@ export function SalesCheckoutButton({
     if (form) form.submit()
   }
 
+  /** cta_click funnel beacon (E334) — fired when the buyer opens the checkout dialog. */
+  function handleOpen() {
+    setOpen(true)
+    const slug = getStoredSlug()
+    if (slug) sendFunnelBeacon({ slug, event: "cta_click" })
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!productSlug) return
     setError(null)
+    // Carry the first-party UTM captured on page entry (E334) into the order.
+    const utm = getStoredUtm()
     startTransition(async () => {
       const result = await createOneTimeCheckout({
         productSlug,
         email: email.trim(),
         name: name.trim() || undefined,
+        utm: utm ?? undefined,
       })
       if ("error" in result) {
         setError(result.error)
         return
       }
+      // checkout_started funnel beacon (E334) — buyer is being handed to the gateway.
+      const slug = getStoredSlug()
+      if (slug) sendFunnelBeacon({ slug, event: "checkout_started", utm })
       if (result.redirectUrl) {
         window.location.assign(result.redirectUrl)
       } else if (result.formHtml) {
@@ -92,7 +106,7 @@ export function SalesCheckoutButton({
         size={size}
         className={cn(className)}
         disabled={disabled}
-        onClick={() => setOpen(true)}
+        onClick={handleOpen}
       >
         {disabled ? "即將開放" : label}
       </Button>
