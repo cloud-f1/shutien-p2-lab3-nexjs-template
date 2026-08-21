@@ -231,6 +231,7 @@ Per-epic model is **tiered by complexity** (sonnet baseline, opus for complex/ul
 /athena:plan [mode]            @strategist analysis → epic proposals → human approval gate
 /athena:plan brainstorm "<idea>"  Dialogue-driven design → 7-step Q&A → enriched epic file
 /athena:plan mockup <path>     Ingest HTML/Claude-Design handoff → UI-ready epics (mockup-to-epics skill)
+/athena:approve <phase> [--note] Approve a gated phase → flip 🟡 PROPOSED/⛔ CR-pending → 🟢 APPROVED across all four state surfaces (human-only, never automated)
 /athena:align                  UI-surface alignment → built app vs SSOT/epics → Page-View + Feature-Mapping tables + gaps (run after each phase merges)
 /athena:cycle                  Full DevOps cycle → brainstorm → approve → execute → cooldown
 /athena:audit                  Three-source drift check → OpenAPI ↔ server ↔ client

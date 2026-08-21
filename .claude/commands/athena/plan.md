@@ -101,6 +101,13 @@ For each approved epic number:
 4. Add row to `docs/epics/EPIC_INDEX.md`
 5. Update strategy-log.md: mark as APPROVED with timestamp
 
+**Gated phase (needs a further human sign-off before dispatch)?** Write the Phase
+Status row as `🟡 PROPOSED` or `⛔ CR-pending` instead of `🟢`/ready-to-dispatch, then
+tell the user to run `/athena:approve <phase> [--note "…"]` once they explicitly
+approve it — that command flips all four state surfaces (Phase Status · Dependency
+Rules/Epic Step Matrix · EPIC_INDEX.md · spec headers) together. Do not flip them by
+hand one file at a time.
+
 After all approved epics are created, output a **boxed project summary** by reading `docs/context/epic-progress.md` Phase Status table:
 
 ```

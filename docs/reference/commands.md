@@ -31,6 +31,7 @@
 |---------------|-------------------|
 | `/athena:loop [status]` | Epic 推進器 — 自動逐步推進。`status` 查看狀態、`auto` 全自動 |
 | `/athena:plan [mode]` | 策略規劃 → 分析 → Epic 提案。Modes: `audit`, `research`, `comply`, `evolve`, `auto` |
+| `/athena:approve <phase> [--note]` | 核准一個 gated phase（🟡 PROPOSED / ⛔ CR-pending → 🟢 APPROVED），一次改齊四個狀態面。人類專屬，禁止 cron/loop/batch 自動發動 |
 | `/athena:cycle` | 完整 DevOps 循環（plan → approve → execute → reflect） |
 | `/athena:batch [epics]` | 平行批次執行 Epic（worktree 隔離）— Parallel batch execution via worktree agents (`--phase N`, `--dry-run`, `auto`) |
 | `/athena:dashboard [--phase N]` | 唯讀管線儀表板 — Read-only pipeline progress view from audit log + orchestration data (`--json` for machine output) |
