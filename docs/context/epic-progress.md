@@ -78,6 +78,7 @@
 | Phase 79 | E331, E332 | ✅ Complete 2026-07-13 (Admin 管理後台 — E331 PR #97 auto-merged · E332 PR #98 human-merged; integration gate PASS on merged main: typecheck/lint clean, 700/700 unit 86.03% cov, e2e 41/42 — 2FA TOTP failure pre-existing. Follow-up: sales-pages RBAC int test advisory) — E331 營收後台 (dashboard/admin → tabs: 會員 DataTable+詳情 · 全站訂單台+重寄啟用信/標記退款 · 全站訂閱台 read-only) · E332 多銷售頁管理 (sales_pages 表 JSONB+Zod 單一契約 + style preset 選擇 + render_mode + admin/sales-pages CRUD + ISR revalidate + draft preview; E326 resolver 只換資料源). PARALLEL (disjoint: E331 獨佔 admin tabs 檔, E332 獨佔 admin/sales-pages/**). Approved 2026-07-12 via /athena:plan Cycle 35 addendum 2. |
 | Phase 80 | E333 | ✅ Complete (銷售頁風格多樣化 — custom page 路徑, PR #100 merged 2026-07-13, integration gate PASS 85.99%) — sales-page-builder skill: HTML 一頁式 ingest → 客製 TSX `/p/[slug]`（custom page registry 優先於 structured renderer；CTA/倒數/影片機能自動接上；沿用 mockup-to-epics + @designer 慣例）+ reference 實作 + 三層架構 playbook. E326 同步補 3 個 style preset (bold/premium/clean) + 區塊 variant/順序系統. Approved 2026-07-12 via /athena:plan Cycle 35 addendum 3. |
 | Phase 81 | E334 | ✅ Complete (轉化漏斗數據迴路 — sales_page_events + orders.utm + admin 轉化 tab, PR #102 merged 2026-07-17, integration gate PASS 87.03%) |
+| Phase 82 | E336, E337, E338, E339, E340, E341, E342, E343 | 🟢 APPROVED (2026-08-22) — **Fork Harvest Wave 3（ai-rc-engineer-pm 管理介面 + skill/context）**。使用者於 2026-08-22 核准實作（範圍 A+C：介面與原件 + skill/context；儀表板採混合式升級；走 athena pipeline）。A 組：E336 導覽 SSOT（消除 sidebar/tab-bar/breadcrumb/command-palette 四處硬編 + 鎖定式權限）· E337 儀表板 widget kit（10 個領域中立元件 + 首頁混合升級，保留面積圖與 onboarding）· E338 響應式列表套件（DataTable 手機卡片 + 快篩 chip + dense + 4 支狀態原件）· E339 記錄詳情頁慣例（items/[id] + _detail/ + CLAUDE.md 規則）。C 組：E340 /athena:approve 四面核准命令 · E341 doc↔code 常數契約測試 · E342 context 三件套（架構一頁紙 + 領域摘要 + _handoff 慣例）· E343 design-sync-roundtrip skill（去品牌化）。Wave 1 = E336+E338+E340+E341+E342+E343（並行，檔案互斥）→ Wave 2 = E337+E339。**不回收**：design-system-coverage.sh（Vite 死碼）· rc 領域邏輯（holidays/gantt/cases）· agent persona 改名。 |
 
 ## Epic Step Matrix
 
@@ -393,6 +394,14 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E332 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 79 — PR #98 human-merged 2026-07-13 |
 | E333 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 80 — PR #100 merged (user-authorized) |
 | E334 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 81 — PR #102 merged 2026-07-17 (user-authorized) |
+| E336 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 82 — 🟢 APPROVED (2026-08-22). Wave 1. 導覽 SSOT `lib/nav.ts` + 5 個消費端 + sidebar-collapse-persist |
+| E337 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 82 — 🟢 APPROVED (2026-08-22). Wave 2 (after E336+E338). 儀表板 widget kit 10 元件 + 首頁混合升級 |
+| E338 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 82 — 🟢 APPROVED (2026-08-22). Wave 1. DataTable 手機卡片/dense/chips + filter-chip + 4 支狀態原件 |
+| E339 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 82 — 🟢 APPROVED (2026-08-22). Wave 2 (after E338). items/[id] 詳情頁慣例 + _detail/ + playbook |
+| E340 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 82 — 🟢 APPROVED (2026-08-22). Wave 1. /athena:approve 四面核准命令 |
+| E341 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 82 — 🟢 APPROVED (2026-08-22). Wave 1. lib/doc-contract.test.ts + audit Step 6a 改寫 |
+| E342 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 82 — 🟢 APPROVED (2026-08-22). Wave 1. product-overview + domain-digest + docs/_handoff/ |
+| E343 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 82 — 🟢 APPROVED (2026-08-22). Wave 1. design-sync-roundtrip skill（去品牌化） |
 
 
 ## Dependency Rules
@@ -713,6 +722,15 @@ E331: E327, E328
 E332: E326, E327
 E333: E326, E327, E332
 E334: E326, E327, E331
+# Phase 82 — Fork Harvest Wave 3 (ai-rc-engineer-pm) — Cycle 36, APPROVED 2026-08-22
+E336: no deps
+E337: E336, E338
+E338: no deps
+E339: E338
+E340: no deps
+E341: no deps
+E342: no deps
+E343: no deps
 ```
 
 ## Phase Parallelism
@@ -780,9 +798,14 @@ Phase 78: E330 (single epic — after Phase 77's E327+E328 merge; touches lib/we
 Phase 79: E331 + E332 (PARALLEL — disjoint: E331 owns dashboard/admin tabs + actions/admin-revenue, E332 owns admin/sales-pages/** + sales_pages migration; only E332 migrates)
 Phase 80: E333 (single epic — after E332; touches app/p/[slug] resolver + skill + playbook, no migration)
 Phase 81: E334 (single epic — after E331; sales_page_events + orders.utm migrations + admin 轉化 tab + E326 beacon 掛點)
+Phase 82: E336 + E338 + E340 + E341 + E342 + E343 (WAVE 1 — PARALLEL, 檔案互斥: E336 owns lib/nav.ts + nav/sidebar/tab-bar/breadcrumb/palette · E338 owns data-table-generic + 狀態原件 + items/_items-table · E340 owns .claude/commands/athena/approve.md · E341 owns lib/doc-contract.test.ts + audit.md · E342 owns docs/architecture+reference+_handoff · E343 owns .claude/skills/design-sync-roundtrip) → E337 + E339 (WAVE 2 — E337 after E336+E338, E339 after E338; 兩者並行, E337 owns dashboard/page.tsx + components/dashboard/**, E339 owns items/[id]/**). 注意: E336/E338/E340/E341/E342/E343 皆會改 CLAUDE.md 或 docs 索引 — 若走 worktree 並行, merge 時預期在 CLAUDE.md 有小衝突, 依序解。
 ```
 
 ## Next Action
+
+**🟢 Phase 82 (E336–E343) APPROVED 2026-08-22 — Fork Harvest Wave 3（ai-rc-engineer-pm）.** 使用者於 2026-08-22 核准（範圍 A+C：管理介面/原件 + skill/context；儀表板混合式升級；走 athena pipeline）。**Wave 1（並行）**：E336 導覽 SSOT（`lib/nav.ts` 取代 sidebar/tab-bar/breadcrumb/palette 四處硬編 + 鎖定式權限 + 側欄收合持久化）· E338 響應式列表套件（DataTable `renderMobileCard`/`dense`/`chips` + filter-chip↔URL query + status-light/progress-bar/type-chip/role-badge）· E340 `/athena:approve`（四狀態面核准，防 epic-graph 靜默失敗）· E341 `lib/doc-contract.test.ts`（effort tiers/RBAC 矩陣/方案價格/tone 釘死）· E342 context 三件套（product-overview 一頁紙 + domain-digest + `docs/_handoff/`）· E343 design-sync-roundtrip skill（去 UUID/去品牌）。**Wave 2**：E337 儀表板 widget kit（10 個領域中立元件 + 首頁混合升級）· E339 記錄詳情頁慣例（`items/[id]` + `_detail/` + IDOR→404）。`epic-graph.sh --phase 82 --pending-only --json` 已驗證 exit 0。派工 `/athena:batch --phase 82`。**不回收**：`design-system-coverage.sh`（Vite 死碼）· rc 領域邏輯 · agent persona 改名。**仍在 backlog（B 組，本次未納入）**：DB-backed 登入鎖定（fork E324）· audit `onBehalf` + 登入事件（fork E327）· `isUniqueViolation` 泛化出 billing。
+
+**狀態更正（2026-08-22）**：以下 Next Action 舊條目已過期 — Phase 77（E326–E329）· Phase 78（E330）· Phase 79（E331+E332）**皆已完成並併入 main**（PRs #89–#98），非 PENDING/QUEUED；Phase 74（E318）亦已完成。以上方 Phase Status 表為準。
 
 **⬜ Phase 77 (E326–E329) PENDING — 高轉換銷售頁 + 統一一次性金流 (Cycle 35, 2026-07-12).** Sales-page PRD approved: E326 sales page (/p/[slug] + AIDA sections + countdown + hook video) · E327 products/orders + unified one-time checkout (ECPay-first, SOLID interface segregation) · E328 entitlement delivery (內容庫 + 自動建帳/啟用信) · E329 NewebPay provider. Wave 1: E326+E327 → Wave 2: E328+E329. Run `/athena:batch auto` or `/athena:loop` to begin. Specs: `docs/epics/e32{6,7,8,9}-*.md`.
 
