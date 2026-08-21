@@ -80,24 +80,39 @@ contains `docs`/`brand`; skip for a scoped data-layer run (e.g. `auth`).
 
 **6a · Doc↔code constant drift.** Hard numbers/enums live in code (Drizzle `pgEnum`s,
 `lib/validations/*.ts` allowlists, constants in `lib/*.ts`) and get **restated in prose**
-elsewhere — `docs/`, `dev-docs/` (VitePress user guide), README, or code comments. Nothing
-keeps the two in sync once they diverge. Pick the highest-value examples for this codebase
-and check the doc's stated value against the code's actual value:
-- **Role / RBAC enums** — the `roleEnum` values in `lib/schema/*.ts` vs `VALID_ROLES` (or
-  equivalent) in `lib/validations/*.ts` vs any role list restated in `dev-docs/` or README.
-- **Effort-tier knobs** (E198) — the table in `CLAUDE.md` under "Effort Tiers" (`MAX_CONCURRENT`,
-  `MAX_ITERATIONS`, `REVIEW_LOOP_BUDGET`, `AUTOPILOT_THRESHOLD`, models) vs the actual
-  defaults in `scripts/effort/resolve.sh`.
+elsewhere — `docs/`, `dev-docs/` (VitePress user guide), README, skills, or code comments.
+Nothing keeps the two in sync once they diverge.
+
+**Run the automated guard FIRST** — `cd next-app && pnpm test doc-contract`
+(`lib/doc-contract.test.ts`, E341). It already pins the four contracts most likely to rot
+silently, each with an inline comment naming its doc source:
+- **Effort-tier knobs** (E198) — `CLAUDE.md` § Effort Tiers vs `scripts/effort/resolve.sh`.
+- **RBAC capability matrix** — `docs/qa/manual-test-plan/README.md` § 4 vs `lib/team-utils.ts`
+  (`CAPABILITIES`/`PERMISSION_MATRIX`), plus a guard that `PERMISSION_MATRIX`'s role keys
+  track the `Role` union (`lib/schema`) via `roleEnum.enumValues`.
+- **Plans / pricing** — `config/pricing.json` vs `lib/billing/pricing.ts` (tier slugs/prices/
+  currency, marketing-page wiring) + `lib/usage-utils.ts` (UNLIMITED-by-default convention).
+- **Status tones** — `.claude/skills/design-system/SKILL.md` § StatusBadge Tones vs
+  `components/status-badge.tsx` `TONES`.
+
+If it's green, **do not re-derive those four by hand** — trust the test and move on. If it's
+red, the failing assertion's inline comment tells you the doc file + section to fix (fix
+BOTH the code constant and the doc, never just the test).
+
+**Then hand-compare what the test structurally cannot cover** — prose the type system can't
+touch and that isn't (yet) a doc-contract entry:
 - **Stop-verifier rule count/table** — the rule table in `scripts/hooks/CLAUDE.md` vs the
   rules actually implemented in `scripts/hooks/stop-verifier.sh` (rule numbers, blocking
   vs warning, exemption markers).
-- Any other threshold a fork's `docs/` prose asserts (cron cadence, coverage gate %, page
-  size defaults) — trace it back to the code constant and flag disagreement either
-  direction (doc says X, code says Y — OR code changed and the doc was never updated).
+- Process descriptions, screenshots, example commands, and any other threshold a fork's
+  `docs/` prose asserts that isn't pinned yet (cron cadence, coverage gate %, page size
+  defaults) — trace it back to the code constant and flag disagreement either direction
+  (doc says X, code says Y — OR code changed and the doc was never updated).
 
 Flag any number/enum the docs assert that the code no longer backs (or vice versa).
-*(Best-practice follow-up: codify the highest-value ones as a test that fails when
-code ≠ doc — see the `testing-strategy` skill.)*
+*(Best-practice follow-up: when a hand-compared item recurs across audits, promote it to a
+`doc-contract.test.ts` entry — see the 判準 in `docs/context/qa-patterns.md` § "doc↔code
+契約測試" and the `testing-strategy` skill § 6b.)*
 
 **6b · Brand/identity staleness.** Drive this off the template's single-knob branding
 source of truth: `next-app/lib/branding.ts` (`APP_NAME` — defaults to `NEXT_PUBLIC_APP_NAME`,

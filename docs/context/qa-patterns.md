@@ -23,6 +23,46 @@
 - [ ] `userEvent` (not `fireEvent`) in all client tests
 - [ ] Coverage >= 80% per module
 
+## Pattern — doc↔code 契約測試 (E341)
+
+`next-app/lib/doc-contract.test.ts` pins constants that are stated in code AND restated as
+prose elsewhere (a markdown doc, a skill, a comment block) — effort tiers (`CLAUDE.md` §
+Effort Tiers vs `scripts/effort/resolve.sh`), the RBAC capability matrix
+(`docs/qa/manual-test-plan/README.md` § 4 vs `lib/team-utils.ts`), the marketing pricing
+page's wiring to `PRICING_TIERS` (genuine doc↔code contract) plus the usage-limits
+UNLIMITED-by-default convention (`lib/usage-utils.ts` docstring), and status tones
+(`.claude/skills/design-system/SKILL.md` vs `components/status-badge.tsx`). It runs as part of
+`pnpm test` (no extra wiring), so `make verify` / `pre-merge-check.sh` cover it for free, and
+`/athena:audit` Step 6a runs it first before falling back to manual doc↔code comparison.
+
+**Pricing has no independent prose source (checked 2026-08-22):** searched `README.md`,
+`docs/**`, `dev-docs/**` (incl. the `@saas/landing` module docs), and `lib/sales/**` (a
+different domain — the E326/E332 custom `/p/[slug]` sales-page builder) for anywhere the
+`free`/`pro`/`scale` slugs, `$29`/`$99` prices, or `"usd"` currency are restated in
+independent, human-maintained prose. None exists — `config/pricing.json`'s own `$comment`
+states a policy, not a value, and `PRICING_TIERS` is a near-identity pass-through of the same
+file. Per 判準 #1 below, that value pair does NOT qualify as a doc↔code contract; the test
+file labels it a plain "regression pin" instead so it isn't mistaken for one. If a real prose
+restatement of the pricing table ever appears (a pricing FAQ, a rebrand doc, a sales page),
+re-home this as a genuine contract against that source.
+
+**判準 — when to add a new contract to this file:**
+1. The value is stated **in prose** somewhere (doc / skill / comment) — a value that lives
+   ONLY in code with no separate prose restatement doesn't qualify (nothing can "drift" from
+   itself).
+2. Changing the code constant would **not already turn some other test red** — if an existing
+   unit/integration/e2e test already locks the value, a doc-contract entry is redundant; add
+   the doc citation as a comment on that existing test instead.
+3. The doc source is stable enough to cite by file + section in an inline comment — if the
+   prose doesn't clearly say a value (only implies it), fix the prose first, then pin it.
+4. Prefer pinning against the REAL code path (subprocess the actual script, import the actual
+   exported constant, or source-parse when the constant is intentionally not exported) over
+   re-implementing the logic in the test — a re-implementation can drift right alongside the
+   doc and give false confidence.
+
+Out of scope: don't try to cover every constant — only the ones that would actually rot
+silently. See `docs/epics/e341-doc-code-contract-test.md` § Out of Scope.
+
 ## Log — Findings Added by @qa
 
 <!-- @qa appends entries here. Pre-E156 batch learnings are condensed below; every [GENERALIZABLE] lesson lives in ~/.claude/template-memory/ (Tier 0), full detail in git history. Compressed 2026-06-04 to hold the ~200-line budget. -->

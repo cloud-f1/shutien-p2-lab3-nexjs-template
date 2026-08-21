@@ -168,12 +168,36 @@ it("...", async () => {
 })
 ```
 
+## 6b. Doc↔code contract tests — a pyramid-base guard, not e2e (E341)
+
+`next-app/lib/doc-contract.test.ts` is a plain **unit** test file (`lib/*.test.ts`, runs as
+part of `pnpm test`) — it sits at the base of the pyramid, not near the top with e2e, even
+though it's "checking documentation." What it actually tests is pure and synchronous:
+sub-process a shell script and parse its output, import an exported constant, or read a
+source file as text and regex out a value — then compare that value to a hardcoded literal
+transcribed from a doc/skill. No browser, no DB, no server — same reason `lib/team-utils.test.ts`
+is unit-tier, not integration.
+
+Why NOT e2e: an e2e test proves a user-visible flow works end-to-end; a doc-contract test
+proves a **number or enum agrees between two places that a type-checker can't connect** (code
+constant vs prose). Different risk, different layer. Don't route "does this doc match the
+code" checks through Playwright just because the check happens to mention a UI-rendered
+value (e.g. status tones) — read the component source as text instead (see the file for the
+`TONES` extraction pattern), the same way you'd unit-test any other pure transform.
+
+This complements — does not replace — `/athena:audit` Step 6a's manual doc↔code drift scan:
+the parts Step 6a covers that a test CAN pin become an entry here; the parts that are pure
+prose (process descriptions, screenshots, example commands) stay manual. See
+`docs/context/qa-patterns.md` § "doc↔code 契約測試" for the 判準 on when a constant is worth
+adding.
+
 ## 7. Which layer? (decision)
 
 | You're testing… | Layer | Where |
 |---|---|---|
 | A pure algorithm (Zod schema, hash fn, date util, format helper) | unit | `lib/*.test.ts`, `lib/validations/*` |
 | A component renders derived state (disabled button, badge color) | component (jsdom) | `test/component/*.test.tsx` — first line `// @vitest-environment jsdom`, runs as part of `pnpm test` |
+| A code constant vs. a doc/skill's restated prose value (§6b) | unit | `lib/doc-contract.test.ts` — runs as part of `pnpm test` |
 | A Server Action's DB side-effect + RBAC | integration | `test/int/*.int.test.ts` (`pnpm test:int`) |
 | A multi-step user journey across pages | e2e | `e2e/*.spec.ts` (`pnpm test:e2e`) |
 | Color/visual, copy, RWD/dark, concurrency feel | **manual** | `docs/qa/manual-test-plan/` |

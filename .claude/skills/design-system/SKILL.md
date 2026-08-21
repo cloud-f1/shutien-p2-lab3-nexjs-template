@@ -77,6 +77,24 @@ and `dark:` variants for everything else.
 Toggle between light/dark with `next-themes` — keyboard shortcut `d` is wired in
 `next-app/components/theme-provider.tsx`.
 
+## StatusBadge Tones
+
+`components/status-badge.tsx` (E262) is the semantic status pill — pair with a live-dot for
+real-time states. Its `TONES` map is the canonical tone set; use exactly these five (module-private,
+not exported — the component's `tone` prop type is derived from it):
+
+| Tone | Semantic use | Token classes |
+|---|---|---|
+| `success` | completed / healthy / passing | `text-success border-success/30 bg-success/10` |
+| `warning` | attention needed / pending / degraded | `text-warning border-warning/30 bg-warning/10` |
+| `info` | neutral informational state | `text-info border-info/30 bg-info/10` |
+| `danger` | failed / error / destructive state | `text-destructive border-destructive/30 bg-destructive/10` |
+| `muted` | inactive / default / no strong signal | `text-muted-foreground border-border bg-transparent` |
+
+This tone list is pinned against the actual `TONES` object in
+`next-app/lib/doc-contract.test.ts` (E341) — if you add, remove, or rename a tone, update
+BOTH `status-badge.tsx` and this table in the same change, or `pnpm test doc-contract` goes red.
+
 ## Available shadcn/ui Components (`components/ui/`)
 
 These are installed via `npx shadcn@latest add <component>` and live in `next-app/components/ui/`.
