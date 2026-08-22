@@ -6,6 +6,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { StatusBadge } from "@/components/status-badge"
+import { StatusLight } from "@/components/status-light"
+import { ProgressBar } from "@/components/progress-bar"
+import { TypeChip } from "@/components/type-chip"
+import { RoleBadge } from "@/components/role-badge"
+import { FilterChipShowcase } from "./_filter-chip-showcase"
 
 export const metadata: Metadata = { title: "元件參考" }
 
@@ -53,6 +58,33 @@ export default async function ComponentsPage() {
       <Section title="Inputs">
         <Input placeholder="Email" className="max-w-xs" />
         <Input placeholder="Disabled" disabled className="max-w-xs" />
+      </Section>
+
+      <Section title="Status primitives (E338)">
+        <div className="flex items-center gap-1.5">
+          <StatusLight tone="success" label="運作中" />
+          <span className="text-muted-foreground text-xs">運作中</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <StatusLight tone="warning" label="待處理" pulse />
+          <span className="text-muted-foreground text-xs">待處理（pulse）</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <StatusLight tone="danger" label="異常" />
+          <span className="text-muted-foreground text-xs">異常</span>
+        </div>
+        <div className="w-40">
+          <ProgressBar pct={68} tone="info" showLabel />
+        </div>
+        <TypeChip code="A1" name="設計監造" tone="info" />
+        <TypeChip code="B3" name="鄰損鑑定" tone="warning" />
+        <RoleBadge role="admin" />
+        <RoleBadge role="editor" />
+        <RoleBadge role="viewer" size="sm" />
+      </Section>
+
+      <Section title="Filter chips (E338)">
+        <FilterChipShowcase />
       </Section>
 
       <Section title="Surfaces + FX">

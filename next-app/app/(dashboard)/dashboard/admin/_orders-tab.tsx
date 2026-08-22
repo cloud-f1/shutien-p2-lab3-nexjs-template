@@ -149,6 +149,7 @@ export function OrdersTab({ orders }: { orders: OrderRow[] }) {
         data={orders}
         filterPlaceholder="搜尋產品 / 買家 / 狀態…"
         emptyLabel="尚無訂單。"
+        dense
       />
       <ConfirmDialog
         open={Boolean(refundTarget)}

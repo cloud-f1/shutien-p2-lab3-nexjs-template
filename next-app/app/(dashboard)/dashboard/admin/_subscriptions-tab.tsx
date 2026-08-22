@@ -80,6 +80,7 @@ export function SubscriptionsTab({ subscriptions }: { subscriptions: Subscriptio
         data={subscriptions}
         filterPlaceholder="搜尋用戶 / 狀態…"
         emptyLabel="尚無訂閱。"
+        dense
       />
     </div>
   )

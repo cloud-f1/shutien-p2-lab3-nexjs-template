@@ -15,6 +15,13 @@ const TONES = {
   muted: "text-muted-foreground border-border bg-transparent",
 } as const
 
+/**
+ * Shared tone vocabulary (E338) — the status primitives (`status-light`,
+ * `progress-bar`, `type-chip`, `role-badge`, `filter-chip`) all key off this
+ * same union instead of inventing their own color-naming scheme.
+ */
+export type StatusTone = keyof typeof TONES
+
 export function StatusBadge({
   tone = "muted",
   dot = false,

@@ -6,6 +6,19 @@
  * pagination controls. Domain tables pass `columns` + `data` (+ optional toolbar);
  * everything else (filter/paginate/count) is handled here. Client-side: fine for
  * the typical few-hundred-row dashboard list; swap to server-side if a table grows.
+ *
+ * E338 additions (all optional, fully backward-compatible — omit all of them
+ * and rendering/behavior is byte-identical to before):
+ *  - `renderMobileCard` — below the `md` breakpoint (`useIsMobile()`), if
+ *    provided, swaps the `<table>` for a card list. Filter/sort/pagination
+ *    state lives on ONE `useReactTable()` instance regardless of which mode
+ *    renders, so typing a filter on mobile and resizing to desktop (or vice
+ *    versa) preserves the exact same filtered rows + page position.
+ *  - `dense` — tighter row padding (`py-1.5` vs the default `p-2`) for
+ *    data-heavy admin tables.
+ *  - `chips` — a slot rendered under the filter/toolbar row (e.g.
+ *    `<FilterChipBar>`); the table has no opinion on what it contains.
+ *  - `emptyState` — replaces the plain-text empty row/card in both modes.
  */
 import { useState, type ReactNode } from "react"
 import {
@@ -20,6 +33,8 @@ import {
 } from "@tanstack/react-table"
 import { ChevronLeftIcon, ChevronRightIcon, SearchIcon } from "lucide-react"
 
+import { useIsMobile } from "@/hooks/use-mobile"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -48,6 +63,18 @@ interface DataTableProps<TData, TValue> {
   /** Empty-state message. */
   emptyLabel?: string
   pageSize?: number
+  /**
+   * Below the `md` breakpoint, if provided, renders each row as a card via
+   * this instead of a `<table>` row. Omit to keep the table on all
+   * viewports (today's behavior).
+   */
+  renderMobileCard?: (row: TData) => ReactNode
+  /** Tighter row padding for data-heavy tables. */
+  dense?: boolean
+  /** Quick-filter row rendered under the filter/toolbar bar (e.g. `<FilterChipBar>`). */
+  chips?: ReactNode
+  /** Replaces the plain-text empty row/card in both table and card mode. */
+  emptyState?: ReactNode
 }
 
 export function DataTable<TData, TValue>({
@@ -57,9 +84,14 @@ export function DataTable<TData, TValue>({
   toolbar,
   emptyLabel = "尚無資料。",
   pageSize = 10,
+  renderMobileCard,
+  dense = false,
+  chips,
+  emptyState,
 }: DataTableProps<TData, TValue>) {
   const [globalFilter, setGlobalFilter] = useState("")
   const [sorting, setSorting] = useState<SortingState>([])
+  const isMobile = useIsMobile()
 
   const table = useReactTable({
     data,
@@ -98,42 +130,60 @@ export function DataTable<TData, TValue>({
         </div>
       )}
 
-      <div className="rounded-xl border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((hg) => (
-              <TableRow key={hg.id}>
-                {hg.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
+      {chips}
+
+      {isMobile && renderMobileCard ? (
+        <div className="rounded-xl border" data-slot="data-table-mobile-cards">
+          {table.getRowModel().rows.length ? (
+            <div className="divide-border divide-y">
+              {table.getRowModel().rows.map((row) => (
+                <div key={row.id}>{renderMobileCard(row.original)}</div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-muted-foreground p-6 text-center text-sm">
+              {emptyState ?? emptyLabel}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="rounded-xl border">
+          <Table>
+            <TableHeader>
+              {table.getHeaderGroups().map((hg) => (
+                <TableRow key={hg.id}>
+                  {hg.headers.map((header) => (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(header.column.columnDef.header, header.getContext())}
+                    </TableHead>
                   ))}
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="text-muted-foreground h-24 text-center">
-                  {emptyLabel}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {table.getRowModel().rows.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow key={row.id}>
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id} className={cn(dense && "py-1.5")}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="text-muted-foreground h-24 text-center">
+                    {emptyState ?? emptyLabel}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
         <p className="text-muted-foreground text-sm">共 {total} 筆</p>

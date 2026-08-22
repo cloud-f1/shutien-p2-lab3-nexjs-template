@@ -116,6 +116,7 @@ export function MembersTab({
         data={members}
         filterPlaceholder="搜尋姓名或電子郵件…"
         emptyLabel="尚無使用者。"
+        dense
       />
       <MemberDetailDialog
         open={Boolean(detailFor)}

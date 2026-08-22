@@ -84,7 +84,7 @@ scripts/epic-graph.sh      Dependency graph parser + wave planner
 - New route groups: use `(group)/` folders to isolate layouts (e.g., `(auth)/`, `(dashboard)/`).
 - Server-side data fetching: fetch directly in async Server Components; use Server Actions for mutations (`"use server"`).
 - **CRUD uses modals, never page redirects** (E273) — create/edit open a shadcn `Dialog` (form with an `onSuccess` callback); delete uses `components/confirm-dialog.tsx`. The Server Action **returns success (no `redirect`)** so the modal closes and the list refreshes via `revalidatePath` + `router.refresh()`. Deep-link a modal open with a query param (`?new=1`, `?edit=<id>`). Pattern reference: `app/(dashboard)/dashboard/items/`.
-- **List/table views use the reusable `<DataTable>`** (`components/data-table-generic.tsx`) — built-in filter + pagination + page-size — never a hand-rolled `<table>` for record lists.
+- **List/table views use the reusable `<DataTable>`** (`components/data-table-generic.tsx`) — built-in filter + pagination + page-size — never a hand-rolled `<table>` for record lists. Below `md` it renders a card list via the optional `renderMobileCard` prop (same TanStack instance as the table, one filter/pagination state — E338); `dense`/`chips`/`emptyState` are the other optional, backward-compatible props.
 - **Navigation items always go in `next-app/lib/nav.ts`** (E336) — never hardcode a route/label array inside a component (sidebar, mobile tab bar, breadcrumb, command palette).
 
 ## Plugin Relationship (E202)
