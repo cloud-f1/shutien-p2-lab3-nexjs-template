@@ -11,10 +11,11 @@ Developer and project documentation for AI Coding Template.
 | Folder / File | Purpose | Status |
 |---|---|---|
 | [epics/](epics/EPIC_INDEX.md) | Epic pipeline — EPIC_INDEX.md is the single source of dev progress | Live |
+| [architecture/](architecture/product-overview.md) | System architecture — product-overview.md (one-pager) + service maps | Live |
 | [context/](context/session-summary.md) | Agent write-back memory — session state, decisions, logs | Live |
 | [specs/](specs/) | Feature specs produced by `@spec-writer` (`/athena:spec`) | Live |
 | [techstack/](techstack/README.md) | Deep-dive tech reference — server, client, deployment, agents, nextjs | Live |
-| [reference/](reference/) | Agent team catalog, commands, skills, parallel-pipeline strategy | Live |
+| [reference/](reference/) | Agent team catalog, commands, skills, parallel-pipeline strategy, guide-domain-digest.md | Live |
 | [dev-guide/](dev-guide/README.md) | Developer how-tos — getting started, testing, API guide, deployment | Live |
 | [qa/](qa/test-strategy.md) | QA process — test-pyramid audit + versioned manual-test-plan (human-judgment layer) | Live |
 | [playbooks/](playbooks/mockup-to-production.md) | End-to-end runbooks — step-by-step workflows for recurring ops | Live |
@@ -27,6 +28,7 @@ Developer and project documentation for AI Coding Template.
 | [guides/](guides/) | User-facing guides (quickstart, rebrand, deployment, i18n) | Live |
 | [zh-tw/](zh-tw/) | Traditional Chinese documentation (Track B / 繁體中文) | Live |
 | [templates/](templates/) | Reusable doc templates (scaffold, test-plan) | Live |
+| [_handoff/](_handoff/README.md) | Design-handoff bundle convention — `project/` (PRD/prototypes) + `screenshots/`; read by `mockup-to-epics` + `alignment-audit` | Live |
 | [archive/](archive/) | Historical specs, plans, presentations, superpowers (read-only) | Archive |
 | [PRD.md](PRD.md) | Product Requirements Document | Live |
 | [roadmap.md](roadmap.md) | High-level product vision (not execution tracking) | Live |
@@ -39,6 +41,8 @@ Developer and project documentation for AI Coding Template.
 | What you need | Where to go |
 |---|---|
 | Current epic phase + next action | [epics/EPIC_INDEX.md](epics/EPIC_INDEX.md) |
+| System shape in 90 seconds (stack, auth, non-goals) | [architecture/product-overview.md](architecture/product-overview.md) |
+| Domain rules with sourced values (for writing the user manual, or as a fork template) | [reference/guide-domain-digest.md](reference/guide-domain-digest.md) |
 | Resume a session | [context/session-summary.md](context/session-summary.md) |
 | Tech stack overview | [techstack/README.md](techstack/README.md) |
 | Agent team reference | [reference/agents.md](reference/agents.md) |

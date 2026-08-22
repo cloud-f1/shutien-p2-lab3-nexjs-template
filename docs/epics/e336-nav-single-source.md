@@ -73,6 +73,9 @@
 - E323 — Tab Bar z-index 教訓沿用，不可回退
 - E337 — 儀表板 stat card 深連結目標需存在於 `NAV_FLAT`（不新增導覽項）
 - E339 — 詳情頁麵包屑靠 `NAV_LABELS` + 記錄標題
+- E342 — `lib/nav.ts` 落地後，回頭把 `docs/architecture/product-overview.md`「Main screens」
+  一節的來源指標從 `app-sidebar.tsx` 的 `navMain` 改指向 `lib/nav.ts`（該節目前已預先寫好這句
+  forward note，落地時只需把指標換過去，不必重寫整節）
 
 ## Out of Scope
 - 導覽項目 CRUD 後台（本 epic 是編譯期常數，不做 DB 驅動導覽）

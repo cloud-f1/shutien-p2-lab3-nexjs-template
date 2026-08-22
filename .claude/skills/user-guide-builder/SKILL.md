@@ -99,12 +99,19 @@ Practices baked in:
 - **VERIFY the PNGs** by reading a few with vision before writing docs around them — confirm
   they show real seeded content, not an empty/error/login state.
 
-## 3. Mine epics → one shared domain digest
+## 3. Extend the shared domain digest
 
-Spawn one agent to read feature epics (`docs/epics/`) and produce a tight
-**values-and-rules** cheat-sheet to `docs/reference/guide-domain-digest.md`: every threshold,
-enum, permission flag, and rule with its source cited inline. This is the single source the
-page writers quote, so the manual's numbers are consistent and correct.
+`docs/reference/guide-domain-digest.md` is a hand-maintained, always-current baseline
+(E342) of this template's sourced domain rules — it already covers the reference domains
+(items / library / orders) with every value cited to the source file that defines it, plus
+a fork-author filling guide and an explicit SSOT rule (the code wins when the digest and
+the code it cites disagree). Read it first.
+
+Spawn one agent to read feature epics (`docs/epics/`) and **extend that same file** — add a
+tight **values-and-rules** entry, same format and sourcing discipline, for every
+page/feature the epics cover that the baseline doesn't already. Don't start a second,
+parallel cheat-sheet: one file, one purpose. This is the single source the page writers
+quote, so the manual's numbers are consistent and correct.
 
 The RBAC matrix for this template (3 tiers):
 - **Admin** — full access (create/edit/delete users, all settings, all data)

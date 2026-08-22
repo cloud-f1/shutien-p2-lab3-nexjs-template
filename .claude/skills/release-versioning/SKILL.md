@@ -104,5 +104,8 @@ open a PR, but **cannot merge PRs or push tags to `main`**. The release flow an 
       unit] + non-strict `check:orphans` report + `test:int` [gracefully skips without a reachable
       Postgres] + a dev-docs build) — run this before pushing, per `CONTRIBUTING.md`'s "Ship
       discipline" section.
+- [ ] `docs/architecture/product-overview.md`'s header "Current as of **vX.Y.Z (date)**" line
+      updated to match the new version (E342) — it's a hand-written snapshot, not a live read,
+      so it goes stale silently if skipped.
 - [ ] Release branch named `release/vX.Y.Z`, commit message `chore(release): vX.Y.Z — <summary>`.
 - [ ] PR opened targeting `main`; agent stops here (§3) — human merges + tags `vX.Y.Z`.

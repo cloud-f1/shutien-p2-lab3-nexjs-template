@@ -61,10 +61,13 @@ next-app/
   tsconfig.json            Path alias: @/* → next-app root
 docs/
   README.md                Navigation index — canonical entry point for all docs/
+  architecture/            product-overview.md — one-page system shape (stack/auth/non-goals)
   epics/                   EPIC_INDEX.md — single source of dev progress
   specs/                   Feature specs (@spec-writer output)
+  reference/               guide-domain-digest.md — sourced domain rules cheat-sheet, fork-fillable
   context/                 Agent write-back memory
   playbooks/               Workflow SOPs (mockup-to-production, etc.)
+  _handoff/                Design-handoff bundle convention (project/ + screenshots/)
 scripts/hooks/             Lifecycle hooks — see hooks/CLAUDE.md
 .claude/agents/            Agent definitions (YAML frontmatter + instructions)
 .claude/commands/athena/   Slash commands (athena namespace)

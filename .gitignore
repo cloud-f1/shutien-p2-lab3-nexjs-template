@@ -51,6 +51,7 @@ client/test-results/
 *.png
 !client/public/*.png
 !docs/assets/*.png
+!docs/_handoff/screenshots/*.png
 
 # Init sentinel
 .initialized
