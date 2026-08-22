@@ -649,6 +649,22 @@ After all agents in a wave complete and the human has merged their PRs, run the 
    > are dead commands — use the gates above instead. One-shot:
    > `scripts/pre-merge-check.sh [--e2e]` runs all four gates + repo hygiene.
 
+   **Emit a `gate_result` for each of the 4 commands above (E345 — this is a
+   second, independent call site from `/athena:integrate`'s Step 4; it is NOT
+   covered by that command's wiring since 4c runs its own inline suite, not a
+   delegated `/athena:integrate` invocation). `$PHASE` is whatever this batch
+   run resolved in Steps 1-3; `$WAVE` is the same variable already used for
+   the `batch_wave_start`/`batch_wave_end` emits above:**
+   ```bash
+   bash scripts/hooks/audit-emit-gate.sh typecheck <pass|fail> --phase "$PHASE" --wave "$WAVE" || true
+   bash scripts/hooks/audit-emit-gate.sh lint       <pass|fail> --phase "$PHASE" --wave "$WAVE" || true
+   bash scripts/hooks/audit-emit-gate.sh unit       <pass|fail> --phase "$PHASE" --wave "$WAVE" || true
+   bash scripts/hooks/audit-emit-gate.sh e2e        <pass|fail> --phase "$PHASE" --wave "$WAVE" || true
+   # This gate never emits "skipped" — --skip-integration-test skips the WHOLE
+   # gate (nothing to emit, same as the gate never having run this wave), it
+   # does not selectively skip one of the four commands above.
+   ```
+
 3. **Verify coverage gate** (>= 80% Vitest unit coverage):
    - Parse coverage from vitest output (look for `All files ... XX%`)
    - If below 80%: treat as failure

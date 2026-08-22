@@ -284,6 +284,72 @@ if [ "${STOP_RULE_23_ENABLED:-0}" = "1" ]; then
   fi
 fi
 
+# Rule 24: Phase-Completion Gate-Ledger Guard (E345) — a phase may not be
+# marked ✅ Complete in epic-progress.md's Phase Status table while it carries
+# an unreconciled `skipped` gate result (see scripts/gate-ledger.sh's own
+# header for the exact "unreconciled" definition). Skipping a gate is a
+# legitimate engineering decision; leaving it unreconciled at phase-close is
+# what this rule blocks. The ONLY reconciliation path is a HUMAN explicitly
+# running (a later pass elsewhere does NOT clear a recorded skip — see
+# gate-ledger.sh's header for why):
+#   scripts/gate-ledger.sh --phase N --accept-skips "reason"
+#
+# Real-path rationale (not hypothetical): every historical phase-complete
+# transition in this repo is a hand-edit to epic-progress.md's Phase Status
+# row landing in a "chore(state): Phase N complete" commit (see
+# `git log --oneline --all | grep "chore(state)"`) — there is no dedicated
+# "mark-phase-complete" script to hook. This rule checks the row's absolute
+# current content (like Rule 18 does for the QA gate), not a diff, so it
+# still catches the transition whether Stop fires before OR after that
+# commit lands (the commit has often already happened by the time Stop
+# fires, so a HEAD-diff-only check would silently miss the common case).
+#
+# Cost control: only pays the gate-ledger.sh subprocess cost when
+# epic-progress.md was actually touched THIS session — currently dirty, OR
+# part of the most recent commit. Otherwise this rule is a no-op fast-path,
+# so it does not re-scan every historical ✅-Complete phase on every unrelated
+# Stop.
+#
+# Test injection: EPIC_PROGRESS_PATH (shared with Rule 18), GATE_LEDGER_SH.
+RULE_24_PROGRESS="${EPIC_PROGRESS_PATH:-docs/context/epic-progress.md}"
+RULE_24_LEDGER_SH="${GATE_LEDGER_SH:-scripts/gate-ledger.sh}"
+if [ -f "$RULE_24_PROGRESS" ] && [ -f "$RULE_24_LEDGER_SH" ]; then
+  RULE_24_DIRTY=$(git status --porcelain -- "$RULE_24_PROGRESS" 2>/dev/null)
+  RULE_24_IN_LAST_COMMIT=$(git diff --name-only HEAD~1 HEAD -- "$RULE_24_PROGRESS" 2>/dev/null)
+  if [ -n "$RULE_24_DIRTY" ] || [ -n "$RULE_24_IN_LAST_COMMIT" ]; then
+    if [ -n "$RULE_24_DIRTY" ]; then
+      RULE_24_BEFORE=$(git show "HEAD:$RULE_24_PROGRESS" 2>/dev/null)
+    else
+      RULE_24_BEFORE=$(git show "HEAD~1:$RULE_24_PROGRESS" 2>/dev/null)
+    fi
+    RULE_24_AFTER=$(cat "$RULE_24_PROGRESS" 2>/dev/null)
+
+    # Phases that read "✅ Complete" now but did NOT before this session's
+    # change — i.e. a genuine transition, not an old already-complete phase.
+    RULE_24_NEW_PHASES=$(echo "$RULE_24_AFTER" | grep -E '^\| Phase [0-9]+ ' | while IFS= read -r ROW; do
+      NUM=$(echo "$ROW" | sed -nE 's/^\| Phase ([0-9]+) .*/\1/p')
+      [ -z "$NUM" ] && continue
+      STATUS_NOW=$(echo "$ROW" | awk -F'|' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $4); print $4}')
+      echo "$STATUS_NOW" | grep -qF '✅ Complete' || continue
+      STATUS_BEFORE_ROW=$(echo "$RULE_24_BEFORE" | grep -E "^\| Phase ${NUM} " | head -1)
+      STATUS_BEFORE=$(echo "$STATUS_BEFORE_ROW" | awk -F'|' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $4); print $4}')
+      echo "$STATUS_BEFORE" | grep -qF '✅ Complete' && continue
+      echo "$NUM"
+    done)
+
+    if [ -n "$RULE_24_NEW_PHASES" ]; then
+      while IFS= read -r RULE_24_PHASE; do
+        [ -z "$RULE_24_PHASE" ] && continue
+        if ! bash "$RULE_24_LEDGER_SH" --phase "$RULE_24_PHASE" --check-only >/dev/null 2>&1; then
+          RULE_24_DETAIL=$(bash "$RULE_24_LEDGER_SH" --phase "$RULE_24_PHASE" 2>/dev/null)
+          VIOLATIONS="${VIOLATIONS}\n❌ Rule 24: Phase ${RULE_24_PHASE} is being marked ✅ Complete but has an unreconciled skipped gate:\n${RULE_24_DETAIL}\n   Fix: either get the skipped gate(s) to pass, or have a HUMAN explicitly run:\n   scripts/gate-ledger.sh --phase ${RULE_24_PHASE} --accept-skips \"<reason>\"\n   (--accept-skips is a human act — never invoke it from cron/loop/batch-auto or on your own initiative.)\n"
+          emit_rule_fired 24 block
+        fi
+      done <<< "$RULE_24_NEW_PHASES"
+    fi
+  fi
+fi
+
 if [ -n "$LARGE_WARNINGS" ]; then
   echo "=== Stop Verifier — WARNINGS ===" >&2
   echo -e "$LARGE_WARNINGS" >&2

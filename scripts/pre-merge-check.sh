@@ -36,6 +36,24 @@ ok()   { printf '  \033[32m✓ %s\033[0m\n' "$1"; }
 bad()  { printf '  \033[31m✗ %s\033[0m\n' "$1"; FAIL=1; }
 warn() { printf '  \033[33m! %s\033[0m\n' "$1"; }
 
+# E345 — gate ledger emission. This is the gate humans/agents run most often
+# before pushing (CLAUDE.md's own "Quality gate before merge" line), so it
+# must feed the ledger too, not just /athena:integrate's Step 4 and batch.md's
+# Step 4c. Best-effort epic/phase auto-detection from the current branch +
+# epic-progress.md — a plain `pre-merge-check.sh` invocation has no epic/phase
+# argument of its own, so this is inferred, not passed in. Emission is always
+# `|| true`: a missing audit-emit-gate.sh or jq must never fail this gate.
+PMC_EPIC=$(git branch --show-current 2>/dev/null | sed -nE 's|.*[Ee]([0-9]+)-.*|E\1|p' | tr '[:lower:]' '[:upper:]')
+PMC_PHASE=""
+if [ -n "$PMC_EPIC" ] && [ -f "$ROOT/docs/context/epic-progress.md" ]; then
+  PMC_ROW=$(grep -E "^\| *${PMC_EPIC} " "$ROOT/docs/context/epic-progress.md" | head -1)
+  PMC_PHASE=$(printf '%s' "$PMC_ROW" | sed -nE 's/.*Phase ([0-9]+).*/\1/p' | head -1)
+fi
+emit_gate() {
+  # $1 = gate name, $2 = pass|fail
+  bash "$ROOT/scripts/hooks/audit-emit-gate.sh" "$1" "$2" --epic "$PMC_EPIC" --phase "$PMC_PHASE" >/dev/null 2>&1 || true
+}
+
 # ── Gate 1: no stray nested git repo ────────────────────────────────────────
 say "Repo hygiene"
 if [ -d "$APP/.git" ]; then
@@ -56,20 +74,26 @@ fi
 
 # ── Gate 3: typecheck ───────────────────────────────────────────────────────
 say "Typecheck"
-if (cd "$APP" && pnpm -s typecheck >/tmp/pmc-tsc.log 2>&1); then ok "tsc --noEmit clean"; else bad "typecheck failed (see /tmp/pmc-tsc.log)"; fi
+if (cd "$APP" && pnpm -s typecheck >/tmp/pmc-tsc.log 2>&1); then ok "tsc --noEmit clean"; emit_gate typecheck pass; else bad "typecheck failed (see /tmp/pmc-tsc.log)"; emit_gate typecheck fail; fi
 
 # ── Gate 4: lint ────────────────────────────────────────────────────────────
 say "Lint"
-if (cd "$APP" && pnpm -s lint >/tmp/pmc-lint.log 2>&1); then ok "eslint clean"; else bad "lint failed (see /tmp/pmc-lint.log)"; fi
+if (cd "$APP" && pnpm -s lint >/tmp/pmc-lint.log 2>&1); then ok "eslint clean"; emit_gate lint pass; else bad "lint failed (see /tmp/pmc-lint.log)"; emit_gate lint fail; fi
 
 # ── Gate 5: unit tests ──────────────────────────────────────────────────────
 say "Unit tests (vitest)"
-if (cd "$APP" && pnpm -s test >/tmp/pmc-unit.log 2>&1); then ok "unit tests pass"; else bad "unit tests failed (see /tmp/pmc-unit.log)"; fi
+if (cd "$APP" && pnpm -s test >/tmp/pmc-unit.log 2>&1); then ok "unit tests pass"; emit_gate unit pass; else bad "unit tests failed (see /tmp/pmc-unit.log)"; emit_gate unit fail; fi
 
 # ── Gate 6 (optional): e2e ──────────────────────────────────────────────────
+# Note: e2e here is opt-in (--e2e flag) — when this flag is omitted, e2e is
+# simply not run by THIS invocation, and nothing is emitted for it. That is
+# not the same as a structured `skipped` record (no reason is being declared
+# here — the caller just didn't ask for it this run), so it's left silent,
+# consistent with "no gate_result data" reading as "nothing to reconcile"
+# throughout the ledger, not as a hidden skip.
 if [ "$RUN_E2E" -eq 1 ]; then
   say "E2E (playwright)"
-  if (cd "$APP" && pnpm -s test:e2e >/tmp/pmc-e2e.log 2>&1); then ok "e2e suite passes"; else bad "e2e failed (see /tmp/pmc-e2e.log)"; fi
+  if (cd "$APP" && pnpm -s test:e2e >/tmp/pmc-e2e.log 2>&1); then ok "e2e suite passes"; emit_gate e2e pass; else bad "e2e failed (see /tmp/pmc-e2e.log)"; emit_gate e2e fail; fi
 fi
 
 # ── Gate 7: command/agent frontmatter + stale-stack + tool-name lint ────────

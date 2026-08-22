@@ -169,6 +169,28 @@ may pass QA on review + unit tests alone.** A real `pnpm test:e2e` run that exer
 the actual user flow (login → land on the page → perform the mutation) is a required
 gate. A probe that only checks status codes / redirects does NOT satisfy this.
 
+### If a gate genuinely cannot run this session (E345)
+
+Sometimes a gate is legitimately infeasible in the current environment — the shared
+`nextapp_postgres` container is owned by another project, there's no seeded DB / dev
+server available, etc. **Skipping is a legitimate call. Saying so only in prose is
+not** — Phase 82 shipped 8 epics that each honestly declared "e2e not run, here's why"
+in their own report, and every one of those honest statements evaporated the moment
+the report was written: the state files, the gate results, and the phase-complete
+record all still read PASS. Do not repeat that. The moment you decide to skip a gate,
+emit the structured record in the same breath as writing the prose explanation:
+
+```bash
+bash scripts/hooks/audit-emit-gate.sh <gate> skipped --reason "<why, specifically>" --epic $EPIC --phase $PHASE || true
+```
+
+`<gate>` ∈ `typecheck|lint|unit|int|e2e`. `--reason` is enforced non-empty by the
+script itself (a reason-less skip is refused, not silently accepted) — this is not
+optional decoration, it's what makes the skip visible later via
+`scripts/gate-ledger.sh --phase $PHASE`, and what the Phase-Complete guard (Rule 24,
+`scripts/hooks/stop-verifier.sh`) checks before the phase can close. If you DID run a
+gate, emit its actual pass/fail instead: `audit-emit-gate.sh <gate> pass --epic $EPIC --phase $PHASE || true`.
+
 After: agent writes to docs/context/test-status.md
 
 After the coverage gate result is determined (pass or fail), emit the audit event.

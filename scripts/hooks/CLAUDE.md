@@ -98,11 +98,12 @@ PostToolUse pipeline. Sub-hook stdout is forwarded through as-is (it becomes
 
 ## Stop Verifier Rules (`stop-verifier.sh`)
 
-8 rules total (Next.js stack, post-migration — E282). The old 23-rule FastAPI/Vite
-set (`client/src` localStorage, MSW handlers, pytest mock depth, OpenAPI codegen drift,
-alembic migration review, `App.tsx` routeMap, `styles/common` design-system) was removed
-with that stack. The rules now enforce the CLAUDE.md "NEVER DEVIATE" invariants against
-`next-app/`. Per-file rules (1-3) iterate changed files; global rules (4-6, 18, 23) run once.
+9 rules total (Next.js stack, post-migration — E282, +Rule 24 E345). The old 23-rule
+FastAPI/Vite set (`client/src` localStorage, MSW handlers, pytest mock depth, OpenAPI
+codegen drift, alembic migration review, `App.tsx` routeMap, `styles/common`
+design-system) was removed with that stack. The rules now enforce the CLAUDE.md "NEVER
+DEVIATE" invariants against `next-app/`. Per-file rules (1-3) iterate changed files;
+global rules (4-6, 18, 23, 24) run once.
 
 | # | Rule | Scope | Blocking |
 |---|------|-------|----------|
@@ -114,6 +115,7 @@ with that stack. The rules now enforce the CLAUDE.md "NEVER DEVIATE" invariants 
 | 6 | Large file warning — modified files > 500 lines. | Global | warning only |
 | 18 | QA Gate Enforcement — on an epic branch (`is_epic_branch`), refuse Stop when `epic-progress.md` shows `impl=✅` but `qa≠✅` (mechanizes the batch.md Mandatory Pipeline Order contract). UNCHANGED. | Global | exit 2 |
 | 23 | Verification Discipline (E188) — block completion-verb commits (`feat:`, `fix:`, `refactor:`, `perf:`, `test:`, `style:`) when no `verification_check` event with `exit=0` exists in `.claude/audit.jsonl` within the last 10 min. Whitelisted prefixes bypass: `wip:`, `chore(state):`, `docs:`, `chore:`, `chore(memory):`, `chore(roadmap):`, `build:`, `ci:`. Pilot mode: gated behind `STOP_RULE_23_ENABLED=1` env var. Emit: `scripts/hooks/audit-emit-verification.sh <check> 0`. Skill: `.claude/skills/verification-discipline/SKILL.md`. Portable N-minutes-ago cutoff (E-batch1 fix): BSD `date -v` → GNU `date -d` → `python3` last resort → if all fail, emit a degraded-window warning and fall back to unbounded lookback (previously: silent python3-only, accept-any-history on failure). | Global | exit 2 |
+| 24 | Phase-Completion Gate-Ledger Guard (E345) — refuse to let `docs/context/epic-progress.md`'s Phase Status table transition a phase to `✅ Complete` while `scripts/gate-ledger.sh --phase N --check-only` reports an unreconciled `skipped` gate result for that phase (see that script + `scripts/hooks/audit-emit-gate.sh` below). Checks the row's absolute current content against its pre-session content (dirty vs. `HEAD`, or `HEAD` vs. `HEAD~1` when the transition already landed in a commit before Stop fired) so it fires exactly once, on the genuine transition — not on every future unrelated Stop for an already-complete phase. Reconciliation is existence-only and durable, NOT a timestamp comparison (a second-resolution race was found and fixed here — see `gate-ledger.sh`'s header): the ONLY reconciliation path is a HUMAN running `scripts/gate-ledger.sh --phase N --accept-skips "reason"` (never from cron/loop/batch-auto/agent-initiative — same hard rule as `/athena:approve`), and once granted it covers that phase's skips permanently — a later `gate_result=pass` elsewhere does NOT clear a recorded skip. A phase with zero recorded `gate_result` events is NOT unreconciled (nothing to reconcile) — see `docs/epics/e345-gate-ledger.md`. | Global | exit 2 |
 
 > **E204 — epic-branch detection + fail-open canary.** Rule 18 (the only remaining
 > epic-safety gate — old Rules 19/20 were removed with the FastAPI/Vite stack) uses the
@@ -128,8 +130,10 @@ with that stack. The rules now enforce the CLAUDE.md "NEVER DEVIATE" invariants 
 > **Test injection (E282):** the per-file rules (1/2/4) honour `CHANGED_OVERRIDE` (a
 > newline-separated path list) so fixtures can drive them deterministically. New fixture
 > `scripts/hooks/tests/test-rule-nextjs-invariants.sh` covers Rules 1/2/4; Rule 18 has
-> `test-rule-18-qa-gate.sh` + the canary; Rule 23 has `test-rule-23.sh`. The obsolete
-> `test-rule-21-22-design-system.sh` was deleted.
+> `test-rule-18-qa-gate.sh` + the canary; Rule 23 has `test-rule-23.sh`; Rule 24 has
+> `test-rule-24-gate-ledger-guard.sh` (honours `EPIC_PROGRESS_PATH` + `GATE_LEDGER_SH`
+> env overrides, real temp git repos — same pattern as Rule 18's own fixture). The
+> obsolete `test-rule-21-22-design-system.sh` was deleted.
 
 ## Exit Validation Rules
 
@@ -788,6 +792,106 @@ jq -s 'map(select(.event == "coverage_dropped")) | group_by(.tier) | map({tier: 
 
 # Batch concurrency drops only
 jq 'select(.event == "coverage_dropped" and .what == "batch_concurrency")' .claude/audit.jsonl
+```
+
+### Gate Result Events (E345)
+
+`scripts/hooks/audit-emit-gate.sh` emits one `gate_result` event per gate outcome
+(pass/fail/skipped). This is the "关卡帐本" (gate ledger) substrate — the Phase 82
+incident it answers: 8 epics each honestly skipped e2e for a real reason, but that
+honesty existed only as prose in agent reports, while `epic-progress.md` and the gate
+results still read PASS. `gate_result` makes the skip (and its reason) a structured,
+aggregable fact instead of prose that evaporates.
+
+```json
+{"ts":"2026-08-22T10:00:00Z","event":"gate_result","gate":"e2e","status":"skipped","reason":"shared postgres container owned by another project","epic":"E336","phase":"82"}
+{"ts":"2026-08-22T10:01:00Z","event":"gate_result","gate":"typecheck","status":"pass","epic":"E344","phase":"83","wave":"1"}
+{"ts":"2026-08-22T10:02:00Z","event":"gate_result","gate":"unit","status":"fail","epic":"E345","phase":"83"}
+```
+
+| Event | Emitted by | Trigger |
+|-------|------------|---------|
+| `gate_result` | `audit-emit-gate.sh` | Called by `/athena:integrate` Step 4 (the primary source — one call per gate command run against the wave's merged integration branch) and by `/athena:qa` whenever an agent decides a gate is infeasible this session (skipped) or has an actual pass/fail to record. `scripts/pre-merge-check.sh` / `make verify` callsites are additive future wiring, not required by this schema. |
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `ts` | ISO 8601 UTC | Override via `CLOCK_TS` env var (test fixtures only) |
+| `event` | string | Always `"gate_result"` |
+| `gate` | string | Any string; convention is `typecheck\|lint\|unit\|int\|e2e` |
+| `status` | enum | `pass` \| `fail` \| `skipped`. **`skipped` REQUIRES `reason`** — the script refuses to emit (exit 1, nothing written) a reason-less skip. |
+| `reason` | string | Present only when given (mandatory when `status=skipped`) |
+| `epic` | string | Optional — which epic this result belongs to (may be a comma-joined list for a wave-level integration-gate emission) |
+| `phase` | string | Optional — which phase. `scripts/gate-ledger.sh` groups by this field; an event with no `phase` lands in an "unknown" bucket invisible to `--phase N` scoping. |
+| `wave` | string | Optional — which wave within the phase |
+
+Test injection env vars:
+
+| Variable | Purpose |
+|----------|---------|
+| `AUDIT_LOG_PATH` | Override `.claude/audit.jsonl` path |
+| `CLOCK_TS` | Override timestamp (ISO 8601) |
+
+Tests live in `scripts/hooks/tests/test-audit-emit-gate.sh` (7 cases, runs in <1s).
+
+#### The ledger view: `scripts/gate-ledger.sh`
+
+`scripts/gate-ledger.sh [--phase N] [--check-only] [--accept-skips "reason"]` aggregates
+`gate_result` events (from `.claude/audit.jsonl`) plus human acceptances (from a
+**separate** ledger, see below) into a per-phase, per-gate pass/fail/skipped summary, and
+(outside `--check-only`) renders `docs/context/gate-ledger.md` — a RENDER ARTIFACT
+regenerated wholesale on every run; never hand-edit it.
+
+A phase has an **unreconciled** skip when it has at least one recorded
+`gate_result{status:skipped}` event AND no acceptance has EVER been recorded for that
+phase — an **existence check, not a timestamp comparison**. An earlier version compared
+`lastAcceptTs < lastSkipTs` (both second-resolution), which raced whenever the two
+events landed in the same wall-clock second, and — more fundamentally — meant the same
+logical skip re-observed later (a re-run, a different worktree) silently un-reconciled
+an already-granted acceptance. The fix: acceptance is **phase-scoped and durable** —
+once granted, it covers that phase's skips permanently, mirroring how `/athena:approve`
+treats an approval (not invalidated by re-reading the epic file later). A phase with
+**zero** `gate_result` events is NOT unreconciled — there is nothing recorded to
+reconcile (this is exactly Phase 82's own shape: `audit-emit-gate.sh` did not exist yet,
+so `--phase 82` finds no data, not "8 e2e skips").
+
+`--accept-skips "reason"` (requires `--phase N`) is a **HUMAN act** — mirrors the hard
+rule in `.claude/commands/athena/approve.md`: never invoke it from cron, `/athena:loop`,
+`/athena:batch auto`, or an agent's own initiative. It does **NOT** append to
+`.claude/audit.jsonl` — E345 adds exactly one new event to that schema (`gate_result`).
+Acceptances append to their own ledger, **`docs/context/gate-skip-acceptances.jsonl`
+(COMMITTED, not gitignored)** (override: `GATE_ACCEPT_LOG_PATH`). This must be committed,
+not local-machine state like `.claude/audit.jsonl` — `/athena:batch` dispatches across
+`.claude/worktrees/agent-*`, each a separate filesystem checkout of `.claude/`; a
+gitignored acceptance file written in one worktree would be invisible to a sibling
+worktree's Rule 24 check, and a `docs/context/gate-ledger.md` re-render on a machine
+without it would silently strip a human's recorded decision back out of committed
+history. `/athena:approve` handles the same "record a human decision" class of problem
+by writing into committed `epic-progress.md`/`EPIC_INDEX.md` — this follows the same
+principle:
+
+```json
+{"ts":"2026-08-22T10:05:00Z","phase":"82","reason":"e2e: DB isolation fix tracked in #117"}
+```
+
+`--check-only` (requires `--phase N`) is what `stop-verifier.sh` Rule 24 calls: exit `2`
+if the phase has an unreconciled skip, exit `0` otherwise (including "no data") — no
+stdout report, no doc write.
+
+Env overrides: `AUDIT_LOG_PATH` (gate_result source, read-only here), `GATE_ACCEPT_LOG_PATH`
+(acceptance ledger), `GATE_LEDGER_PATH` (doc path), `CLOCK_TS` (acceptance record
+timestamp, test fixtures only).
+
+Example `jq` queries:
+
+```bash
+# All gate_result events for a phase
+jq 'select(.event == "gate_result" and .phase == "83")' .claude/audit.jsonl
+
+# Every currently-recorded skip + its reason
+jq 'select(.event == "gate_result" and .status == "skipped") | {gate, epic, phase, reason}' .claude/audit.jsonl
+
+# Acceptance records (human reconciliations) — separate, COMMITTED file, not audit.jsonl
+jq '.' docs/context/gate-skip-acceptances.jsonl
 ```
 
 ### State Drift Events (E196 / E-batch1 summary-event fix)

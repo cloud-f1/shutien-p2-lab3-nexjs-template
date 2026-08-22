@@ -153,7 +153,8 @@ depend on wave-simultaneity to work correctly.
 
 **If `--gate GATE` was passed, skip this entire step** — go directly to Step 5/6
 with `G = GATE` and `scope = "targeted:<GATE>"`, running only that one command
-(scoped as in Step 5) against `integration/phase${PHASE}-wave${WAVE}`. If it
+(scoped as in Step 5) against `integration/phase${PHASE}-wave${WAVE}`. Emit its
+`gate_result` exactly as below (pass/fail only — `--gate` never skips). If it
 passes, report `verdict: PASS` with `scope: "targeted:<GATE>"` (advisory — see
 Argument Parsing above) and skip straight to Step 7. If it fails, continue to
 Step 6 attribution scoped to `GATE` only. Everything below this line is the
@@ -173,12 +174,20 @@ pnpm db:e2e-setup && pnpm test:e2e
 Record each command's exit code and (for `test:e2e`) the list of failing spec
 files/test names from Playwright's output. **e2e is mandatory, not optional** —
 Phase 82's defect was invisible to typecheck/lint/unit/int; only e2e caught it.
-Do not accept "skipped" as a pass for this gate.
+Do not accept "skipped" as a pass for this gate — this gate never emits
+`gate_result ... skipped`; every command above either runs to a pass/fail or
+the whole gate is BLOCKED upstream (Step 2). "Skipped" is a per-epic QA-time
+concept (see `qa.md`), not an integration-gate one.
 
-After each command, emit a verification event (Stop Rule #23 discipline):
+After each command, emit a verification event (Stop Rule #23 discipline) AND
+a `gate_result` event (E345 — this command is the gate ledger's primary emit
+source; `$EPICS_JOINED` is the same comma-joined array built in Step 7):
 
 ```bash
+EPICS_JOINED=$(IFS=,; echo "${EPICS[*]}")
 bash scripts/hooks/audit-emit-verification.sh "integrate:<gate>" <exit_code> || true
+bash scripts/hooks/audit-emit-gate.sh <gate> <pass|fail> --epic "$EPICS_JOINED" --phase "$PHASE" --wave "$WAVE" || true
+# <gate> ∈ typecheck|lint|unit|int|e2e (map: test:coverage→unit, test:int→int)
 ```
 
 ### The one pre-authorized carve-out
@@ -194,10 +203,12 @@ treat it as non-blocking, but only when **both** hold:
    **empty for every branch in the wave** — confirmed, not assumed.
 
 If both hold, record `e2eCarveOut: {applied: true, test: "e2e/two-factor.spec.ts:103",
-reason: "pre-existing, Phase 72 #51"}` in the report and treat the e2e gate as PASS.
-Do **not** invent any other carve-out, and do not widen this one to cover a
-different failing spec "because it's probably unrelated" — attribution (Step 6)
-exists precisely so you never have to guess that.
+reason: "pre-existing, Phase 72 #51"}` in the report and treat the e2e gate as PASS
+— emit `gate_result e2e pass` (not `fail`) for this run; the carve-out changes what
+counts as a pass, it does not turn the gate into a skip. Do **not** invent any other
+carve-out, and do not widen this one to cover a different failing spec "because it's
+probably unrelated" — attribution (Step 6) exists precisely so you never have to
+guess that.
 
 If all gates pass (post carve-out): verdict = **PASS**. Go to Step 7 (cleanup +
 report). If any gate fails: go to Step 6 (attribution) — but ONLY for the failing
