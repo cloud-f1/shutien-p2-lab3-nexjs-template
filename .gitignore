@@ -40,6 +40,7 @@ htmlcov/
 .claude/debug-backups/
 .claude/scheduled_tasks.lock
 .claude/.health-state
+.claude/last-activity
 
 # Playwright
 .playwright-mcp/
@@ -58,7 +59,9 @@ client/test-results/
 CLAUDE.local.md
 TASK.md
 .task-context.md
-docs/context/session-summary.md
+# NOTE: docs/context/session-summary.md is intentionally TRACKED (Tier-1 resume
+# memory, named in CLAUDE.md). A dead ignore entry for it lived here while the
+# file was already committed — the ignore never applied. Removed 2026-08-22.
 
 # Database backups
 backups/

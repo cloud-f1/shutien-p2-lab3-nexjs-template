@@ -14,8 +14,16 @@ echo "$CMD" | grep -qiE "(git push|zeabur|deploy)" || exit 0
 ERRORS=""
 
 # Gate 5: Clean working tree (fast check)
-if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
-  ERRORS="${ERRORS}\nGate 5 FAIL: uncommitted changes — commit or stash first"
+DIRTY=$(git status --porcelain 2>/dev/null)
+if [ -n "$DIRTY" ]; then
+  DIRTY_LIST=$(echo "$DIRTY" | head -10 | sed 's/^/    /')
+  ERRORS="${ERRORS}\nGate 5 FAIL: uncommitted changes — commit or stash first:\n${DIRTY_LIST}"
+  # Hook-written context docs are a known noise source: if that is ALL that is
+  # dirty, `git checkout -- docs/context` clears it. Anything else needs a real
+  # decision, so only say this when nothing outside docs/context/ is dirty.
+  if [ -z "$(echo "$DIRTY" | grep -v 'docs/context/')" ]; then
+    ERRORS="${ERRORS}\n  (only docs/context/* is dirty — likely hook write-back noise; inspect with 'git diff docs/context', then commit it or 'git checkout -- docs/context')"
+  fi
 fi
 
 # Gate 6: Correct branch (fast check)

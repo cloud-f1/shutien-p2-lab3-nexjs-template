@@ -1,5 +1,6 @@
 #!/bin/bash
-# Stamps agent doc + session-summary.md on every SubagentStop.
+# Stamps the named agent's write-back doc on every SubagentStop, plus a
+# heartbeat to the gitignored .claude/last-activity (NOT session-summary.md).
 # Also appends an `agent_complete` event to .claude/audit.jsonl (E146).
 # Compatible with macOS bash 3.2 (no associative arrays).
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -21,7 +22,13 @@ case "$AGENT" in
 esac
 
 [ -n "$DOC" ] && echo "<!-- $AGENT stopped at $TS -->" >> "$DOC"
-echo "<!-- last activity: $AGENT at $TS -->" >> docs/context/session-summary.md
+# Last-activity heartbeat goes to a GITIGNORED side file, NOT to the tracked
+# session-summary.md — appending there dirtied the working tree on every
+# SubagentStop, which aborts batch Step 3.5a (clean-tree precondition) and
+# trips pre-deploy-guard Gate 5 with pure hook noise. Named-agent doc stamps
+# (spec-log / review-log / …) above ARE the write-back mechanism and stay.
+mkdir -p .claude
+echo "<!-- last activity: $AGENT at $TS -->" >> .claude/last-activity
 
 # ---- E146: emit agent_complete event to .claude/audit.jsonl ----
 # Skip if agent is unknown/empty — we have nothing useful to record.
