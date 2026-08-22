@@ -90,7 +90,14 @@ describe.skipIf(!reachable)("defineAction factory — deleteItem (actions/items.
     expect(result).toMatchObject({ error: expect.any(String) })
     expect(await countItems()).toBe(1) // untouched
 
-    const audits = await sql<{ n: number }[]>`SELECT count(*)::int AS n FROM audit_log`
+    // Scoped to 'item.deleted' (not a total-table count) — the createItem
+    // seed step above writes its own 'item.created' audit entry (E339, so
+    // the record-detail activity card has real data to filter), which is
+    // expected and unrelated to what this test is verifying: the rejected
+    // delete attempt itself must write NO audit entry.
+    const audits = await sql<{ n: number }[]>`
+      SELECT count(*)::int AS n FROM audit_log WHERE action = 'item.deleted'
+    `
     expect(audits[0].n).toBe(0)
   })
 })

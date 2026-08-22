@@ -7,6 +7,7 @@ import { z } from "zod"
 import { revalidatePath } from "next/cache"
 import { requireAuth, requireEditor, canEdit } from "@/lib/permissions"
 import { defineAction } from "@/lib/define-action"
+import { logAudit } from "@/lib/audit"
 import { validateItemTitle } from "@/lib/items-utils"
 import { toJson } from "@/lib/export-utils"
 
@@ -21,7 +22,18 @@ export async function createItem(prevState: State, formData: FormData): Promise<
     return { error: validated.error }
   }
 
-  await db.insert(itemsTable).values({ title: validated.title, userId: session.user.id })
+  const [created] = await db
+    .insert(itemsTable)
+    .values({ title: validated.title, userId: session.user.id })
+    .returning({ id: itemsTable.id })
+
+  // E339 — record-detail activity card reads this via getAuditLogForTarget.
+  await logAudit({
+    actorId: session.user.id,
+    action: "item.created",
+    targetType: "item",
+    targetId: created.id,
+  })
 
   revalidatePath("/dashboard")
   revalidatePath("/dashboard/items")
@@ -78,8 +90,17 @@ export async function updateItem(id: string, prevState: State, formData: FormDat
     return { error: "找不到項目，或您沒有權限編輯。" }
   }
 
+  // E339 — record-detail activity card reads this via getAuditLogForTarget.
+  await logAudit({
+    actorId: session.user.id,
+    action: "item.updated",
+    targetType: "item",
+    targetId: id,
+  })
+
   revalidatePath("/dashboard")
   revalidatePath("/dashboard/items")
+  revalidatePath(`/dashboard/items/${id}`)
   return null // success — the modal closes + the list revalidates
 }
 

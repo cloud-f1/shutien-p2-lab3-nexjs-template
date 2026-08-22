@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm"
+import { and, desc, eq } from "drizzle-orm"
 
 import { db } from "@/lib/db"
 import { logger } from "@/lib/logger"
@@ -46,6 +46,37 @@ export async function getAuditLog(limit = 100): Promise<AuditEntry[]> {
     })
     .from(auditLogTable)
     .leftJoin(usersTable, eq(auditLogTable.actorId, usersTable.id))
+    .orderBy(desc(auditLogTable.createdAt))
+    .limit(limit)
+  return rows as AuditEntry[]
+}
+
+/**
+ * Audit entries for ONE record (E339 — record detail pages' activity card).
+ * Filters server-side by `targetType` + `targetId` rather than fetching the
+ * global log and filtering in the component — keeps a detail page's query
+ * cheap regardless of how large the audit log grows, and guarantees a
+ * record's activity card can never leak another record's entries.
+ */
+export async function getAuditLogForTarget(
+  targetType: string,
+  targetId: string,
+  limit = 50,
+): Promise<AuditEntry[]> {
+  const rows = await db
+    .select({
+      id: auditLogTable.id,
+      actorId: auditLogTable.actorId,
+      action: auditLogTable.action,
+      targetType: auditLogTable.targetType,
+      targetId: auditLogTable.targetId,
+      metadata: auditLogTable.metadata,
+      createdAt: auditLogTable.createdAt,
+      actorEmail: usersTable.email,
+    })
+    .from(auditLogTable)
+    .leftJoin(usersTable, eq(auditLogTable.actorId, usersTable.id))
+    .where(and(eq(auditLogTable.targetType, targetType), eq(auditLogTable.targetId, targetId)))
     .orderBy(desc(auditLogTable.createdAt))
     .limit(limit)
   return rows as AuditEntry[]

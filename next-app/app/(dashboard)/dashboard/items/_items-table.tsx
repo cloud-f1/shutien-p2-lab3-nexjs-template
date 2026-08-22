@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { type ColumnDef } from "@tanstack/react-table"
 import { ChevronRightIcon, DownloadIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react"
@@ -93,7 +94,14 @@ export function ItemsTable({
     {
       accessorKey: "title",
       header: "標題",
-      cell: ({ row }) => <span className="font-medium">{row.original.title}</span>,
+      // E339 — the title is the row's link into the record detail page
+      // (`/dashboard/items/<id>`); the existing 編輯/刪除 buttons below stay
+      // as-is for quick modal edits straight from the list.
+      cell: ({ row }) => (
+        <Link href={`/dashboard/items/${row.original.id}`} className="font-medium hover:underline">
+          {row.original.title}
+        </Link>
+      ),
     },
     {
       id: "status",
@@ -176,9 +184,13 @@ export function ItemsTable({
           </FilterChipBar>
         }
         renderMobileCard={(item) => (
+          // E339 — tapping a mobile card opens the record detail page (not
+          // the edit modal directly — mobile has no room for separate
+          // 編輯/刪除 row buttons like desktop does). Editing still goes
+          // through the same modal, reached via the detail page's 編輯 button.
           <button
             type="button"
-            onClick={() => canEdit && setEditItem(item)}
+            onClick={() => router.push(`/dashboard/items/${item.id}`)}
             className="border-border/60 flex w-full items-center justify-between gap-2 border-b px-4 py-3 text-left last:border-b-0"
           >
             <div className="min-w-0 flex-1 space-y-1">

@@ -5,8 +5,14 @@ import { loginAs, SEED_EDITOR } from "./helpers/auth"
 // E338 — mobile viewport (390×844, the iPhone 12/13 mini-class size named in
 // the epic) acceptance tests for the responsive list kit: the items list must
 // render cards instead of a table below the `md` breakpoint, a card must be
-// clickable (opens the edit modal), and the fixed bottom tab bar (E323/E336,
-// wired into the dashboard layout by this epic) must not cover list content.
+// clickable, and the fixed bottom tab bar (E323/E336, wired into the
+// dashboard layout by this epic) must not cover list content.
+//
+// E339 — tapping a card now navigates to the item's record-detail page
+// (`/dashboard/items/<id>`) rather than opening the edit modal directly
+// (mobile has no room for separate 編輯/刪除 row buttons like desktop does);
+// editing still reaches the same modal, one tap further via the detail
+// page's 編輯 button.
 const OVERFLOW_PREFIX = "E338 卡片溢位"
 
 async function createItem(page: Page, title: string) {
@@ -56,7 +62,9 @@ test.describe("Items list — mobile viewport (E338)", () => {
     await page.goto("/dashboard/items")
   })
 
-  test("renders cards (not a table) below md, and tapping one opens the edit modal", async ({ page }) => {
+  test("renders cards (not a table) below md, and tapping one navigates to the record detail page", async ({
+    page,
+  }) => {
     // No <table> element at all in mobile-card mode.
     await expect(page.getByRole("table")).toHaveCount(0)
 
@@ -65,9 +73,16 @@ test.describe("Items list — mobile viewport (E338)", () => {
 
     const firstCard = cardList.getByRole("button").first()
     await expect(firstCard).toBeVisible()
+    const title = (await firstCard.locator("p").first().textContent())?.trim()
 
-    // Tapping a card opens the edit modal (seeded editor items exist).
+    // Tapping a card navigates to /dashboard/items/<id> (E339) — not the edit
+    // modal directly. The detail page shows the same title as an <h1>, plus
+    // an 編輯 button that reaches the same modal one tap further.
     await firstCard.click()
+    await expect(page).toHaveURL(/\/dashboard\/items\/[^/]+$/)
+    if (title) await expect(page.getByRole("heading", { name: title })).toBeVisible()
+
+    await page.getByRole("button", { name: "編輯" }).click()
     const dialog = page.getByRole("dialog")
     await expect(dialog).toBeVisible()
     await page.keyboard.press("Escape")
