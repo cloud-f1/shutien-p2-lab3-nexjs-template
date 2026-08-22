@@ -12,20 +12,12 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
+import { NAV_LABELS } from "@/lib/nav"
 
-// Friendly labels for known path segments (i18n-ready).
-const LABELS: Record<string, string> = {
-  dashboard: "儀表板",
-  items: "項目",
-  settings: "設定",
-  admin: "管理",
-  components: "元件",
-  billing: "帳務",
-  system: "系統",
-  team: "團隊",
-}
-
-const label = (seg: string) => LABELS[seg] ?? seg.charAt(0).toUpperCase() + seg.slice(1)
+// E336 — labels come from lib/nav.ts (NAV_LABELS, derived from NAV_FLAT +
+// EXTRA_LABELS for genuinely nav-less routes). Dynamic segments (e.g. a
+// library slug) fall through to the capitalized-segment default below.
+const label = (seg: string) => NAV_LABELS[seg] ?? seg.charAt(0).toUpperCase() + seg.slice(1)
 
 export function AppBreadcrumb() {
   const pathname = usePathname()

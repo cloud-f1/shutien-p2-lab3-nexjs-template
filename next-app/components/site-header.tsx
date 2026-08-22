@@ -23,7 +23,7 @@ export async function SiteHeader() {
         />
         <AppBreadcrumb />
         <div className="ml-auto flex items-center gap-1">
-          <CommandPalette />
+          <CommandPalette role={session.user.role} />
           <NotificationsMenu notifications={notifications} unreadCount={unreadCount} />
         </div>
       </div>

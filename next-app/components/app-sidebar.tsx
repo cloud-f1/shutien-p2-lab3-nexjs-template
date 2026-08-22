@@ -4,6 +4,7 @@ import * as React from "react"
 
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
+import { SidebarCollapsePersist } from "@/components/sidebar-collapse-persist"
 import {
   Sidebar,
   SidebarContent,
@@ -13,19 +14,11 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { isAdmin, canEdit } from "@/lib/is-admin"
+import { canEdit } from "@/lib/is-admin"
 import { APP_NAME, APP_VERSION } from "@/lib/branding"
+import { NAV_GROUPS } from "@/lib/nav"
 import { Logo } from "@/components/logo"
 import Link from "next/link"
-import {
-  LayoutDashboardIcon,
-  LibraryIcon,
-  ListIcon,
-  MegaphoneIcon,
-  Settings2Icon,
-  ShieldIcon,
-  ServerIcon,
-} from "lucide-react"
 
 export interface AppSidebarUser {
   name: string
@@ -38,22 +31,9 @@ export function AppSidebar({
   user,
   ...props
 }: { user: AppSidebarUser } & React.ComponentProps<typeof Sidebar>) {
-  const navMain = [
-    { title: "儀表板", url: "/dashboard", icon: <LayoutDashboardIcon /> },
-    { title: "項目", url: "/dashboard/items", icon: <ListIcon /> },
-    { title: "內容庫", url: "/dashboard/library", icon: <LibraryIcon /> },
-    { title: "設定", url: "/dashboard/settings", icon: <Settings2Icon /> },
-    { title: "系統", url: "/dashboard/system", icon: <ServerIcon /> },
-    ...(isAdmin(user.role)
-      ? [
-          { title: "管理", url: "/dashboard/admin", icon: <ShieldIcon /> },
-          { title: "銷售頁", url: "/dashboard/admin/sales-pages", icon: <MegaphoneIcon /> },
-        ]
-      : []),
-  ]
-
   return (
     <Sidebar collapsible="offcanvas" {...props}>
+      <SidebarCollapsePersist />
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -70,7 +50,7 @@ export function AppSidebar({
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={navMain} canCreate={canEdit(user.role)} />
+        <NavMain groups={NAV_GROUPS} role={user.role} canCreate={canEdit(user.role)} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={user} />

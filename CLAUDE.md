@@ -85,6 +85,7 @@ scripts/epic-graph.sh      Dependency graph parser + wave planner
 - Server-side data fetching: fetch directly in async Server Components; use Server Actions for mutations (`"use server"`).
 - **CRUD uses modals, never page redirects** (E273) — create/edit open a shadcn `Dialog` (form with an `onSuccess` callback); delete uses `components/confirm-dialog.tsx`. The Server Action **returns success (no `redirect`)** so the modal closes and the list refreshes via `revalidatePath` + `router.refresh()`. Deep-link a modal open with a query param (`?new=1`, `?edit=<id>`). Pattern reference: `app/(dashboard)/dashboard/items/`.
 - **List/table views use the reusable `<DataTable>`** (`components/data-table-generic.tsx`) — built-in filter + pagination + page-size — never a hand-rolled `<table>` for record lists.
+- **Navigation items always go in `next-app/lib/nav.ts`** (E336) — never hardcode a route/label array inside a component (sidebar, mobile tab bar, breadcrumb, command palette).
 
 ## Plugin Relationship (E202)
 

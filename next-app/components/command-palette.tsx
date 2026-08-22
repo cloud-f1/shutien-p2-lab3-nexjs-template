@@ -4,15 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { signOut } from "next-auth/react"
 import { useTheme } from "next-themes"
-import {
-  LayoutDashboard,
-  ListTodo,
-  LogOut,
-  MoonStar,
-  Search,
-  Settings,
-  Shield,
-} from "lucide-react"
+import { LogOut, Lock, MoonStar, Search } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -23,12 +15,28 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command"
+import { NAV_FLAT, resolveNavForRole } from "@/lib/nav"
+import type { Role } from "@/lib/schema"
+
+export interface CommandPaletteProps {
+  role: Role | string | undefined
+}
 
 /** ⌘K command palette (E263). Nav + theme + sign-out. Reduced-motion safe (CSS). */
-export function CommandPalette() {
+export function CommandPalette({ role }: CommandPaletteProps) {
   const [open, setOpen] = useState(false)
   const router = useRouter()
   const { theme, setTheme } = useTheme()
+
+  // E336 — "前往" group derives from lib/nav.ts (the single nav data source)
+  // via the shared resolveNavForRole() helper, filtered to items opted into
+  // the palette. Locked items render inert (same as the desktop sidebar) —
+  // NOT a plain clickable entry — so the palette can't bypass a lock the
+  // sidebar enforces.
+  const destinations = resolveNavForRole(
+    NAV_FLAT.filter((item) => item.inPalette !== false),
+    role,
+  )
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -67,18 +75,22 @@ export function CommandPalette() {
         <CommandList>
           <CommandEmpty>找不到結果。</CommandEmpty>
           <CommandGroup heading="前往 · Go to">
-            <CommandItem onSelect={() => go("/dashboard")}>
-              <LayoutDashboard /> 儀表板
-            </CommandItem>
-            <CommandItem onSelect={() => go("/dashboard/items")}>
-              <ListTodo /> 項目
-            </CommandItem>
-            <CommandItem onSelect={() => go("/dashboard/settings")}>
-              <Settings /> 設定
-            </CommandItem>
-            <CommandItem onSelect={() => go("/dashboard/admin")}>
-              <Shield /> 管理
-            </CommandItem>
+            {destinations.map(({ item, locked }) => {
+              const Icon = locked ? Lock : item.icon
+              return (
+                <CommandItem
+                  key={item.id}
+                  disabled={locked}
+                  aria-disabled={locked || undefined}
+                  onSelect={locked ? undefined : () => go(item.url)}
+                >
+                  <Icon /> {item.label}
+                  {locked && (
+                    <span className="text-muted-foreground ml-auto text-xs">已鎖定</span>
+                  )}
+                </CommandItem>
+              )
+            })}
           </CommandGroup>
           <CommandGroup heading="操作 · Actions">
             <CommandItem

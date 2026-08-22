@@ -1,45 +1,27 @@
 "use client"
 
-// E323 — Fixed bottom mobile tab bar (<768px). On desktop it renders null (the
-// sidebar takes over). Role-filtered against the template's dashboard routes, and
-// safe-area aware (respects the iOS home-indicator inset).
+// E336 — Fixed bottom mobile tab bar (<768px). On desktop it renders null (the
+// sidebar takes over). Items come from lib/nav.ts (the single nav data
+// source) via the shared resolveNavForRole() helper — filtered to
+// `inTabBar`, role-visible, with locked items dropped here (not
+// shown-but-disabled like the desktop sidebar) — a 5-slot bar has no room
+// for a dead entry.
 //
-// z-index lesson (carried from the fork): the tab bar MUST sit BELOW modal/sheet
-// footers — it uses z-40 (above page content, below the Dialog/Sheet z-50). Bumping
-// it to z-100 hides the mobile modal's footer buttons behind the bar.
+// z-index lesson (carried from the fork, E323): the tab bar MUST sit BELOW
+// modal/sheet footers — it uses z-40 (above page content, below the
+// Dialog/Sheet z-50). Bumping it to z-100 hides the mobile modal's footer
+// buttons behind the bar.
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Package, Settings, ShieldCheck, type LucideIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { useIsMobile } from "@/hooks/use-mobile"
-import { isAdmin } from "@/lib/is-admin"
+import { NAV_FLAT, isNavActive, resolveNavForRole } from "@/lib/nav"
 import type { Role } from "@/lib/schema"
-
-interface TabItem {
-  id: string
-  href: string
-  label: string
-  icon: LucideIcon
-  /** Only render for admins (e.g. the admin panel). */
-  adminOnly?: boolean
-}
-
-const TABS: TabItem[] = [
-  { id: "dashboard", href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "items", href: "/dashboard/items", label: "Items", icon: Package },
-  { id: "admin", href: "/dashboard/admin", label: "Admin", icon: ShieldCheck, adminOnly: true },
-  { id: "settings", href: "/dashboard/settings", label: "Settings", icon: Settings },
-]
 
 export interface MobileTabBarProps {
   role: Role | string | undefined
   className?: string
-}
-
-function isActive(pathname: string, href: string): boolean {
-  if (href === "/dashboard") return pathname === "/dashboard"
-  return pathname === href || pathname.startsWith(href + "/")
 }
 
 export function MobileTabBar({ role, className }: MobileTabBarProps) {
@@ -48,7 +30,12 @@ export function MobileTabBar({ role, className }: MobileTabBarProps) {
 
   if (!isMobile) return null
 
-  const tabs = TABS.filter((t) => !t.adminOnly || isAdmin(role))
+  const tabs = resolveNavForRole(
+    NAV_FLAT.filter((item) => item.inTabBar),
+    role,
+  )
+    .filter(({ locked }) => !locked)
+    .map(({ item }) => item)
 
   return (
     <nav
@@ -61,12 +48,12 @@ export function MobileTabBar({ role, className }: MobileTabBarProps) {
       )}
     >
       {tabs.map((item) => {
-        const active = isActive(pathname, item.href)
+        const active = isNavActive(pathname, item)
         const Icon = item.icon
         return (
           <Link
             key={item.id}
-            href={item.href}
+            href={item.url}
             aria-current={active ? "page" : undefined}
             className={cn(
               "flex min-h-[52px] flex-1 flex-col items-center gap-[3px] px-0 pb-[7px] pt-2",
@@ -75,7 +62,7 @@ export function MobileTabBar({ role, className }: MobileTabBarProps) {
           >
             <Icon size={20} />
             <span className={cn("text-[10.5px]", active ? "font-bold" : "font-medium")}>
-              {item.label}
+              {item.short}
             </span>
           </Link>
         )
