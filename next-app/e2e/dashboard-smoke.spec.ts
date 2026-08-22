@@ -20,7 +20,13 @@ test.describe("Dashboard smoke", () => {
   })
 
   test("admin user sees admin nav link", async ({ page }) => {
-    await expect(page.locator("a[href='/dashboard/admin']")).toBeVisible()
+    // Scope to the SIDEBAR nav link. E337's admin-only stat card ("已驗證使用者")
+    // also links to /dashboard/admin, so a bare href selector matches two
+    // elements and trips Playwright strict mode. Both links are correct — the
+    // test just has to say which one it means.
+    await expect(
+      page.locator("a[data-sidebar='menu-button'][href='/dashboard/admin']"),
+    ).toBeVisible()
   })
 
   test("settings page loads", async ({ page }) => {

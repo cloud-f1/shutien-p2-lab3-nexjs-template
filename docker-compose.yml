@@ -14,20 +14,29 @@
 services:
   postgres:
     image: postgres:16-alpine
-    # STACK_NAME makes every container name overridable so each git worktree can
-    # run its own stack. Hardcoded names make the containers machine-wide
-    # singletons: every worktree's `docker compose up` reuses ONE postgres, so
-    # parallel epics migrate and seed the same databases against different branch
-    # schemas. Default keeps the historical names, so nothing existing breaks.
-    #   STACK_NAME=wt2 docker compose up -d   →  wt2_postgres, wt2_web, …
-    container_name: ${STACK_NAME:-nextapp}_postgres
+    # NO container_name — deliberately. Compose already namespaces containers by
+    # PROJECT (the directory name), exactly as it namespaces volumes. Hardcoding a
+    # name defeats that: the container becomes machine-wide while the volume stays
+    # per-project, so whichever project starts first wins and serves ITS data to
+    # everyone else — or the next `docker compose up` just fails on a name clash.
+    #
+    # This bit hard here. `nextapp_postgres` was owned by a FORK of this template
+    # (both inherit this file), both used database `saas_dev`, and a third forked
+    # project was on the same machine. The template's "dev database" was really the
+    # fork's — carrying the fork's tables plus migrations from both products (17
+    # applied against 15 repo .sql files), and missing `items` entirely.
+    #
+    # A template must never hardcode this: every fork inherits the same literal.
+    # Reach containers with `docker compose exec postgres …`, not `docker exec <name>`.
     restart: unless-stopped
     environment:
       POSTGRES_USER: saas_user
       POSTGRES_PASSWORD: saas_pass
       POSTGRES_DB: saas_dev
     ports:
-      - "5432:5432"
+      # Overridable so a second project/worktree can run alongside this one:
+      #   POSTGRES_PORT=5433 docker compose up -d
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - nextapp_pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -38,11 +47,10 @@ services:
 
   mailpit:
     image: axllent/mailpit:latest
-    container_name: ${STACK_NAME:-nextapp}_mailpit
     restart: unless-stopped
     ports:
-      - "1025:1025" # SMTP
-      - "8025:8025" # web UI
+      - "${MAILPIT_SMTP_PORT:-1025}:1025" # SMTP
+      - "${MAILPIT_UI_PORT:-8025}:8025" # web UI
     environment:
       MP_MAX_MESSAGES: "500"
 
@@ -50,7 +58,6 @@ services:
     build:
       context: ./next-app
       target: builder
-    container_name: ${STACK_NAME:-nextapp}_migrate
     working_dir: /app
     command: sh -c "pnpm db:migrate && pnpm db:seed"
     environment:
@@ -69,9 +76,8 @@ services:
         # Local demo: show the admin/editor/viewer quick-login buttons. Set "false"
         # for a real production build so the demo credentials never enter the bundle.
         NEXT_PUBLIC_ENABLE_DEMO_LOGIN: "true"
-    container_name: ${STACK_NAME:-nextapp}_web
     ports:
-      - "3000:3000"
+      - "${WEB_PORT:-3000}:3000"
     environment:
       DATABASE_URL: postgresql://saas_user:saas_pass@postgres:5432/saas_dev
       AUTH_SECRET: local-docker-dev-secret

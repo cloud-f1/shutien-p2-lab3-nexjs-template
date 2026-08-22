@@ -94,3 +94,15 @@
 **Files:** dev-docs/package.json,user-docs/package.json
 **Root Cause:** _(pending — enrich during /athena:save)_
 **Test Added:** _(pending)_
+
+## 2026-08-22T15:21:51+08:00 — acf1fa8
+**Message:** fix: hook 測試洩漏宿主狀態 + e2e 與開發共用資料庫 (#117)
+**Files:** .claude/skills/testing-strategy/SKILL.md,CLAUDE.md,docker-compose.yml,next-app/drizzle/e2e-setup.ts,next-app/package.json,next-app/playwright.config.ts,scripts/hooks/context-health-monitor.sh,scripts/hooks/tests/test-context-health-monitor.sh
+**Root Cause:** _(pending — enrich during /athena:save)_
+**Test Added:** _(pending)_
+
+## 2026-08-22T16:21:12+08:00 — d58c01b
+**Message:** fix(docker): 移除硬編容器名 + 修好被兩個 epic 撞出來的 e2e 選擇器
+**Files:** docker-compose.yml,next-app/e2e/auth-flow.spec.ts,next-app/e2e/dashboard-smoke.spec.ts
+**Root Cause:** _(pending — enrich during /athena:save)_
+**Test Added:** _(pending)_
