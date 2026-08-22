@@ -25,6 +25,11 @@ Design"), a `project/` folder with `.html` prototypes + source (`.jsx`/`.css`/`d
 and possibly a `PRD.md` / domain doc. Trigger phrases: "implement this mockup", "make
 the epics align to the HTML", "the epics look too simple / like a recipe".
 
+If the design actually came from Claude Design (claude.ai/design) rather than a static
+HTML drop, read the `design-sync-roundtrip` skill first — it covers which project type
+holds the canvas, how to pull redesigned screens back into `docs/_handoff/`, and the
+sync traps, before you start the ingestion pipeline below.
+
 ## The pipeline (do these in order)
 
 ### 1. Read the handoff contract first

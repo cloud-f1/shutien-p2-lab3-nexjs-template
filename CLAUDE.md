@@ -166,7 +166,8 @@ default DB sessions) and RBAC guards **re-read the role from the DB**. See the `
 **Key project skills (`.claude/skills/`):** `nextjs-saas-patterns` (stack gotchas), `athena-loop-speedups`
 (orchestration practices), `rebrand` (white-label rebranding), `user-guide-builder` (繁中 user manual),
 `zeabur-deploy` (Zeabur deploy SOP), `mockup-to-epics` (HTML mockup → UI-ready epics pipeline),
-`alignment-audit` (built app ↔ spec coverage audit), `new-project` (fork → product wizard; pairs with
+`alignment-audit` (built app ↔ spec coverage audit), `design-sync-roundtrip` (Claude Design ↔
+repo round-trip protocol), `new-project` (fork → product wizard; pairs with
 `scripts/new-project.sh` + `/athena:new-project`), `security-audit` (Server-Action/RBAC/webhook
 attack-surface checklist), `drizzle-migration-safety` (destructive-change + expand-migrate-contract
 SOP), `release-versioning` (SemVer → package.json → APP_VERSION → release PR), `spec-first`

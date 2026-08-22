@@ -37,3 +37,9 @@ pnpm-debug.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# design-sync build artifacts (see .claude/skills/design-sync-roundtrip)
+.ds-types/
+.ds-entry.ts
+.ds-provider.tsx
+.ds-shim.ts
