@@ -95,6 +95,7 @@
 | Phase 80 | E333 | ✅ Complete (銷售頁風格多樣化 — custom page 路徑, PR #100 merged 2026-07-13, integration gate PASS 85.99%) — sales-page-builder skill: HTML 一頁式 ingest → 客製 TSX `/p/[slug]`（custom page registry 優先於 structured renderer；CTA/倒數/影片機能自動接上；沿用 mockup-to-epics + @designer 慣例）+ reference 實作 + 三層架構 playbook. E326 同步補 3 個 style preset (bold/premium/clean) + 區塊 variant/順序系統. Approved 2026-07-12 via /athena:plan Cycle 35 addendum 3. |
 | Phase 81 | E334 | ✅ Complete (轉化漏斗數據迴路 — sales_page_events + orders.utm + admin 轉化 tab, PR #102 merged 2026-07-17, integration gate PASS 87.03%) |
 | Phase 82 | E336, E337, E338, E339, E340, E341, E342, E343 | ✅ Complete 2026-08-22 — **Fork Harvest Wave 3（ai-rc-engineer-pm 管理介面 + skill/context）**。Wave 1 = E336(#111) · E338(#112) · E340(#105) · E341(#106) · E342(#110) · E343(#109)；Wave 2 = E337(#114) · E339(#115)。另含 fast-follow #108（hook 心跳污染修正）。整合閘門 PASS：typecheck 0 · lint 0 errors · **794/794**（79 files）· 87.03% 覆蓋 · doc-contract 13/13，與 Phase 81 基線持平。**QA gate 退回 5 次，全為真缺陷**：E341 pricing 契約弱循環（拿 JSON 跟自己抄本比）→ 誠實改標；E336 命令面板繞過 lockFor + 「系統」誤鎖（功能倒退）→ 共用 resolveNavForRole + 還原；E338 e2e 斷言恆真（seed 僅 2 筆，移除 pb-16 仍綠）→ 改比對分頁列並附紅綠實證；E337 非 admin 的死掉動態卡片 + fork 領域詞彙殘留 → 整個不渲染 + 中性化；**E339 generateMetadata() IDOR 洩漏**（metadata 與頁面獨立解析，notFound() 不會取消已算好的 title）→ 單一 canViewItem predicate 兩入口共用，紅綠實證，並在 playbook 加 §2b 防止洩漏被抄進未來每個領域。**過程附帶發現**：mobile-tab-bar 自 E323 起從未掛載（E338 已接上）· root .gitignore 全域擋 *.png 使 handoff 截圖靜默不進版控（E342 已修）· user-guide-builder 引用的 guide-domain-digest.md 從未存在（E342 已補）· hook 心跳污染受版控檔案（#108 已修）。**未處理的既有問題**：make hook-test 在 main 上為 5/9 紅 · 共用 saas_dev 有 17 個已套用 migration 但分支僅 15 個 .sql 檔（某未合併分支直接對共用容器 migrate）。 |
+| Phase 83 | E344, E345 | 🟢 APPROVED (2026-08-22) — **協調圖缺口修補（graph-engineering 分析）**。使用者於 2026-08-22 核准（選項 3：整合節點 + 關卡帳本）。分析結論：athena 已實作該 pattern 約 85%（router / private work area / reviewer / human checkpoint / conditions 皆在），缺的是 **INTEGRATOR 節點**與**關卡帳**。E344 `/athena:integrate` + @integrator —— 波次分支合進暫存整合分支、跨分支檔案重疊偵測、**含 e2e 的完整關卡**、並對組合專屬失敗做歸因（單獨皆過、合併才失敗 → 指名互相作用的 epic 對）。E345 關卡帳本 —— 關卡結果三態化（pass/fail/**skipped+reason**）、`gate-ledger.sh` 摘要、phase 完成時未結清的 skipped 會擋下，需人明確 `--accept-skips` 承認。**實證基礎**：Phase 82 的 E336+E337 皆各自 QA PASS，合併後 `a[href='/dashboard/admin']` 撞號使兩條 e2e 變紅並溜進 main；同期 8 個 epic 無一跑成 e2e，而閘門仍回報 PASS。SEQUENTIAL：E344 → E345（整合節點執行關卡、帳本記錄關卡；兩者皆改 batch.md，並行只會製造衝突）。**不做**：agent 改名為 Researcher/Architect/Builder（現有 12 專家更細且已在運作）· 另造 graph DSL（epic-graph.sh + 波次已是）· 結構化 shared state（改動面大，另開 phase）。 |
 <!-- PHASE_STATUS_END -->
 
 <!-- EPIC_MATRIX_START -->
@@ -442,6 +443,8 @@ Phase 46+ epics: enriched template — epic files include Implementation Phases,
 | E341 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 82 — 🟢 APPROVED (2026-08-22). Wave 1. lib/doc-contract.test.ts + audit Step 6a 改寫 |
 | E342 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 82 — 🟢 APPROVED (2026-08-22). Wave 1. product-overview + domain-digest + docs/_handoff/ |
 | E343 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 82 — 🟢 APPROVED (2026-08-22). Wave 1. design-sync-roundtrip skill（去品牌化） |
+| E344 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 83 — 🟢 APPROVED (2026-08-22). /athena:integrate + @integrator（組合缺陷歸因 + e2e 納入前置閘門） |
+| E345 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 83 — 🟢 APPROVED (2026-08-22). 關卡帳本（skipped 必須留 reason；未結清擋下 phase 完成） |
 <!-- EPIC_MATRIX_END -->
 
 ## Dependency Rules
@@ -669,6 +672,9 @@ E340: no deps
 E341: no deps
 E342: no deps
 E343: no deps
+# Phase 83 — 協調圖缺口修補 (graph-engineering) — Cycle 37, APPROVED 2026-08-22
+E344: no deps
+E345: E344
 ```
 
 ## Phase Parallelism
@@ -716,6 +722,7 @@ Phase 79: E331 + E332 (parallel, disjoint files — E331 admin tabs, E332 admin/
 Phase 80: E333 (single epic, after E332)
 Phase 81: E334 (single epic, after E331)
 Phase 82: E336 + E338 + E340 + E341 + E342 + E343 (WAVE 1 — PARALLEL, 檔案互斥: E336 owns lib/nav.ts + nav/sidebar/tab-bar/breadcrumb/palette · E338 owns data-table-generic + 狀態原件 + items/_items-table · E340 owns .claude/commands/athena/approve.md · E341 owns lib/doc-contract.test.ts + audit.md · E342 owns docs/architecture+reference+_handoff · E343 owns .claude/skills/design-sync-roundtrip) → E337 + E339 (WAVE 2 — E337 after E336+E338, E339 after E338; 兩者並行, E337 owns dashboard/page.tsx + components/dashboard/**, E339 owns items/[id]/**). 注意: E336/E338/E340/E341/E342/E343 皆會改 CLAUDE.md 或 docs 索引 — 若走 worktree 並行, merge 時預期在 CLAUDE.md 有小衝突, 依序解。
+Phase 83: E344 → E345 (SEQUENTIAL — 整合節點執行關卡、帳本記錄關卡，天然的先後關係；且兩者皆需修改 .claude/commands/athena/batch.md，並行只會製造衝突。E344 owns integrate.md + agents/integrator.md + batch.md 的整合節點插入；E345 owns audit-emit-gate.sh + gate-ledger.sh + phase 完成守衛 + verification-discipline skill)
 ```
 
 ---
