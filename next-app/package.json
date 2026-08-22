@@ -26,6 +26,7 @@
     "db:test-migrate": "tsx drizzle/test-migrate.ts",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx drizzle/seed.ts",
+    "db:e2e-setup": "tsx drizzle/e2e-setup.ts",
     "registry:build": "shadcn build registry.json --output public/r",
     "module:validate": "tsx scripts/module-validate.ts",
     "openapi:generate": "tsx lib/openapi/generate.ts",

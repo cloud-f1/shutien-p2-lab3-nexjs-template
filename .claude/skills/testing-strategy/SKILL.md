@@ -210,6 +210,36 @@ add the matching automated entry; manual cases cover only what automation struct
 `pnpm test:int` and `pnpm check:orphans` run **outside** the default gate today — wire them into
 `scripts/pre-merge-check.sh` / CI so the middle layer and the orphan guard can't silently bit-rot.
 
+
+## e2e runs against its own database — never the dev one
+
+`pnpm db:e2e-setup` → `pnpm test:e2e`. That is the whole rule, but it is worth knowing why,
+because the failure mode is silent and wastes an entire debugging session.
+
+Playwright **migrates and seeds whatever `DATABASE_URL` points at**. When that defaulted to
+`saas_dev`, two things happened in this repo:
+
+- an e2e run reshaped your own dev data, and
+- **parallel worktrees migrated ONE database against DIFFERENT branch schemas.** That is how
+  `saas_dev` ended up with 17 applied migrations while every branch had 15 `.sql` files. The
+  drift was first logged in Phase 77 and survived several phases because nothing in the config
+  prevented it — the "point e2e at `saas_dev_e2e`" convention lived only in reviewers' heads.
+
+`playwright.config.ts` now defaults to `saas_dev_e2e`, and `db:e2e-setup` **drops and recreates**
+it. The drop matters: `drizzle/seed.ts` short-circuits with "Demo data already present — skipping
+enrichment" when rows exist, so re-seeding a dirty database silently omits any fixture your new
+spec depends on — and the spec then fails for a reason that has nothing to do with the code you
+are testing. If a brand-new e2e test fails on missing data, suspect a dirty seed before you
+suspect your code.
+
+Integration tests were already safe — `test/int/harness.ts` creates a throwaway
+`saas_int_test_<pid>` per run and drops it after.
+
+**Running several worktrees at once**: `STACK_NAME=<name> docker compose up -d` gives each one its
+own containers. The names used to be hardcoded, which made the whole stack a machine-wide
+singleton — the root cause of worktrees clobbering each other.
+
+
 ## TDD principles
 
 ### The cycle: RED → GREEN → REFACTOR

@@ -66,8 +66,15 @@ if [ -f "$SESSION_ANCHOR_FILE" ]; then
   case "$ANCHOR" in
     ''|*[!0-9]*) ANCHOR=0 ;;
   esac
-  TOOL_CALLS=$((TOTAL_LINES - ANCHOR))
-  [ "$TOOL_CALLS" -lt 0 ] && TOOL_CALLS=0
+  # A stale anchor (> current line count) means the audit log was rotated,
+  # truncated, or the anchor was written against a different checkout. Silently
+  # clamping to 0 there would leave the monitor PERMANENTLY quiet — a fail-open.
+  # Treat an impossible anchor as no anchor at all.
+  if [ "$ANCHOR" -gt "$TOTAL_LINES" ]; then
+    TOOL_CALLS=$TOTAL_LINES
+  else
+    TOOL_CALLS=$((TOTAL_LINES - ANCHOR))
+  fi
 else
   TOOL_CALLS=$TOTAL_LINES
 fi

@@ -38,9 +38,14 @@ fail() {
 
 # Run the hook with an empty stdin; capture stdout + exit code.
 # Args: 1=audit_path 2=state_path
+# NOTE: SESSION_ANCHOR_PATH must be injected too. Without it the hook falls back
+# to the REAL repo's .claude/.session-anchor, so a fixture of N synthetic calls is
+# computed as (N - real_anchor) -> negative -> 0, and every calls-based threshold
+# silently never fires. That leak made 4 of these 9 cases fail on any checkout
+# with a live session anchor (bytes-based cases passed, since they don't use it).
 run_hook() {
-  local audit="$1" state="$2"
-  AUDIT_LOG_PATH="$audit" HEALTH_STATE_PATH="$state" \
+  local audit="$1" state="$2" anchor="${3:-$TMP/no-such-anchor}"
+  AUDIT_LOG_PATH="$audit" HEALTH_STATE_PATH="$state" SESSION_ANCHOR_PATH="$anchor" \
     bash "$HOOK" </dev/null 2>/dev/null
 }
 
@@ -212,6 +217,25 @@ t9() {
   fi
 }
 
+
+# ---- Case (j): a STALE anchor (> current line count) must NOT silence the monitor.
+# The audit log gets rotated/truncated, or the anchor was written against another
+# checkout. Clamping (total - anchor) to 0 there leaves the monitor permanently
+# quiet — a fail-open. An impossible anchor must be treated as no anchor.
+t10() {
+  local audit="$TMP/audit-stale" state="$TMP/state-stale" anchor="$TMP/anchor-stale"
+  : >"$state"
+  gen_calls "$audit" 250          # 250 calls -> well past the yellow threshold
+  echo "99999" >"$anchor"         # anchor claims far more lines than exist
+  local out rc
+  out=$(run_hook "$audit" "$state" "$anchor")
+  rc=$?
+  case "$out" in
+    *"Session context"*) pass "stale anchor (> total) still reports" ;;
+    *) fail "stale anchor (> total) still reports" "rc=$rc out='$out' (monitor went silent — fail-open)" ;;
+  esac
+}
+
 t1
 t2
 t3
@@ -221,7 +245,7 @@ t6
 t7
 t8
 t9
-
+t10
 TOTAL=$((PASS + FAIL))
 echo "----"
 echo "$PASS/$TOTAL passed"

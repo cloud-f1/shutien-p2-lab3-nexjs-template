@@ -29,12 +29,24 @@ pnpm format       # prettier --write
 # Tests
 pnpm test            # Vitest unit tests (lib/validations, lib/is-admin, actions)
 pnpm test:coverage   # Vitest with v8 coverage
-pnpm test:e2e        # Playwright e2e (needs DB seeded + dev server; webServer auto-boots locally)
-pnpm db:seed         # seed admin@example.com/Admin123! + user@example.com/User123! (required for e2e)
+pnpm db:e2e-setup    # provision the SEPARATE e2e database (drop → create → migrate → seed)
+pnpm test:e2e        # Playwright e2e (run db:e2e-setup first; dev server auto-boots locally)
+pnpm db:seed         # seed admin@example.com/Admin123! + user@example.com/User123! (dev DB)
 
 # Add a shadcn/ui component (run from next-app/)
 npx shadcn@latest add <component-name>
 ```
+
+> **e2e uses its OWN database — never `saas_dev`.** `pnpm db:e2e-setup` provisions
+> `saas_dev_e2e` (drop → create → migrate → seed) and `playwright.config.ts` defaults there.
+> This is not cosmetic: e2e migrates and seeds whatever `DATABASE_URL` points at, so when it
+> shared `saas_dev` an e2e run reshaped your dev data, and **parallel worktrees migrated one
+> database against different branch schemas** — that is how `saas_dev` reached 17 applied
+> migrations against 15 repo `.sql` files. The drop is also what makes seeding deterministic:
+> `drizzle/seed.ts` skips enrichment when rows already exist, so re-seeding a dirty DB silently
+> omits new fixtures and specs fail for reasons unrelated to the code under test.
+> Running several worktrees at once? `STACK_NAME=<name> docker compose up -d` gives each its own
+> containers — the names are no longer hardcoded singletons.
 
 > **Quality gate before merge:** run `scripts/pre-merge-check.sh [--e2e]` from the repo root —
 > it checks repo hygiene (no nested `.git`, no accidental mass deletions) + typecheck + lint +

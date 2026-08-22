@@ -43,7 +43,14 @@ export default defineConfig({
         // Cold Next 16 + turbopack dev boot can exceed the 60s default.
         timeout: 120_000,
         env: {
-          DATABASE_URL: process.env.DATABASE_URL ?? "postgresql://saas_user:saas_pass@localhost:5432/saas_dev",
+          // e2e gets its OWN database — NEVER saas_dev. Sharing the dev DB meant an
+          // e2e run reshaped your dev data, and parallel worktrees migrated one
+          // database against different branch schemas (that is how saas_dev drifted
+          // to 17 applied migrations against 15 repo .sql files). Provision it with
+          // `pnpm db:e2e-setup`; override the whole URL with E2E_DATABASE_URL.
+          DATABASE_URL:
+            process.env.E2E_DATABASE_URL ??
+            "postgresql://saas_user:saas_pass@localhost:5432/saas_dev_e2e",
           AUTH_SECRET: process.env.AUTH_SECRET ?? "e2e-test-secret",
           // Surface the seeded quick-login buttons for e2e. The demo-login gate
           // is now STRICT (only NEXT_PUBLIC_ENABLE_DEMO_LOGIN==="true"), so this

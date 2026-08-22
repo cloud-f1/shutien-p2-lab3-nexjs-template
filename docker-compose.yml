@@ -14,7 +14,13 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: nextapp_postgres
+    # STACK_NAME makes every container name overridable so each git worktree can
+    # run its own stack. Hardcoded names make the containers machine-wide
+    # singletons: every worktree's `docker compose up` reuses ONE postgres, so
+    # parallel epics migrate and seed the same databases against different branch
+    # schemas. Default keeps the historical names, so nothing existing breaks.
+    #   STACK_NAME=wt2 docker compose up -d   →  wt2_postgres, wt2_web, …
+    container_name: ${STACK_NAME:-nextapp}_postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: saas_user
@@ -32,7 +38,7 @@ services:
 
   mailpit:
     image: axllent/mailpit:latest
-    container_name: nextapp_mailpit
+    container_name: ${STACK_NAME:-nextapp}_mailpit
     restart: unless-stopped
     ports:
       - "1025:1025" # SMTP
@@ -44,7 +50,7 @@ services:
     build:
       context: ./next-app
       target: builder
-    container_name: nextapp_migrate
+    container_name: ${STACK_NAME:-nextapp}_migrate
     working_dir: /app
     command: sh -c "pnpm db:migrate && pnpm db:seed"
     environment:
@@ -63,7 +69,7 @@ services:
         # Local demo: show the admin/editor/viewer quick-login buttons. Set "false"
         # for a real production build so the demo credentials never enter the bundle.
         NEXT_PUBLIC_ENABLE_DEMO_LOGIN: "true"
-    container_name: nextapp_web
+    container_name: ${STACK_NAME:-nextapp}_web
     ports:
       - "3000:3000"
     environment:
