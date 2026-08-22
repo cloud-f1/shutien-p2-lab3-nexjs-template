@@ -49,6 +49,14 @@ You are the Epic Loop controller. Your job is to advance the project **one step 
 > **HUMAN-MERGE MODE (opt-out)**: set `ATHENA_AUTO_MERGE=0` (env) or pass `--no-auto-merge` to
 > stop at push + PR: write `⏸ awaiting human merge (PR #N)` and let the USER merge; a later
 > invocation reconciles via Step 1a.
+>
+> **Multi-epic wave note (E344)**: `/athena:loop` advances one epic's one step per invocation,
+> so it has no wave awareness on its own. If several epics from the same wave are each reaching
+> `merge` via separate loop invocations, run `/athena:integrate --phase N` BEFORE any of them
+> publishes — per-epic QA cannot see another epic's diff, so it cannot catch a combination
+> defect (Phase 82's E336/E337 incident). `/athena:batch`'s Step 4a-integrate is the canonical,
+> wave-aware version of this gate; a human-run `/athena:loop` sequence should call
+> `/athena:integrate` by hand at the same point.
 
 1. **PRE-PUBLISH GATE (MANDATORY — runs BEFORE `git push`)**: Run the repo-hygiene + quality gate and **ABORT the publish if it exits non-zero**.
    ```bash

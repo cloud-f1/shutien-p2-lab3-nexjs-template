@@ -62,6 +62,10 @@ For each pending wave in order, while the count-cap is not exceeded:
 4. If the count-cap is reached, STOP before the next wave (clean checkpoint).
 After the loop: print a summary table. **Do NOT merge any epic** — merge stays manual /
 outer-plane (it can carry a policy/human gate), exactly as `/autopilot` keeps merge gated.
+Before whoever performs that outer-plane merge does so for a **multi-epic wave**, run
+`/athena:integrate --phase N` (E344) first — per-epic QA in the loop above never sees
+another epic's diff, so it cannot catch a combination defect (see `batch.md`'s
+Step 4a-integrate for the canonical protocol this delegates to).
 
 ## Step 4 — Write-back (you do this; the Workflow cannot touch the filesystem)
 **Cell granularity (flow stops at commit — never at merge):** on `success`, mark the **spec, implement, qa, and commit** cells ✅ and **LEAVE the merge cell ⬜** (or `⏸ awaiting human merge (PR #N)` if this run pushed a branch + opened a PR). A later `/athena:loop` run performs the merge (auto-merge by default per the loop.md canonical publish step) or reconciles it via Step 1a. flow itself NEVER runs `gh pr merge` — the merge step is outer-plane (loop/batch).

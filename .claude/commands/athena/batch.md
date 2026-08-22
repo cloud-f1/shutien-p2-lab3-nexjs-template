@@ -21,7 +21,7 @@ Parse `$ARGUMENTS` for the following flags:
 | `--step STEP` | `--step implement` | (none) | Run only this step per epic (spec\|implement\|qa\|commit\|merge) |
 | `--retry-failed` | `--retry-failed` | off | Re-run only epics marked ❌ from last batch |
 | `--max-retries N` | `--max-retries 2` | `2` | Max auto-retry attempts per failed epic (0 = no retry) |
-| `--skip-integration-test` | `--skip-integration-test` | off | Skip post-merge integration test gate between waves |
+| `--skip-integration-test` | `--skip-integration-test` | off | Skip the pre-publish wave integration gate (Step 4a-integrate, E344) AND the post-merge integration test gate (Step 4c) between waves — a deliberate, explicit opt-out from both lines of defence, not a default |
 | `auto` | `auto` | off | Auto-pilot: detect pending phase, run ONE wave, exit for cron re-invoke |
 | `--effort <tier>` | `--effort quick` | `standard` | `quick\|standard\|thorough\|ultra` — scales fan-out, verification depth, and model tier (default: standard) |
 
@@ -64,7 +64,7 @@ The batch command is a **thin orchestrator**. It reads state, computes waves via
 | commit | Inline (Bash + Edit) | Just git commands — fast, no subagent needed |
 | merge | Inline (Bash) | Publish protocol (loop.md canonical): push + open PR; default = auto-merge after QA + pre-publish gates, `ATHENA_AUTO_MERGE=0` = human merge |
 
-**IMPORTANT**: Only spec/implement/qa steps are dispatched to parallel agents. Commit and merge steps run **inline sequentially** after the parallel wave completes.
+**IMPORTANT**: Only spec/implement/qa steps are dispatched to parallel agents. Commit and merge steps run **inline sequentially** after the parallel wave completes — and, since E344, a **wave-level integration gate** (Step 4a-integrate, `@integrator` / `/athena:integrate`) runs after every epic in the wave has committed and BEFORE any epic in the wave merges/publishes. Per-epic QA never sees another epic's diff; the integration gate is what proves the wave's *combination* is safe.
 
 ### Model tiering (task-based — NOT all opus)
 Dispatch the agent `model` from `$ATHENA_MODEL_MAP` (Step 0), by step + epic complexity — mirroring the athena agent team (doers like @reviewer/@qa/@debugger = `sonnet`; deep-design like @spec-writer/@best-practice = `opus`):
@@ -144,9 +144,10 @@ After all three agents complete (or timeout at 30 min):
    - Dispatch a QA agent for that epic (NOT in a worktree — QA reads the branch via git)
    - On QA pass: inline commit (the branch already exists in the worktree; `git push` from there)
 3. For each agent that returned `status: "failure"` or `status: "blocked"`: mark ❌, skip commit
-4. After all commits: run the integration test gate (Step 4c) to verify no cross-epic regressions
+4. After all commits: run the **pre-publish integration gate** (Step 4a-integrate, E344) — merge E83+E84+E85's branches onto a throwaway `integration/phase{N}-wave2` branch, run the full gate, attribute any failure. Only on **PASS** does Step 4 (below) proceed to push/PR/merge for any of them; on **FAIL**/**BLOCKED**, stop here and report — do not publish.
+5. After publish: run the post-merge integration test gate (Step 4c) as a second line of defence against cross-epic regressions
 
-**Step 4 — publish/verify sequence** (inline, not parallel):
+**Step 4 — publish/verify sequence** (inline, not parallel; runs only after Step 4a-integrate returns PASS):
 ```bash
 # For each successfully QA'd epic branch — follow the Publish step (auto-merge by default)
 # in loop.md (CANONICAL). Push + open PR, then merge per the canonical block.
@@ -171,7 +172,10 @@ Publishing is **sequential** — push one branch and open its PR, then the next.
 
 ### Mandatory Pipeline Order (NEVER SKIP)
 
-The pipeline for each epic is: `spec → implement → qa → commit → merge`
+The pipeline for each epic is: `spec → implement → qa → commit → merge`. Across a
+whole wave, there is one additional gate that sits between everyone's `commit` and
+anyone's `merge`: the **pre-publish integration gate** (Step 4a-integrate, E344) —
+see "Enforcement rule" below.
 
 **QA is MANDATORY after implement.** The batch executor MUST:
 1. After an implement agent completes successfully, dispatch a **qa agent** for the same epic
@@ -184,8 +188,13 @@ The pipeline for each epic is: `spec → implement → qa → commit → merge`
 - If `impl=⬜` → next step is `implement`
 - If `qa=✅` and `commit=⬜` → next step is `commit`
 - NEVER go from `implement → commit` without `qa` in between
+- If every epic in the wave has `commit=✅` but the wave's integration gate has not
+  yet returned `PASS` → the next action is Step 4a-integrate, NOT `merge`, for any
+  epic in the wave
+- NEVER go from `commit → merge` for ANY epic in a multi-epic wave without the
+  integration gate (Step 4a-integrate) returning `PASS` for that wave in between
 
-This prevents the bug where the orchestrator dispatches implement agents, commits immediately on success, and skips QA entirely.
+This prevents the bug where the orchestrator dispatches implement agents, commits immediately on success, and skips QA entirely — and, since E344, the sibling bug where a wave's epics each merge as soon as they individually finish, never having been tested combined (the Phase 82 E336/E337 incident).
 
 ### What the Batch Does NOT Do
 
@@ -499,13 +508,14 @@ Agent(
    - If qa fails → `bash scripts/state/state-update.sh E{n} qa failed --note "{reason}"`, do NOT commit, log failure
    - This dispatch is MANDATORY — going from `implement → commit` without `qa` is a protocol violation
 
-5. **For commit/merge steps** — run inline (no subagent), and **fire the TaskCompleted boundary hook** so users with `AI_CODING_WEBHOOK_URL` configured get Slack/Telegram/Discord pings on real epic boundaries (not just on internal Task tool moves):
+5. **For commit/merge steps** — run inline (no subagent), and **fire the TaskCompleted boundary hook** so users with `AI_CODING_WEBHOOK_URL` configured get Slack/Telegram/Discord pings on real epic boundaries (not just on internal Task tool moves). **Commit every epic in the wave first, then run the integration gate (4a-integrate) once for the whole wave, THEN merge — never interleave a merge for one epic with a still-uncommitted sibling:**
    - **commit**: Create branch `feat/e{n}-{slug}`, stage changes (use **explicit paths** — never `git add .`/`-A`), commit with conventional message, then `bash scripts/state/state-update.sh E{n} commit done` (primary mechanism — updates epic-progress.md and syncs EPIC_INDEX.md via render-index.sh; fall back to manually editing both files if the script errors). **Then fire**:
      ```bash
      echo '{"epic_id":"E{n}","step":"commit","status":"completed","duration_seconds":N}' | bash scripts/hooks/task-completed.sh
      bash scripts/hooks/audit-emit-pipeline.sh commit epic=E{n} sha=$(git rev-parse --short HEAD) || true
      ```
-   - **merge (publish)**: Run the **Publish step (auto-merge by default)** from `loop.md` (CANONICAL) — `git push -u origin HEAD`, then `gh pr create` if no PR exists (capture PR number). **Default (AUTO-MERGE)**: run `gh pr merge $PR --merge` → on success `state-update E{n} merge done --note "auto-merged PR #$PR"` + `git pull --ff-only` + emit `auto_merge` event; on failure degrade to `⏸ awaiting human merge`, never force. **HUMAN-MERGE MODE (`ATHENA_AUTO_MERGE=0`)**: do NOT `gh pr merge` — instead `bash scripts/state/state-update.sh E{n} merge awaiting-merge --note "PR #$PR"` to write `⏸ awaiting human merge (PR #N)` (primary mechanism; fall back to manually editing epic-progress.md + EPIC_INDEX.md if the script errors) and the USER merges. After the PR is pushed/created (and possibly merged): **fire**:
+   - **integration gate (E344 — wave barrier, runs once, before ANY epic in the wave merges)**: See **"4a-integrate. Pre-Publish Integration Gate"** below for the full protocol. Dispatch it as `Agent(subagent_type: "general-purpose", model: sonnet)` instructed to follow `.claude/agents/integrator.md` + `.claude/commands/athena/integrate.md` verbatim (this repo has no dedicated `integrator` `subagent_type` — the persona lives in the prompt, same pattern as any other athena role dispatched via `general-purpose`), or run `/athena:integrate --phase {N}` inline — only after **every** epic in the wave has reached `commit: ✅`. **PASS** → proceed to merge below, for every epic in the wave. **FAIL** → do NOT merge ANY epic in the wave; run `bash scripts/state/state-update.sh E{n} merge failed --note "integration gate FAIL: {own-epic|combination} — see orchestration-log.md"` for each implicated epic (an epic named only in a `combination` attribution keeps `commit: ✅` — the branch itself may be fine; it is the pair that needs a fix) and report the attribution from the Integration Gate Report. **BLOCKED** (merge conflict between two epic branches) → do NOT merge ANY epic in the wave; report the conflicting branch pair + files exactly as `/athena:integrate` returned them; do not auto-resolve.
+   - **merge (publish)**: Only after the integration gate above returns **PASS** for this wave. Run the **Publish step (auto-merge by default)** from `loop.md` (CANONICAL) — `git push -u origin HEAD`, then `gh pr create` if no PR exists (capture PR number). **Default (AUTO-MERGE)**: run `gh pr merge $PR --merge` → on success `state-update E{n} merge done --note "auto-merged PR #$PR"` + `git pull --ff-only` + emit `auto_merge` event; on failure degrade to `⏸ awaiting human merge`, never force. **HUMAN-MERGE MODE (`ATHENA_AUTO_MERGE=0`)**: do NOT `gh pr merge` — instead `bash scripts/state/state-update.sh E{n} merge awaiting-merge --note "PR #$PR"` to write `⏸ awaiting human merge (PR #N)` (primary mechanism; fall back to manually editing epic-progress.md + EPIC_INDEX.md if the script errors) and the USER merges. After the PR is pushed/created (and possibly merged): **fire**:
      ```bash
      echo '{"epic_id":"E{n}","step":"publish","status":"awaiting_merge","duration_seconds":N}' | bash scripts/hooks/task-completed.sh
      bash scripts/hooks/audit-emit-pipeline.sh publish epic=E{n} pr=$PR_NUMBER || true
@@ -533,6 +543,27 @@ If contamination detected:
 3. Print the **Failure Recovery: Cross-Contamination Untangle** protocol (see below)
 4. EXIT with exit code 0 (this is informational, not a hard error — user needs to untangle by hand)
 5. On next invocation, the cron will re-enter; if the smoke test still fails, the auto-fallback in Step 3.5 will pick `--max-concurrent 1` and the wave runs sequentially (correctly)
+
+#### 4a-integrate. Pre-Publish Integration Gate (E344)
+
+**The gap this closes**: per-epic QA (Step 4a item 4, above) only ever reads that one epic's diff. Phase 82 shipped E336 (a sidebar link to `/dashboard/admin`) and E337 (an admin stat card linking to the same URL) — both epics' QA passed, both were individually correct, and the combination broke `e2e/auth-flow.spec.ts:41` + `e2e/dashboard-smoke.spec.ts:22` (`a[href='/dashboard/admin']` matched two elements). It reached `main` because nothing tested the combination before publish. This step is that test.
+
+**When it runs**: once per wave, after every epic in the wave has reached `commit: ✅` (all branches exist, all individually QA-passed), and strictly BEFORE any epic in the wave runs its `merge (publish)` sub-step (item 5 above). Skip only when the wave has a single epic (nothing to combine) or `--skip-integration-test` is set (same flag that gates Step 4c — a skip here is a deliberate, explicit opt-out, not a default).
+
+**What it does** (full protocol lives in `.claude/commands/athena/integrate.md` / `.claude/agents/integrator.md` — dispatch it, don't paraphrase it):
+1. Build a throwaway `integration/phase{N}-wave{M}` branch from `origin/main`, merging every epic branch in the wave. Merge conflict → STOP, report the branch pair + files, do NOT auto-resolve, do NOT proceed to merge for any epic in the wave.
+2. List cross-branch file overlaps (informational — e.g. Phase 82's E338/E339 legitimately shared `_items-table.tsx` and `e2e/items-mobile.spec.ts`; an overlap is a flag for awareness, not an automatic fail).
+3. Run the full gate on the merged branch, from `next-app/`: `pnpm typecheck && pnpm lint && pnpm test:coverage && pnpm test:int && (pnpm db:e2e-setup && pnpm test:e2e)`. e2e is mandatory here — it is the only gate that would have caught Phase 82's defect. The one pre-authorized carve-out is `e2e/two-factor.spec.ts:103` (pre-existing, Phase 72 #51) — see `integrate.md` for the narrow conditions under which it doesn't block.
+4. On failure, **attribute it**: re-run ONLY the failing gate on each epic branch alone. Fails alone too → that epic's own defect, report to it. Passes alone on every branch, fails only combined → **combination defect**, bisected down to the smallest reproducing pair (or subset) and named explicitly — this is the mechanized version of "which two epics broke this," which is tedious by hand and mechanical for a script.
+5. Delete the integration branch (and every bisection probe branch) regardless of verdict, unless `--keep` was passed.
+6. Return **PASS** / **FAIL** / **BLOCKED** — see the Integration Gate Report schema in `integrate.md`.
+
+**Verdict handling** (this is a hard gate, not advisory):
+- **PASS** → proceed to `merge (publish)` for every epic in the wave.
+- **FAIL** → do NOT publish ANY epic in the wave. Log the attribution to `docs/context/orchestration-log.md` (label: `Pre-Publish Integration (E344)`, distinct from Step 4c's post-merge `Integration` row). Epics named in an `own-epic` attribution need a fix + re-QA before the wave can retry; epics named in a `combination` attribution both need to be reconciled (their individual branches may be fine in isolation). Re-run `/athena:integrate` after a fix lands.
+- **BLOCKED** → do NOT publish ANY epic in the wave. Report the conflicting branch pair + files; a human resolves the conflict on one of the branches, then re-run.
+
+**Relationship to Step 4c**: 4c (below) still runs, unchanged, after publish — it is the second line of defence against whatever this gate misses (e.g. a defect introduced by the merge/rebase itself, or a wave where `--skip-integration-test` was passed here). 4a-integrate catches the combination BEFORE it reaches `main`; 4c catches anything that still got through.
 
 #### 4b. Collect Results
 
@@ -748,6 +779,8 @@ Append an entry to `docs/context/orchestration-log.md`:
 | **Agent-layer probe fails (Step 3.5b — Phase 45 failure mode)** | **Auto-fallback to `--max-concurrent 1`; do NOT abort. Wave runs sequentially, no implement-agent time wasted.** |
 | **Cross-contamination detected (Step 4a-detect)** | **STOP wave, fire `status=blocked` hook, print untangle protocol, exit 0. Should be unreachable if 3.5b is honest, but kept as third-line backstop.** |
 | **Push rejected / PR create fails** | **Report and stop for that epic — do not force; the human resolves. (Auto-merge only runs after a successful push + PR create.)** |
+| **Pre-publish integration gate FAIL (Step 4a-integrate, E344)** | **STOP publish for the WHOLE wave (no epic in it merges). Report the attribution: `own-epic` → that epic needs a fix + re-QA; `combination` (re-confirmed by a second run before being reported as such) → the named pair/subset needs reconciling; `flaky` → the failure did not survive its re-confirm run — do not blame any epic, just re-run `/athena:integrate` from scratch. Re-run `/athena:integrate` after a real fix lands.** |
+| **Pre-publish integration gate BLOCKED — merge conflict building the integration branch (Step 4a-integrate)** | **STOP publish for the whole wave. Report the conflicting branch pair + files. Do NOT auto-resolve — same rule as any other merge conflict.** |
 | Merge conflict | STOP batch, report conflicting files |
 | Integration test failure | STOP batch, report suspects (E91 gate) |
 | Coverage below 80% | Treated as integration test failure — STOP batch |
@@ -855,3 +888,4 @@ Publishing default is AUTO-MERGE: push + open PR + `gh pr merge` AFTER the uncha
 4. **Max concurrent limit** — never exceed `--max-concurrent` simultaneous agents
 5. **Wave barrier (posture-dependent)** — **standard posture**: a full wave barrier — all agents in a wave must complete before the next wave starts. **parallel posture** (`--effort thorough|ultra`): NO cross-epic wave barrier — each epic runs its own `pipeline()` independently; the only barrier is the **integration-gate barrier** at Step 4c (all epics must finish before the shared integration assertion). See "Posture invariants" below and Step 4 Dispatch Posture.
 6. **Never commit without qa** — `impl=✅` alone is not enough; `qa=✅` is required before `commit`. Going `implement → commit` without a qa agent in between is a protocol violation (see Mandatory Pipeline Order above)
+7. **Never merge without the wave's integration gate (E344)** — `commit=✅` for every epic in a multi-epic wave is not enough; the pre-publish integration gate (Step 4a-integrate) must return `PASS` before ANY epic in that wave runs its `merge` step. This is the wave-level sibling of guard #6: per-epic QA proves the part; the integration gate proves the combination (the Phase 82 E336/E337 incident is exactly what this guard prevents from repeating).

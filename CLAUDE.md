@@ -206,7 +206,7 @@ Run `/athena:loop` to advance, or `/athena:loop status` to check state.
 Run `/athena:batch auto` for cron-friendly autopilot — **tries parallel by default (`--max-concurrent 4`); auto-falls-back to sequential if your machine's worktree isolation is broken**. Step 3.5 (pre-flight smoke test) gates parallel dispatch; Step 4a-detect catches any post-hoc cross-contamination — see `.claude/commands/athena/batch.md`. `/loop 5m /athena:batch auto` is the intended cron-driven pattern.
 Per-epic model is **tiered by complexity** (sonnet baseline, opus for complex/ultra) — not blanket Opus; see `scripts/effort/resolve.sh` + `athena-loop-speedups`.
 
-## Agent Team — TONY + 12 specialists
+## Agent Team — TONY + 13 specialists
 
 **TONY** (chief-of-staff skill) is the single window — state a goal in plain language and TONY routes it to the right teammate.
 
@@ -223,6 +223,7 @@ Per-epic model is **tiered by complexity** (sonnet baseline, opus for complex/ul
 @orchestrator     — /athena:batch: parallel epic coordination, dependency waves
 @designer         — /athena:design: design tokens → React page (TSX + CSS + smoke test)
 @dba              — /athena:dba: migration review, schema design, DB forensics
+@integrator       — /athena:integrate: pre-publish wave integration gate — merges a wave's epic branches onto a throwaway branch, runs the full quality gate, attributes any failure as own-epic vs combination-defect (E344)
 ```
 
 ## Slash Commands (athena namespace)
@@ -239,6 +240,7 @@ Per-epic model is **tiered by complexity** (sonnet baseline, opus for complex/ul
 /athena:qa [--review-only|--test-only|--eval-only]  Quality gate: review + tests + acceptance
 /athena:loop [auto|status]     Orchestrator → one step per call → update → exit
 /athena:batch [auto|epics]     Parallel wave dispatch → auto-fallback to sequential
+/athena:integrate [--phase N]  Pre-publish wave integration gate → merge wave's branches onto a throwaway branch → full gate → attribute own-epic vs combination-defect failures (E344) → @integrator
 /athena:autopilot              Confidence-gated auto-advance → spec→impl→qa→commit→merge
 /athena:ship [--draft]         Quick publish → review → fix → commit → PR
 /athena:pr [--draft]           Full PR pipeline → merge main → lint → test → PR

@@ -1,6 +1,6 @@
 # Your AI dev team — org chart
 
-> **Status:** active · **Last updated:** 2026-06-30
+> **Status:** active · **Last updated:** 2026-08-22
 > The "one window" pattern — *a single point of contact, a shared brain, named specialists with crisp
 > deliverables* — converted to **this repo's dev agent team**. You talk to **TONY** (the main
 > thread); it routes your one sentence to the right teammate and hands the result back.
@@ -12,7 +12,7 @@ State a goal ──► TONY routes ──► Right teammate executes ──► D
 (one sentence)   (dispatch)       (the right agent)            (PR / report / deploy + health)
 ```
 
-You never need to remember ~25 slash commands or 12 agent ids. State the goal; TONY maps it.
+You never need to remember ~25 slash commands or 13 agent ids. State the goal; TONY maps it.
 TONY's routing logic lives in the **`chief-of-staff` skill**.
 
 ## Org chart
@@ -29,6 +29,7 @@ TONY's routing logic lives in the **`chief-of-staff` skill**.
  ATLAS         PENNY          ARGUS         PORTER      DELTA        REMI       MAX
  SAGE          VERA           QUINN         (+health)
                DOC            JUDE
+                              WARDEN
                                   │
                         ┌─────────────────────────┐
                         │  SHARED BRAIN (Unit 0)   │  CLAUDE.md · Tier-0/Tier-1 memory ·
@@ -58,6 +59,7 @@ re-explaining:
 | **ARGUS** | reviewer | Guard | code review + security findings | `/athena:qa --review-only` |
 | **QUINN** | qa | Guard | test run + 80% coverage gate | `/athena:qa --test-only` |
 | **JUDE** | evaluator | Guard | independent acceptance verdict | `/athena:qa --eval-only` |
+| **WARDEN** | integrator | Guard | pre-publish wave integration gate + combination-defect attribution | `/athena:integrate` |
 | **PORTER** | deployer | Ship | 7-gate Zeabur deploy + CI/deploy health | `/athena:deploy` |
 | **DELTA** | dba | Data | migration review, schema design, DB forensics | `/athena:dba` |
 | **REMI** | memory-curator | Brain | promote lessons → Tier 0 shared brain | `/athena:promote` |
@@ -82,6 +84,10 @@ re-explaining:
 - **ARGUS** → *reviewer* · "review this / security check" · code-review report + security findings · `/athena:qa --review-only`
 - **QUINN** → *qa* · "run the tests / coverage gate" · test run + 80% coverage report · `/athena:qa --test-only`
 - **JUDE** → *evaluator* · "did we actually meet the spec?" · independent acceptance verdict · `/athena:qa --eval-only`
+- **WARDEN** → *integrator* · "did this wave's epics break each other?" · merges a wave's epic
+  branches onto a throwaway branch, runs the full gate, attributes any failure as one epic's own
+  defect or a named combination defect (the Phase 82 E336/E337 gap — per-epic QA never sees
+  another epic's diff) · `/athena:integrate`
 
 ### Ship
 - **PORTER** → *deployer* · "ship it" · 7-gate Zeabur source-build deploy + CI green / deploy health · `/athena:deploy`
