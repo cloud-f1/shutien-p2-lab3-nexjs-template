@@ -351,3 +351,21 @@ The `get_pair_excludes()` function in `scripts/sync-to-plugin.sh` (bash 3.x-comp
 **Note on contamination:** The synced commands/agents/skills reference template-specific stack tools (FastAPI, OpenAPI, Zeabur, pnpm) as workflow examples. The `test-commands.sh` contamination check was updated to defer this sanitization to Phase 2. Seed memory (copied to user home on install) remains zero-contamination — only the workflow orchestration content carries stack references as examples.
 
 <!-- [GENERALIZABLE: one-way sync scripts need per-pair exclude lists for downstream-owned files; maintain in a bash 3.x-compatible function, not associative arrays] -->
+
+## 2026-08-22 — 關卡跳過的承認語意：持久性 vs 身分範圍（E345）
+
+**決定**：人工 `--accept-skips` 的承認採 **phase-scoped 且持久**的純存在性判定 ——
+`unreconciled = (該 phase 有 skip) AND (該 phase 從未有過承認)`。不做時間戳比較。
+
+**被排除的替代方案**：identity-scoped（承認只涵蓋承認當下已知的 skip，新的 skip 需要新的承認）。
+它更嚴謹，但必須以 `(gate, epic)` 身分而非時間戳來區分「新的 skip」與「同一個 skip 被重新觀測」，
+否則每次重跑同一個關卡都會重新擋下。複雜度真實，而目前沒有證據顯示那是活的問題。
+
+**理由**：原始實作用秒級時間戳比大小（`lastAcceptTs < lastSkipTs`），語意變成「承認只結清它之前
+記錄的 skip」。後果是同一個 skip 在別台機器、別的 worktree 或單純重跑時被重新觀測到，就會讓已經
+給出的人工承認**自己失效**，phase 無聲無息退回被擋狀態。
+
+持久性語意比照 `/athena:approve`：一個核准不會因為之後有人重讀 epic 檔而失效。
+
+**判準**：守衛的價值建立在可預測性上。一個會間歇性擋下「已被承認」對象的守衛，會教會使用者不信任
+它、進而繞過它 —— 失去信任的守衛比沒有守衛更糟。
