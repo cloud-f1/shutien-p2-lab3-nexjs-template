@@ -96,6 +96,7 @@
 | Phase 81 | E334 | ✅ Complete (轉化漏斗數據迴路 — sales_page_events + orders.utm + admin 轉化 tab, PR #102 merged 2026-07-17, integration gate PASS 87.03%) |
 | Phase 82 | E336, E337, E338, E339, E340, E341, E342, E343 | ✅ Complete 2026-08-22 — **Fork Harvest Wave 3（ai-rc-engineer-pm 管理介面 + skill/context）**。Wave 1 = E336(#111) · E338(#112) · E340(#105) · E341(#106) · E342(#110) · E343(#109)；Wave 2 = E337(#114) · E339(#115)。另含 fast-follow #108（hook 心跳污染修正）。整合閘門 PASS：typecheck 0 · lint 0 errors · **794/794**（79 files）· 87.03% 覆蓋 · doc-contract 13/13，與 Phase 81 基線持平。**QA gate 退回 5 次，全為真缺陷**：E341 pricing 契約弱循環（拿 JSON 跟自己抄本比）→ 誠實改標；E336 命令面板繞過 lockFor + 「系統」誤鎖（功能倒退）→ 共用 resolveNavForRole + 還原；E338 e2e 斷言恆真（seed 僅 2 筆，移除 pb-16 仍綠）→ 改比對分頁列並附紅綠實證；E337 非 admin 的死掉動態卡片 + fork 領域詞彙殘留 → 整個不渲染 + 中性化；**E339 generateMetadata() IDOR 洩漏**（metadata 與頁面獨立解析，notFound() 不會取消已算好的 title）→ 單一 canViewItem predicate 兩入口共用，紅綠實證，並在 playbook 加 §2b 防止洩漏被抄進未來每個領域。**過程附帶發現**：mobile-tab-bar 自 E323 起從未掛載（E338 已接上）· root .gitignore 全域擋 *.png 使 handoff 截圖靜默不進版控（E342 已修）· user-guide-builder 引用的 guide-domain-digest.md 從未存在（E342 已補）· hook 心跳污染受版控檔案（#108 已修）。**未處理的既有問題**：make hook-test 在 main 上為 5/9 紅 · 共用 saas_dev 有 17 個已套用 migration 但分支僅 15 個 .sql 檔（某未合併分支直接對共用容器 migrate）。 |
 | Phase 83 | E344, E345 | ✅ Complete 2026-08-22 — **協調圖缺口修補**。E344 整合節點(#120) · E345 關卡帳本(#121)。整合閘門 PASS（含 e2e）：typecheck 0 · lint 0 errors · unit 794/794 79 files 87.03% · int 30/30 · e2e **45 passed / 1 failed**（two-factor TOTP，Phase 72 #51 起既有）· make hook-test 21 檔全綠（原 12）。**QA 退回 5 次**：E344 三項（`--gate` 死選項 · `epics="$EPICS"` 陣列裸展開只記第一個 epic —— 而 E345 的帳本正建在該事件流上 · 歸因重跑未重佈 e2e DB，波次含 migration 時會指錯人）· E345 兩輪（承認檔被 gitignore —— worktree 各有 .claude/ 副本使承認跨情境不可見，且會靜默把已記錄的承認從受版控的 render 產物抹掉；batch.md Step 4c 與 pre-merge-check.sh 未接線 —— 後者是人最常跑的關卡）。**最後一輪抓到不穩定測試（17%）底下的語意漏洞**：承認的結清用秒級時間戳比大小，語意變成「承認只結清它之前的 skip」，於是同一個 skip 被重新觀測就讓人工承認自失效 —— 已改為純存在性檢查（比照 /athena:approve 的持久性）。**不做**：agent 改名 · 另造 graph DSL · 結構化 shared state（1639 行 markdown 轉 render 產物，改動面大，另開 phase）。 |
+| Phase 84 | E346, E347, E348, E349 | 🟢 APPROVED (2026-08-22) — **稽核發現修補**（/athena:audit 2026-08-22）。**E346 🔴 安全**：`actions/usage.ts` 是 `"use server"`（= 公開 POST 端點），`recordUsage(metric, delta, userId?)` 在傳入 `userId` 時**完全不呼叫 requireAuth()** —— 任何未驗證呼叫端可為**任意使用者**偽造 `usage_events`，而該表驅動用量計費與配額。修法：內部函式（`lib/usage.ts`，非 use server）與公開 action 分離，action 移除 `userId` 參數。**E347**：ECPay `return`/`period` 兩支結算 handler **零測試**，而 ECPay 是文件指定的 launch gateway —— 覆蓋率最低的偏偏是預設會走的路（Stripe/NewebPay/ECPay-renew 三個 sibling 都有測試）。**E348**：`updateItemSchema` 登記在 OpenAPI 卻無任何更新路徑使用；`updateItem` 另手刻一份規則 —— 文件化的契約與執行的契約是兩份各自維護的程式碼（E341 治的病，這次在 Zod 層）。**E349**：7 個 action 檔無 wiring 層測試（guard→validate→write→audit）；底層 utils 有測試，缺的是串接層 —— 而 E346 正是串接層缺陷，說明這層測試不是形式主義。Wave 1 = E346 + E347 + E348（並行，檔案互斥）→ Wave 2 = E349（after E346）。稽核其餘部分對齊良好：三條金流 webhook 皆有簽章驗證+冪等、defineAction 包裝的 admin mutation 全有守衛、自衍生枚舉結構上不可能漂移、品牌識別乾淨、doc-contract 13/13、stop-verifier 規則表與實作吻合。 |
 <!-- PHASE_STATUS_END -->
 
 <!-- EPIC_MATRIX_START -->
@@ -445,6 +446,10 @@ Phase 46+ epics: enriched template — epic files include Implementation Phases,
 | E343 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 82 — 🟢 APPROVED (2026-08-22). Wave 1. design-sync-roundtrip skill（去品牌化） |
 | E344 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 83 — 🟢 APPROVED (2026-08-22). /athena:integrate + @integrator（組合缺陷歸因 + e2e 納入前置閘門） |
 | E345 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 83 — 🟢 APPROVED (2026-08-22). 關卡帳本（skipped 必須留 reason；未結清擋下 phase 完成） |
+| E346 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 84 — 🔴 安全修補：recordUsage 未驗證寫入路徑 |
+| E347 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 84 — ECPay return/period 結算 handler 測試（money path） |
+| E348 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 84 — updateItemSchema 孤兒契約單一化 |
+| E349 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 84 — 7 個 action 檔的 wiring 整合測試（after E346） |
 <!-- EPIC_MATRIX_END -->
 
 ## Dependency Rules
@@ -675,6 +680,11 @@ E343: no deps
 # Phase 83 — 協調圖缺口修補 (graph-engineering) — Cycle 37, APPROVED 2026-08-22
 E344: no deps
 E345: E344
+# Phase 84 — 稽核發現修補 (/athena:audit 2026-08-22) — Cycle 38, APPROVED
+E346: no deps
+E347: no deps
+E348: no deps
+E349: E346
 ```
 
 ## Phase Parallelism
@@ -723,6 +733,7 @@ Phase 80: E333 (single epic, after E332)
 Phase 81: E334 (single epic, after E331)
 Phase 82: E336 + E338 + E340 + E341 + E342 + E343 (WAVE 1 — PARALLEL, 檔案互斥: E336 owns lib/nav.ts + nav/sidebar/tab-bar/breadcrumb/palette · E338 owns data-table-generic + 狀態原件 + items/_items-table · E340 owns .claude/commands/athena/approve.md · E341 owns lib/doc-contract.test.ts + audit.md · E342 owns docs/architecture+reference+_handoff · E343 owns .claude/skills/design-sync-roundtrip) → E337 + E339 (WAVE 2 — E337 after E336+E338, E339 after E338; 兩者並行, E337 owns dashboard/page.tsx + components/dashboard/**, E339 owns items/[id]/**). 注意: E336/E338/E340/E341/E342/E343 皆會改 CLAUDE.md 或 docs 索引 — 若走 worktree 並行, merge 時預期在 CLAUDE.md 有小衝突, 依序解。
 Phase 83: E344 → E345 (SEQUENTIAL — 整合節點執行關卡、帳本記錄關卡，天然的先後關係；且兩者皆需修改 .claude/commands/athena/batch.md，並行只會製造衝突。E344 owns integrate.md + agents/integrator.md + batch.md 的整合節點插入；E345 owns audit-emit-gate.sh + gate-ledger.sh + phase 完成守衛 + verification-discipline skill)
+Phase 84: E346 + E347 + E348 (WAVE 1 — PARALLEL, 檔案互斥: E346 owns lib/usage.ts + actions/usage.ts + api/v1/items/route.ts · E347 owns api/billing/ecpay/{return,period}/route.test.ts · E348 owns lib/validations/items.ts + lib/items-utils.ts + actions/items.ts + lib/openapi/registry.ts) → E349 (WAVE 2 — after E346；它是 E346 那類串接層缺陷的系統性防線，需先確立修法形狀)
 ```
 
 ---
