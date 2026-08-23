@@ -10,12 +10,23 @@
 > A phase with no section below has no `gate_result` events recorded — that
 > means nothing was emitted under it, not that every gate passed.
 
-Generated: 2026-08-22T10:48:20Z
+Generated: 2026-08-23T12:19:33Z
 
 ## Phase 83
 
 ```
 Phase 83 gate ledger
+  e2e          1 pass
+  int          1 pass
+  lint         1 pass
+  typecheck    1 pass
+  unit         1 pass
+```
+
+## Phase 84
+
+```
+Phase 84 gate ledger
   e2e          1 pass
   int          1 pass
   lint         1 pass
