@@ -106,3 +106,9 @@
 **Files:** docker-compose.yml,next-app/e2e/auth-flow.spec.ts,next-app/e2e/dashboard-smoke.spec.ts
 **Root Cause:** _(pending — enrich during /athena:save)_
 **Test Added:** _(pending)_
+
+## 2026-08-23T20:56:13+08:00 — 8915c9d
+**Message:** fix(E350): listSalesPages 移出公開介面 — 草稿銷售頁不再洩漏 (#131)
+**Files:** next-app/actions/sales-pages.ts,next-app/app/(dashboard)/dashboard/admin/sales-pages/page.tsx,next-app/lib/sales/queries.ts,next-app/test/int/sales-pages.int.test.ts
+**Root Cause:** _(pending — enrich during /athena:save)_
+**Test Added:** _(pending)_

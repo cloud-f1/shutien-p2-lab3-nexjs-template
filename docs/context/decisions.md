@@ -369,3 +369,25 @@ The `get_pair_excludes()` function in `scripts/sync-to-plugin.sh` (bash 3.x-comp
 
 **判準**：守衛的價值建立在可預測性上。一個會間歇性擋下「已被承認」對象的守衛，會教會使用者不信任
 它、進而繞過它 —— 失去信任的守衛比沒有守衛更糟。
+
+## 2026-08-22 — 內部函式不得住在 `"use server"` 檔案（E346 · E350）
+
+**決定**：任何不打算被客戶端呼叫的函式，一律放 `lib/`，不放 `actions/`。
+`actions/*.ts` 的每個匯出都是公開 POST 端點，**可達性不由作者意圖決定**。
+
+**證據**：一輪稽核撈到同根因的兩個變體 ——
+
+  E346 `recordUsage(metric, delta, userId?)` —— 傳入 `userId` 時完全跳過 `requireAuth()`，
+       任何未驗證呼叫端可為任意使用者偽造用量事件（驅動計費與配額）
+  E350 `listSalesPages()` —— 根本沒有守衛，草稿與未發布銷售頁洩漏給任何匿名呼叫端
+
+兩者的註解都寫著「給 Server Component 用的 helper」。作者的心智模型是對的，
+放錯檔案讓它失效。
+
+**修法形狀**（兩次都用同一套）：內部函式移到 `lib/<domain>/`，檔頭寫明信任邊界
+（「本函式不做授權，只能從已授權的 Server Component 或 Route Handler 呼叫，
+永遠不要從 `"use server"` 檔案重新匯出」）；公開 action 收窄簽章或整個移除；
+**在原位置留下註解解釋為什麼它不在這裡**，避免下一個人順手加回來。
+
+**後續**：E351 把這條慣例變成 stop-verifier 規則 —— 散文（`security-audit` skill）
+擋不住，E341 已經證明過。

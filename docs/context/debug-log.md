@@ -135,3 +135,23 @@ Result: ✅ passes / ❌ still failing (new hypothesis)
 3. **壓測要在對的層級**。整套 suite 跑一次看不出 17%；單獨對嫌疑檔案跑 20 次才看得出來。
 4. 腳本若已支援 `CLOCK_TS` 之類的時鐘覆寫，測試就該用它把時間釘死 —— 讓測試斷言**選定的語意**，
    而不是賭時鐘對齊。
+
+## 2026-08-22 — [GENERALIZABLE] 刪除符號後，要 grep 的不只是符號名
+
+**症狀**：E352 刪掉 `validateItemTitle()` 後回報「`grep validateItemTitle` 只剩歷史註解」。
+QA 覆核發現**兩份活的 skill 文件**仍在引用它，另有**兩份 doc** 引用被改掉的錯誤訊息文字。
+
+**為什麼符號搜尋不夠**：那兩份 doc 引用的是**值**（`"標題過長"` 這個字串），不是函式名 ——
+`grep validateItemTitle` 永遠不會命中。要 `grep 標題過長` 才看得到。
+
+**為什麼這比看起來嚴重**：其中一處在 `.claude/skills/security-audit/SKILL.md`，
+那份 skill **每次 `/athena:qa --review-only` 都會被載入**。它拿已刪除的函式當示範例子，
+而且連改動前就寫錯了檔案路徑（說在 `actions/items.ts`，實際在 `lib/items-utils.ts`）。
+reviewer agent 照著找會撲空，然後失去那個例子想教的東西。
+
+**教訓（可泛化）**：
+1. 移除或改名一個符號後，grep 的清單至少要包含：**符號名** · 它所在的**檔案路徑** ·
+   任何被改動的**字面值**（錯誤訊息、常數、enum 值）。
+2. **活的指令文件與歷史紀錄要分開判斷**。epic 檔案引用舊程式碼是 provenance，沒問題；
+   skill 與 guide 引用不存在的東西，是會誤導下一個 agent 的假資訊。
+3. 宣稱「只剩歷史註解」之前，先看過每一處命中 —— 分類的成本遠低於誤導的成本。
