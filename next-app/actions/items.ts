@@ -9,6 +9,7 @@ import { requireAuth, requireEditor, canEdit } from "@/lib/permissions"
 import { defineAction } from "@/lib/define-action"
 import { logAudit } from "@/lib/audit"
 import { validateItemTitle } from "@/lib/items-utils"
+import { updateItemSchema } from "@/lib/validations/items"
 import { toJson } from "@/lib/export-utils"
 
 type State = { error?: string } | null
@@ -76,14 +77,26 @@ export async function deleteItem(id: string): Promise<State> {
 export async function updateItem(id: string, prevState: State, formData: FormData): Promise<State> {
   const session = await requireEditor()
 
-  const validated = validateItemTitle(formData.get("title"))
-  if ("error" in validated) {
-    return { error: validated.error }
+  // E348 — updateItemSchema is now the single validation contract for this path
+  // (previously updateItem() used the separately hand-rolled validateItemTitle(),
+  // which had drifted into being updateItemSchema's only real-world "shadow"
+  // implementation — see docs/epics/e348-update-item-contract-drift.md). The raw
+  // FormData value is trimmed before .safeParse() so the schema's min/max checks
+  // see exactly what validateItemTitle() used to check (it trimmed internally);
+  // a non-string/null value (FormData.get() can return string | File | null)
+  // passes through untrimmed and is rejected by the schema's invalid_type_error.
+  const rawTitle = formData.get("title")
+  const parsed = updateItemSchema.safeParse({
+    title: typeof rawTitle === "string" ? rawTitle.trim() : rawTitle,
+  })
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "請輸入標題" }
   }
+  const { title } = parsed.data
 
   const result = await db
     .update(itemsTable)
-    .set({ title: validated.title, updatedAt: new Date() })
+    .set({ title, updatedAt: new Date() })
     .where(and(eq(itemsTable.id, id), eq(itemsTable.userId, session.user.id)))
 
   if (result.count === 0) {
