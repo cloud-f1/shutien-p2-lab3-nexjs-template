@@ -243,8 +243,10 @@ Record CRUD in this template is **modal-based, never page-redirect**, and lists 
   field checks), call the **same** shared schema from `lib/validations/*.ts`
   (`schema.safeParse(...)` or RHF's `zodResolver(schema)`) — never hand-roll a parallel
   regex or ad-hoc check that mirrors the rule (e.g. a client-only `titleValid` copy of
-  `validateItemTitle`'s rule). A duplicated rule drifts the moment either side changes,
-  and the server's copy is the only one that's actually enforced.
+  `itemTitleSchema`'s rule, the single title validator `createItemSchema` and
+  `updateItemSchema` both share — see `lib/validations/items.ts`, E352). A duplicated
+  rule drifts the moment either side changes, and the server's copy is the only one
+  that's actually enforced.
 
 ## Quick file map
 

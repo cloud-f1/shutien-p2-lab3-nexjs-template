@@ -52,7 +52,8 @@ The template's simplest reference CRUD domain — one table, no lifecycle.
 
 **邊界值**
 - `title`: required, 1–255 characters (source: `next-app/lib/validations/items.ts`
-  `createItemSchema`/`updateItemSchema` — `z.string().min(1, "請輸入標題").max(255, "標題過長")`).
+  `createItemSchema`/`updateItemSchema`, both built from the single shared `itemTitleSchema`
+  (E352) — `z.string().min(1, "請輸入標題").max(255, "標題過長（最多 255 個字元）。")`).
 
 ---
 

@@ -39,7 +39,9 @@ needs to reason about *which* guard and *whether it's the right tier*:
   session yet, not slapped on to silence the hook.
 - **Every input must be Zod-validated** — never trust a client-supplied id/role/enum. `defineAction()`
   makes this structural (`schema: z.object({...})`, step 2); hand-written actions must validate
-  by hand (see `validateItemTitle` in `actions/items.ts`). Flag any action that reads
+  by hand (see `createItem`/`updateItem` in `actions/items.ts`, which trim the raw `FormData`
+  value then call `.safeParse()` against the shared `itemTitleSchema` in
+  `lib/validations/items.ts` — E352). Flag any action that reads
   `formData.get(...)` or a raw object param and passes it to a DB call unchecked.
 
 ## 2. Role checks MUST re-read from the DB — Block

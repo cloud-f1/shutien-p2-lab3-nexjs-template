@@ -8,8 +8,7 @@ import { revalidatePath } from "next/cache"
 import { requireAuth, requireEditor, canEdit } from "@/lib/permissions"
 import { defineAction } from "@/lib/define-action"
 import { logAudit } from "@/lib/audit"
-import { validateItemTitle } from "@/lib/items-utils"
-import { updateItemSchema } from "@/lib/validations/items"
+import { createItemSchema, updateItemSchema } from "@/lib/validations/items"
 import { toJson } from "@/lib/export-utils"
 
 type State = { error?: string } | null
@@ -18,14 +17,22 @@ export async function createItem(prevState: State, formData: FormData): Promise<
   // Viewers are read-only — requireEditor() redirects them away.
   const session = await requireEditor()
 
-  const validated = validateItemTitle(formData.get("title"))
-  if ("error" in validated) {
-    return { error: validated.error }
+  // E352 — createItemSchema is now the single validation contract for this path
+  // (previously createItem() used the separately hand-rolled validateItemTitle(),
+  // removed in this epic — see docs/epics/e352-create-item-contract-symmetry.md).
+  // Same trim-then-safeParse composition E348 established for updateItem().
+  const rawTitle = formData.get("title")
+  const parsed = createItemSchema.safeParse({
+    title: typeof rawTitle === "string" ? rawTitle.trim() : rawTitle,
+  })
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "請輸入標題" }
   }
+  const { title } = parsed.data
 
   const [created] = await db
     .insert(itemsTable)
-    .values({ title: validated.title, userId: session.user.id })
+    .values({ title, userId: session.user.id })
     .returning({ id: itemsTable.id })
 
   // E339 — record-detail activity card reads this via getAuditLogForTarget.

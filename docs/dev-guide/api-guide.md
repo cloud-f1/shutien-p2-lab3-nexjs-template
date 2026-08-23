@@ -132,8 +132,15 @@ client (react-hook-form resolver) and the server (action). Example — `lib/vali
 ```ts
 import { z } from "zod"
 
+// E352 — createItemSchema and updateItemSchema share one title rule so the
+// two paths cannot drift into disagreement.
+const itemTitleSchema = z
+  .string({ invalid_type_error: "請輸入標題" })
+  .min(1, "請輸入標題")
+  .max(255, "標題過長（最多 255 個字元）。")
+
 export const createItemSchema = z.object({
-  title: z.string().min(1, "請輸入標題").max(255, "標題過長"),
+  title: itemTitleSchema,
 })
 
 export type CreateItemInput = z.infer<typeof createItemSchema>

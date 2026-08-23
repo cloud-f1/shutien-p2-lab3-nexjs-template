@@ -30,7 +30,6 @@ export default defineConfig({
         "lib/team-utils.ts",
         "lib/notifications-utils.ts",
         "lib/admin-utils.ts",
-        "lib/items-utils.ts",
         "lib/user-utils.ts",
         "lib/rate-limit.ts",
         "lib/totp-utils.ts",
