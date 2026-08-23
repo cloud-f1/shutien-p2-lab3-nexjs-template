@@ -97,6 +97,7 @@
 | Phase 82 | E336, E337, E338, E339, E340, E341, E342, E343 | ✅ Complete 2026-08-22 — **Fork Harvest Wave 3（ai-rc-engineer-pm 管理介面 + skill/context）**。Wave 1 = E336(#111) · E338(#112) · E340(#105) · E341(#106) · E342(#110) · E343(#109)；Wave 2 = E337(#114) · E339(#115)。另含 fast-follow #108（hook 心跳污染修正）。整合閘門 PASS：typecheck 0 · lint 0 errors · **794/794**（79 files）· 87.03% 覆蓋 · doc-contract 13/13，與 Phase 81 基線持平。**QA gate 退回 5 次，全為真缺陷**：E341 pricing 契約弱循環（拿 JSON 跟自己抄本比）→ 誠實改標；E336 命令面板繞過 lockFor + 「系統」誤鎖（功能倒退）→ 共用 resolveNavForRole + 還原；E338 e2e 斷言恆真（seed 僅 2 筆，移除 pb-16 仍綠）→ 改比對分頁列並附紅綠實證；E337 非 admin 的死掉動態卡片 + fork 領域詞彙殘留 → 整個不渲染 + 中性化；**E339 generateMetadata() IDOR 洩漏**（metadata 與頁面獨立解析，notFound() 不會取消已算好的 title）→ 單一 canViewItem predicate 兩入口共用，紅綠實證，並在 playbook 加 §2b 防止洩漏被抄進未來每個領域。**過程附帶發現**：mobile-tab-bar 自 E323 起從未掛載（E338 已接上）· root .gitignore 全域擋 *.png 使 handoff 截圖靜默不進版控（E342 已修）· user-guide-builder 引用的 guide-domain-digest.md 從未存在（E342 已補）· hook 心跳污染受版控檔案（#108 已修）。**未處理的既有問題**：make hook-test 在 main 上為 5/9 紅 · 共用 saas_dev 有 17 個已套用 migration 但分支僅 15 個 .sql 檔（某未合併分支直接對共用容器 migrate）。 |
 | Phase 83 | E344, E345 | ✅ Complete 2026-08-22 — **協調圖缺口修補**。E344 整合節點(#120) · E345 關卡帳本(#121)。整合閘門 PASS（含 e2e）：typecheck 0 · lint 0 errors · unit 794/794 79 files 87.03% · int 30/30 · e2e **45 passed / 1 failed**（two-factor TOTP，Phase 72 #51 起既有）· make hook-test 21 檔全綠（原 12）。**QA 退回 5 次**：E344 三項（`--gate` 死選項 · `epics="$EPICS"` 陣列裸展開只記第一個 epic —— 而 E345 的帳本正建在該事件流上 · 歸因重跑未重佈 e2e DB，波次含 migration 時會指錯人）· E345 兩輪（承認檔被 gitignore —— worktree 各有 .claude/ 副本使承認跨情境不可見，且會靜默把已記錄的承認從受版控的 render 產物抹掉；batch.md Step 4c 與 pre-merge-check.sh 未接線 —— 後者是人最常跑的關卡）。**最後一輪抓到不穩定測試（17%）底下的語意漏洞**：承認的結清用秒級時間戳比大小，語意變成「承認只結清它之前的 skip」，於是同一個 skip 被重新觀測就讓人工承認自失效 —— 已改為純存在性檢查（比照 /athena:approve 的持久性）。**不做**：agent 改名 · 另造 graph DSL · 結構化 shared state（1639 行 markdown 轉 render 產物，改動面大，另開 phase）。 |
 | Phase 84 | E346, E347, E348, E349 | ✅ Complete 2026-08-22 — **稽核發現修補**（/athena:audit）。E346(#127) · E347(#125) · E348(#126) · E349(#128)。整合閘門 PASS：typecheck 0 · lint 0 errors · unit 812/812 81 files 87.03% · **int 93/93 15 files**（原 31/8）· e2e 45/46（TOTP 為 Phase 72 #51 起既有）。**E346 🔴 安全**：actions/usage.ts 是 "use server"，recordUsage 傳入 userId 時完全不呼叫 requireAuth() —— 任何未驗證呼叫端可為任意使用者偽造 usage_events（驅動用量計費與配額）。QA 獨立重現紅綠：漏洞版本回傳 {success:true} 且**真的寫入一列**。修法為內部函式（lib/usage.ts）與公開 action 分離。BREAKING：簽章移除 userId。**E347**：ECPay return/period 兩支結算 handler 補 15 條測試 —— 兩支皆**無真實缺陷**。**E348**：epic 規格前提是錯的 —— 兩份驗證規則其實不一致（schema 驗未 trim 值、手刻版先 trim），直接對調會引入「接受純空白標題」的行為改變。QA 以真實 Zod 對 10 個邊界實測零分歧。**E349**：62 條 wiring 測試（int 31→93）。五次故障注入（兩人各挑不同目標）全紅。**掃描結論**：7 個檔案 26 個匯出逐一走過（含 webhooks 9 個 mutation 的 WHERE），除已知的 listSalesPages 外無第三個守衛缺陷。**未處理**：E350 listSalesPages 無守衛（草稿銷售頁洩漏，已寫規格未實作）· E351 use-server 守衛規則 · E352 create 路徑對稱。 |
+| Phase 85 | E350, E351, E352 | 🟢 APPROVED (2026-08-22) — **稽核追加：安全收口 + 系統性守衛**（Phase 84 實作過程中發現）。**E350 🔴**：`actions/sales-pages.ts:271` 的 `listSalesPages()` **完全沒有守衛** —— 同檔案其他五個 action 全走 `defineAction()`，只有這支讀取 helper 是裸的，會把含 `status` 與完整 `content` 的所有銷售頁（**草稿與未發布內容**）洩漏給任何匿名呼叫端。與 E346 同根因的另一變體：E346 是可選參數**繞過**守衛，本 epic 是**根本沒有**守衛，根因都是內部用途函式住在 `"use server"` 檔案裡。**E351 系統性守衛**：新增 stop-verifier 規則 —— `"use server"` 檔案的每個匯出必須命中守衛（`requireAuth`/`requireEditor`/`requireAdmin` / `defineAction({allow|authorize})` / 明確的 `// stop-verifier:public-action` 標記）。一輪稽核撈到兩個同根因案例，`security-audit` skill 的散文擋不住（E341 的教訓）。**導入成本現在最低** —— E349 的 QA 剛逐一走過 26 個匯出，確認全 codebase 只有 `listSalesPages` 一個違規。回歸 fixture 用 E346/E350 修正前的程式碼，證明規則當初抓得到。**E352**：create 路徑契約對稱（E348 明確劃出範圍外的那一半）—— `createItem()` 仍用手刻的 `validateItemTitle()`，而 RHF 表單與 REST 用 `createItemSchema`，同一欄位兩個驗證器。Wave 1 = E350 + E352（並行，檔案互斥）→ Wave 2 = E351（after E350，需其修正前後形狀作回歸 fixture）。 |
 <!-- PHASE_STATUS_END -->
 
 <!-- EPIC_MATRIX_START -->
@@ -450,6 +451,9 @@ Phase 46+ epics: enriched template — epic files include Implementation Phases,
 | E347 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 84 — ECPay return/period 結算 handler 測試（money path） |
 | E348 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 84 — updateItemSchema 孤兒契約單一化 |
 | E349 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 84 — 7 個 action 檔的 wiring 整合測試（after E346） |
+| E350 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 85 — 🔴 listSalesPages 無守衛：草稿銷售頁洩漏 |
+| E351 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 85 — stop-verifier 規則：use server 匯出必須命中守衛（after E350） |
+| E352 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 85 — create 路徑契約對稱（E348 收口） |
 <!-- EPIC_MATRIX_END -->
 
 ## Dependency Rules
@@ -685,6 +689,10 @@ E346: no deps
 E347: no deps
 E348: no deps
 E349: E346
+# Phase 85 — 稽核追加：安全收口 + 系統性守衛 — Cycle 39, APPROVED 2026-08-22
+E350: no deps
+E351: E350
+E352: no deps
 ```
 
 ## Phase Parallelism
@@ -734,6 +742,7 @@ Phase 81: E334 (single epic, after E331)
 Phase 82: E336 + E338 + E340 + E341 + E342 + E343 (WAVE 1 — PARALLEL, 檔案互斥: E336 owns lib/nav.ts + nav/sidebar/tab-bar/breadcrumb/palette · E338 owns data-table-generic + 狀態原件 + items/_items-table · E340 owns .claude/commands/athena/approve.md · E341 owns lib/doc-contract.test.ts + audit.md · E342 owns docs/architecture+reference+_handoff · E343 owns .claude/skills/design-sync-roundtrip) → E337 + E339 (WAVE 2 — E337 after E336+E338, E339 after E338; 兩者並行, E337 owns dashboard/page.tsx + components/dashboard/**, E339 owns items/[id]/**). 注意: E336/E338/E340/E341/E342/E343 皆會改 CLAUDE.md 或 docs 索引 — 若走 worktree 並行, merge 時預期在 CLAUDE.md 有小衝突, 依序解。
 Phase 83: E344 → E345 (SEQUENTIAL — 整合節點執行關卡、帳本記錄關卡，天然的先後關係；且兩者皆需修改 .claude/commands/athena/batch.md，並行只會製造衝突。E344 owns integrate.md + agents/integrator.md + batch.md 的整合節點插入；E345 owns audit-emit-gate.sh + gate-ledger.sh + phase 完成守衛 + verification-discipline skill)
 Phase 84: E346 + E347 + E348 (WAVE 1 — PARALLEL, 檔案互斥: E346 owns lib/usage.ts + actions/usage.ts + api/v1/items/route.ts · E347 owns api/billing/ecpay/{return,period}/route.test.ts · E348 owns lib/validations/items.ts + lib/items-utils.ts + actions/items.ts + lib/openapi/registry.ts) → E349 (WAVE 2 — after E346；它是 E346 那類串接層缺陷的系統性防線，需先確立修法形狀)
+Phase 85: E350 + E352 (WAVE 1 — PARALLEL, 檔案互斥: E350 owns actions/sales-pages.ts + lib/sales/ + admin/sales-pages/page.tsx · E352 owns actions/items.ts + lib/validations/items.ts + lib/items-utils.ts) → E351 (WAVE 2 — after E350，需要 E346 與 E350 的修正前後形狀作為回歸 fixture，證明規則當初抓得到；owns scripts/hooks/stop-verifier.sh + tests + CLAUDE.md 規則表)
 ```
 
 ---
