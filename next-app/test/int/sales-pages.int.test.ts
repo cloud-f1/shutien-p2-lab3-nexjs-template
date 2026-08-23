@@ -5,10 +5,11 @@
  * (no throw/redirect), and a successful mutation gets its audit entry written
  * by the factory itself (E323's "audit can't be forgotten" guarantee).
  *
- * `listSalesPages` (line ~271) is a KNOWN, already-filed gap (E350) — it has NO
- * guard at all. Per the E349 epic instructions this file does NOT fix it; the
- * one test below only documents the current (unguarded) behavior and is
- * labeled accordingly — it is not an assertion that this is correct.
+ * `listSalesPages` used to live here with NO guard at all (E350). It has been
+ * moved out to `lib/sales/queries.ts` (an internal-only module with no
+ * `"use server"` directive) and is no longer part of this public action
+ * surface at all — see the SECURITY (E350) test below, which asserts it stays
+ * that way.
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 
@@ -259,20 +260,40 @@ describe.skipIf(!reachable)("actions/sales-pages.ts wiring (int)", () => {
   })
 
   // ---------------------------------------------------------------------
-  // KNOWN GAP (E350) — documenting current behavior, NOT asserting it is
-  // correct. `listSalesPages` has no guard at all: any caller, including an
-  // unauthenticated one, can call it directly and get every sales page back
-  // (including unpublished drafts). Do NOT treat this test as a spec to
-  // preserve — it exists only so a future fix of E350 has a test that goes
-  // red, signalling the gap was closed.
+  // SECURITY (E350) — regression test for the closed gap. `listSalesPages`
+  // used to be exported straight from this `"use server"` file with NO guard
+  // at all, so ANY caller — including an unauthenticated one — could invoke
+  // it via the public Server Action RPC mechanism and get every sales page
+  // back, drafts and all. The fix moves the query to `lib/sales/queries.ts`
+  // (no `"use server"`, not part of this public surface) so it is only
+  // reachable from an already-authorized Server Component or Route Handler.
+  //
+  // This test asserts `listSalesPages` is NOT exported from the actions
+  // module at all. If it (or a pass-through wrapper) is ever re-added here
+  // without a guard, this test calls it directly and proves the leak with
+  // the actual draft row that comes back — not merely a type error.
   // ---------------------------------------------------------------------
-  it("KNOWN GAP (E350): listSalesPages has no auth guard — an unauthenticated caller can list all pages", async () => {
+  it("SECURITY (E350): listSalesPages is not reachable via the public action surface — an unauthenticated caller cannot list sales pages", async () => {
     const admin = await seedUser({ email: "admin10@int.test", role: "admin" })
     actorId = admin.id
     await salesPages.createSalesPage(validInput("unguarded-listing", "draft"))
 
-    actorId = null // no session at all
-    const rows = await salesPages.listSalesPages()
-    expect(rows.some((r) => r.slug === "unguarded-listing")).toBe(true)
+    actorId = null // no session at all — simulates an unauthenticated caller
+
+    const maybeLeak = (salesPages as unknown as Record<string, unknown>).listSalesPages
+
+    if (typeof maybeLeak === "function") {
+      // Only reachable if the gap has regressed. Call it and show the actual
+      // leaked row in the failure so "red" proves real data exfiltration,
+      // not just a stray export.
+      const rows = await (maybeLeak as () => Promise<{ slug: string; status: string }[]>)()
+      const leakedDraft = rows.find((r) => r.slug === "unguarded-listing")
+      expect({ exportedFromActionsFile: true, leakedDraft }).toEqual({
+        exportedFromActionsFile: false,
+        leakedDraft: undefined,
+      })
+    } else {
+      expect(maybeLeak).toBeUndefined()
+    }
   })
 })

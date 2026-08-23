@@ -1,6 +1,6 @@
 "use server"
 
-import { desc, eq } from "drizzle-orm"
+import { eq } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
 
 import { db } from "@/lib/db"
@@ -264,22 +264,14 @@ export async function createSalesPagePreviewLink(
 }
 
 // ---------------------------------------------------------------------------
-// Read (admin list) — Server Component loader helper
+// Read (admin list)
 // ---------------------------------------------------------------------------
-
-/** List all sales pages for the admin table (newest first). */
-export async function listSalesPages() {
-  return db
-    .select({
-      id: salesPagesTable.id,
-      slug: salesPagesTable.slug,
-      productId: salesPagesTable.productId,
-      content: salesPagesTable.content,
-      renderMode: salesPagesTable.renderMode,
-      status: salesPagesTable.status,
-      publishedAt: salesPagesTable.publishedAt,
-      updatedAt: salesPagesTable.updatedAt,
-    })
-    .from(salesPagesTable)
-    .orderBy(desc(salesPagesTable.updatedAt))
-}
+//
+// `listSalesPages` deliberately does NOT live here (E350). This file is
+// `"use server"` — every export is a public POST endpoint reachable by any
+// client, with no guard applied to it by that fact alone. The list query
+// (which returns draft/unpublished content) lives in `lib/sales/queries.ts`
+// instead, an internal-only module with no `"use server"` directive, callable
+// only from an already-authorized Server Component or Route Handler. The
+// admin sales-pages page (`app/(dashboard)/dashboard/admin/sales-pages/page.tsx`)
+// calls `requireAdmin()` before importing it from there.

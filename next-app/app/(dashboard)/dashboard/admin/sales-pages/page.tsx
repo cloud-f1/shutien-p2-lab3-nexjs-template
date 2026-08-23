@@ -1,10 +1,10 @@
 import type { Metadata } from "next"
 import { asc } from "drizzle-orm"
 
-import { listSalesPages } from "@/actions/sales-pages"
 import { db } from "@/lib/db"
 import { requireAdmin } from "@/lib/permissions"
 import { productsTable } from "@/lib/schema"
+import { listSalesPages } from "@/lib/sales/queries"
 import { SalesPagesTable, type SalesPageRow } from "./_sales-pages-table"
 
 export const metadata: Metadata = { title: "管理 — 銷售頁" }
