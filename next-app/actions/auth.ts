@@ -1,4 +1,11 @@
 "use server"
+// stop-verifier:public-action — every export in this file IS a pre-auth entry
+// point by design: OAuth kickoff, register, login, email verification,
+// password reset, and the 2FA challenge/backup-code steps all run BEFORE a
+// session exists, so none of them can call requireAuth()/requireAdmin(). Each
+// one still validates its own input server-side (Zod schemas), rate-limits,
+// and never reveals account existence (E346/E350 — the same audit round that
+// added this marker's enforcement rule, see docs/epics/e351-use-server-guard-rule.md).
 
 import { signIn, signOut } from "@/lib/auth"
 import { db } from "@/lib/db"

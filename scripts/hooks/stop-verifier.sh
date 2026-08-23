@@ -4,9 +4,10 @@
 # This is the "retry verifier" pattern: even at 70% accuracy, 4 retries → 99% success.
 #
 # Next.js stack (post-migration). Rules enforce the CLAUDE.md "NEVER DEVIATE" invariants
-# against next-app/. Per-file rules (1-3) iterate changed files; global rules (4-6, 18, 23)
-# run once. The old FastAPI/Vite rules (client/src localStorage, MSW, pytest, OpenAPI
-# codegen, alembic review, App.tsx routeMap, styles/common) were removed with that stack.
+# against next-app/. Per-file rules (1-3, 25) iterate changed files; global rules
+# (4-6, 18, 23, 24) run once. The old FastAPI/Vite rules (client/src localStorage, MSW,
+# pytest, OpenAPI codegen, alembic review, App.tsx routeMap, styles/common) were removed
+# with that stack.
 cd "$(git rev-parse --show-toplevel 2>/dev/null || echo ".")" || exit 0
 
 # Collect all files changed (staged + unstaged + untracked).
@@ -73,7 +74,22 @@ emit_rule_fired() {
   fi
 }
 
-# ── Per-file rules (1-3) ───────────────────────────────────────────────────
+# Rule 25 helper (E351): is $1's FIRST non-blank line a genuine top-level
+# `"use server"` directive (vs. a file that merely mentions the string in a
+# comment, e.g. lib/usage.ts, lib/sales/queries.ts)? Strips a leading UTF-8
+# BOM defensively; tolerates an optional trailing semicolon.
+RULE_25_AWK="${USE_SERVER_GUARD_AWK:-scripts/hooks/lib/use-server-guard-scan.awk}"
+is_real_use_server_file() {
+  local first
+  first=$(grep -m1 -v '^[[:space:]]*$' "$1" 2>/dev/null \
+    | sed -e 's/^\xEF\xBB\xBF//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+  case "$first" in
+    '"use server"'|"'use server'"|'"use server";'|"'use server';") return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# ── Per-file rules (1-3, 25) ─────────────────────────────────────────────
 while IFS= read -r FILE; do
   [ -f "$FILE" ] || continue
 
@@ -132,6 +148,32 @@ while IFS= read -r FILE; do
     if [ -n "$MATCH" ]; then
       LARGE_WARNINGS="${LARGE_WARNINGS}\n⚠️  Rule 3: raw <table> in $FILE:\n$MATCH\n   Consider the reusable <DataTable> (components/data-table-generic.tsx) for record lists — it ships filter + pagination + page-size.\n"
       emit_rule_fired 3 warn
+    fi
+  fi
+
+  # Rule 25: every export in a `"use server"` file must hit a known guard (E351).
+  # Root cause behind two real incidents (E346, E350): an internal-use function
+  # living in a `"use server"` file, where every export is a public POST
+  # endpoint and reachability is not decided by author intent. Unlike Rule 2
+  # (file-scoped, only checked when the file also does db.insert/update/delete),
+  # this is a PER-EXPORT check that fires on every export regardless of whether
+  # it mutates — E350's `listSalesPages` was a plain SELECT, outside Rule 2's
+  # scope entirely. See scripts/hooks/lib/use-server-guard-scan.awk for the
+  # exact heuristic (grep-level, not a real parser — narrow by design).
+  #
+  # Exemption: the same file-level `// stop-verifier:public-action` marker
+  # Rule 2 already recognizes (reused, not a second escape hatch).
+  if echo "$FILE" | grep -qE "\.ts$" \
+     && ! echo "$FILE" | grep -qE "\.(test|spec)\.ts$" \
+     && is_real_use_server_file "$FILE" \
+     && [ -f "$RULE_25_AWK" ]; then
+    RULE_25_HITS=$(awk -f "$RULE_25_AWK" "$FILE" 2>/dev/null)
+    if [ -n "$RULE_25_HITS" ]; then
+      while IFS='|' read -r R25_LINE R25_NAME; do
+        [ -z "$R25_NAME" ] && continue
+        VIOLATIONS="${VIOLATIONS}\n❌ Rule 25: $FILE:$R25_LINE — export \`$R25_NAME\` in a \"use server\" file has no reachable guard.\n   Every export in a \"use server\" file is a public POST endpoint; a guard nested behind a conditional (e.g. an optional param) is not a guard. Fix with ONE of:\n     1. Call a guard as the first unconditional step — requireAuth()/requireEditor()/requireAdmin()/requireRole()/requireFlag() (lib/permissions.ts), or build it with defineAction() (lib/define-action.ts).\n     2. Mark it explicitly public — add '// stop-verifier:public-action' (genuine pre-auth endpoints only, e.g. login/password-reset).\n     3. Move it to lib/ as an internal (non-\"use server\") function, callable only from an already-authorized Server Component or Route Handler.\n"
+        emit_rule_fired 25 block
+      done <<< "$RULE_25_HITS"
     fi
   fi
 

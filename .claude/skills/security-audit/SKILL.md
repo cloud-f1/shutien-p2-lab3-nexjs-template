@@ -19,9 +19,35 @@ item as N/A rather than inventing one.
 ## 1. Server Actions are PUBLIC POST endpoints — Block
 
 Every `"use server"` function is reachable as a POST regardless of which UI element calls it.
-**Hiding a button client-side is not a control.** Stop-verifier's Rule 2
-(`scripts/hooks/stop-verifier.sh`) already machine-checks this, but a human/agent review still
-needs to reason about *which* guard and *whether it's the right tier*:
+**Hiding a button client-side is not a control.** Two audit rounds found the SAME root-cause bug
+twice with this exact shape — an internal-use function living in a `"use server"` file, where
+every export is public and reachability is not decided by author intent: E346's `recordUsage`
+(an optional `userId` param bypassed the guard) and E350's `listSalesPages` (no guard at all, a
+plain SELECT). Both survived until a human audit found them, which is why this checklist item is
+now machine-checked TWICE, at two different granularities:
+
+- **Rule 2** (`scripts/hooks/stop-verifier.sh`) — file-scoped: fires only on a file that also
+  calls `db.insert/update/delete(`.
+- **Rule 25** (E351, same script, delegates to `scripts/hooks/lib/use-server-guard-scan.awk`) —
+  PER-EXPORT, repo-wide (no directory restriction — it applies wherever a genuine `"use server"`
+  directive lives, e.g. `next-app/registry/*/actions/*.ts` too, not just `next-app/actions/`):
+  fires on every export regardless of whether it mutates (this is what catches E350's shape), and
+  specifically checks that the guard is REACHABLE — not merely present in the file's text — by
+  refusing to count a guard call nested behind an `if`/`else` branch, **including the same check
+  written on a single line** (`if (cond) requireAuth()` gates exactly like the multi-line form —
+  this is what catches E346's shape: `requireAuth()` was textually there, just gated behind an
+  `if (!ownerId)` an optional caller-supplied param could skip).
+
+Rule 25 is a grep-level heuristic, not a real parser, and says so plainly (see the awk file's own
+header) rather than claiming more than it delivers: it does **not** track ternary guards
+(`cond ? requireAuth() : null`), `&&`/`||` short-circuit guards, `switch`/`case` branches, or a
+guard reachable only through a *conditionally*-called local helper (it verifies the callee's own
+body, not whether/how the caller reaches it) — all four currently PASS un-caught, and each has a
+`[KNOWN BLIND SPOT]`-labeled test in `test-rule-25-use-server-guard.sh` asserting that on purpose.
+A false negative there is accepted; a human/agent review is still the backstop for those shapes.
+
+Both rules together still don't replace judgement — a human/agent review needs to reason about
+*which* guard and *whether it's the right tier*:
 
 - First line of every mutating action must be a guard from `lib/permissions.ts`
   (`requireAuth` / `requireAdmin` / `requireEditor`) **or** the action must be built with
@@ -53,7 +79,11 @@ call it, and `defineAction()`'s guard step calls it too. **Flag any code path th
 `session.user.role` directly** for an authorization decision instead of calling `getLiveRole`/
 `requireAdmin`/`requireEditor` — that's a live privilege-escalation-after-demotion bug, not style.
 `lib/is-admin.ts`'s pure `isAdmin(role)`/`canEdit(role)` are UI-only helpers (zero imports, client-safe)
-— using them to *gate a mutation* instead of merely hiding a button is the same class of bug.
+— using them to *gate a mutation* instead of merely hiding a button is the same class of bug. The
+ONE exception: `isAdmin(await getLiveRole(userId))` (real shape: `actions/admin-revenue.ts`
+`getMemberDetail`) is a legitimate inline guard, because the argument is a freshly re-read live
+role, not the stale JWT snapshot — Rule 25 (E351) recognizes exactly this qualified form and
+nothing looser (a bare `isAdmin(session.user.role)` still does NOT count as a guard).
 
 ## 3. IDOR — row-level ownership on update/delete — Block
 

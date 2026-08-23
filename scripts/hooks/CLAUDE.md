@@ -98,11 +98,11 @@ PostToolUse pipeline. Sub-hook stdout is forwarded through as-is (it becomes
 
 ## Stop Verifier Rules (`stop-verifier.sh`)
 
-9 rules total (Next.js stack, post-migration — E282, +Rule 24 E345). The old 23-rule
-FastAPI/Vite set (`client/src` localStorage, MSW handlers, pytest mock depth, OpenAPI
+10 rules total (Next.js stack, post-migration — E282, +Rule 24 E345, +Rule 25 E351). The old
+23-rule FastAPI/Vite set (`client/src` localStorage, MSW handlers, pytest mock depth, OpenAPI
 codegen drift, alembic migration review, `App.tsx` routeMap, `styles/common`
 design-system) was removed with that stack. The rules now enforce the CLAUDE.md "NEVER
-DEVIATE" invariants against `next-app/`. Per-file rules (1-3) iterate changed files;
+DEVIATE" invariants against `next-app/`. Per-file rules (1-3, 25) iterate changed files;
 global rules (4-6, 18, 23, 24) run once.
 
 | # | Rule | Scope | Blocking |
@@ -116,6 +116,7 @@ global rules (4-6, 18, 23, 24) run once.
 | 18 | QA Gate Enforcement — on an epic branch (`is_epic_branch`), refuse Stop when `epic-progress.md` shows `impl=✅` but `qa≠✅` (mechanizes the batch.md Mandatory Pipeline Order contract). UNCHANGED. | Global | exit 2 |
 | 23 | Verification Discipline (E188) — block completion-verb commits (`feat:`, `fix:`, `refactor:`, `perf:`, `test:`, `style:`) when no `verification_check` event with `exit=0` exists in `.claude/audit.jsonl` within the last 10 min. Whitelisted prefixes bypass: `wip:`, `chore(state):`, `docs:`, `chore:`, `chore(memory):`, `chore(roadmap):`, `build:`, `ci:`. Pilot mode: gated behind `STOP_RULE_23_ENABLED=1` env var. Emit: `scripts/hooks/audit-emit-verification.sh <check> 0`. Skill: `.claude/skills/verification-discipline/SKILL.md`. Portable N-minutes-ago cutoff (E-batch1 fix): BSD `date -v` → GNU `date -d` → `python3` last resort → if all fail, emit a degraded-window warning and fall back to unbounded lookback (previously: silent python3-only, accept-any-history on failure). | Global | exit 2 |
 | 24 | Phase-Completion Gate-Ledger Guard (E345) — refuse to let `docs/context/epic-progress.md`'s Phase Status table transition a phase to `✅ Complete` while `scripts/gate-ledger.sh --phase N --check-only` reports an unreconciled `skipped` gate result for that phase (see that script + `scripts/hooks/audit-emit-gate.sh` below). Checks the row's absolute current content against its pre-session content (dirty vs. `HEAD`, or `HEAD` vs. `HEAD~1` when the transition already landed in a commit before Stop fired) so it fires exactly once, on the genuine transition — not on every future unrelated Stop for an already-complete phase. Reconciliation is existence-only and durable, NOT a timestamp comparison (a second-resolution race was found and fixed here — see `gate-ledger.sh`'s header): the ONLY reconciliation path is a HUMAN running `scripts/gate-ledger.sh --phase N --accept-skips "reason"` (never from cron/loop/batch-auto/agent-initiative — same hard rule as `/athena:approve`), and once granted it covers that phase's skips permanently — a later `gate_result=pass` elsewhere does NOT clear a recorded skip. A phase with zero recorded `gate_result` events is NOT unreconciled (nothing to reconcile) — see `docs/epics/e345-gate-ledger.md`. | Global | exit 2 |
+| 25 | `"use server"` Export Guard (E351) — every export in a genuine `"use server"` file (first non-blank line is a standalone `"use server"` directive, not merely a file that mentions the string in a comment — the scan has NO directory restriction, so it applies to any such file repo-wide, not just `next-app/actions/`) must hit a known guard, checked PER EXPORT (not per file — Rule 2 is file-scoped and only checks files that also call `db.insert/update/delete`, which missed both root-cause incidents). Delegates the actual scan to `scripts/hooks/lib/use-server-guard-scan.awk`. Recognized guards: `requireAuth`/`requireEditor`/`requireAdmin`/`requireRole`/`requireFlag`/`guard`; `isAdmin(...)`/`canEdit(...)` applied DIRECTLY to a `getLiveRole(...)` call (narrower than a bare `isAdmin(`/`canEdit(` match on purpose, so it isn't fooled by the stale-JWT-role shape security-audit SKILL.md §2 warns about); a manual `auth()` + null-check-and-bail on the same identifier (functionally identical to `requireAuth()` — real shape: `next-app/registry/billing-stripe/actions/billing.ts` `createCheckoutSession`); a locally-declared `defineAction(...)` const or a call to one; a call to a local helper function that itself independently guards (e.g. `ensureAdmin()` in `actions/webhooks.ts`). A guard must be reachable WITHOUT passing through an `if`/`else` branch — including the SINGLE-LINE forms (`if (cond) requireAuth()` / `if (cond) { requireAuth() }`), gated exactly like the multi-line form (try/catch/finally are not conditional — a guard as the first statement inside `try { }` still always runs). Recognized export shapes: `export async function NAME(...)` and block-bodied arrow `export const NAME = (async )?(...) => { ... }`. Exempt via the SAME file-level `// stop-verifier:public-action` marker Rule 2 already recognizes (no second escape hatch). **Documented blind spots** (accepted false negatives, not chased — see the awk file's header): ternary-gated guards, `&&`/`\|\|` short-circuit-gated guards, `switch`/`case` branches (not tracked as conditional at all), and a guard reachable only through a CONDITIONALLY-called local helper (the rule verifies the callee's own body, not whether/how the caller reaches it) — each has a `[KNOWN BLIND SPOT]`-labeled regression test asserting current (pass-through) behavior so it isn't "fixed" by accident. Regression-proven against both root-cause incidents' pre-fix code (E346 `recordUsage` — guard textually present but gated behind an optional-param `if`; E350 `listSalesPages` — no guard at all, a plain SELECT outside Rule 2's mutating-action scope) AND against a real false positive QA found in the first cut (the registry `createCheckoutSession` manual-`auth()` shape) and a real detection gap QA found (the single-line-`if` forms). Zero hits on current `main`'s 14 real `"use server"` files repo-wide (13 under `next-app/actions/` + 1 under `next-app/registry/billing-stripe/actions/`; `actions/auth.ts` needed the marker added — every export there is a genuine pre-auth flow: OAuth kickoff, register, login, email verification, password reset, 2FA challenge). | Per file | exit 2 |
 
 > **E204 — epic-branch detection + fail-open canary.** Rule 18 (the only remaining
 > epic-safety gate — old Rules 19/20 were removed with the FastAPI/Vite stack) uses the
@@ -127,13 +128,15 @@ global rules (4-6, 18, 23, 24) run once.
 > asserts the verifier still BLOCKS (exit 2) on every epic-branch spelling.
 > _A gate that can't prove it still blocks is indistinguishable from a disabled one._
 >
-> **Test injection (E282):** the per-file rules (1/2/4) honour `CHANGED_OVERRIDE` (a
+> **Test injection (E282):** the per-file rules (1/2/4/25) honour `CHANGED_OVERRIDE` (a
 > newline-separated path list) so fixtures can drive them deterministically. New fixture
 > `scripts/hooks/tests/test-rule-nextjs-invariants.sh` covers Rules 1/2/4; Rule 18 has
 > `test-rule-18-qa-gate.sh` + the canary; Rule 23 has `test-rule-23.sh`; Rule 24 has
 > `test-rule-24-gate-ledger-guard.sh` (honours `EPIC_PROGRESS_PATH` + `GATE_LEDGER_SH`
-> env overrides, real temp git repos — same pattern as Rule 18's own fixture). The
-> obsolete `test-rule-21-22-design-system.sh` was deleted.
+> env overrides, real temp git repos — same pattern as Rule 18's own fixture); Rule 25 has
+> `test-rule-25-use-server-guard.sh` (real `next-app/actions/` fixture path, same pattern as
+> the E282 suite — honours `USE_SERVER_GUARD_AWK` to point at a fixture scanner if ever
+> needed). The obsolete `test-rule-21-22-design-system.sh` was deleted.
 
 ## Exit Validation Rules
 
