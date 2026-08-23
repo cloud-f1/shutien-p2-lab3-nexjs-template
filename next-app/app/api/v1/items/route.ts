@@ -137,12 +137,14 @@ export async function POST(request: NextRequest) {
     })
 
   // E301 metering demo (fork reference): record one "api_request" unit against
-  // the key owner. This route is API-key authed (no session), so the owner is
-  // passed explicitly. Metering is best-effort — wrapped so neither a failed
-  // dynamic import nor a write error can ever affect the API response.
+  // the key owner. This route is API-key authed (no session), so it calls the
+  // internal lib/usage.ts write path directly with the key-resolved owner id
+  // (E346 — the public actions/usage.ts Server Action no longer accepts a
+  // caller-supplied userId). Metering is best-effort — wrapped so neither a
+  // failed dynamic import nor a write error can ever affect the API response.
   try {
-    const { recordUsage } = await import("@/actions/usage")
-    await recordUsage("api_request", 1, auth.userId)
+    const { recordUsageFor } = await import("@/lib/usage")
+    await recordUsageFor(auth.userId, "api_request", 1)
   } catch {
     // swallow — usage metering must never break the request path
   }

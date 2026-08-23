@@ -1,67 +1,41 @@
 "use server"
 /**
- * Usage metering Server Action — E301.
+ * Usage metering Server Action — E301, narrowed by E346.
  *
- * `recordUsage` is the single write path for the `usage_events` table. It is the
- * metering FOUNDATION, not a pricing model: a fork team calls it from whatever
- * events matter for their product (an API hit, a token spend, a seat added) and
- * the billing panel reads the aggregate back via lib/db/queries/usage.ts.
+ * `recordUsage` is the session-authenticated public write path for the
+ * `usage_events` table. It is the metering FOUNDATION, not a pricing model: a
+ * fork team calls it from whatever events matter for their product (an API
+ * hit, a token spend, a seat added) and the billing panel reads the aggregate
+ * back via lib/db/queries/usage.ts.
  *
- * From a Server Component / form action, the caller is the signed-in user — call
- * `recordUsage("api_request")`. From a non-session context (e.g. an API-key
- * authed Route Handler) the owning user is already resolved, so pass it
- * explicitly — `recordUsage("api_request", 1, ownerUserId)`.
+ * SECURITY (E346): this action does NOT accept a `userId` parameter. Earlier
+ * it did — as an "optional explicit owner for non-session contexts" — but
+ * every exported function in a `"use server"` file is a public POST endpoint
+ * reachable by any client, and passing `userId` made `requireAuth()` a no-op,
+ * letting an unauthenticated caller forge usage rows for any user. The fix:
+ * this action ALWAYS resolves the owner from the session, and the
+ * non-session (Route Handler) case is served by the separate internal
+ * `recordUsageFor` in `lib/usage.ts`, which trusts its caller to have already
+ * authorized `userId` through its own mechanism (e.g. an API key). Never
+ * re-widen this signature to accept a caller-supplied owner id again.
  */
 
-import { db } from "@/lib/db"
 import { requireAuth } from "@/lib/permissions"
-import { usageEventsTable } from "@/lib/schema"
+import { recordUsageFor, type RecordUsageResult } from "@/lib/usage"
 
-export interface RecordUsageResult {
-  success: boolean
-  error?: string
-}
+export type { RecordUsageResult }
 
 /**
- * Append one usage event.
+ * Append one usage event for the signed-in user.
  *
  * @param metric - The metered event name, e.g. "api_request".
  * @param delta - Units this event counts for (default 1).
- * @param userId - Optional explicit owner for non-session contexts (Route
- *   Handlers). Omit from a session context to attribute to the signed-in user.
  */
-export async function recordUsage(
-  metric: string,
-  delta = 1,
-  userId?: string,
-): Promise<RecordUsageResult> {
-  // Resolve the owning user: explicit (Route Handler) or the session (UI).
-  let ownerId = userId
-  if (!ownerId) {
-    const session = await requireAuth()
-    if (!session?.user?.id) {
-      return { success: false, error: "請先登入。" }
-    }
-    ownerId = session.user.id
+export async function recordUsage(metric: string, delta = 1): Promise<RecordUsageResult> {
+  const session = await requireAuth()
+  if (!session?.user?.id) {
+    return { success: false, error: "請先登入。" }
   }
 
-  const trimmedMetric = metric?.trim()
-  if (!trimmedMetric) {
-    return { success: false, error: "metric is required" }
-  }
-  if (!Number.isFinite(delta)) {
-    return { success: false, error: "delta must be a finite number" }
-  }
-
-  try {
-    await db.insert(usageEventsTable).values({
-      userId: ownerId,
-      metric: trimmedMetric,
-      delta,
-    })
-    return { success: true }
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error"
-    return { success: false, error: message }
-  }
+  return recordUsageFor(session.user.id, metric, delta)
 }
