@@ -112,3 +112,20 @@
 **Files:** next-app/actions/sales-pages.ts,next-app/app/(dashboard)/dashboard/admin/sales-pages/page.tsx,next-app/lib/sales/queries.ts,next-app/test/int/sales-pages.int.test.ts
 **Root Cause:** _(pending — enrich during /athena:save)_
 **Test Added:** _(pending)_
+
+## 2026-08-24T22:57:32+08:00 — b569b9a
+**Message:** fix(2FA): otplib epoch 單位錯誤導致兩步驟驗證完全失效
+**Files:** next-app/e2e/two-factor.spec.ts,next-app/lib/totp-utils.test.ts,next-app/lib/totp-utils.ts
+**Root Cause:** `verifyToken()` 把毫秒傳給 otplib v13 的 `epoch` 選項，但該選項單位是「秒」
+——伺服器比對 step `floor(ms/30)` 而非 `floor(sec/30)`，真實驗證器 App 的碼永遠不符，2FA
+在正式環境完全失效（連啟用都過不了）。skew 容忍量 `±PERIOD*1000` 也變成 ±8.3 小時。
+**[GENERALIZABLE] 為什麼沒被抓到:** 單元測試的 `tokenAt()` helper 用了同一個錯誤單位，
+與產品程式碼自洽 → 22 個斷言全綠而功能是死的（「綠燈但壞掉」）。**當測試 helper 重新實作
+產品程式碼的計算方式時，它驗證的是「兩邊一致」而非「行為正確」。** 對協定型程式碼
+（TOTP/HMAC/簽章）至少要有一個斷言用外部/標準來源產生期望值，不要自己算。
+唯一算對的是 e2e（不帶 epoch，用函式庫自己的時鐘），但它自 Phase 72 起無人跑得動——
+**跑不動的測試等於沒有測試**，紅燈被擱置 13 個 phase。
+**Test Added:** `lib/totp-utils.test.ts` — 「accepts a token from a standards-correct client」
+用不帶 epoch 的 `generateSync`（＝真實驗證器算法）對 `verifyToken` 的預設時鐘，兩邊單位
+一致才會過；修正前紅、修正後綠。另修好 3 個被此 bug 遮住、從未執行過的 e2e 缺陷
+（teardown 順序倒置、`afterEach` 打斷 `describe.serial` 鏈、3 處過寬 locator）。

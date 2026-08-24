@@ -27,6 +27,15 @@ function liveTotpCode(secret: string): string {
   return generateSync({ secret, strategy: "totp", period: 30 })
 }
 
+/**
+ * The form's OWN error alert. Next.js renders a persistent
+ * `#__next-route-announcer__` with `role="alert"` on every page, so a bare
+ * getByRole("alert") resolves to it (or to both) and trips strict mode.
+ */
+function formAlert(page: import("@playwright/test").Page) {
+  return page.locator('[role="alert"]:not(#__next-route-announcer__)')
+}
+
 /** Log in with email + password (does NOT wait for dashboard — caller decides). */
 async function fillLoginForm(
   page: import("@playwright/test").Page,
@@ -54,32 +63,43 @@ let capturedBackupCodes: string[] = []
  */
 test.describe.serial("Two-Factor Authentication (TOTP)", () => {
   /**
-   * After each test that may leave 2FA enabled, disable it so subsequent runs
-   * start clean. We do this by navigating to settings and using the disable flow.
-   * Only runs if 2FA is actually on (skip silently otherwise).
+   * Disable 2FA ONCE, after the whole serial chain, so the seed user is left clean.
+   *
+   * This deliberately is NOT an afterEach: every test from #2 onward depends on the
+   * state test #1 leaves behind (2FA enabled + capturedSecret). Tearing down after
+   * each test cleared exactly that state and broke the chain at test #2. Per-run
+   * cleanliness is guaranteed by `pnpm db:e2e-setup` (drop → create → migrate →
+   * seed) anyway; this teardown is just politeness for a re-run against a live DB.
    */
-  test.afterEach(async ({ page }) => {
-    // Check current state and disable if 2FA appears to be on.
-    // We detect this by trying to navigate to /dashboard/settings and seeing
-    // whether the "停用 2FA" button is present.
+  test.afterAll(async ({ browser }) => {
+    const page = await browser.newPage()
     try {
-      // Only run cleanup if the page is on a useful URL
-      const url = page.url()
-      if (!url.includes("localhost")) return
+      // Need a valid TOTP code to disable — without the secret we cannot clean up.
+      if (!capturedSecret) return
+
+      await page.goto("/login")
+      await page.fill('input[name="email"]', SEED_EDITOR.email)
+      await page.fill('input[name="password"]', SEED_EDITOR.password)
+      await page.click('button[type="submit"]')
+      // 2FA is on, so password login lands on the challenge — clear it with a code.
+      await page.waitForURL(/\/login\/2fa/, { timeout: 10000 })
+      await page.fill('input[id="token"]', liveTotpCode(capturedSecret))
+      await page.getByRole("button", { name: "驗證", exact: true }).click()
+      await page.waitForURL(/\/dashboard/, { timeout: 10000 })
 
       await page.goto("/dashboard/settings", { timeout: 5000 })
-      const disableBtn = page.getByRole("button", { name: "停用 2FA" })
-      const isVisible = await disableBtn.isVisible().catch(() => false)
-      if (!isVisible) return
 
-      // Navigate to security tab if not already there
+      // "停用 2FA" lives INSIDE the 安全性 tab panel, so the tab must be opened
+      // BEFORE probing for the button — checking first always saw it hidden and
+      // returned early, leaving 2FA enabled on the seed user and breaking the
+      // next run's password login (it redirects to /login/2fa).
       await page.getByRole("tab", { name: "安全性" }).click()
       const disableBtnSecurity = page.getByRole("button", { name: "停用 2FA" })
-      const isSecurityVisible = await disableBtnSecurity.isVisible().catch(() => false)
+      const isSecurityVisible = await disableBtnSecurity
+        .isVisible()
+        .catch(() => false)
       if (!isSecurityVisible) return
 
-      // Need a valid TOTP code to disable — use captured secret if we have it
-      if (!capturedSecret) return
       await disableBtnSecurity.click()
 
       // ConfirmDialog input for the TOTP code
@@ -94,7 +114,9 @@ test.describe.serial("Two-Factor Authentication (TOTP)", () => {
       capturedSecret = ""
       capturedBackupCodes = []
     } catch {
-      // Best-effort cleanup — don't fail the test on teardown errors
+      // Best-effort cleanup — don't fail the run on teardown errors
+    } finally {
+      await page.close()
     }
   })
 
@@ -135,7 +157,9 @@ test.describe.serial("Two-Factor Authentication (TOTP)", () => {
 
     // Backup codes dialog appears
     const backupDialog = page.getByRole("dialog")
-    await expect(backupDialog.getByText("備用碼")).toBeVisible({ timeout: 8000 })
+    await expect(backupDialog.getByRole("heading", { name: "備用碼" })).toBeVisible({
+      timeout: 8000,
+    })
 
     // Capture backup codes from the grid
     const codeSpans = backupDialog.locator(".font-mono span")
@@ -165,7 +189,9 @@ test.describe.serial("Two-Factor Authentication (TOTP)", () => {
 
     // Should redirect to the 2FA challenge page, NOT dashboard
     await expect(page).toHaveURL(/\/login\/2fa/, { timeout: 10000 })
-    await expect(page.getByText("兩步驟驗證")).toBeVisible()
+    // exact: true — Next.js's route announcer also renders "兩步驟驗證 · <app name>",
+    // so a substring match resolves to 2 elements and trips strict mode.
+    await expect(page.getByText("兩步驟驗證", { exact: true })).toBeVisible()
   })
 
   // ── 3. Valid TOTP code → dashboard ────────────────────────────────────────
@@ -182,7 +208,7 @@ test.describe.serial("Two-Factor Authentication (TOTP)", () => {
     await page.fill('input[id="token"]', token)
 
     // Submit by clicking the button (not Enter, to match the form's onSubmit handler)
-    await page.getByRole("button", { name: "驗證" }).click()
+    await page.getByRole("button", { name: "驗證", exact: true }).click()
 
     // Should land on dashboard
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 })
@@ -198,12 +224,12 @@ test.describe.serial("Two-Factor Authentication (TOTP)", () => {
 
     // Enter a clearly wrong code
     await page.fill('input[id="token"]', "000000")
-    await page.getByRole("button", { name: "驗證" }).click()
+    await page.getByRole("button", { name: "驗證", exact: true }).click()
 
     // Should stay on /login/2fa with an error
     await expect(page).toHaveURL(/\/login\/2fa/)
-    await expect(page.getByRole("alert")).toBeVisible()
-    await expect(page.getByRole("alert")).toContainText("驗證碼錯誤")
+    await expect(formAlert(page)).toBeVisible()
+    await expect(formAlert(page)).toContainText("驗證碼錯誤")
   })
 
   // ── 5. Backup-code login path (single-use) ────────────────────────────────
@@ -221,7 +247,7 @@ test.describe.serial("Two-Factor Authentication (TOTP)", () => {
     // Use the first backup code
     const backupCode = capturedBackupCodes[0]
     await page.fill('input[id="code"]', backupCode)
-    await page.getByRole("button", { name: "驗證" }).click()
+    await page.getByRole("button", { name: "驗證", exact: true }).click()
 
     // Should land on dashboard
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 })
@@ -237,11 +263,11 @@ test.describe.serial("Two-Factor Authentication (TOTP)", () => {
     await page.getByRole("button", { name: "改用備用碼" }).click()
     const usedCode = capturedBackupCodes[0]
     await page.fill('input[id="code"]', usedCode)
-    await page.getByRole("button", { name: "驗證" }).click()
+    await page.getByRole("button", { name: "驗證", exact: true }).click()
 
     // Should stay on /login/2fa with an error
     await expect(page).toHaveURL(/\/login\/2fa/)
-    await expect(page.getByRole("alert")).toBeVisible()
-    await expect(page.getByRole("alert")).toContainText("備用碼無效或已使用")
+    await expect(formAlert(page)).toBeVisible()
+    await expect(formAlert(page)).toContainText("備用碼無效或已使用")
   })
 })

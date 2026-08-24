@@ -17,8 +17,9 @@ import {
 const PERIOD = 30
 const now = Date.UTC(2026, 5, 18, 12, 0, 0) // fixed clock for determinism
 
+/** Token for a given wall-clock ms — mirrors verifyToken's ms→seconds conversion. */
 function tokenAt(secret: string, atMs: number): string {
-  return generateSync({ secret, strategy: "totp", period: PERIOD, epoch: atMs })
+  return generateSync({ secret, strategy: "totp", period: PERIOD, epoch: Math.floor(atMs / 1000) })
 }
 
 describe("totp-utils", () => {
@@ -53,6 +54,21 @@ describe("totp-utils", () => {
   })
 
   describe("verifyToken", () => {
+    /**
+     * REGRESSION (2FA was dead in production): otplib v13's `epoch` option is in
+     * SECONDS, but verifyToken passed milliseconds — so the server compared against
+     * a token for `floor(ms / 30)` instead of `floor(sec / 30)`. Every other test
+     * here used the same wrong unit via tokenAt(), so they all stayed green while a
+     * real authenticator app could never log in. This test deliberately uses NO
+     * epoch (otplib's own clock = what a real TOTP client does) against
+     * verifyToken's own default clock, so it can only pass if both agree on units.
+     */
+    it("accepts a token from a standards-correct client (real authenticator app)", () => {
+      const secret = generateSecret()
+      const token = generateSync({ secret, strategy: "totp", period: PERIOD })
+      expect(verifyToken(secret, token)).toBe(true)
+    })
+
     it("accepts a freshly generated token (gen → verify cycle)", () => {
       const secret = generateSecret()
       const token = tokenAt(secret, now)

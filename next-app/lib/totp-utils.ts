@@ -45,12 +45,18 @@ export async function generateQrDataUri(secret: string, accountName: string): Pr
  * step either side (±30s) to tolerate clock skew. We compute the expected token
  * at each offset rather than relying on otplib's tolerance options (their
  * behaviour differs across v13 builds), keeping this deterministic + testable.
+ *
+ * `atMs` is milliseconds (JS convention) but otplib v13's `epoch` option is in
+ * SECONDS — converting is not optional. Passing ms straight through makes the
+ * server expect the token for step `floor(ms / 30)` instead of `floor(sec / 30)`,
+ * which no real authenticator app will ever produce, silently killing 2FA.
  */
 export function verifyToken(secret: string, token: string, atMs: number = Date.now()): boolean {
   const cleaned = token.replace(/\s/g, "")
   if (!/^\d{6}$/.test(cleaned)) return false
-  for (const offset of [0, -PERIOD * 1000, PERIOD * 1000]) {
-    const expected = generateSync({ secret, strategy: STRATEGY, period: PERIOD, epoch: atMs + offset })
+  const epochSec = Math.floor(atMs / 1000)
+  for (const offset of [0, -PERIOD, PERIOD]) {
+    const expected = generateSync({ secret, strategy: STRATEGY, period: PERIOD, epoch: epochSec + offset })
     if (expected === cleaned) return true
   }
   return false
