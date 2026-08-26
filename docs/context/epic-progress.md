@@ -82,6 +82,7 @@
 | Phase 83 | E344, E345 | ✅ Complete 2026-08-22 — **協調圖缺口修補**。E344 整合節點(#120) · E345 關卡帳本(#121)。整合閘門 PASS（含 e2e）：typecheck 0 · lint 0 errors · unit 794/794 79 files 87.03% · int 30/30 · e2e **45 passed / 1 failed**（two-factor TOTP，Phase 72 #51 起既有）· make hook-test 21 檔全綠（原 12）。**QA 退回 5 次**：E344 三項（`--gate` 死選項 · `epics="$EPICS"` 陣列裸展開只記第一個 epic —— 而 E345 的帳本正建在該事件流上 · 歸因重跑未重佈 e2e DB，波次含 migration 時會指錯人）· E345 兩輪（承認檔被 gitignore —— worktree 各有 .claude/ 副本使承認跨情境不可見，且會靜默把已記錄的承認從受版控的 render 產物抹掉；batch.md Step 4c 與 pre-merge-check.sh 未接線 —— 後者是人最常跑的關卡）。**最後一輪抓到不穩定測試（17%）底下的語意漏洞**：承認的結清用秒級時間戳比大小，語意變成「承認只結清它之前的 skip」，於是同一個 skip 被重新觀測就讓人工承認自失效 —— 已改為純存在性檢查（比照 /athena:approve 的持久性）。**不做**：agent 改名 · 另造 graph DSL · 結構化 shared state（1639 行 markdown 轉 render 產物，改動面大，另開 phase）。 |
 | Phase 84 | E346, E347, E348, E349 | ✅ Complete 2026-08-22 — **稽核發現修補**（/athena:audit）。E346(#127) · E347(#125) · E348(#126) · E349(#128)。整合閘門 PASS：typecheck 0 · lint 0 errors · unit 812/812 81 files 87.03% · **int 93/93 15 files**（原 31/8）· e2e 45/46（TOTP 為 Phase 72 #51 起既有）。**E346 🔴 安全**：actions/usage.ts 是 "use server"，recordUsage 傳入 userId 時完全不呼叫 requireAuth() —— 任何未驗證呼叫端可為任意使用者偽造 usage_events（驅動用量計費與配額）。QA 獨立重現紅綠：漏洞版本回傳 {success:true} 且**真的寫入一列**。修法為內部函式（lib/usage.ts）與公開 action 分離。BREAKING：簽章移除 userId。**E347**：ECPay return/period 兩支結算 handler 補 15 條測試 —— 兩支皆**無真實缺陷**。**E348**：epic 規格前提是錯的 —— 兩份驗證規則其實不一致（schema 驗未 trim 值、手刻版先 trim），直接對調會引入「接受純空白標題」的行為改變。QA 以真實 Zod 對 10 個邊界實測零分歧。**E349**：62 條 wiring 測試（int 31→93）。五次故障注入（兩人各挑不同目標）全紅。**掃描結論**：7 個檔案 26 個匯出逐一走過（含 webhooks 9 個 mutation 的 WHERE），除已知的 listSalesPages 外無第三個守衛缺陷。**未處理**：E350 listSalesPages 無守衛（草稿銷售頁洩漏，已寫規格未實作）· E351 use-server 守衛規則 · E352 create 路徑對稱。 |
 | Phase 85 | E350, E351, E352 | ✅ Complete 2026-08-24 — **稽核追加：安全收口 + 系統性守衛**。E350(#131) · E352(#133) · E351(#134)。**整合閘門 PASS：typecheck 0 · lint 0 errors · unit 823/823 80 files · int 93/93 15 files · e2e 51/51 — 首次完整通過。** **E350 🔴 安全**：`listSalesPages()` 住在 `"use server"` 檔案卻完全沒有守衛，把含 `status` 與完整 `content` 的所有銷售頁（草稿／未發布）洩漏給任何匿名呼叫端。修法為移出公開介面至 `lib/sales/queries.ts`。QA 紅綠重現：回退後斷言差異中出現真實的草稿列。與 E346 同根因的第二個變體（可選參數繞過 vs. 根本沒有守衛），根因都是**內部用途函式住在 `"use server"` 檔案裡**。**E351**：把該根因固化成 stop-verifier Rule 25（`"use server"` 每個匯出須命中 `requireAuth`/`requireEditor`/`requireAdmin`／`defineAction({allow|authorize})`／明確 `// stop-verifier:public-action` 標記），以 E346/E350 修正前的程式碼作回歸 fixture 證明規則當初抓得到。實作中另發現三件事：`registry/billing-stripe/actions/billing.ts:29` 的手刻 `auth()` 檢查安全但不被辨識（會變成下次編輯時的假陽性時炸彈，已納入辨識）；單行 `if (cond) requireAuth()` 可繞過規則（正是 E346 的形狀，已修）；awk 標頭原本誇大保證（「每條路徑都可達」），已改為 4 個具名盲點並附 `[KNOWN BLIND SPOT]` 測試。共 20 條測試。**E352**：`createItem()` 的手刻 `validateItemTitle()` 與 `createItemSchema` 收斂到共用的 `itemTitleSchema`，刪除 `lib/items-utils.ts`。**本階段另修的既有阻塞（PR #135，不屬三個 epic）**：`verifyToken()` 把毫秒傳給 otplib v13 的 `epoch`（該選項單位是**秒**）—— 伺服器比對 `floor(ms/30)` 而非 `floor(sec/30)` 的碼，**真實驗證器 App 的碼永遠不符，2FA 在正式環境完全失效**。單元測試的 `tokenAt()` helper 犯同一個錯誤而自洽，22 個斷言全綠掩護著死掉的功能；唯一算對的 e2e 自 Phase 72 起無人跑得動。連帶修好 3 個被此 bug 遮住、從未執行過的 e2e 缺陷（teardown 順序倒置 · `afterEach` 打斷 `describe.serial` 鏈 · 3 處過寬 locator）。 |
+| Phase 86 | E353, E354, E355, E356 | 🟢 APPROVED (2026-08-27, 使用者核准) — **狀態防護 + fork backlog 回收**。**E353**：E196 的 SSOT 鏈（epic-progress → render-index → EPIC_INDEX）與 check-drift 都已存在且正確，但 check-drift **沒接到任何閘門**，實務上沒人跑 —— 本 session 的 PR #136 就這樣帶著 13 處漂移合併。以 PR #136 當下的檔案重跑已實證 check-drift 擋得住（exit 1）。只補執行力，**不新建狀態系統**。**E354**：`isUniqueViolation` 泛化到 `lib/db-errors.ts` —— 有真實受益者，`actions/sales-pages.ts:66,126` 正在用 `err.message.includes("sales_pages_slug_unique")` 字串比對，正是該模組註解明令禁止的做法（綁死自動產生的約束名 + Postgres 訊息格式）。**E355**（移植 fork E324）：持久登入鎖定。**移植風險已識別** —— 模板有三條密碼路徑（fork 只有一條），只改 `authorize()` 會讓**已啟用 2FA 帳號的密碼暴力破解完全不計數**，因為 2FA 使用者的密碼是在 `loginAction` 驗的。要求兩條路徑都接線且各有測試。**可開關（使用者要求 2026-08-27）**：`ENABLE_LOGIN_LOCKOUT` server-side runtime env（無 NEXT_PUBLIC_ 前綴 → 改完下個 request 生效、免 rebuild），預設開啟；停用時須為完整 no-op（不寫任何 DB）。**非顯而易見的語意**：停用時 `isLocked()` 對既有 `lockedUntil` 也要回 false —— 操作者會關這個旗標多半正因為有人被鎖在外面，若仍尊重既存鎖定就不成其為逃生口。**E356**（移植 fork E327 的通用半邊）：`onBehalf` 代操作旗標 + 登入事件；CSV 匯出半邊不移植（綁死工牌／繁中欄名／模板沒有的 before-after 欄）。必帶 fork 的安全政策：**不為不存在的帳號寫登入失敗事件**，否則稽核表變成未驗證寫入面（帳號列舉／log 灌爆）。Wave 1 = E353 + E354 + E355（並行，檔案互斥）→ Wave 2 = E356（after E355，共用同一批登入接線點）。 |
 
 ## Epic Step Matrix
 
@@ -414,6 +415,10 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E350 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 85 — 🔴 listSalesPages 無守衛：草稿銷售頁洩漏 |
 | E351 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 85 — stop-verifier 規則：use server 匯出必須命中守衛（after E350） |
 | E352 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 85 — create 路徑契約對稱（E348 收口） |
+| E353 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 86 — 🟢 APPROVED (2026-08-27). 把既有 check-drift 接上 pre-merge-check（不新建狀態系統） |
+| E354 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 86 — 🟢 APPROVED (2026-08-27). isUniqueViolation → lib/db-errors.ts + 修掉兩處字串比對 |
+| E355 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 86 — 🟢 APPROVED (2026-08-27). 持久登入鎖定（移植 fork E324；須涵蓋 2FA 密碼路徑） |
+| E356 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 86 — 🟢 APPROVED (2026-08-27). 稽核 onBehalf + 登入事件（移植 fork E327 通用半邊，after E355） |
 
 
 ## Dependency Rules
@@ -755,6 +760,12 @@ E349: E346
 E350: no deps
 E351: E350
 E352: no deps
+
+# Phase 86 — 狀態防護 + fork backlog 回收 — Cycle 40, APPROVED 2026-08-27（使用者核准）
+E353: no deps
+E354: no deps
+E355: no deps
+E356: E355
 ```
 
 ## Phase Parallelism
@@ -826,6 +837,7 @@ Phase 82: E336 + E338 + E340 + E341 + E342 + E343 (WAVE 1 — PARALLEL, 檔案�
 Phase 83: E344 → E345 (SEQUENTIAL — 整合節點執行關卡、帳本記錄關卡，天然的先後關係；且兩者皆需修改 .claude/commands/athena/batch.md，並行只會製造衝突。E344 owns integrate.md + agents/integrator.md + batch.md 的整合節點插入；E345 owns audit-emit-gate.sh + gate-ledger.sh + phase 完成守衛 + verification-discipline skill)
 Phase 84: E346 + E347 + E348 (WAVE 1 — PARALLEL, 檔案互斥: E346 owns lib/usage.ts + actions/usage.ts + api/v1/items/route.ts · E347 owns api/billing/ecpay/{return,period}/route.test.ts · E348 owns lib/validations/items.ts + lib/items-utils.ts + actions/items.ts + lib/openapi/registry.ts) → E349 (WAVE 2 — after E346；它是 E346 那類串接層缺陷的系統性防線，需先確立修法形狀)
 Phase 85: E350 + E352 (WAVE 1 — PARALLEL, 檔案互斥: E350 owns actions/sales-pages.ts + lib/sales/ + admin/sales-pages/page.tsx · E352 owns actions/items.ts + lib/validations/items.ts + lib/items-utils.ts) → E351 (WAVE 2 — after E350，需要 E346 與 E350 的修正前後形狀作為回歸 fixture，證明規則當初抓得到；owns scripts/hooks/stop-verifier.sh + tests + CLAUDE.md 規則表)
+Phase 86: E353 + E354 + E355 (WAVE 1 — PARALLEL, 檔案互斥: E353 owns scripts/pre-merge-check.sh + docs/epics/CLAUDE.md · E354 owns lib/db-errors.ts + lib/billing/idempotency-utils.ts + actions/sales-pages.ts · E355 owns lib/schema/auth.ts + lib/auth-utils.ts + lib/auth.ts + actions/auth.ts) → E356 (WAVE 2 — after E355，與其共用 lib/auth.ts + actions/auth.ts 的登入接線點；owns lib/schema/system.ts + lib/audit.ts + actions/admin.ts)
 ```
 
 ## Next Action
