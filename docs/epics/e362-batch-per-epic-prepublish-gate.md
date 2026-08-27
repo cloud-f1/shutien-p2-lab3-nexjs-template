@@ -83,3 +83,54 @@ Phase 87 實測：五個 epic 的 publish，`pre-merge-check.sh` 總共執行 **
 
 - 不改 `pre-merge-check.sh` 的 gate 內容（E364 處理它的輸出）。
 - 不追溯補發 Phase 83–87 的歷史 gate 事件 —— 那些閘門確實沒跑，補發等於偽造紀錄。
+
+---
+
+## QA 結果（2026-08-27）— PASS，含三項 ADVISORY
+
+五條 AC 全數由 QA **自行重跑驗證**（未採信 implement 的自述）。RED/GREEN 都是實際執行
+`pre-merge-check.sh` 全程：注入巢狀 `next-app/.git` → 真實 exit 1；移除 → 真實 exit 0，
+且發出的 `gate_result` 事件確實帶著 `epic:"E362TEST" phase:"999"`，證明覆寫是端到端生效而非只在片段中成立。
+
+### ADVISORY 1 — per-epic 閘門實際重驗的是哪棵樹（文件缺口，非缺陷）
+
+`batch.md` Step 4 的 orchestrator **從不 checkout epic 分支**，所以 `pre-merge-check.sh` 的
+typecheck/lint/unit 三個 gate 檢查的是 **orchestrator 當下那棵樹（通常是 main）**，不是該 epic 的 diff。
+
+這不構成缺陷：Step 4a-integrate 已先驗過真正合併後的 wave，而本 epic「Problem」段本來就把這道閘門的
+邊際價值定位在 repo-hygiene / 狀態漂移 / 狀態自洽（Gate 1/2/2.5/2.6）—— 那四項**確實**檢查活的工作樹。
+
+但 `batch.md` 與 `pre-merge-check.sh` 都沒有把這件事寫明，未來讀者可能把
+「pre-merge-check passed for E83」誤讀成「E83 的程式碼通過 typecheck」。值得補一行註解。
+
+### ADVISORY 2 — worktree 有自己的 audit log（既有行為，非本 diff 引入）
+
+`gate-ledger.sh` 會 `cd` 到 `git rev-parse --show-toplevel` 並讀**相對路徑**的 `.claude/audit.jsonl`。
+每個 worktree 帶著自己那份小得多的 log（實測 **131 行 vs 主 repo 6850 行**），
+所以**在 worktree 內跑 AC #4 的驗證指令會得到假的「無紀錄」**。必須用 `AUDIT_LOG_PATH` 指向主 repo。
+
+這正是本專案反覆吃虧的「在錯的地方變綠」那一類。`AUDIT_LOG_PATH` 的處理本身未被本 diff 改動。
+
+### ADVISORY 3 — 三個新行為都沒有自動化測試（真實缺口）
+
+- `gate-ledger.sh` 的 wave/perEpic 拆分與區塊標題
+- perEpic 為空時的 `⚠` 警告
+- `pre-merge-check.sh` 的 `PMC_EPIC`/`PMC_PHASE` 覆寫優先序
+
+`test-gate-ledger-accept-persistence.sh` 仍通過（它剛好用了 `--epic` 標籤，順帶走到 perEpic 路徑），
+但**對拆分本身不做任何斷言**。明確列為缺口，而不是拿「make hook-test 全綠」當通過。
+
+### QA 同意 implement 的一項判斷
+
+閘門失敗時「跳過該 epic、不中止整個 wave」是對的：每個 epic 在抵達 Step 4 前都已通過自己的 QA
+與 wave 的 Step 4a-integrate；此時才浮現的失敗屬於該 epic 分支自身（repo hygiene／狀態漂移），
+與已證明能安全組合的其他 epic 正交。為單一 epic 的閘門失敗中止整批，降低吞吐卻換不到對等的安全性。
+
+### 執行本 epic 的 QA 時踩到的坑（記錄以免重蹈）
+
+QA 驗證 `gate-ledger.sh` 時**沒有設 `GATE_LEDGER_PATH`**，測試資料（含一個 `## Phase 999` fixture）
+直接寫進了 repo 內真實的 `docs/context/gate-ledger.md`，把 Phase 83/84/85/87 的區塊與 Phase 86 的
+人工接受 skip 紀錄全部沖掉。已用 `git checkout` 復原。
+
+**腳本本身沒問題** —— `GATE_LEDGER_PATH`（第 113、131 行）就是為此而存在，是呼叫端沒用。
+對應 Tier 0 教訓：對「唯讀」目標目錄做前後快照，抓出忘記的 `>`。
