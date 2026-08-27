@@ -420,11 +420,11 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E354 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 86 — auto-merged PR #140 |
 | E355 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 86 — auto-merged PR #141 |
 | E356 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 86 — auto-merged PR #143 |
-| E357 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 87 — 🟢 APPROVED (2026-08-27). P0 e2e 目標 app 身分驗證（8 SP） |
-| E358 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 87 — 🟢 APPROVED (2026-08-27). check-orphan-exports 有狀態 regex 假陽性（2 SP） |
-| E359 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 87 — 🟢 APPROVED (2026-08-27). on_behalf 完整性收口：漏標 + CSV（3 SP） |
-| E360 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 87 — 🟢 APPROVED (2026-08-27). rate-limit 測試 1ms 視窗 flake（2 SP） |
-| E361 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 87 — 🟢 APPROVED (2026-08-27). **P1** 狀態檔／分支錯置防護（5 SP，由 P2 上調） |
+| E357 | ✅ | ✅ | ⬜ | ⬜ | ⬜ | Phase 87 — 🟢 APPROVED (2026-08-27). P0 e2e 目標 app 身分驗證（8 SP） |
+| E358 | ✅ | ✅ | ⬜ | ⬜ | ⬜ | Phase 87 — 🟢 APPROVED (2026-08-27). check-orphan-exports 有狀態 regex 假陽性（2 SP） |
+| E359 | ✅ | ✅ | ✅ | ⬜ | ⬜ | Phase 87 — 🟢 APPROVED (2026-08-27). on_behalf 完整性收口：漏標 + CSV（3 SP） |
+| E360 | ✅ | ✅ | ⬜ | ⬜ | ⬜ | Phase 87 — 🟢 APPROVED (2026-08-27). rate-limit 測試 1ms 視窗 flake（2 SP） |
+| E361 | ✅ | ✅ | ✅ | ⬜ | ⬜ | Phase 87 — 🟢 APPROVED (2026-08-27). **P1** 狀態檔／分支錯置防護（5 SP，由 P2 上調） |
 
 
 ## Dependency Rules
