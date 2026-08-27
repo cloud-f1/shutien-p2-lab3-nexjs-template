@@ -139,3 +139,27 @@ silently. See `docs/epics/e341-doc-code-contract-test.md` § Out of Scope.
 ### DX
 - [GENERALIZABLE] **Adversarially validate the BUILT artifact, not just the design.** 2 of E216's 3 real bugs originated in a fluent synthesis-agent design (silent wave truncation; cross-agent worktree stranding) and survived the build green — a second skeptic pass over the as-built code caught them. Confidence ≠ correctness. (E216)
 - Concurrency caps limit **parallelism via chunked batches** (`slice(i, i+CAP)`), never truncate the work list (`slice(0, CAP)`) — silent truncation violates no-silent-caps (E199). (E216)
+
+## Batch Learning — 2026-08-27 (E352–E356)
+
+### Testing
+- [GENERALIZABLE] **負向斷言需要「反向」故障注入。** 一般故障注入是「拿掉功能，看測試會不會紅」，但對「X 不應該發生」的斷言那招無效 —— 拿掉功能只會讓 X 更不發生。要驗證負向測試不是恆真斷言，必須**刻意讓 X 發生**。E356 的三條「不存在帳號不寫稽核列」測試紅綠兩態都過（空包彈的典型徵兆），QA 注入「對不存在／未驗證帳號也寫一筆」後兩輪都轉紅，才證明保護為真。(E356)
+- [GENERALIZABLE] **測試 helper 若重新實作產品的計算方式，驗證的是「兩邊一致」而非「行為正確」。** `lib/totp-utils.test.ts` 的 helper 抄了產品同一個 ms/秒單位錯誤，22 條斷言全綠地掩護了一個在正式環境完全失效的 2FA。協定型程式碼（TOTP/HMAC/簽章/編碼）至少要有一條斷言的期望值來自**外部來源**：函式庫預設路徑、RFC 測試向量、或另一個獨立實作。(Phase 86 前置修復)
+- [GENERALIZABLE] **對 mock 過重的測試做故障注入，是判斷它是否為空包彈的唯一方法。** E354 的新測試把 `@/lib/db` 整個 mock 掉；把判定函式改成恆 `false` 與恆 `true` 兩次，各自打紅不同的斷言，才確認它真能分辨產品的分支邏輯。(E354)
+- **`SELECT count(*)` 勝過 mock 的呼叫次數。** 沒被呼叫的 mock，與「有呼叫但插入被靜默吞掉」無法區分；真實資料列計數可以。(E356)
+- **後續 epic 在既有不變量上疊功能時，順手把該不變量再斷言一次** —— E356 新增的測試也帶了 `expect(comparePassword).not.toHaveBeenCalled()`，讓 E355 的「鎖定檢查在 bcrypt 之前」不再只依賴原檔存活。(E356)
+
+### Architecture
+- [GENERALIZABLE] **移植上游功能時，下游多出來的路徑才是風險所在。** fork 的登入鎖定只有一條密碼路徑，模板有兩條（2FA 使用者的密碼在 `loginAction` 驗、非 2FA 在 `authorize()` 驗）—— 照抄會讓 2FA 帳號的密碼暴力破解**完全不觸發**鎖定。移植前先列出「同一語意在下游有幾個入口」。(E355)
+- [GENERALIZABLE] **逃生口旗標必須真的能逃。** `ENABLE_LOGIN_LOCKOUT=false` 時 `isLocked()` 對**既有的** `lockedUntil` 也回 false（欄位保留不清除）—— 操作者關這個旗標多半正因為有人被鎖在外面，仍尊重既存鎖定就不成其為逃生口。用 Postgres `xmin`（任何 UPDATE 都會改的 txid）驗證「零個 UPDATE 發出」，比斷言「值未變」強一級。(E355)
+- **先確認「要蓋的東西是否已經存在」。** E353 原本被提議為「建立結構化共享狀態」，查下去發現 E196 的 SSOT 鏈（`epic-progress.md` → `render-index.sh` → `EPIC_INDEX.md`）與 `check-drift.sh` 都已存在且正確 —— 缺口純粹是 drift 偵測器沒接到任何閘門。改為只補執行力，範圍從「新系統」縮成三個檔案。(E353)
+- **搬移函式若無受益者就是 YAGNI；有脆弱呼叫點才成立。** `isUniqueViolation` 泛化的價值不在搬檔案，而在修掉 `actions/sales-pages.ts` 兩處以**錯誤訊息字串**判定唯一鍵衝突（綁死 Drizzle 自動產生的約束名）。(E354)
+
+### DX
+- [GENERALIZABLE] **橫切關注點的列舉：有幾種接線方式就要幾個 grep。** E356 的實作者用 `grep "logAudit("` 列出「所有寫稽核的 action」，表格看起來完整（10 行、每行都有理由），實則漏了 `defineAction` 宣告式路徑的 9 個寫入點 —— 那族永遠不會出現 `logAudit(` 字樣。QA 多加 `grep "audit:"` 才發現，並由此找到一個真實漏標。列舉守衛／稽核／遙測前先問：「這個能力有沒有第二種接線方式？」(E356)
+- [GENERALIZABLE] **`cmd | tail` 之後的 `$?` 是 `tail` 的退出碼。** 本 session 踩到三次（含誤判 `check-drift.sh` 為 exit 0）。取真值用 `cmd > file 2>&1; echo $?` 或 `PIPESTATUS`。同類：`awk` 無論有無輸出退出碼皆為 0，不可用 `&&` 判斷其結果。(全 phase)
+- **`gh pr merge` 會把「合併」與「刪除本地分支」的退出碼混在一起** —— 分支被 worktree 佔用時回報 `MERGE FAILED`，但 PR 其實已合併。以 `gh pr view N --json state` 確認，勿採信退出碼。(Phase 86)
+
+### Security
+- [GENERALIZABLE] **不為不存在的帳號寫稽核事件** —— `actor_id` 可為 null 是 schema 允許，但把登入失敗歸屬到真實使用者列才能保持軌跡可查詢，並**避免把稽核日誌變成未驗證寫入面**（帳號列舉／log 灌爆）。這是政策選擇，需有測試守著。(E356)
+- **同一個功能可能有第三個「完成點」。** 2FA 使用者的 session 實際在 `authorizeCredentials` 的 **nonce 交換**處建立，不在 `loginAction` 的 2FA 分支 —— 把 `auth.login` 寫在後者會為「只過密碼、可能永遠過不了 TOTP」的人記下登入成功。判準：`issueNonce()` 只在 TOTP／備用碼驗證成功後才被呼叫，所以 nonce 的存在本身就是憑證。(E356)
