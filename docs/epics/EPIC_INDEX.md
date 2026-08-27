@@ -455,9 +455,9 @@ Phase 46+ epics: enriched template — epic files include Implementation Phases,
 | E350 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 85 — 🔴 listSalesPages 無守衛：草稿銷售頁洩漏 |
 | E351 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 85 — stop-verifier 規則：use server 匯出必須命中守衛（after E350） |
 | E352 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 85 — create 路徑契約對稱（E348 收口） |
-| E353 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 86 — 🟢 APPROVED (2026-08-27). 把既有 check-drift 接上 pre-merge-check（不新建狀態系統） |
-| E354 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 86 — 🟢 APPROVED (2026-08-27). isUniqueViolation → lib/db-errors.ts + 修掉兩處字串比對 |
-| E355 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 86 — 🟢 APPROVED (2026-08-27). 持久登入鎖定（移植 fork E324；須涵蓋 2FA 密碼路徑） |
+| E353 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 86 — auto-merged PR #139 |
+| E354 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 86 — auto-merged PR #140 |
+| E355 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 86 — auto-merged PR #141 |
 | E356 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 86 — 🟢 APPROVED (2026-08-27). 稽核 onBehalf + 登入事件（移植 fork E327 通用半邊，after E355） |
 <!-- EPIC_MATRIX_END -->
 
