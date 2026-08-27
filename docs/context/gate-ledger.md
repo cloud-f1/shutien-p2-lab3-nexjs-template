@@ -10,7 +10,7 @@
 > A phase with no section below has no `gate_result` events recorded — that
 > means nothing was emitted under it, not that every gate passed.
 
-Generated: 2026-08-27T11:20:50Z
+Generated: 2026-08-27T13:13:39Z
 
 ## Phase 83
 
@@ -56,5 +56,16 @@ Phase 86 gate ledger
   typecheck    3 pass
   unit         3 pass
   ✓ skips accepted (2026-08-27T11:20:50Z): e2e 延後後已於完整整合閘門與 E356 publish 各執行一次並通過 51/51
+```
+
+## Phase 87
+
+```
+Phase 87 gate ledger
+  e2e          1 pass
+  int          1 pass
+  lint         1 pass
+  typecheck    1 pass
+  unit         1 pass
 ```
 
