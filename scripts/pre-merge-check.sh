@@ -72,6 +72,21 @@ else
   ok "$DELETED uncommitted deletions (under threshold)"
 fi
 
+# ── Gate 2.5: state drift (E353) ────────────────────────────────────────────
+# docs/context/epic-progress.md is the SSOT (E196); docs/epics/EPIC_INDEX.md
+# is a derived file rendered from it by scripts/state/render-index.sh. If
+# someone hand-edits EPIC_INDEX.md's sentinel blocks directly (instead of
+# editing the SSOT and re-rendering), the two drift apart silently — that is
+# exactly what happened when Phase 85 was closed out by editing the derived
+# file only (PR #136 merged with 13 mismatches, caught after the fact by
+# PR #137). Docs-only and fast, so it runs here, before typecheck.
+say "State drift"
+if bash "$ROOT/scripts/state/check-drift.sh" >/tmp/pmc-drift.log 2>&1; then
+  ok "docs/epics/EPIC_INDEX.md matches docs/context/epic-progress.md"
+else
+  bad "state drift detected between EPIC_INDEX.md and epic-progress.md — run scripts/state/render-index.sh to reconcile, then commit both files together (see /tmp/pmc-drift.log)"
+fi
+
 # ── Gate 3: typecheck ───────────────────────────────────────────────────────
 say "Typecheck"
 if (cd "$APP" && pnpm -s typecheck >/tmp/pmc-tsc.log 2>&1); then ok "tsc --noEmit clean"; emit_gate typecheck pass; else bad "typecheck failed (see /tmp/pmc-tsc.log)"; emit_gate typecheck fail; fi

@@ -9,6 +9,42 @@
 | `EPIC_INDEX.md` | Master progress tracker — single source of truth | Agent after each step |
 | `CLAUDE.md` | This file — conventions | Manual |
 
+## SSOT — Write Order (E196 / E353)
+
+`EPIC_INDEX.md` in this directory is a **derived file**, not the source of truth:
+
+```
+docs/context/epic-progress.md   ← SSOT (scripts/epic-graph.sh reads ONLY this file)
+        │  scripts/state/render-index.sh   (prose-preserving merge/render)
+        ▼
+docs/epics/EPIC_INDEX.md        ← derived (human-readable, keeps historical prose)
+```
+
+Whenever a phase/epic status changes:
+
+1. Edit **`docs/context/epic-progress.md`** (the SSOT) first.
+2. Run **`scripts/state/render-index.sh`** to re-render `EPIC_INDEX.md` from it.
+3. Commit **both files together** in the same commit.
+
+**Never hand-edit the sentinel blocks in `EPIC_INDEX.md`** —
+`<!-- PHASE_STATUS_START -->…<!-- PHASE_STATUS_END -->` or
+`<!-- EPIC_MATRIX_START -->…<!-- EPIC_MATRIX_END -->`. Those blocks are
+machine-rendered from the SSOT; editing them directly makes the two files
+disagree, and nothing will re-sync them for you.
+
+**Real incident:** on 2026-08-24, closing out Phase 85 edited the *derived*
+file (`EPIC_INDEX.md`) directly without touching the SSOT. PR #136 merged
+carrying 13 drifted cells (e.g. `Phase 85 🟢 AP→✅`, `E350 Impl:⬜→✅`, …) and
+the mismatch was only caught by chance while cross-checking a memory file
+afterward — fixed after the fact in PR #137. Re-running `check-drift.sh`
+against the `epic-progress.md` state as it stood at PR #136 reproduces the
+exact failure it would have caught: `13 mismatch(es) found` / exit 1. That
+detector (`scripts/state/check-drift.sh`) is now wired into
+`scripts/pre-merge-check.sh`'s **State drift** gate (E353), so this class of
+mistake fails the merge gate instead of silently shipping. If that gate ever
+fails for you, the fix is exactly steps 1–3 above — edit the SSOT, re-render,
+commit both.
+
 ## Rules
 
 1. **Every feature is an epic** — no work without an epic entry in EPIC_INDEX.md
