@@ -45,3 +45,53 @@ E358 修好孤兒偵測的有狀態 regex 假陽性之後，這一條是**真陽
 ## Out of Scope
 
 - 不重構 `pagination.ts` 的其他匯出。
+
+---
+
+## 實作決策（2026-08-28）— 選 B：allowlist + 理由註解
+
+**依 epic 明訂的決策依據執行**：先打開 `next-app/components/data-table-generic.tsx` 確認。
+**第 210 行已經在渲染**：
+
+```tsx
+第 {table.getState().pagination.pageIndex + 1} / {Math.max(table.getPageCount(), 1)} 頁
+```
+
+再追 admin 流程：`admin/page.tsx` 以 `LIST_CAP = 500` 取列，經 `listAllOrders`/`listAllSubscriptions`
+（用 `resolvePagination`，**不用 `totalPages`**）交給 `<OrdersTab>`/`<SubscriptionsTab>`，
+再進 `<DataTable>`。DataTable 用 TanStack Table 在客戶端分頁並自行顯示頁數 ——
+**`totalPages()` 在整條路徑上從未被呼叫**。
+
+接進 UI（選項 A）等於在 DataTable 已渲染的頁數旁邊再算一次，是多餘的重複實作。
+決策依據明確指向 B。
+
+allowlist 條目帶 11 行註解，說明 DataTable 已涵蓋、以及為何仍保留該匯出
+（與 `resolvePagination` 成對，後者**確實**接進 `lib/billing/queries.ts`；留給未來
+server-side／非 DataTable 的消費者，例如公開 API 端點或 fork 的手寫列表）。
+
+## ⚠ 差點踩到的陷阱：故障注入本身沒有注入
+
+AC #4 的 canary 一開始被命名為 `__e366FaultInjectionCanary`（雙底線）。
+但 `scripts/check-orphan-exports.mjs:54` 有這條規則：
+
+```js
+const isTestOnlyConvention = (name) => /^_/.test(name)
+```
+
+`_` 開頭的匯出會被**結構性豁免**於孤兒偵測。若照原名進行，偵測器根本看不到那個 canary，
+「注入後沒有紅」會被誤讀成「注入失敗」或更糟 ——「偵測器壞了」。實作者在出事前改名為
+`e366FaultInjectionCanary`（無前綴）。
+
+**這是比空包彈更上一層的失效**：不是測試沒驗到東西，而是**驗證機制本身沒有作用**。
+本專案的故障注入紀律要再加一條：**注入的東西必須先確認不在任何豁免清單／規則內。**
+
+## AC #4 實測紅綠
+
+RED（加入 canary + 測試參照）：
+```
+⚠️ Found 1 export(s) with tests but zero production references...
+  • e366FaultInjectionCanary  (lib/billing/pagination.ts)  — 1 test reference(s), 0 production references
+```
+**`totalPages` 未被重新標記** —— 證明 allowlist 的範圍是精確的，沒有被改寬。
+
+移除 canary 後 `git diff` 兩檔皆空（完全還原）；GREEN：`✅ No orphan exports...`
