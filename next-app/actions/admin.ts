@@ -38,6 +38,11 @@ export async function setUserRole(userId: string, role: Role) {
     action: "user.role_changed",
     targetType: "user",
     targetId: userId,
+    // E356 — admin panel action against ANOTHER user's account. assertNotSelf()
+    // above already refuses a self-target, so this is true in every reachable
+    // case; it is written as the actor≠target comparison anyway so the flag
+    // stays correct if that guard is ever relaxed.
+    onBehalf: session.user.id !== userId,
     metadata: { role },
   })
 
@@ -62,6 +67,9 @@ export async function deleteUser(userId: string) {
     action: "user.deleted",
     targetType: "user",
     targetId: userId,
+    // E356 — same shape as setUserRole: admin panel, another user's account
+    // (assertNotSelfDelete() forbids self-deletion).
+    onBehalf: session.user.id !== userId,
   })
 
   revalidatePath("/dashboard/admin")
@@ -97,6 +105,11 @@ export async function resetUserTotp(userId: string) {
     action: "user.totp_reset",
     targetType: "user",
     targetId: userId,
+    // E356 — the ONE admin action here with no self-target guard (an admin who
+    // loses their own authenticator is a legitimate recovery case), so this is
+    // the call site where the comparison genuinely varies at runtime:
+    // recovering someone else ⇒ true, recovering your own 2FA ⇒ false.
+    onBehalf: session.user.id !== userId,
   })
 
   revalidatePath("/dashboard/admin")

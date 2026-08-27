@@ -105,6 +105,15 @@ vi.mock("@/lib/schema", () => ({
   passwordResetTokensTable: { id: "id", userId: "user_id" },
 }))
 
+// E356 — capture the login audit events loginAction writes. Mocked so the audit
+// insert does not land in `dbState.inserted` alongside the token rows the
+// existing assertions count (and because these tests are about WHICH event is
+// emitted; the real rows are asserted in test/int/auth-login-audit.int.test.ts).
+const mockLogAudit = vi.fn()
+vi.mock("@/lib/audit", () => ({
+  logAudit: (...a: unknown[]) => mockLogAudit(...a),
+}))
+
 vi.mock("drizzle-orm", () => ({ eq: (...a: unknown[]) => ({ __eq: a }) }))
 
 // --- Import the SUT after mocks --------------------------------------------
@@ -421,5 +430,102 @@ describe("loginAction — lockout pre-check for NON-2FA users (path 1 UX)", () =
     await loginAction(null, loginForm())
 
     expect(mockSignIn).toHaveBeenCalledTimes(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// E356 — login audit events on PATH 2 (and on the shared lockout pre-check).
+// A TOTP user's password is compared HERE and nowhere else, so this file owns
+// the only unit-level proof that their failures are auditable at all.
+// ---------------------------------------------------------------------------
+describe("loginAction — login audit events (E356, path 2)", () => {
+  const auditedActions = () =>
+    mockLogAudit.mock.calls.map((c) => (c[0] as { action: string }).action)
+
+  const plainUser = (over: Record<string, unknown> = {}) => ({
+    id: "user_1",
+    email: "ada@example.com",
+    passwordHash: "hash",
+    emailVerified: new Date("2026-01-01T00:00:00.000Z"),
+    totpEnabled: false,
+    failedLoginCount: 0,
+    lockedUntil: null,
+    ...over,
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it("writes auth.login_failed for a TOTP user's wrong password", async () => {
+    mockGetUserByEmail.mockResolvedValue(totpUser({ failedLoginCount: 1 }))
+    mockComparePassword.mockResolvedValue(false)
+
+    await loginAction(null, loginForm("ada@example.com", "wrong"))
+
+    expect(auditedActions()).toEqual(["auth.login_failed"])
+    expect(mockLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({ actorId: "user_2fa", targetType: "user", targetId: "user_2fa" }),
+    )
+  })
+
+  it("writes BOTH auth.login_failed and auth.locked when a TOTP user's 5th miss locks", async () => {
+    mockGetUserByEmail.mockResolvedValue(
+      totpUser({ failedLoginCount: MAX_FAILED_LOGIN_ATTEMPTS - 1 }),
+    )
+    mockComparePassword.mockResolvedValue(false)
+
+    await loginAction(null, loginForm("ada@example.com", "wrong"))
+
+    expect(auditedActions()).toEqual(["auth.login_failed", "auth.locked"])
+  })
+
+  it("writes auth.locked on the shared pre-check when a locked account tries again", async () => {
+    mockGetUserByEmail.mockResolvedValue(
+      plainUser({
+        failedLoginCount: MAX_FAILED_LOGIN_ATTEMPTS,
+        lockedUntil: new Date(Date.now() + 60_000),
+      }),
+    )
+
+    const res = await loginAction(null, loginForm())
+
+    expect(res).toEqual({ error: ACCOUNT_LOCKED_MESSAGE })
+    expect(auditedActions()).toEqual(["auth.locked"])
+    // The pre-check returns early, so authorize() never runs — exactly one event.
+    expect(mockSignIn).not.toHaveBeenCalled()
+  })
+
+  it("writes NOTHING when a TOTP user's password is CORRECT (no session yet)", async () => {
+    mockGetUserByEmail.mockResolvedValue(totpUser())
+    mockComparePassword.mockResolvedValue(true)
+
+    await loginAction(null, loginForm())
+
+    expect(mockRedirect).toHaveBeenCalledWith("/login/2fa")
+    expect(mockLogAudit).not.toHaveBeenCalled()
+  })
+
+  // AC #4 at the action level.
+  it("writes NOTHING for a NONEXISTENT email, on either the pre-check or the signIn failure", async () => {
+    mockGetUserByEmail.mockResolvedValue(undefined)
+    mockSignIn.mockRejectedValueOnce(new Error("CredentialsSignin"))
+
+    const res = await loginAction(null, loginForm("ghost@example.com", "whatever"))
+
+    expect(res).toEqual({ error: "電子郵件或密碼錯誤。" })
+    expect(mockLogAudit).not.toHaveBeenCalled()
+  })
+
+  // No double-counting: the non-2FA failure is audited inside authorizeCredentials
+  // (mocked away here), so the catch branch of loginAction must stay silent.
+  it("writes NOTHING in the signIn catch branch for an EXISTING non-2FA user", async () => {
+    mockGetUserByEmail.mockResolvedValue(plainUser())
+    mockSignIn.mockRejectedValueOnce(new Error("CredentialsSignin"))
+
+    const res = await loginAction(null, loginForm())
+
+    expect(res).toEqual({ error: "電子郵件或密碼錯誤。" })
+    expect(mockLogAudit).not.toHaveBeenCalled()
   })
 })

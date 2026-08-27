@@ -933,3 +933,36 @@ Two of the epic's five acceptance criteria name specific evidence forms that are
 ### Verdict
 
 **PASS with one advisory-but-should-block-merge gap.** Typecheck clean, lint clean (0 errors), coverage gate cleared on all four metrics (87.03% statements ≥ 80%), e2e green outside the known pre-existing TOTP cluster, clean production build, migration expand-only. Privacy guarantees (no PII, no raw IP/UA storage, no third-party request, no cross-site cookie, beacon-never-blocks-checkout), RBAC (admin-only via `requireAdmin()` re-reading the live DB role), and UI conventions (`<DataTable>`, Server Components by default, `cn()`, 繁中 copy, no console.log/inline-style residue) all check out clean via code review — see `review-findings.md` for the full writeup. The one open item is the missing test evidence for AC #1/#2's named seed/e2e/int requirements; recommend closing that gap before merge rather than after.
+
+## 2026-08-27 — Phase 86 收尾時的測試狀態
+
+| 閘門 | 數值 | 備註 |
+|---|---|---|
+| typecheck | 0 | |
+| lint | 0 errors / 11 warnings | 全部 `'_a' is defined but never used`，在既有 int 測試檔 |
+| unit | **899 passed (83 files)** | Phase 86 起始為 822 |
+| int | **115 passed (17 files)** | Phase 86 起始為 93 |
+| coverage | **87.35%** stmts / 82.49% branch / 87.29% lines | 門檻 80% |
+| e2e | **51 passed** | |
+| db:test-migrate | 0 | 21 tables / 17 migrations |
+| drizzle-kit check | 0 | migration 歷史無漂移 |
+| hook-test | 12/12 → 新增 E353 的 6 條斷言 | |
+
+### e2e 的執行前提（重要，寫給下一個人）
+
+**本機 port 3000 可能被 `data-clarity-portal` 佔用 —— 那是本模板的另一個 fork，
+`<title>` 與本專案完全相同。** `playwright.config.ts` 的 `reuseExistingServer: true`
+配上寫死的 `:3000`，會讓 `pnpm test:e2e` 靜默地測到**另一個 app** 並回報一堆看似合理的失敗。
+
+**唯一可靠的辨識方式是 process cwd：**
+
+    PID=$(lsof -nP -iTCP:3000 -sTCP:LISTEN | tail -1 | awk '{print $2}')
+    lsof -a -p $PID -d cwd -Fn
+
+Phase 86 期間所有 e2e 都改用專屬 port（3200/3300/3400）+ 專屬 DB 執行，並逐次驗證 cwd。
+這是 repo 層級的既有陷阱，已列入 follow-up（E357 候選）。
+
+### 已知 flaky（非本 phase 引入）
+
+`lib/rate-limit.test.ts > resets the window after it expires` —— 1ms 視窗跨毫秒邊界即偶發轉紅。
+單獨重跑 5 次全綠。修法：fake timers。

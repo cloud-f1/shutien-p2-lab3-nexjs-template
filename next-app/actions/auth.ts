@@ -14,6 +14,7 @@ import { eq } from "drizzle-orm"
 import { getUserByEmail, getVerificationToken, getPasswordResetToken, getUserById } from "@/lib/queries"
 import { comparePassword, hashPassword } from "@/lib/password"
 import { sendVerificationEmail, sendPasswordResetEmail } from "@/lib/email"
+import { logAudit } from "@/lib/audit"
 import type { FormState } from "@/lib/validations/types"
 import { unstable_rethrow } from "next/navigation"
 import { redirect } from "next/navigation"
@@ -142,7 +143,23 @@ export async function loginAction(prevState: FormState, formData: FormData): Pro
   // enforces the same gate itself — this is only the friendly message, and it
   // also spares us the bcrypt round-trip). isLocked() returns false whenever
   // ENABLE_LOGIN_LOCKOUT is off, which is the deliberate escape hatch.
-  if (isLocked(user, new Date())) {
+  //
+  // E356 — the same login-audit policy as lib/auth.ts applies here: `user` is
+  // null for an unknown email and isLocked(null) is false, so a nonexistent
+  // account can never reach an audit write on this path either.
+  // (`user &&` is a type-narrowing no-op — isLocked(null/undefined) is already
+  // false — that lets the audit call below see a non-null row without a `!`.)
+  if (user && isLocked(user, new Date())) {
+    // This early return means the request never reaches signIn()/authorize(),
+    // so THIS is the only place the event can be recorded for a locked user
+    // arriving through the login form — no double-write is possible.
+    await logAudit({
+      actorId: user.id,
+      action: "auth.locked",
+      targetType: "user",
+      targetId: user.id,
+      metadata: { method: "password" },
+    })
     return { error: ACCOUNT_LOCKED_MESSAGE }
   }
 
@@ -161,12 +178,33 @@ export async function loginAction(prevState: FormState, formData: FormData): Pro
       recordFailure(emailKey, WINDOW_MS)
       recordFailure(ipKey, WINDOW_MS)
       // Flag off ⇒ complete no-op: no counting, no lock, no DB write.
+      let trippedLock = false
       if (isLockoutEnabled()) {
         const next = nextFailedState(user, new Date())
+        trippedLock = next.lockedUntil !== null
         await db
           .update(usersTable)
           .set({ failedLoginCount: next.failedLoginCount, lockedUntil: next.lockedUntil })
           .where(eq(usersTable.id, user.id))
+      }
+      // E356 — a TOTP user's password is compared HERE and nowhere else, so this
+      // is the only place their `auth.login_failed` can be recorded (authorize()
+      // never sees it). Same shape as path 1, including the lock transition.
+      await logAudit({
+        actorId: user.id,
+        action: "auth.login_failed",
+        targetType: "user",
+        targetId: user.id,
+        metadata: { method: "password" },
+      })
+      if (trippedLock) {
+        await logAudit({
+          actorId: user.id,
+          action: "auth.locked",
+          targetType: "user",
+          targetId: user.id,
+          metadata: { method: "password" },
+        })
       }
       return { error: "電子郵件或密碼錯誤。" }
     }
@@ -185,6 +223,12 @@ export async function loginAction(prevState: FormState, formData: FormData): Pro
     unstable_rethrow(error) // re-throw redirect() so the redirect actually fires
     // Only reached on a genuine auth failure (the success path threw a redirect
     // and was re-thrown above) — count it against both buckets.
+    //
+    // E356 — deliberately NO audit write here: this branch is the non-2FA path,
+    // whose password comparison happened inside authorizeCredentials(), which
+    // already emitted the right event (auth.login_failed / auth.locked, or
+    // nothing at all for an unknown email). Logging again would double-count
+    // every failure and would also break the no-write-for-unknown-email policy.
     recordFailure(emailKey, WINDOW_MS)
     recordFailure(ipKey, WINDOW_MS)
     return { error: "電子郵件或密碼錯誤。" }

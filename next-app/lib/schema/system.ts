@@ -99,6 +99,17 @@ export const auditLogTable = pgTable(
     action: text("action").notNull(), // e.g. "user.role_changed"
     targetType: text("target_type"),
     targetId: text("target_id"),
+    /**
+     * E356 — queryable "acting on behalf of someone else" flag. True when the
+     * actor performed the action FOR another principal (an admin changing
+     * another user's role / deleting another user's account / resetting another
+     * user's 2FA). Previously this could only be guessed after the fact from the
+     * action-name text convention; a real column makes it filterable in SQL.
+     *
+     * NOT NULL with a `false` default ⇒ the migration is purely additive: every
+     * pre-existing row becomes an ordinary self-operation, no backfill needed.
+     */
+    onBehalf: boolean("on_behalf").notNull().default(false),
     metadata: jsonb("metadata").notNull().default({}),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   },

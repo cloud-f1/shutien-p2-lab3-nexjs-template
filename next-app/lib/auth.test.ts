@@ -76,6 +76,15 @@ vi.mock("./schema", () => ({
   verificationTokensTable: {},
 }))
 
+// E356 — capture every audit event written during a login attempt. Mocked (not
+// left real) for two reasons: the `db` stub above has no `.insert`, and the
+// point of these tests is WHICH event each branch emits, not the DB write —
+// that is proven against a real table in test/int/auth-login-audit.int.test.ts.
+const mockLogAudit = vi.fn()
+vi.mock("./audit", () => ({
+  logAudit: (...a: unknown[]) => mockLogAudit(...a),
+}))
+
 vi.mock("drizzle-orm", () => ({ eq: (...a: unknown[]) => ({ __eq: a }) }))
 
 // --- Import the SUT after mocks --------------------------------------------
@@ -285,5 +294,124 @@ describe("authorizeCredentials — ENABLE_LOGIN_LOCKOUT=false is a complete no-o
 
     expect(res).toBeNull()
     expect(mockComparePassword).not.toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// E356 — login audit events on PATH 1. These assert WHICH event each branch of
+// authorizeCredentials emits. The "nonexistent email writes nothing" policy is
+// asserted here AND, with a real row count, in
+// test/int/auth-login-audit.int.test.ts — a mock that is simply never called
+// cannot distinguish "no row written" from "write attempted and swallowed".
+// ---------------------------------------------------------------------------
+describe("authorizeCredentials — login audit events (E356, path 1)", () => {
+  /** The `action` of every logAudit call, in order. */
+  const auditedActions = () =>
+    mockLogAudit.mock.calls.map((c) => (c[0] as { action: string }).action)
+
+  it("writes auth.login on a successful login, attributed to the user", async () => {
+    mockGetUserByEmail.mockResolvedValue(verifiedUser())
+    mockComparePassword.mockResolvedValue(true)
+
+    await authorizeCredentials(creds())
+
+    expect(auditedActions()).toEqual(["auth.login"])
+    expect(mockLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "auth.login",
+        actorId: "user_1",
+        targetType: "user",
+        targetId: "user_1",
+      }),
+    )
+  })
+
+  it("writes auth.login_failed ONLY on a wrong password below the lock threshold", async () => {
+    mockGetUserByEmail.mockResolvedValue(verifiedUser({ failedLoginCount: 1 }))
+    mockComparePassword.mockResolvedValue(false)
+
+    await authorizeCredentials(creds({ password: "wrong" }))
+
+    expect(auditedActions()).toEqual(["auth.login_failed"])
+  })
+
+  it("writes BOTH auth.login_failed and auth.locked when the 5th failure trips the lock", async () => {
+    mockGetUserByEmail.mockResolvedValue(
+      verifiedUser({ failedLoginCount: MAX_FAILED_LOGIN_ATTEMPTS - 1 }),
+    )
+    mockComparePassword.mockResolvedValue(false)
+
+    await authorizeCredentials(creds({ password: "wrong" }))
+
+    expect(auditedActions()).toEqual(["auth.login_failed", "auth.locked"])
+  })
+
+  it("writes auth.locked when an ALREADY-locked account attempts to log in", async () => {
+    mockGetUserByEmail.mockResolvedValue(
+      verifiedUser({
+        failedLoginCount: MAX_FAILED_LOGIN_ATTEMPTS,
+        lockedUntil: new Date(Date.now() + 60_000),
+      }),
+    )
+
+    await authorizeCredentials(creds())
+
+    expect(auditedActions()).toEqual(["auth.locked"])
+    // E355's ordering invariant is intact: the audit write did not move the
+    // lock check to after bcrypt.
+    expect(mockComparePassword).not.toHaveBeenCalled()
+  })
+
+  // THE policy criterion (AC #4).
+  it("writes NO audit event for a NONEXISTENT email (no user row to attribute)", async () => {
+    mockGetUserByEmail.mockResolvedValue(null)
+
+    const res = await authorizeCredentials(creds({ email: "ghost@example.com" }))
+
+    expect(res).toBeNull()
+    expect(mockLogAudit).not.toHaveBeenCalled()
+  })
+
+  it("writes NO audit event for an unverified account (refused before any password check)", async () => {
+    mockGetUserByEmail.mockResolvedValue(verifiedUser({ emailVerified: null }))
+
+    await authorizeCredentials(creds())
+
+    expect(mockLogAudit).not.toHaveBeenCalled()
+  })
+
+  it("writes NO audit event when a TOTP user is routed to the /login/2fa challenge", async () => {
+    mockGetUserByEmail.mockResolvedValue(verifiedUser({ totpEnabled: true }))
+    mockComparePassword.mockResolvedValue(true)
+
+    const res = await authorizeCredentials(creds())
+
+    expect(res).toBeNull() // no session created yet
+    expect(mockLogAudit).not.toHaveBeenCalled()
+  })
+
+  it("writes auth.login on the nonce path — where a TOTP user's session IS created", async () => {
+    mockConsumeNonce.mockReturnValue("user_1")
+    mockGetUserById.mockResolvedValue(verifiedUser({ totpEnabled: true }))
+
+    const res = await authorizeCredentials({ totpNonce: "nonce-abc" })
+
+    expect(res).toMatchObject({ id: "user_1" })
+    expect(auditedActions()).toEqual(["auth.login"])
+  })
+
+  it("writes auth.login_failed with NO lock event while ENABLE_LOGIN_LOCKOUT=false", async () => {
+    vi.stubEnv("ENABLE_LOGIN_LOCKOUT", "false")
+    mockGetUserByEmail.mockResolvedValue(
+      verifiedUser({ failedLoginCount: MAX_FAILED_LOGIN_ATTEMPTS - 1 }),
+    )
+    mockComparePassword.mockResolvedValue(false)
+
+    await authorizeCredentials(creds({ password: "wrong" }))
+
+    // The escape hatch stays a complete no-op for the LOCK; the failure itself
+    // is still auditable.
+    expect(auditedActions()).toEqual(["auth.login_failed"])
+    expect(dbUpdates).toHaveLength(0)
   })
 })

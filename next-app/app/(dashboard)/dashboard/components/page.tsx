@@ -58,6 +58,7 @@ const DEMO_AUDIT_ENTRIES: AuditEntry[] = [
     action: "item.created",
     targetType: "item",
     targetId: "00000000-demo-item-1",
+    onBehalf: false, // E356 — an ordinary self-operation
     metadata: { label: "示範項目 A" },
     createdAt: new Date(Date.now() - 15 * 60_000),
   },
@@ -68,6 +69,7 @@ const DEMO_AUDIT_ENTRIES: AuditEntry[] = [
     action: "item.updated",
     targetType: "item",
     targetId: "00000000-demo-item-2",
+    onBehalf: false,
     metadata: {},
     createdAt: new Date(Date.now() - 5 * 3_600_000),
   },

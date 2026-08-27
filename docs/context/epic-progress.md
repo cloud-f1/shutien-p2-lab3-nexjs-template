@@ -418,7 +418,7 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E353 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 86 — auto-merged PR #139 |
 | E354 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 86 — auto-merged PR #140 |
 | E355 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 86 — auto-merged PR #141 |
-| E356 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 86 — 🟢 APPROVED (2026-08-27). 稽核 onBehalf + 登入事件（移植 fork E327 通用半邊，after E355） |
+| E356 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 86 — 🟢 APPROVED (2026-08-27). 稽核 onBehalf + 登入事件（移植 fork E327 通用半邊，after E355） |
 
 
 ## Dependency Rules

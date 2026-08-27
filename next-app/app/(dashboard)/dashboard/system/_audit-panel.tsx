@@ -29,6 +29,23 @@ const auditColumns: ColumnDef<AuditEntry>[] = [
     ),
   },
   {
+    // E356 — surfaces `audit_log.on_behalf`: was this action performed BY the
+    // actor FOR someone else (an admin operating on another user's account)?
+    // `accessorFn` returns the same words the cell renders, so the table's
+    // existing global filter box can narrow to 代操作 / 本人操作 with no extra
+    // filter UI. Uses the shared StatusBadge tone vocabulary — no new design
+    // language, no inline style.
+    id: "onBehalf",
+    accessorFn: (row) => (row.onBehalf ? "代操作" : "本人操作"),
+    header: "類型",
+    cell: ({ row }) =>
+      row.original.onBehalf ? (
+        <StatusBadge tone="warning">代操作</StatusBadge>
+      ) : (
+        <span className="text-muted-foreground text-xs">本人操作</span>
+      ),
+  },
+  {
     id: "target",
     accessorFn: (row) =>
       row.targetType
@@ -98,7 +115,7 @@ export function AuditPanel({ entries }: { entries: AuditEntry[] }) {
       <DataTable
         columns={auditColumns}
         data={entries}
-        filterPlaceholder="搜尋操作、執行者…"
+        filterPlaceholder="搜尋操作、執行者、代操作…"
         emptyLabel="尚無稽核紀錄。"
       />
     </div>

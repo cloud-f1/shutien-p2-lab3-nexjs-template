@@ -1,0 +1,1 @@
+ALTER TABLE "audit_log" ADD COLUMN "on_behalf" boolean DEFAULT false NOT NULL;

@@ -229,4 +229,63 @@ describe.skipIf(!reachable)("actions/admin.ts — requireAdmin wiring (int)", ()
       }
     })
   })
+
+  // -------------------------------------------------------------------------
+  // E356 — the `on_behalf` flag (AC #5)
+  //
+  // The value that matters is the one PERSISTED, so these read the column back
+  // out of Postgres rather than trusting the argument passed to logAudit().
+  // resetUserTotp is the decisive case: it is the only admin action with no
+  // self-target guard, so the same action produces true for another user and
+  // false for the admin's own account.
+  // -------------------------------------------------------------------------
+  describe("on_behalf flag (E356)", () => {
+    async function readOnBehalf(action: string): Promise<boolean[]> {
+      const rows = await tdb.sql<{ on_behalf: boolean }[]>`
+        SELECT on_behalf FROM audit_log WHERE action = ${action} ORDER BY created_at
+      `
+      return rows.map((r) => r.on_behalf)
+    }
+
+    it("setUserRole on another user ⇒ on_behalf = true", async () => {
+      const adminUser = await seedUser({ email: "ob-admin@int.test", role: "admin" })
+      const target = await seedUser({ email: "ob-target@int.test", role: "viewer" })
+      actorId = adminUser.id
+
+      expect(await admin.setUserRole(target.id, "editor")).toEqual({ success: true })
+      expect(await readOnBehalf("user.role_changed")).toEqual([true])
+    })
+
+    it("deleteUser on another user ⇒ on_behalf = true", async () => {
+      const adminUser = await seedUser({ email: "ob-admin2@int.test", role: "admin" })
+      const target = await seedUser({ email: "ob-target2@int.test", role: "viewer" })
+      actorId = adminUser.id
+
+      expect(await admin.deleteUser(target.id)).toEqual({ success: true })
+      expect(await readOnBehalf("user.deleted")).toEqual([true])
+    })
+
+    it("resetUserTotp on ANOTHER user ⇒ true; on the admin's OWN account ⇒ false", async () => {
+      const adminUser = await seedUser({ email: "ob-admin3@int.test", role: "admin" })
+      const target = await seedUser({ email: "ob-target3@int.test", role: "viewer" })
+      actorId = adminUser.id
+
+      // acting FOR someone else
+      expect(await admin.resetUserTotp(target.id)).toEqual({ success: true })
+      // acting on themselves — same action, same admin, different flag
+      expect(await admin.resetUserTotp(adminUser.id)).toEqual({ success: true })
+
+      expect(await readOnBehalf("user.totp_reset")).toEqual([true, false])
+    })
+
+    it("a pre-existing-shape audit write (no onBehalf argument) defaults to false", async () => {
+      const adminUser = await seedUser({ email: "ob-admin4@int.test", role: "admin" })
+      const { logAudit } = await import("@/lib/audit")
+
+      // Exactly the call shape every pre-E356 call site still uses, unchanged.
+      await logAudit({ actorId: adminUser.id, action: "legacy.shape", targetType: "user" })
+
+      expect(await readOnBehalf("legacy.shape")).toEqual([false])
+    })
+  })
 })

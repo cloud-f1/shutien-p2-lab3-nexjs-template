@@ -290,3 +290,71 @@ All grep hits are in: historical docs (`strategy-log.md`, `session-summary.md`, 
 | `verify_panel_ultra` audit event with all fields | PASS | Phase 6.5 lines 655-668 emit all 7 required fields |
 | Test suite covers full ultra matrix in <15s | PASS | All 35 tests pass, runtime ~3s |
 | `qa.md` documents ultra = judge-panel + double-evaluator | PASS | Table row updated, "deferred to follow-up" removed |
+
+## 2026-08-27 — Phase 86 QA（E353–E356）
+
+### E356 — QA 找到實作者漏掉的一整族寫入點（列舉方法的教訓）
+
+實作者用 `grep -rn "logAudit("` 列舉「所有會寫稽核的 action」，做出一份看起來完整的表格。
+QA 獨立列舉時**多加了一個 grep**：`grep -rn "audit:"` —— 因為 `defineAction` 走的是
+`lib/define-action.ts:203` 的**間接**路徑，`audit:` 是宣告式參數，永遠不會出現 `logAudit(` 字樣。
+
+**實作者的表格因此漏了整整 9 個寫入點。**
+
+**[GENERALIZABLE]** 當一個 codebase 同時有「直接呼叫」與「宣告式/工廠」兩種寫法時，
+單一 grep 的列舉必然不完整，而且**看起來很完整** —— 表格有 10 行、每行都有理由，
+沒有任何跡象顯示少了東西。列舉任何橫切關注點（稽核、守衛、遙測）前，先問：
+**「這個能力有沒有第二種接線方式？」** 若有，每種都要一個 grep。
+
+### 由此找到的真實缺口（ADVISORY，已登記 follow-up）
+
+`actions/admin-revenue.ts:142` `resendActivation` —— admin **為另一個使用者鑄造
+password-reset token 並寄出**（`db.insert(passwordResetTokensTable).values({ userId: user.id })`，
+metadata 甚至記了 `{ userId: user.id }`），卻寫成 `on_behalf = false`。
+
+這正是 E356 規格 Solution §4 字面點名的「重設他人密碼」情境。規格的 Key Files 只列
+`actions/admin.ts`，所以就字面而言實作者沒有違約，但 AC#5 的語意涵蓋它。
+架構已支援（`lib/define-action.ts:40` 的 `AuditEntry = Parameters<typeof logAudit>[0]`
+讓 `onBehalf` 自動透傳），補一行即可、零型別改動。
+
+### 反向故障注入：驗證「紅綠兩態都過」的測試是否仍有效
+
+E356 的 AC#4 測試（「不存在的帳號不寫任何稽核列」）在紅、綠兩種狀態下**都會通過** ——
+這通常是空包彈的徵兆。實作者主張它們仍有效，理由是寫成真實的 `SELECT count(*)` 而非 mock：
+「沒被呼叫的 mock 和『有呼叫但插入被靜默吞掉』無法區分；資料列計數可以」。
+
+QA 用**反向**故障注入驗證這個主張 —— 刻意讓程式碼對不存在／未驗證的帳號**也寫一筆**：
+
+    注入 A（!user 分支）        → 2 條轉紅，`expected 10 to be +0`
+    注入 B（!emailVerified）    → 1 條轉紅，`expected 1 to be +0`
+    還原（MD5 比對一致）        → 9/9 綠
+
+**[GENERALIZABLE]** 一般的故障注入是「拿掉功能，看測試會不會紅」。但對**負向**斷言
+（「X 不應該發生」）那招無效 —— 拿掉功能只會讓 X 更不發生。負向斷言要用**反向注入**：
+刻意讓 X 發生，看測試抓不抓得到。這是唯一能區分「有效的負向測試」與「恆真斷言」的方法。
+
+### E355 的不變量被釘了第二次
+
+QA 把 `comparePassword` 移到 `isLocked` 之上，4 條測試轉紅 —— 證明「鎖定檢查在 bcrypt 之前」
+的 spy 斷言不是死的。其中第 4 條是 **E356 新增的**測試，它自己也帶了
+`expect(mockComparePassword).not.toHaveBeenCalled()`。
+
+**[GENERALIZABLE]** 後續 epic 在既有不變量上疊加功能時，順手把該不變量再斷言一次是好習慣 ——
+它讓不變量不依賴於「原本那個檔案不被刪」而存活。
+
+### 驗證方法：對真實 Postgres 跑 migration 原句，而非讀程式碼
+
+AC#1（「既有列不受影響」）的驗證方式值得記錄：QA 建了一張 pre-0016 形狀的表、插入 3 列、
+**跑 0016 的原句**，再查回填結果 ——
+
+    rows_after | backfilled_false | nulls
+             3 |                3 |     0
+
+比「讀 SQL 看起來是純附加」強得多。`ADD COLUMN ... DEFAULT ... NOT NULL` 在 Postgres 11+
+不做全表重寫，但這是實測而非引述。
+
+### 既有 flaky test（非 E356 引入，值得單獨處理）
+
+`lib/rate-limit.test.ts > resets the window after it expires` 會偶發轉紅 ——
+該測試用 **1ms** 視窗，兩次連續 `rateLimit()` 若跨過毫秒邊界，第二次就重新充值。
+QA 單獨重跑該檔 5 次全綠、全套件 899/899。修法是改用 fake timers。這是 CI 的定時炸彈。

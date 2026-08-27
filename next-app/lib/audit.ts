@@ -13,6 +13,13 @@ export async function logAudit(entry: {
   action: string
   targetType?: string
   targetId?: string
+  /**
+   * E356 — set true when the actor performed this action ON BEHALF OF another
+   * principal (admin operating on someone else's account). Optional and
+   * defaulting to `false`, so every pre-existing call site keeps its exact
+   * current behaviour with zero edits.
+   */
+  onBehalf?: boolean
   metadata?: Record<string, unknown>
 }): Promise<void> {
   try {
@@ -21,6 +28,7 @@ export async function logAudit(entry: {
       action: entry.action,
       targetType: entry.targetType,
       targetId: entry.targetId,
+      onBehalf: entry.onBehalf ?? false,
       metadata: entry.metadata ?? {},
     })
   } catch (e) {
@@ -40,6 +48,7 @@ export async function getAuditLog(limit = 100): Promise<AuditEntry[]> {
       action: auditLogTable.action,
       targetType: auditLogTable.targetType,
       targetId: auditLogTable.targetId,
+      onBehalf: auditLogTable.onBehalf,
       metadata: auditLogTable.metadata,
       createdAt: auditLogTable.createdAt,
       actorEmail: usersTable.email,
@@ -70,6 +79,7 @@ export async function getAuditLogForTarget(
       action: auditLogTable.action,
       targetType: auditLogTable.targetType,
       targetId: auditLogTable.targetId,
+      onBehalf: auditLogTable.onBehalf,
       metadata: auditLogTable.metadata,
       createdAt: auditLogTable.createdAt,
       actorEmail: usersTable.email,

@@ -9,6 +9,7 @@ import { accountsTable, sessionsTable, usersTable, verificationTokensTable } fro
 import type { Role } from "./schema"
 import { getUserByEmail, getUserById } from "./queries"
 import { comparePassword } from "./password"
+import { logAudit } from "./audit"
 import { consumeNonce } from "./pending-2fa"
 import {
   isLockoutEnabled,
@@ -48,6 +49,17 @@ export async function authorizeCredentials(
     if (!userId) return null
     const user = await getUserById(userId)
     if (!user || !user.emailVerified || !user.totpEnabled) return null
+    // E356 — a TOTP user's session is actually created HERE (their password was
+    // verified earlier, in loginAction). Emitting `auth.login` at this point
+    // keeps the invariant "exactly one auth.login per session created" across
+    // BOTH password paths, instead of logging a success that never completed.
+    await logAudit({
+      actorId: user.id,
+      action: "auth.login",
+      targetType: "user",
+      targetId: user.id,
+      metadata: { method: "totp" },
+    })
     return { id: user.id, email: user.email, name: user.name, image: user.image, role: user.role }
   }
 
@@ -58,30 +70,67 @@ export async function authorizeCredentials(
   if (!email || !password) return null
 
   const user = await getUserByEmail(email)
+  //
+  // E356 — LOGIN-AUDIT POLICY (ported from fork E327): a failed login for a
+  // NONEXISTENT email writes NO audit row at all. `audit_log.actor_id` is
+  // nullable, so this is a deliberate POLICY choice rather than a schema
+  // limitation: attributing login events to a real user row is what keeps the
+  // trail queryable, and refusing to write for an unresolved identity is what
+  // stops the audit log from becoming an UNAUTHENTICATED WRITE SURFACE — without
+  // it, anyone could grow the table without bound by POSTing made-up addresses
+  // (account enumeration / log flooding). Only the branches below, which all
+  // have a resolved user row, emit events.
   if (!user || !user.passwordHash) return null
 
   // Hard gate — unconditional regardless of call site.
   // loginAction also checks this for UX messaging; this is the security layer.
+  // No audit event here: the account is refused before any password comparison,
+  // so this is neither `auth.login_failed` (no wrong password was submitted to
+  // a usable account) nor a lockout event.
   if (!user.emailVerified) return null
 
   const now = new Date()
 
+  // E356 — one closure so every branch below attributes its event to the same
+  // resolved identity. Fire-and-forget by contract: logAudit() swallows its own
+  // failures, so an audit outage can never flip a login's outcome.
+  const logAuth = (action: "auth.login" | "auth.login_failed" | "auth.locked") =>
+    logAudit({
+      actorId: user.id,
+      action,
+      targetType: "user",
+      targetId: user.id,
+      metadata: { method: "password" },
+    })
+
   // E355 — persistent lockout: a locked account is rejected BEFORE any bcrypt
   // work, so a locked-out attacker cannot make us burn CPU. The lock lives in
   // users.locked_until, so it survives a restart (unlike lib/rate-limit.ts).
-  if (isLocked(user, now)) return null
+  if (isLocked(user, now)) {
+    // E356 — an attempt against an ALREADY-locked account. The write sits AFTER
+    // the isLocked() decision and BEFORE the return, so E355's ordering
+    // invariant is untouched: comparePassword() is still never reached here.
+    await logAuth("auth.locked")
+    return null
+  }
 
   const isValid = await comparePassword(password, user.passwordHash)
   if (!isValid) {
     // Record this failure; the pure fn locks after MAX consecutive misses.
     // Flag off ⇒ complete no-op, no DB write at all.
+    let trippedLock = false
     if (isLockoutEnabled()) {
       const next = nextFailedState(user, now)
+      trippedLock = next.lockedUntil !== null
       await db
         .update(usersTable)
         .set({ failedLoginCount: next.failedLoginCount, lockedUntil: next.lockedUntil })
         .where(eq(usersTable.id, user.id))
     }
+    // E356 — wrong password on an existing account. When THIS failure is the one
+    // that tripped the lock, record the lock transition as its own event.
+    await logAuth("auth.login_failed")
+    if (trippedLock) await logAuth("auth.locked")
     return null
   }
 
@@ -95,7 +144,13 @@ export async function authorizeCredentials(
   // via raw credentials — loginAction routes them to the /login/2fa
   // challenge, which finishes via the nonce path above. Refusing here is
   // defence in depth in case authorize() is reached directly.
+  // No audit event on this branch: nothing failed and no session was created —
+  // the TOTP user is being routed to the /login/2fa challenge, and their
+  // `auth.login` is emitted by the nonce path above once it actually completes.
   if (user.totpEnabled) return null
+
+  // E356 — successful login (the session is created from this return value).
+  await logAuth("auth.login")
 
   return { id: user.id, email: user.email, name: user.name, image: user.image, role: user.role }
 }
