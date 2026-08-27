@@ -17,6 +17,8 @@
 #                                          # current branch name (E362 — needed when the caller
 #                                          # publishes a branch it hasn't checked out, e.g.
 #                                          # batch.md's Step 4 per-epic publish loop)
+#   PMC_LOG_TAIL_LINES=60 scripts/pre-merge-check.sh   # override the failure-log tail length
+#                                          # (E364 — default ~30 lines; only used on failure)
 #
 # Exit non-zero on any failed gate. Designed to be quiet on success.
 
@@ -28,6 +30,10 @@ RUN_E2E=0
 ALLOW_DELETIONS=0
 FAIL=0
 DELETION_THRESHOLD=50
+# E364 — how many trailing log lines to print to the terminal on gate failure.
+# Only used when the gate's own log has no more specific block to show (see
+# print_gate_failure below).
+PMC_LOG_TAIL_LINES="${PMC_LOG_TAIL_LINES:-30}"
 
 for arg in "$@"; do
   case "$arg" in
@@ -40,6 +46,45 @@ say()  { printf '\n\033[1m▶ %s\033[0m\n' "$1"; }
 ok()   { printf '  \033[32m✓ %s\033[0m\n' "$1"; }
 bad()  { printf '  \033[31m✗ %s\033[0m\n' "$1"; FAIL=1; }
 warn() { printf '  \033[33m! %s\033[0m\n' "$1"; }
+
+# E364 — print a gate's actual failure diagnostics to the terminal, not just
+# "see /tmp/pmc-*.log". The log file itself is still left on disk for full
+# detail; this prints a slice of it right where a human (or an agent) is
+# already looking.
+#
+# $1 = log file path
+# $2 = optional gate id — when "e2e" AND the log contains E357's target-
+#      identity abort banner, print that WHOLE banner block verbatim instead
+#      of a plain tail. That message (next-app/e2e/global-setup.ts) was
+#      deliberately written multi-line and actionable for a human to read —
+#      a generic tail would very likely cut it off mid-instruction.
+print_gate_failure() {
+  local log_file="$1"
+  local gate_id="${2:-}"
+
+  if [ ! -f "$log_file" ]; then
+    return 0
+  fi
+
+  if [ "$gate_id" = "e2e" ] && grep -q 'e2e ABORTED' "$log_file" 2>/dev/null; then
+    local first_line last_line
+    first_line=$(grep -n '^──\{10,\}$' "$log_file" | head -1 | cut -d: -f1)
+    last_line=$(grep -n '^──\{10,\}$' "$log_file" | tail -1 | cut -d: -f1)
+    if [ -n "$first_line" ] && [ -n "$last_line" ] && [ "$last_line" -gt "$first_line" ]; then
+      printf '  \033[2m── e2e target-identity abort (full block, from %s) ──\033[0m\n' "$log_file"
+      sed -n "${first_line},${last_line}p" "$log_file"
+      echo ""
+      return 0
+    fi
+    # Banner text matched but the separator lines didn't (unexpected format
+    # drift) — fall through to the generic tail below rather than print
+    # nothing.
+  fi
+
+  printf '  \033[2m── last %s lines of %s ──\033[0m\n' "$PMC_LOG_TAIL_LINES" "$log_file"
+  tail -n "$PMC_LOG_TAIL_LINES" "$log_file"
+  echo ""
+}
 
 # E345 — gate ledger emission. This is the gate humans/agents run most often
 # before pushing (CLAUDE.md's own "Quality gate before merge" line), so it
@@ -135,15 +180,15 @@ fi
 
 # ── Gate 3: typecheck ───────────────────────────────────────────────────────
 say "Typecheck"
-if (cd "$APP" && pnpm -s typecheck >/tmp/pmc-tsc.log 2>&1); then ok "tsc --noEmit clean"; emit_gate typecheck pass; else bad "typecheck failed (see /tmp/pmc-tsc.log)"; emit_gate typecheck fail; fi
+if (cd "$APP" && pnpm -s typecheck >/tmp/pmc-tsc.log 2>&1); then ok "tsc --noEmit clean"; emit_gate typecheck pass; else bad "typecheck failed (see /tmp/pmc-tsc.log)"; emit_gate typecheck fail; print_gate_failure /tmp/pmc-tsc.log; fi
 
 # ── Gate 4: lint ────────────────────────────────────────────────────────────
 say "Lint"
-if (cd "$APP" && pnpm -s lint >/tmp/pmc-lint.log 2>&1); then ok "eslint clean"; emit_gate lint pass; else bad "lint failed (see /tmp/pmc-lint.log)"; emit_gate lint fail; fi
+if (cd "$APP" && pnpm -s lint >/tmp/pmc-lint.log 2>&1); then ok "eslint clean"; emit_gate lint pass; else bad "lint failed (see /tmp/pmc-lint.log)"; emit_gate lint fail; print_gate_failure /tmp/pmc-lint.log; fi
 
 # ── Gate 5: unit tests ──────────────────────────────────────────────────────
 say "Unit tests (vitest)"
-if (cd "$APP" && pnpm -s test >/tmp/pmc-unit.log 2>&1); then ok "unit tests pass"; emit_gate unit pass; else bad "unit tests failed (see /tmp/pmc-unit.log)"; emit_gate unit fail; fi
+if (cd "$APP" && pnpm -s test >/tmp/pmc-unit.log 2>&1); then ok "unit tests pass"; emit_gate unit pass; else bad "unit tests failed (see /tmp/pmc-unit.log)"; emit_gate unit fail; print_gate_failure /tmp/pmc-unit.log; fi
 
 # ── Gate 6 (optional): e2e ──────────────────────────────────────────────────
 # Note: e2e here is opt-in (--e2e flag) — when this flag is omitted, e2e is
@@ -154,7 +199,7 @@ if (cd "$APP" && pnpm -s test >/tmp/pmc-unit.log 2>&1); then ok "unit tests pass
 # throughout the ledger, not as a hidden skip.
 if [ "$RUN_E2E" -eq 1 ]; then
   say "E2E (playwright)"
-  if (cd "$APP" && pnpm -s test:e2e >/tmp/pmc-e2e.log 2>&1); then ok "e2e suite passes"; emit_gate e2e pass; else bad "e2e failed (see /tmp/pmc-e2e.log)"; emit_gate e2e fail; fi
+  if (cd "$APP" && pnpm -s test:e2e >/tmp/pmc-e2e.log 2>&1); then ok "e2e suite passes"; emit_gate e2e pass; else bad "e2e failed (see /tmp/pmc-e2e.log)"; emit_gate e2e fail; print_gate_failure /tmp/pmc-e2e.log e2e; fi
 fi
 
 # ── Gate 7: command/agent frontmatter + stale-stack + tool-name lint ────────
