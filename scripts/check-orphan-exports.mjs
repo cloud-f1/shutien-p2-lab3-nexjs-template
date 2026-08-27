@@ -22,7 +22,11 @@ import { join, resolve, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..")
-const APP = join(ROOT, "next-app")
+// ORPHAN_CHECK_APP_DIR (E358 regression test): lets a test point this at a throwaway fixture
+// directory instead of the real next-app/ tree, so the stateful-regex regression test (see
+// scripts/hooks/tests/test-e358-orphan-exports-stateful-regex.sh) never reads or writes real
+// repo files — same isolation discipline as E353's PROGRESS_FILE/INDEX_FILE env overrides.
+const APP = process.env.ORPHAN_CHECK_APP_DIR ? resolve(process.env.ORPHAN_CHECK_APP_DIR) : join(ROOT, "next-app")
 const SCAN_ROOTS = ["lib"] // pure-logic layer — most in need of wiring-tested protection
 // Everywhere a lib/ export could legitimately be called from in production: the app tree, plus
 // one-off Node scripts (drizzle/seed.ts, scripts/module-validate.ts) that import lib/ helpers
@@ -96,7 +100,11 @@ for (const file of allFiles.filter((f) => SCAN_ROOTS.some((r) => f.startsWith(jo
   for (const name of names) {
     if (ALLOWLIST.has(name)) continue // already triaged, exempted
     if (isTestOnlyConvention(name)) continue // `_`/`__`-prefixed test-only reset hook
-    const ref = new RegExp(`\\b${name}\\b`, "g")
+    // No `g` flag: a global regex's `.test()` advances `lastIndex` on every call, so reusing
+    // one instance across the loop below made consecutive calls on *different* strings
+    // alternate true/false/true (verified — see E358). `.test()` on a non-global regex always
+    // matches from index 0, so a single instance is safe to reuse across the loop.
+    const ref = new RegExp(`\\b${name}\\b`)
     let prod = 0 // cross-file production references
     let test = 0 // *.test.* references
     for (const [f, t] of fileText) {
@@ -108,7 +116,10 @@ for (const file of allFiles.filter((f) => SCAN_ROOTS.some((r) => f.startsWith(jo
     // Same-file usage: appears more than once (declaration + at least one use) → treat as
     // already wired within the module (avoid flagging "a constant used by an already-wired
     // function in the same file" as an orphan).
-    const selfHits = (text.match(ref) || []).length
+    // Separate global instance for `.match()` (needs `g` to collect all hits) — never shared
+    // with the `.test()` instance above, which is exactly the bug this file used to have.
+    const globalRef = new RegExp(`\\b${name}\\b`, "g")
+    const selfHits = (text.match(globalRef) || []).length
     const usedInFile = selfHits > 1
 
     if (prod === 0 && !usedInFile && test > 0) {
