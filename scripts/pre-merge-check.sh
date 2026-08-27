@@ -87,6 +87,29 @@ else
   bad "state drift detected between EPIC_INDEX.md and epic-progress.md — run scripts/state/render-index.sh to reconcile, then commit both files together (see /tmp/pmc-drift.log)"
 fi
 
+# ── Gate 2.6: state internal consistency (E361) ─────────────────────────────
+# check-drift.sh (Gate 2.5, above) only asks "are epic-progress.md and
+# EPIC_INDEX.md in sync" — the two files can be byte-identical and BOTH
+# wrong (Phase 86 close-out left the Phase Status row at "🟢 APPROVED" after
+# all 4 of its epics were fully done; render-index.sh faithfully copied that
+# wrong value into EPIC_INDEX.md, so check-drift.sh returned 0). This gate
+# instead checks epic-progress.md's OWN content for self-contradictions: a
+# step marked done while an earlier step in the same row is still pending
+# (time-impossible — e.g. commit=✅ while implement=⬜), and a phase whose
+# every epic is fully done/skip but whose Phase Status row isn't "✅
+# Complete". See scripts/state/check-consistency.sh's header for the full
+# rule list and the deliberately-not-implemented rule, and its module
+# comment for why this does NOT duplicate Gate 2.5.
+say "State internal consistency"
+if bash "$ROOT/scripts/state/check-consistency.sh" >/tmp/pmc-consistency.log 2>&1; then
+  ok "docs/context/epic-progress.md is internally self-consistent"
+else
+  bad "epic-progress.md contradicts itself — see /tmp/pmc-consistency.log for the exact epic/phase and cells"
+fi
+if grep -q 'WARN —' /tmp/pmc-consistency.log 2>/dev/null; then
+  warn "$(grep 'WARN —' /tmp/pmc-consistency.log | head -1 | sed -E 's/^[^:]*check-consistency\.sh: //')"
+fi
+
 # ── Gate 3: typecheck ───────────────────────────────────────────────────────
 say "Typecheck"
 if (cd "$APP" && pnpm -s typecheck >/tmp/pmc-tsc.log 2>&1); then ok "tsc --noEmit clean"; emit_gate typecheck pass; else bad "typecheck failed (see /tmp/pmc-tsc.log)"; emit_gate typecheck fail; fi
