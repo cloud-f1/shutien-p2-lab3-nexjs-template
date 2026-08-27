@@ -9,18 +9,150 @@
 
 | Field | Value |
 |-------|-------|
-| Cycle | 41 |
-| State | APPROVED |
+| Cycle | 42 |
+| State | ⏸ AWAITING HUMAN APPROVAL |
 | Date | 2026-08-27 |
-| Notes | **Phase 87 已核准（2026-08-27）** — Phase 86 執行過程中發現的 5 個 follow-up。使用者要求把 6 個候選轉成 epic；其中 (3) resendActivation 漏標與 (4) CSV 匯出缺欄同屬 `on_behalf` 完整性，合併為一個 epic，符合每輪最多 5 案的預算規則。**最高優先是 E357** —— 它讓整道 e2e 閘門在特定情況下失去意義，而非只是不方便。詳見下方 Cycle 41 段落。 |
+| Notes | **Mode: audit** — 使用者帶著 7 個候選（來自 Phase 86–87 實地發現）要求逐條驗證，不要照單全收。結果：2 條是舊聞或已緩解（#1 `pre-merge-check.sh` 本體其實已在 E345 補上 `emit_gate`——真正的洞在 `/athena:batch` Step 4 的逐-epic publish 步驟從未真正呼叫它；#3 的「unsalted-hash 文件措辭」已在 `lib/app-identity.ts` 的註解中正確自我揭露「非安全控制」，不成立），其餘維持真實問題並各自查到具體檔案/行號證據。額外稽核發現 Tier 0 記憶層自建置以來**從未完成過一次真正的 promotion**（一份待套用 6 週的 proposal 靜靜躺著），列為本輪最高優先。5 案共 23 SP，最高 P1、無 P0——不是因為問題不重要，是因為都是「機制存在但沒接好/沒跑完」而非新缺口，修法都小而精確。 |
+| Prev41 | Phase 87（E357–E361，源自 Cycle 41 的 Phase 86 實地發現 follow-up）— 5 epics APPROVED + **EXECUTED** 2026-08-27。整合閘門 PASS：typecheck 0 · lint 0 · unit 908/908 · int 118/118 · e2e 51/51 · make hook-test 26 檔全過。**E357（P0）**修掉 e2e 靜默測錯 app（同機另一個本模板 fork 佔用 `:3000`，`<title>`/`/api/health` 與本專案位元組相同、完全無法辨識，改用專案絕對路徑的 sha256 摘要當識別）；E358 修 `check-orphan-exports.mjs` 有狀態 regex（`.test()` 推進 `lastIndex`）造成的假陽性；E359 補齊 `resendActivation`/CSV 匯出的 `on_behalf` 稽核完整性；E360 修 `rate-limit.test.ts` 的 1ms 視窗 flake；E361（由 P2 上調 P1）新增狀態檔內部一致性守衛，**上線當天就抓到自己要防的那類錯誤**（收尾時原要重蹈 Phase 86 事故 3）。 |
 | Prev36 | Phase 82 (Fork Harvest Wave 3 — `../ai-rc-engineer-pm`) — 8 epics E336–E343 **APPROVED 2026-08-22** by the user. 四鏡頭比對 fork 後的發現：**athena 資產層已幾乎同步**（agents 0 差異、skills fork 只多 1 支、commands 只多 `approve.md`、`components/ui/` 0 差異、docs 幾乎對齊），且模板功能面**大幅領先**（billing 三家 · sales pages · admin 營收後台 · 2FA · API keys · webhooks），fork 自 2026-07-13 起未再推進。真正的 delta 集中在 **next-app 的 UI 組裝層**。使用者決策：範圍 **A+C**（管理介面/原件 + skill/context，B 組 auth/audit 硬化留 backlog）· 儀表板採 **混合式**（加 widget kit 並升級首頁，不整頁重寫）· 交付走 **athena pipeline**。Wave 1 = E336+E338+E340+E341+E342+E343 → Wave 2 = E337+E339（`epic-graph.sh --phase 82` 已驗證 exit 0）。**明確不回收**：`design-system-coverage.sh`（指向不存在的 `client/src/pages`，Vite 死碼，前次稽核已判定）· rc 領域邏輯（holidays/gantt/cases）· agent persona 改名（fork 的 SAGE/DOC/ARGUS 烙在 description 與 tony 路由）。**編號紅線**：兩 repo 已撞號（雙方各有自己的 E334/E335），模板側自 E336 起編。 |
 | Prev35 | Phase 77 (高轉換銷售頁 + 統一一次性金流) — 4 epics E326–E329 APPROVED 2026-07-12 from a user-supplied sales-page PRD (AIDA copy structure + unified ECPay/NewebPay/Stripe one-time payment interface). User decisions: **ECPay 綠界 = launch gateway** (deploys set `BILLING_PROVIDER=ecpay`; resolver code default stays stripe) · scope = 結帳+訂單+**交付開通** (full) · formal epics via /athena:plan. ~70% infra pre-existed (E249 provider contract, E250/E261 landing sections, ecpay/stripe providers, payment_events idempotency) — epics cover only the true gaps: sales route+4 sections (E326), products/orders+checkout+SOLID interface segregation (E327), entitlement delivery+自動建帳/啟用信 (E328), NewebPay slot (E329). Wave 1: E326+E327 → Wave 2: E328+E329. **Addendum (同日)**: CRM 整合 → **Phase 78 E330** (order.completed + system-scoped webhook egress reusing E268 + Google Sheet/MailerLite recipes; first-party @saas/crm-* connectors = backlog). **Addendum 2 (同日)**: 後台 audit → **Phase 79 E331+E332** (admin 營收後台: 會員/訂單/訂閱台 + 多銷售頁管理 sales_pages+CRUD+ISR; E326 amended with resolver 解耦 constraint). **Addendum 3 (同日)**: 風格多樣化 → 三層渲染架構 (preset/variant/custom) — E326 +3 style presets, E332 +style 選擇+render_mode, 新 **Phase 80 E333** sales-page-builder skill (HTML ingest → custom TSX + registry). |
 | Prev34 | Phase 75 (Backport Wave 2) — 5 epics E319–E323 APPROVED + **EXECUTED** 2026-07-08 (implement→QA→commit→push→PR each; merges pending user, pull-only perms). Ran as a **sequential PR stack** (shared files: stop-verifier/CLAUDE/package.json) — dogfooding E319's own in-repo-chain mode. PRs: **#72 E320 · #73 E319 · #74 E321 · #75 E322 · #76 E323**, stacked. E323 scoped to Part A + @saas/{scheduler,audit-log}; **E324 follow-up** = @saas/{rbac-scoped-visibility,sentry-pii,csv-io} + the 8 orphans E320 found. |
 | Prev33 | Phase 73 (Template Enhancement Backport from ai-rc-engineer-pm, E311–E317) — 7 epics, all parallel. TONY chief-of-staff · new-project wizard · docs reorg · service-map+dead-code (docs-level) · testing-strategy skill · scripts tooling · zeabur-deploy skill. APPROVED + merged (PRs #59–#66). |
-| Prev32 | Phase 72 (Follow-ups from /athena:align, E307–E310) — TOTP e2e, usage limits, export expansion, 2FA recovery + onboarding persistence. Merged via PR #57 (#58 for state flip). 518 tests, migration 0010. |
-| Prev31 | Phase 71 (Athena Toolchain, E302–E306) — rebrand skill, mockup-to-epics + /athena:plan mockup, alignment-audit + /athena:align, user-guide-builder + VitePress dev-docs (deployed to Cloudflare Pages), zeabur-deploy skill. Merged via PR #54. |
 
 ---
+
+## Cycle 42 — 2026-08-27 — Mode: audit
+
+### 來源
+使用者提供 7 個候選（Phase 86–87 實地發現）並要求逐條重新驗證（grep/read 確認，不照單全收），
+再加一輪針對「宣稱與實際不符」「失敗被靜默吞掉」的額外稽核。以下每條都附可重跑的命令與檔案:行號。
+
+### 逐條驗證結果
+
+**#1 `pre-merge-check.sh` 不發 `gate_result` 事件 — 部分是舊聞，真正的洞在別處。**
+`scripts/pre-merge-check.sh` 本體其實**已經**在 E345（PR #121，2026-08-22）補上 `emit_gate` 呼叫
+（typecheck/lint/unit/e2e 四個 gate 各自 `emit_gate ... pass|fail`，見該檔第 43–137 行）——這部分
+已修，使用者記錯了狀態。但實測 `.claude/audit.jsonl` 發現真正的洞：Phase 83–87 每一個 Phase 收尾，
+`gate_result` 裡永遠只有**一組**（typecheck/lint/unit/int/e2e 各一，時間戳完全相同、`epic` 欄位永遠
+是 `null`），而且這組帶著 `int` gate——`pre-merge-check.sh` 根本沒有 `int` gate（只有
+typecheck/lint/unit/e2e/command-lint），`int` 只有 `/athena:integrate` 的整合閘門會發。也就是說，
+Phase 87 五個 epic（E357–E361）各自在 merge 前應該各跑一次 `pre-merge-check.sh`（`loop.md` 第 61–74
+行明文列為 MANDATORY，且分支名 regex 抓取確認有效——`feat/E357-e2e-target-identity` → 正確抓到
+`E357`），但帳本裡完全沒有這 5 組個別紀錄，只有整合閘門那一組。回頭查 `.claude/commands/athena/
+batch.md` 第 150–166 行的 Step 4「publish/verify sequence」，範例程式碼**直接從 `git push` 開始**，
+完全省略了 `loop.md` canonical block 第 1 步的 `scripts/pre-merge-check.sh` 呼叫——雖然上方註解寫
+「follow the Publish step ... in loop.md (CANONICAL)」，但寫死的範例碼本身漏了這一步。這解釋了為
+何 5 個 epic 各自的 pre-merge-check 從未真正跑過（或跑了但不透過這支腳本），帳本因而低估實際執行
+的閘門數。**結論：pre-merge-check.sh 本體無罪，`batch.md` 的 Step 4 範例碼漏了一行 mandatory 步驟
+——這才是需要修的地方。**
+
+**#2 Tier 0 記憶層從未存在 — 成立，且比原描述更嚴重。**
+`ls ~/.claude/template-memory/` → `No such file or directory`（本機實測）。`jq 'select(.event==
+"tier0_loaded")' .claude/audit.jsonl` → 空（0 筆，橫跨整個專案生命週期）。CLAUDE.md 第 287 行宣稱
+「cross-project wisdom (15 files)」——純屬虛構/過時。更關鍵的新發現：`docs/context/promotion-
+proposals/20260713-005943.md` 是 `auto-promote-check.sh` 在累積 22 條待處理 `[GENERALIZABLE]`
+（門檻 3 條的 7 倍）後於 **2026-07-13** 自動產生的 promotion proposal，**至今（2026-08-27，已過
+6 週、跨越 Phase 77–87 共 11 個 phase）從未被 `/athena:promote --apply` 套用**——整條 pipeline
+（E158/E180–E191，多達十幾個腳本、大量單元測試）完整存在且被 CI 覆蓋，卻從未真正跑完一次。
+`/athena:learn` 的 Step 3.8/4.5/4.6（`learn.md` 第 140/167/188 行）把 `score.sh flag-weak`（實測
+`exit 1`，訊息 `error: not a directory: ~/.claude/template-memory`）、`promotion-follow-through.sh`、
+`consolidation-detect.sh` 全部包 `2>/dev/null || true`——這是**刻意設計**（檔頭明文「best-effort;
+if score.sh or the Tier 0 dir is missing, skip silently」，為了不讓 hook 被非核心功能卡住），不是
+臥底 bug，但淨效果是：Tier 0 從未被建立這件事，42 輪 `/athena:plan` 從沒被任何自動機制大聲提醒過。
+
+**#3 E357 的四個「未列失敗模式」— 2 個查無實據、1 個已經妥善處理、1 個是真缺口但規模太小不值得開
+獨立 epic。**
+- 容器環境假綠：`grep -rn "容器\|container\|假綠" docs/context/debug-log.md docs/context/
+  qa-patterns.md` 全專案查無此描述的具體事故紀錄。**無法驗證，可能是記錯或來自未寫回的 session。**
+- Next 16 dev-server lock：同樣全專案 `grep` 查無 "Next 16"/"dev-server lock"/"EADDRINUSE" 相關敘述。
+  **無法驗證。**
+- unsalted-hash 文件措辭：`next-app/lib/app-identity.ts` 第 27–29 行與第 41–42 行的註解已經正確
+  自我揭露——「hashed... so an unauthenticated /api/health never leaks...」且明文「It is an
+  **anti-confusion** check, not a security control... It protects against accidents, not against
+  an adversary.」**沒有誇大安全宣稱，此點不成立。**
+- identity ≠ freshness：**真實但小。** `computeAppInstanceId` 只雜湊「絕對路徑」，不含任何
+  git SHA / build id，`next-app/app/api/health/route.ts` 第 22–28 行的回應也只有
+  `{status, timestamp, appInstanceId, appName}`——目標路徑對了不代表跑的 server 是最新程式碼（例如
+  忘記重啟 dev server）。規模只值 1-2 行程式碼（加一個 `buildId`/`gitSha` 欄位），放進 Deferred。
+
+**#4 `E2E_SKIP_TARGET_CHECK` 警告位置不夠顯眼 — 部分成立。**
+逃生口本身在 `abort()` 的中止訊息（`global-setup.ts` 第 142–143 行，選項 4）與
+`docs/context/test-status.md` 第 43 行的逃生口表格中都有清楚記錄——這兩處已經足夠顯眼。但實際
+**使用** `E2E_SKIP_TARGET_CHECK=1`（而非讀中止訊息後才設）的路徑（`global-setup.ts` 第 151–156
+行）只印一行 `console.warn`，沒有重複中止訊息選項 1 附帶的 DB 風險提醒（用錯 `DATABASE_URL` 會打到
+`saas_dev`）。規模同樣很小，併入 Deferred。
+
+**#5 `pre-merge-check.sh` 吞掉 abort 訊息 — 成立。**
+`scripts/pre-merge-check.sh` 的 Gate 3–6（typecheck/lint/unit/e2e）一律把完整輸出導到
+`/tmp/pmc-*.log`，失敗時只印一行 `bad "e2e failed (see /tmp/pmc-e2e.log)"`（該檔對應行）。這剛好
+抵銷 E357 刻意做成大聲、多行、可行動的 `abort()` 訊息（`global-setup.ts` 第 98–148 行）——在
+`pre-merge-check.sh` 底下，這則訊息被降級成「去看 log 檔」，終端機上跑這道閘門的人／agent 不會自動
+看到真正的中止原因。
+
+**#6 e2e 行為變更未寫進 CLAUDE.md — 成立。**
+CLAUDE.md 第 30–53 行的 e2e 段落只講資料庫隔離契約（`pnpm db:e2e-setup` 建 `saas_dev_e2e`），完全沒
+提 E357 新增的 `globalSetup` 目標身分驗證——`APP_INSTANCE_ID`／`E2E_EXPECTED_APP_INSTANCE_ID`／
+`E2E_SKIP_TARGET_CHECK` 三個環境變數，以及「目標不符會直接中止整套 e2e」這個新的啟動前提，在這份
+每個 session 自動載入的檔案裡完全查不到。
+
+**#7 `totalPages` 是真孤兒 — 成立。**
+`node scripts/check-orphan-exports.mjs` 目前唯一回報的孤兒：`totalPages (lib/billing/
+pagination.ts:50)` — 1 個測試參照、0 個正式程式碼參照。`grep -rn "from .*pagination" next-app`
+確認只有 `resolvePagination` 被 `lib/billing/queries.ts:14` 匯入，`totalPages` 從未被任何頁面／
+action 使用。Phase 87 收尾時（E358）已確認是「刻意不加進 allowlist」，非本輪新發現，只是尚未收斂。
+
+### 額外稽核發現（超出使用者的 7 條清單）
+
+- **CLAUDE.md 的量化宣稱有其他數字漂移**：Tier 1「this project's state (16 files)」（CLAUDE.md 第
+  288 行）vs. 實測 `ls docs/context/*.md | wc -l` = 25。Agent 數「13 specialists」（第 209 行）與
+  `ls .claude/agents/*.md | wc -l` = 13 相符，沒有問題——只有 Tier 1 這個數字跟不上檔案成長。優先度
+  低，併入 Deferred，不單獨佔提案名額。
+- **`rule_fired` 分布**：Rule 24（Phase-Completion Gate-Ledger Guard, E345, exit 2）自 2026-08-22
+  上線以來 0 次觸發，但同期至少 5 個 phase 收尾（83–87）。追查後判定**不是缺陷**——`stop-verifier.sh`
+  確實有接線（第 387 行），Phase 86 唯一一次真實的 e2e `skipped` 記錄在收尾前已被重跑覆蓋成
+  `pass`，屬於「沒有需要攔的東西」而非「守衛沒接上」。列出以示稽核有查過，非漏網。
+
+### Proposed Epics (max 5)
+
+| # | Epic | Priority | Points | Rationale |
+|---|------|----------|--------|-----------|
+| E362 | `/athena:batch` Step 4 補回逐-epic PRE-PUBLISH GATE | P1 | 8 | `batch.md` 第150–166行的 publish 範例碼漏掉 `loop.md` canonical block 第1步（`scripts/pre-merge-check.sh`，明文 MANDATORY）——這是 Phase 83–87 帳本裡每個 phase 只有「一組」`gate_result`（來自整合閘門，`epic:null`）而非「N+1組」的根因，非 pre-merge-check.sh 本體問題（它已在 E345 補上 emit_gate）。修法：把 canonical 呼叫寫進範例碼；順便讓 `gate-ledger.sh` 能區分「wave 整合閘門」與「per-epic pre-merge-check」兩種來源，避免未來稽核又被同一組 5 事件誤導成「每個 epic 都各自跑過」。 |
+| E363 | Tier 0 記憶層：套用擱置 6 週的 promotion + 加陳舊警報 | P1 | 8 | `~/.claude/template-memory/` 不存在，`tier0_loaded` 事件 0 筆，CLAUDE.md「15 files」純屬過時宣稱。`docs/context/promotion-proposals/20260713-005943.md`（22條待處理 `[GENERALIZABLE]` 觸發自動產生）已擱置超過 6 週、跨 11 個 phase 未套用——整條 E158/E180–E191 pipeline 完整存在卻從未真正跑完一次。修法：(1) 對現有 proposal 實際執行 `/athena:promote --apply` 建立第一批真實 Tier 0 檔案，(2) 新增 staleness 守衛（例如 `scripts/memory/check-promotion-staleness.sh`，proposal 擱置超過 N 天要大聲警告而非像 `learn.md` 現有的 `\|\| true` 一樣靜默），(3) 修正 CLAUDE.md 的「15 files」宣稱直到有真實檔案為止。 |
+| E364 | Gate 失敗時把診斷內容印出來，不要只指向 log 檔 | P2 | 3 | `pre-merge-check.sh` 的 typecheck/lint/unit/e2e 四個 gate 失敗時只印 `bad "... failed (see /tmp/pmc-*.log)"`，抵銷了 E357 刻意做成大聲、可行動的 `abort()` 中止訊息（`global-setup.ts` 第98–148行）——在這道最多人跑的閘門下，那則訊息被降級成「自己去開 log」。修法：失敗時 tail 該 gate log 最後 N 行（或抓 `ABORTED`/`FAILED` 關鍵字）直接印到終端機輸出。 |
+| E365 | CLAUDE.md 補上 E357 的 e2e 目標身分驗證契約 | P2 | 2 | CLAUDE.md 第30–53行的 e2e 段落只講資料庫隔離，完全沒提 E357 新增的 `globalSetup` 身分驗證（`APP_INSTANCE_ID`/`E2E_EXPECTED_APP_INSTANCE_ID`/`E2E_SKIP_TARGET_CHECK`）與「目標不符即整套中止」的新前提——這份檔案是每個 session 自動載入的唯一入口，讀者查不到。修法：補 2–3 行並指向 `docs/context/test-status.md` 的 Standing precondition 段落。 |
+| E366 | 收斂 `totalPages` 真孤兒 | P3 | 2 | `node scripts/check-orphan-exports.mjs` 回報 `totalPages`（`lib/billing/pagination.ts:50`）1個測試參照、0個正式參照；`grep` 確認 `_orders-tab.tsx`/`_subscriptions-tab.tsx` 都沒有匯入它。修法二選一：接進 admin 訂單/訂閱頁顯示「第 X / Y 頁」，或在 `check-orphan-exports.mjs` 的 allowlist 加一行理由註解（若確定要當公開 pagination API 保留）。 |
+
+**Total: 23 / 80 story points** — 5 案全數落在 P1–P2–P3，無 P0；嚴重度篩選規則允許（P0/P1 少於 5
+案時 P2/P3 可用名額）。
+
+### Deferred Ideas（本輪新增）
+
+| Idea | Priority | Added | Notes |
+|------|----------|-------|-------|
+| `/api/health` 加 `buildId`/`gitSha`，區分「目標對」與「目標新鮮」 | P3 | 2026-08-27 | E357 的 identity 只證明路徑對，證不出 server 是不是最新程式碼（忘記重啟 dev server 這類情境）。規模僅 1-2 行，不值得單獨佔提案名額。 |
+| `E2E_SKIP_TARGET_CHECK=1` 的 skip 分支補上 DB 風險提醒 | P3 | 2026-08-27 | 目前只印一行 console.warn，沒有重複中止訊息裡選項1附帶的「用錯 DATABASE_URL 會打到 saas_dev」警語。 |
+| CLAUDE.md「16 files」Tier 1 數字漂移（實測 25） | P3 | 2026-08-27 | 純文件數字跟不上檔案成長，非功能性問題，順手修即可，不必開 epic。 |
+| 容器環境假綠 / Next 16 dev-server lock（使用者原候選 #3 的兩個子項） | — | 2026-08-27 | 全專案 grep 查無對應事故紀錄，無法用具體檔案/行號佐證，暫不成案。若使用者能補上重現步驟或原始 session 記錄，下一輪可重新評估。 |
+
+### Risk Assessment
+
+| Risk | If not addressed |
+|------|-------------------|
+| E362 不修 | `/athena:batch`（CLAUDE.md 明文的預設執行路徑）持續讓逐-epic pre-merge-check 名存實亡，未來稽核會一再被「帳本只有一組事件」誤導成「有跑過」，且個別 epic 失去了 pre-merge-check 專屬的 repo-hygiene/state-drift/state-consistency 檢查（那些不在整合閘門的四個 gate 裡）。 |
+| E363 不修 | Tier 0 繼續是純裝飾——CLAUDE.md 對外宣稱的「跨專案智慧」與 fork 精靈的核心賣點（`new-project` skill 依賴 `NEW_PROJECT_PRIMER.md`）持續是空頭支票，且陳舊的 proposal 只會越積越多，将來要補做時規模更大更難審查。 |
+| E364/E365 不修 | 純觀測性/文件缺口，不會造成功能性錯誤，但會持續讓「E357 特地做的大聲中止」在最常跑的閘門下失去效果，增加除錯時間成本。 |
+| E366 不修 | 純代碼整潔問題，風險最低，但每次 `check-orphan-exports.mjs` 全綠稽核都要重新人工確認同一個已知孤兒不是新問題，浪費稽核精力。 |
+
+### Recommendation
+
+優先做 **E362 + E363**——兩者都是「機制已經蓋好但沒接通/沒跑完」，且都直接影響本專案賴以自證品質
+的兩個核心系統（gate 帳本、記憶系統）的可信度。E364/E365 是小而快的觀測性/文件補丁，可以跟 E362
+同一批做（都碰 `pre-merge-check.sh` 相關檔案）。E366 最小，任何一輪有空檔都可以順手處理。
+
+⏸ AWAITING HUMAN APPROVAL — run `/athena:plan approve E362,E363,E364,E365,E366` to proceed
+
+---
+
 
 ## Cycle 41 — 2026-08-27 — Mode: follow-up (source: Phase 86 執行過程的實地發現)
 
