@@ -88,3 +88,58 @@ implement 明確回報：epic 檔對**行為**的描述與程式碼一致，唯�
 本 phase 統計：E362／E363／E364 各抓到一項我的 spec 錯誤（兩項未查證的斷言 + 一組過時行號），
 E366 與 E365 無。差別在於後兩者的 spec 給的是**程序**（「去看 X，然後依結果決定」／
 「以程式碼為準，不符就明講」），前三者給的是**對既有機制的斷言**。
+
+---
+
+## QA 結果（2026-08-28）— PASS
+
+純文件變更，沒有程式碼也沒有測試可跑，**驗證標準只能是事實查核**。QA 對新增的每一句
+打開 `global-setup.ts` / `app-identity.ts` / `app/api/health/route.ts` 確認：
+
+| 句子 | 佐證 |
+|---|---|
+| Before any test runs | `playwright.config.ts:23` 註冊 `globalSetup`；Playwright 保證先於任何 spec |
+| calls `/api/health` | `global-setup.ts:167` `probeHealth()`，`HEALTH_PATH` 定於 `:22` |
+| against this checkout's own id | `:161-164` `expected` 由 `computeAppInstanceId(appRoot)` 算出，`appRoot` 來自 `import.meta.url` —— **不是 `process.cwd()`** |
+| aborts the whole run | `:169-215` 五條失敗路徑（unreachable／bad-status／not-json／缺 id／不符）**全部** `abort()`；唯一不 abort 的是明確的退出旗標 |
+| 三個環境變數的生效端 | `APP_INSTANCE_ID` 只被 `/api/health` route（`route.ts:28`）讀；`E2E_EXPECTED_*` 只在 `global-setup.ts:163`；`E2E_SKIP_TARGET_CHECK` 在 `:151-156` |
+| **錨點存在** | `docs/context/test-status.md:8` 標題**逐字相符** —— 不是死連結 |
+
+也確認了未與上方資料庫隔離段重複、未誤觸 E363 改過的 Memory System 段、
+`make hook-test` 沒有任何規則檢查 CLAUDE.md 結構（所以那部分不構成保護）。
+
+## QA 的精確度回饋 —— 已採納並修正
+
+QA 指出「a hash of the server's project path」**只在未覆寫時成立**。查證
+`app-identity.ts:115-117`：
+
+```ts
+const override = env.APP_INSTANCE_ID?.trim()
+if (override) return override
+return computeAppInstanceId(cwd)
+```
+
+設了 `APP_INSTANCE_ID` 時，`/api/health` 回報的是**原始覆寫值**，不是路徑雜湊。
+
+QA 稱之為「吹毛求疵」，但 **AC #3 要求敘述與實際行為一致**，嚴格說原文在覆寫情境下不成立。
+`CLAUDE.md` 每個 session 自動載入，這幾個字值得補。已於 `09b9e63` 改為
+「(a hash of the server's project path, **unless `APP_INSTANCE_ID` overrides it**)」。
+
+**⚠ 這意味著出貨的內容與 QA 審過的版本不完全相同** —— 差異是三個字的限定語、方向是變更精確，
+且我自己對著原始碼查證過。記錄於此以免這個小口子被當成慣例。
+
+## 📌 一個過程發現：QA 讀到了過期的 spec
+
+QA 回報「交接描述提到 epic 檔有『實作結果』段，但實際檔案沒有」。查證：
+
+| | 行數 | 有該段 |
+|---|---|---|
+| main | 90 | ✓ 第 46 行 |
+| worktree | 42 | ✗ |
+
+**worktree 分支落後 main 一個 commit** —— 我是在 implement 完成**之後**才提交那份狀態 PR
+（#182），而 worktree 停在建立時的快照。所以我的描述對 main 準確，是 worktree 過期。
+
+本次無害（我本來就要求 QA 自己重做比對，它做了）。但**一般情況下 QA 讀到過期的 spec
+可能漏掉後來追加的要求** —— 與「worktree 各有自己的 audit log」是同一族問題：
+**worktree 是時間點快照，會與 main 漂移。** 列為 Phase 89 候選。

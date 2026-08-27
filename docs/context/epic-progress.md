@@ -429,7 +429,7 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E362 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 88 — auto-merged PR #164 · 閘門在真正的分支樹上通過並產生首批 per-epic 事件 |
 | E363 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 88 — auto-merged PR #169 · 閘門在正確分支樹上通過 |
 | E364 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 88 — auto-merged PR #174 · 閘門在正確分支樹上通過，AUDIT_LOG_PATH 指向主 repo |
-| E365 | ✅ | ✅ | ⬜ | ⬜ | ⬜ | Phase 88 — 173b432 · CLAUDE.md 第51-58行（spec 寫30-53，行號再度腐化）· 三個環境變數語意逐一驗證 |
+| E365 | ✅ | ✅ | ✅ | ⬜ | ⬜ | Phase 88 — PASS · 逐句事實查核 + 錨點確認存在 · 採納精確度回饋於 09b9e63 · 發現 QA 讀到過期 spec |
 | E366 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 88 — auto-merged PR #180 · Wave 1 收尾 |
 
 
