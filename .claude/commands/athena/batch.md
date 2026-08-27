@@ -150,16 +150,43 @@ After all three agents complete (or timeout at 30 min):
 **Step 4 — publish/verify sequence** (inline, not parallel; runs only after Step 4a-integrate returns PASS):
 ```bash
 # For each successfully QA'd epic branch — follow the Publish step (auto-merge by default)
-# in loop.md (CANONICAL). Push + open PR, then merge per the canonical block.
-git push -u origin feat/E83-dashboard-widget
-PR=$(gh pr list --head feat/E83-dashboard-widget --json number --jq '.[0].number')
-[ -z "$PR" ] && gh pr create --title "feat(E83): dashboard widget" --body "..."
-# Default (auto-merge): gh pr merge "$PR" --merge → state-update E83 merge done --note "auto-merged PR #$PR"
-#   on merge failure degrade: state-update E83 merge awaiting-merge --note "PR #$PR (auto-merge failed — human required)"
-# HUMAN-MERGE MODE (ATHENA_AUTO_MERGE=0): stop at
-#   bash scripts/state/state-update.sh E83 merge awaiting-merge --note "PR #$PR"
-# (fall back to manually editing epic-progress.md + EPIC_INDEX.md only if the script errors)
-# → emit publish event; move on.
+# in loop.md (CANONICAL), STARTING WITH ITS STEP 1 PRE-PUBLISH GATE. Do not
+# start this sequence at `git push` — that skips the mandatory gate entirely
+# (the exact E362 incident: Phase 83-87 each published straight from here
+# with zero `pre-merge-check.sh` invocations recorded in the gate ledger).
+
+# PRE-PUBLISH GATE (MANDATORY — loop.md canonical step 1). ABORT this epic's
+# publish (skip push/PR; move on to the next epic in the wave) if it exits
+# non-zero. Set E2E_FLAG=--e2e for epics touching auth/Server Actions/DB/
+# routes (same heuristic as loop.md), empty otherwise.
+#
+# PMC_EPIC/PMC_PHASE are passed explicitly (pre-merge-check.sh's own env-var
+# override, E362) because the orchestrator is NOT checked out onto
+# feat/E83-dashboard-widget here — its own branch-name auto-detection would
+# see whatever branch the orchestrator is on (often main) and either
+# misattribute or drop the epic/phase on the gate_result event, which would
+# make this per-epic gate indistinguishable from the wave-integration gate
+# in gate-ledger.sh's per-epic/wave split.
+if PMC_EPIC=E83 PMC_PHASE="$PHASE" scripts/pre-merge-check.sh ${E2E_FLAG:-}; then
+  echo "pre-merge-check passed for E83 — proceeding to push"
+
+  git push -u origin feat/E83-dashboard-widget
+  PR=$(gh pr list --head feat/E83-dashboard-widget --json number --jq '.[0].number')
+  [ -z "$PR" ] && gh pr create --title "feat(E83): dashboard widget" --body "..."
+  # Default (auto-merge): gh pr merge "$PR" --merge → state-update E83 merge done --note "auto-merged PR #$PR"
+  #   on merge failure degrade: state-update E83 merge awaiting-merge --note "PR #$PR (auto-merge failed — human required)"
+  # HUMAN-MERGE MODE (ATHENA_AUTO_MERGE=0): stop at
+  #   bash scripts/state/state-update.sh E83 merge awaiting-merge --note "PR #$PR"
+  # (fall back to manually editing epic-progress.md + EPIC_INDEX.md only if the script errors)
+  # → emit publish event; move on.
+else
+  echo "❌ pre-merge-check FAILED for E83 — aborting publish for E83. Do NOT push or open a PR."
+  bash scripts/state/state-update.sh E83 merge failed --note "merge blocked: pre-merge-check failed"
+  # Skip straight to the next epic in the wave's publish loop — one epic's
+  # gate failure does not block its siblings (each already passed its own
+  # QA and the wave's combined Step 4a-integrate gate; this is a NEW,
+  # epic-specific failure surfaced only now, at its own publish time).
+fi
 
 # The integration test (Step 4c) runs against whatever is merged to origin/main (auto-merged
 # PRs included); unmerged ⏸ PRs stay open. Sync local main via: git fetch origin && git reset --hard origin/main
@@ -175,7 +202,12 @@ Publishing is **sequential** — push one branch and open its PR, then the next.
 The pipeline for each epic is: `spec → implement → qa → commit → merge`. Across a
 whole wave, there is one additional gate that sits between everyone's `commit` and
 anyone's `merge`: the **pre-publish integration gate** (Step 4a-integrate, E344) —
-see "Enforcement rule" below.
+see "Enforcement rule" below. Within each epic's own `merge` step, Step 4's
+`scripts/pre-merge-check.sh` call (loop.md canonical step 1, E362) is a second,
+narrower gate that still runs — it catches repo-hygiene and state-consistency
+regressions the wave-level gate doesn't check for (see Step 4's code block above).
+
+
 
 **QA is MANDATORY after implement.** The batch executor MUST:
 1. After an implement agent completes successfully, dispatch a **qa agent** for the same epic

@@ -12,6 +12,11 @@
 #   scripts/pre-merge-check.sh            # repo-hygiene + typecheck + lint + unit tests
 #   scripts/pre-merge-check.sh --e2e      # also run the Playwright e2e suite (needs DB + server)
 #   scripts/pre-merge-check.sh --allow-deletions   # don't fail on a large uncommitted-deletion count
+#   PMC_EPIC=E123 PMC_PHASE=45 scripts/pre-merge-check.sh   # override gate_result epic/phase
+#                                          # attribution instead of auto-detecting from the
+#                                          # current branch name (E362 — needed when the caller
+#                                          # publishes a branch it hasn't checked out, e.g.
+#                                          # batch.md's Step 4 per-epic publish loop)
 #
 # Exit non-zero on any failed gate. Designed to be quiet on success.
 
@@ -43,9 +48,27 @@ warn() { printf '  \033[33m! %s\033[0m\n' "$1"; }
 # epic-progress.md — a plain `pre-merge-check.sh` invocation has no epic/phase
 # argument of its own, so this is inferred, not passed in. Emission is always
 # `|| true`: a missing audit-emit-gate.sh or jq must never fail this gate.
-PMC_EPIC=$(git branch --show-current 2>/dev/null | sed -nE 's|.*[Ee]([0-9]+)-.*|E\1|p' | tr '[:lower:]' '[:upper:]')
-PMC_PHASE=""
-if [ -n "$PMC_EPIC" ] && [ -f "$ROOT/docs/context/epic-progress.md" ]; then
+#
+# E362 — a caller MAY pre-export PMC_EPIC/PMC_PHASE and they win over the
+# branch-name/epic-progress.md auto-detection below. This matters for
+# batch.md's Step 4 publish loop: the orchestrator publishes several epics'
+# branches in sequence WITHOUT checking any of them out (it pushes each
+# `feat/E{n}-*` branch by name from whatever branch the orchestrator itself
+# is on, often `main`), so `git branch --show-current` cannot identify which
+# epic is being published — auto-detection alone would tag every one of
+# those per-epic gate_result events with an empty (or wrong) epic, making
+# them indistinguishable from the wave-integration gate's own events in
+# gate-ledger.sh's per-epic/wave split. A plain, un-annotated invocation
+# (ship.md, pr.md, a human running this by hand from a checked-out feature
+# branch) is untouched — PMC_EPIC/PMC_PHASE are unset in that case, so
+# detection falls through to the original branch-name/epic-progress.md logic
+# exactly as before.
+PMC_EPIC="${PMC_EPIC:-}"
+if [ -z "$PMC_EPIC" ]; then
+  PMC_EPIC=$(git branch --show-current 2>/dev/null | sed -nE 's|.*[Ee]([0-9]+)-.*|E\1|p' | tr '[:lower:]' '[:upper:]')
+fi
+PMC_PHASE="${PMC_PHASE:-}"
+if [ -z "$PMC_PHASE" ] && [ -n "$PMC_EPIC" ] && [ -f "$ROOT/docs/context/epic-progress.md" ]; then
   PMC_ROW=$(grep -E "^\| *${PMC_EPIC} " "$ROOT/docs/context/epic-progress.md" | head -1)
   PMC_PHASE=$(printf '%s' "$PMC_ROW" | sed -nE 's/.*Phase ([0-9]+).*/\1/p' | head -1)
 fi

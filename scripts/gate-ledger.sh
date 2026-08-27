@@ -209,6 +209,25 @@ fi
 # comes from .claude/audit.jsonl's gate_result events; `lastAcceptTs` /
 # `acceptReason` come from the separate acceptance ledger. Empty/missing
 # files -> `[]` under `jq -s`, handled as "no data" throughout.
+#
+# SOURCE SPLIT (E362): a `gate_result` event can come from two genuinely
+# different call sites that this ledger must NOT blend together —
+#   - `sources.wave`    — the wave-level integration gate: `/athena:integrate`
+#                          Step 4 or `batch.md` Step 4c. These either omit
+#                          `epic` entirely (batch.md 4c) or, in principle,
+#                          could carry a comma-joined multi-epic string
+#                          (integrate.md's `$EPICS_JOINED`) — either way the
+#                          field is empty for a SINGLE epic's own gate.
+#   - `sources.perEpic`  — `scripts/pre-merge-check.sh`'s own `emit_gate`,
+#                          which always tags a single real epic ID.
+# The split key is simply "does this event's `epic` field have a value at
+# all" — see docs/epics/e362-batch-per-epic-prepublish-gate.md AC #3. This is
+# what caught the actual incident: Phase 83–87 have wave-only data (empty
+# `epic`) and ZERO per-epic events, meaning `pre-merge-check.sh` never ran on
+# any of those phases' per-epic publishes even though `loop.md`'s canonical
+# block called it MANDATORY. See render_phase()'s explicit warning below —
+# a phase with wave data but an empty perEpic bucket must never render as if
+# nothing were missing.
 # ---------------------------------------------------------------------------
 mkdir -p "$(dirname "$ACCEPT_LOG")" 2>/dev/null || true
 
@@ -223,23 +242,27 @@ mkdir -p "$(dirname "$ACCEPT_LOG")" 2>/dev/null || true
 GATES_JSON='{}'
 if [ -f "$AUDIT_LOG" ]; then
   GATES_JSON=$(jq -s -c '
+    def gate_bucket(items):
+      items
+      | group_by(.gate)
+      | map({
+          key: .[0].gate,
+          value: {
+            pass:    (map(select(.status=="pass"))    | length),
+            fail:    (map(select(.status=="fail"))    | length),
+            skipped: (map(select(.status=="skipped")) | length),
+            skips:   (map(select(.status=="skipped")) | map({epic: (.epic // "?"), reason: (.reason // "(no reason recorded)"), ts: .ts}))
+          }
+        })
+      | from_entries;
     [.[] | select(.event=="gate_result")]
     | group_by(.phase // "unknown")
     | map({
         phase: (.[0].phase // "unknown"),
-        gates: (
-          group_by(.gate)
-          | map({
-              key: .[0].gate,
-              value: {
-                pass:    (map(select(.status=="pass"))    | length),
-                fail:    (map(select(.status=="fail"))    | length),
-                skipped: (map(select(.status=="skipped")) | length),
-                skips:   (map(select(.status=="skipped")) | map({epic: (.epic // "?"), reason: (.reason // "(no reason recorded)"), ts: .ts}))
-              }
-            })
-          | from_entries
-        ),
+        sources: {
+          wave:    gate_bucket([.[] | select((.epic // "") == "")]),
+          perEpic: gate_bucket([.[] | select((.epic // "") != "")])
+        },
         lastSkipTs: (map(select(.status=="skipped")) | map(.ts) | sort | last)
       })
     | map({(.phase): .}) | add // {}
@@ -271,11 +294,11 @@ SUMMARY_JSON=$(jq -n -c --argjson gates "$GATES_JSON" --argjson accepts "$ACCEPT
       {};
       . + {
         ($p): (
-          ($gates[$p] // {phase: $p, gates: {}, lastSkipTs: null}) as $g
+          ($gates[$p] // {phase: $p, sources: {wave: {}, perEpic: {}}, lastSkipTs: null}) as $g
           | ($accepts[$p] // {lastAcceptTs: null, acceptReason: null}) as $a
           | {
               phase: $p,
-              gates: $g.gates,
+              sources: $g.sources,
               lastSkipTs: $g.lastSkipTs,
               lastAcceptTs: $a.lastAcceptTs,
               acceptReason: $a.acceptReason,
@@ -297,7 +320,9 @@ if [ -z "$SUMMARY_JSON" ] || [ "$SUMMARY_JSON" = "null" ]; then
 fi
 
 phase_has_data() {
-  echo "$SUMMARY_JSON" | jq -e --arg p "$1" 'has($p) and ((.[$p].gates | length) > 0)' >/dev/null 2>&1
+  echo "$SUMMARY_JSON" | jq -e --arg p "$1" \
+    'has($p) and ((((.[$p].sources.wave // {}) | length) + ((.[$p].sources.perEpic // {}) | length)) > 0)' \
+    >/dev/null 2>&1
 }
 
 phase_unreconciled() {
@@ -306,20 +331,15 @@ phase_unreconciled() {
   [ "$u" = "true" ]
 }
 
-# Render the ledger text for one phase to stdout.
-render_phase() {
-  local phase="$1"
-  echo "Phase ${phase} gate ledger"
-  if ! phase_has_data "$phase"; then
-    echo "  (no gate_result events recorded for this phase — audit-emit-gate.sh may not have existed yet, or no gate ran under it. See docs/epics/e345-gate-ledger.md.)"
-    return
-  fi
-
-  local unrec="false"
-  phase_unreconciled "$phase" && unrec="true"
-
-  echo "$SUMMARY_JSON" | jq -r --arg p "$phase" '
-    .[$p].gates | to_entries | sort_by(.key)[] |
+# Render one source's gate table (wave | perEpic) for a phase, indented two
+# spaces under that source's header line. Shared by both branches of
+# render_phase() below (E362) — same pass/fail/skipped/skip-reason rendering
+# either bucket uses, just scoped to `.sources[$source]` instead of the old
+# flat `.gates`.
+render_gate_table() {
+  local phase="$1" source="$2" unrec="$3"
+  echo "$SUMMARY_JSON" | jq -r --arg p "$phase" --arg s "$source" '
+    (.[$p].sources[$s] // {}) | to_entries | sort_by(.key)[] |
     [.key, (.value.pass|tostring), (.value.fail|tostring), (.value.skipped|tostring)] | @tsv
   ' | while IFS=$'\t' read -r gate gpass gfail gskipped; do
     local parts=()
@@ -342,13 +362,51 @@ render_phase() {
     if [ "$gskipped" != "0" ] && [ "$unrec" = "true" ]; then
       marker="  ⚠ 未結清"
     fi
-    printf '  %-12s %s%s\n' "$gate" "$joined" "$marker"
+    printf '    %-12s %s%s\n' "$gate" "$joined" "$marker"
     if [ "$gskipped" != "0" ]; then
-      echo "$SUMMARY_JSON" | jq -r --arg p "$phase" --arg g "$gate" '
-        .[$p].gates[$g].skips[] | "    " + (.epic // "?") + " " + (.reason // "(no reason recorded)")
+      echo "$SUMMARY_JSON" | jq -r --arg p "$phase" --arg s "$source" --arg g "$gate" '
+        .[$p].sources[$s][$g].skips[] | "      " + (.epic // "?") + " " + (.reason // "(no reason recorded)")
       '
     fi
   done
+}
+
+# Render the ledger text for one phase to stdout.
+render_phase() {
+  local phase="$1"
+  echo "Phase ${phase} gate ledger"
+  if ! phase_has_data "$phase"; then
+    echo "  (no gate_result events recorded for this phase — audit-emit-gate.sh may not have existed yet, or no gate ran under it. See docs/epics/e345-gate-ledger.md.)"
+    return
+  fi
+
+  local unrec="false"
+  phase_unreconciled "$phase" && unrec="true"
+
+  # E362 — two sources rendered separately (never blended): the wave-level
+  # integration gate (/athena:integrate Step 4 or batch.md Step 4c — no
+  # single-epic `epic` field) vs. per-epic scripts/pre-merge-check.sh (always
+  # tags one epic). A phase can look "fully gated" from the wave section
+  # alone while its per-epic bucket is silently empty — exactly the Phase
+  # 83-87 incident this split exists to surface, so an empty perEpic bucket
+  # is NEVER rendered as a quiet blank; it gets an explicit ⚠ line.
+  local wave_count perepic_count
+  wave_count=$(echo "$SUMMARY_JSON" | jq -r --arg p "$phase" '(.[$p].sources.wave // {}) | length')
+  perepic_count=$(echo "$SUMMARY_JSON" | jq -r --arg p "$phase" '(.[$p].sources.perEpic // {}) | length')
+
+  echo "  Wave 整合閘門 (epic 欄位為空 — /athena:integrate Step 4 或 batch.md Step 4c):"
+  if [ "$wave_count" -gt 0 ]; then
+    render_gate_table "$phase" "wave" "$unrec"
+  else
+    echo "    (本 phase 沒有任何 wave 整合閘門紀錄)"
+  fi
+
+  echo "  Per-epic pre-merge-check (epic 欄位有值 — scripts/pre-merge-check.sh):"
+  if [ "$perepic_count" -gt 0 ]; then
+    render_gate_table "$phase" "perEpic" "$unrec"
+  else
+    echo "    ⚠ 本 phase 沒有任何 per-epic 閘門紀錄 — pre-merge-check.sh 從未在任何一次 epic publish 時執行過（E362）"
+  fi
 
   local accept_ts accept_reason
   accept_ts=$(echo "$SUMMARY_JSON" | jq -r --arg p "$phase" '.[$p].lastAcceptTs // empty')
