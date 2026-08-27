@@ -129,3 +129,9 @@
 用不帶 epoch 的 `generateSync`（＝真實驗證器算法）對 `verifyToken` 的預設時鐘，兩邊單位
 一致才會過；修正前紅、修正後綠。另修好 3 個被此 bug 遮住、從未執行過的 e2e 缺陷
 （teardown 順序倒置、`afterEach` 打斷 `describe.serial` 鏈、3 處過寬 locator）。
+
+## 2026-08-28T01:37:56+08:00 — 6e85c4b
+**Message:** fix(E366): allowlist totalPages() as an intentional public pagination-math API
+**Files:** scripts/check-orphan-exports.mjs
+**Root Cause:** _(pending — enrich during /athena:save)_
+**Test Added:** _(pending)_

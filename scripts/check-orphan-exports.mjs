@@ -43,8 +43,19 @@ const ROOT_CONFIG_FILES = [
 ]
 // Exports manually triaged as "not dead, intentionally kept" (allowlisted to avoid recurring
 // false positives). Add an entry only after confirming it's a genuine keeper — justify inline:
-//   - (none yet — add `"exportName", // reason` entries here as real false positives are found)
-const ALLOWLIST = new Set([])
+const ALLOWLIST = new Set([
+  // totalPages (lib/billing/pagination.ts) — E366. Admin orders/subscriptions pages
+  // (app/(dashboard)/dashboard/admin/_orders-tab.tsx, _subscriptions-tab.tsx) already get their
+  // "page X / Y" display for free from the reusable <DataTable> (components/data-table-generic.tsx
+  // ~line 210: `table.getState().pagination.pageIndex` + `table.getPageCount()`) — DataTable
+  // paginates the already-fetched row set client-side via TanStack Table, it never calls this
+  // function. Wiring totalPages() into the UI would just add a second, redundant page-count
+  // computation next to the one DataTable already renders. Kept as a pure, unit-tested public
+  // pagination-math helper (pairs with resolvePagination, which IS wired into
+  // lib/billing/queries.ts) for a future server-side/non-DataTable consumer — e.g. a public API
+  // endpoint or a fork's hand-rolled list view.
+  "totalPages",
+])
 // Leading-underscore exports (`_resetFoo`, `__resetBar`) are this codebase's established
 // convention for test-only reset/escape hatches (see lib/pending-2fa.ts's `__resetNonces`,
 // lib/rate-limit.ts's `__resetRateLimit`, lib/billing/providers/{stripe,ecpay}.ts's
