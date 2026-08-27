@@ -155,10 +155,14 @@ export async function exportAuditLog(): Promise<
     actorEmail: e.actorEmail ?? "",
     targetType: e.targetType ?? "",
     targetId: e.targetId ?? "",
+    // E359 — the UI's 稽核紀錄 panel already surfaces this per row (代操作／本人操作
+    // badge, E356); the CSV export is offline-investigation/compliance delivery, the
+    // scenario that most needs the flag, so it must not silently drop it.
+    onBehalf: e.onBehalf,
     createdAt: e.createdAt.toISOString(),
   }))
 
-  const headers = ["id", "action", "actorEmail", "targetType", "targetId", "createdAt"]
+  const headers = ["id", "action", "actorEmail", "targetType", "targetId", "onBehalf", "createdAt"]
   const data = toCsv(rows, headers)
   const filename = `audit-log-${new Date().toISOString().slice(0, 10)}.csv`
 

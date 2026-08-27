@@ -144,6 +144,15 @@ const resendActivationAction = defineAction({
         action: "order.activation_resent",
         targetType: "order",
         targetId: orderId,
+        // E359 — this mints a password-reset token AND sends it to `user`, the
+        // account linked to the order (which may differ from the admin acting
+        // here). Written as the actor≠target comparison, matching the E356
+        // convention (setUserRole/deleteUser/resetUserTotp in actions/admin.ts),
+        // so it stays correct if a future self-target guard changes the reachable
+        // cases — there is no such guard today, so an admin resending activation
+        // on their OWN linked order (no password set yet) genuinely varies this
+        // at runtime, same shape as resetUserTotp's decisive case.
+        onBehalf: ctx.actorId !== user.id,
         metadata: { userId: user.id },
       },
     }

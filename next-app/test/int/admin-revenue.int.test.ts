@@ -221,4 +221,48 @@ describe.skipIf(!reachable)("E331 admin revenue console (int)", () => {
     expect(tokens[0].n).toBe(0)
     expect(sendActivationEmail).not.toHaveBeenCalled()
   })
+
+  // ---------------------------------------------------------------------------
+  // E359 — resendActivation's `on_behalf` flag (the E356 gap this epic closes).
+  // Same posture as admin.int.test.ts's "on_behalf flag (E356)" block: the value
+  // that matters is the one PERSISTED, so these read the column back out of
+  // Postgres rather than trusting the argument passed to logAudit(). There is no
+  // self-target guard on resendActivation (canResendActivation only checks
+  // passwordHash), so — like resetUserTotp — the SAME action genuinely produces
+  // both true and false depending on whose order is being resent.
+  // ---------------------------------------------------------------------------
+  describe("on_behalf flag (E359)", () => {
+    async function readOnBehalf(action: string): Promise<boolean[]> {
+      const rows = await tdb.sql<{ on_behalf: boolean }[]>`
+        SELECT on_behalf FROM audit_log WHERE action = ${action} ORDER BY created_at
+      `
+      return rows.map((r) => r.on_behalf)
+    }
+
+    it("resendActivation for ANOTHER user's order ⇒ on_behalf = true", async () => {
+      const adminId = await seedAdmin()
+      const productId = await seedProduct()
+      const buyer = await seedUser({
+        email: "ob-buyer@int.test",
+        role: "viewer",
+        passwordHash: null,
+      })
+      const orderId = await seedOrder(productId, "ob-buyer@int.test", "paid", buyer.id)
+
+      expect(await resendActivation(orderId)).toEqual({ success: true })
+      expect(await readOnBehalf("order.activation_resent")).toEqual([true])
+      expect(adminId).not.toBe(buyer.id) // sanity: this IS the cross-account case
+    })
+
+    it("resendActivation for the ADMIN'S OWN linked order ⇒ on_behalf = false", async () => {
+      const adminId = await seedAdmin() // seedUser default passwordHash is null
+      const productId = await seedProduct()
+      // The admin's own order, linked to their own account — no password set yet,
+      // so canResendActivation still permits the resend.
+      const orderId = await seedOrder(productId, "admin@int.test", "paid", adminId)
+
+      expect(await resendActivation(orderId)).toEqual({ success: true })
+      expect(await readOnBehalf("order.activation_resent")).toEqual([false])
+    })
+  })
 })

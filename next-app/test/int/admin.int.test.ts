@@ -228,6 +228,41 @@ describe.skipIf(!reachable)("actions/admin.ts — requireAdmin wiring (int)", ()
         expect(result.data).toContain("user.role_changed")
       }
     })
+
+    // -----------------------------------------------------------------------
+    // E359 — the exported CSV must carry `onBehalf`, matching what the UI's
+    // 稽核紀錄 panel already shows per row (E356's 代操作 badge). Asserts on the
+    // actual CSV text (header + the value for the real row this test produces),
+    // not on the in-memory row-mapper shape.
+    // -----------------------------------------------------------------------
+    it("admin: exported CSV includes an onBehalf column matching the persisted flag", async () => {
+      const adminUser = await seedUser({ email: "admin5@int.test", role: "admin" })
+      const target = await seedUser({ email: "target6@int.test", role: "viewer" })
+      actorId = adminUser.id
+
+      // setUserRole on ANOTHER user ⇒ on_behalf = true (E356) — exercise the
+      // "true" branch so the export is asserted against a non-default value.
+      await admin.setUserRole(target.id, "editor")
+
+      const result = await admin.exportAuditLog()
+      expect(result).toMatchObject({ success: true })
+      if (!result.success) return
+
+      const lines = result.data.trim().split("\r\n")
+      const headerCols = lines[0].split(",")
+      expect(headerCols).toContain("onBehalf")
+
+      const onBehalfIdx = headerCols.indexOf("onBehalf")
+      const roleChangedLine = lines.find((l) => l.includes("user.role_changed"))
+      expect(roleChangedLine).toBeDefined()
+      expect(roleChangedLine!.split(",")[onBehalfIdx]).toBe("true")
+
+      // Cross-check against the persisted column directly (the ground truth).
+      const rows = await tdb.sql<{ on_behalf: boolean }[]>`
+        SELECT on_behalf FROM audit_log WHERE action = 'user.role_changed'
+      `
+      expect(rows[0].on_behalf).toBe(true)
+    })
   })
 
   // -------------------------------------------------------------------------
