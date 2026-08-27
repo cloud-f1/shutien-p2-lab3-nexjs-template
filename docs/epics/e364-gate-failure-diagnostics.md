@@ -54,3 +54,61 @@ gate 失敗時，把該 gate 的 log **尾端 N 行**（或以 `ABORTED`／`FAIL
 ## Out of Scope
 
 - 不改動 gate 的判定邏輯或新增 gate（E362 處理呼叫端）。
+
+---
+
+## QA 結果（2026-08-28）— PASS，含一項 ADVISORY
+
+四條 AC 全由 QA **自行重跑**。
+
+### AC #2：QA 做了比 implement 更強的驗證
+
+implement 的觸發路徑是「`:3000` 的伺服器沒有 `appInstanceId`」（一個無關的 pre-E357 外來 app），
+它誠實揭露了這點。**QA 改用 spec 字面要求的觸發**：在 `:3601` 啟動**本 checkout 自己的** dev server
+（真實 `appInstanceId=51842c7756e7c248`），再以 `E2E_EXPECTED_APP_INSTANCE_ID=deadbeefdeadbeef`
+強制不符，得到貨真價實的 `actual !== expected` 中止：
+
+> "The server on that URL is a DIFFERENT checkout of this app."
+
+那則完整 banner 逐字印出 —— 兩條 box-drawing 分隔線、Base URL／Expected／Observed、四個編號修法，
+一行不缺。也順帶證明分隔線掃描（`grep -n '^──\{10,\}$'` 取首尾）能正確跨越真實 banner 中的**三處**
+分隔線（開頭、標題中、結尾）。
+
+### 邊界情況（implement 未測，QA 補測）
+
+| 情況 | 行為 |
+|---|---|
+| log 不存在 | 靜默、回 0、無輸出 ✓ |
+| log 是空檔 | **仍印出 `── last N lines ──` 標頭然後沒有內容** —— 無害的化妝瑕疵 |
+| 含 `e2e ABORTED` 但只有一條分隔線 | 正確 fallback 到 tail ✓ |
+| `PMC_LOG_TAIL_LINES=0` | `tail -n 0`，標頭 + 空 |
+| `PMC_LOG_TAIL_LINES=-3` | BSD／GNU tail 皆視為「最後 3 行」，非地雷 ✓ |
+| `PMC_LOG_TAIL_LINES=abc` | `tail` 報錯到終端，但**腳本不崩、退出碼不受影響**（`set -uo pipefail` 無 `-e`，且呼叫端不檢查它的退出碼）✓ |
+
+### E345／E362 回歸：已證明，非假設
+
+`emit_gate` 仍在四個 gate 正確發出 `pass`／`fail`；E362 的分支名自動偵測（`feat/E364-…` → `E364`
+→ 交叉查 `epic-progress.md` → phase `88`）未受干擾。新增的 `print_gate_failure` 呼叫**嚴格排在
+`emit_gate` 之後**，且從不影響 `$FAIL` 或任何 gate 的退出碼。
+
+### ⚠ ADVISORY — `print_gate_failure` 沒有自動化測試
+
+這是一個小而高槓桿的函式（解析 log，決定**每一次閘門失敗時人／agent 看到什麼**），目前零自動化涵蓋。
+上表那些邊界都是 QA 手動測的。建議比照 E363 的 `test-check-promotion-staleness.sh`
+（`mktemp -d` + `trap EXIT`）補一支 `test-print-gate-failure.sh`。**非阻斷，但值得快速跟進。**
+
+### 📌 orchestrator 追記：E363 的 ADVISORY 2 在此再度應驗
+
+QA 回報它「在**真實** `.claude/audit.jsonl` 留下 3 筆 `pass` 事件」。**實測不然** ——
+主 repo 的 log（7009 行）裡沒有那些事件，它們全進了 **worktree 自己的 log**（126 行，共 9 筆）。
+
+這正是 E363 的 QA 標記的 ADVISORY 2：**worktree 帶著自己那份 `.claude/audit.jsonl`，
+`pre-merge-check.sh` 讀的是相對路徑**。後果有二：
+
+1. QA 對自己副作用的自述是錯的（本例中反而是好消息 —— 它沒污染正式資料）
+2. **worktree 一移除，那些事件就消失** —— per-epic 閘門紀錄會靜默遺失
+
+因此 publish 時必須明確 `AUDIT_LOG_PATH=<主 repo>/.claude/audit.jsonl`（E362／E363 的 publish
+都這麼做，所以它們的事件留了下來）。
+
+**同一個陷阱在兩個不同 epic、兩個不同 agent 身上各咬一次** —— 已足夠構成 Phase 89 的候選。
