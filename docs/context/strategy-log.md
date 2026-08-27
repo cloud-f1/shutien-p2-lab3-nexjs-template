@@ -9,15 +9,145 @@
 
 | Field | Value |
 |-------|-------|
-| Cycle | 36 |
-| State | APPROVED |
-| Date | 2026-08-22 |
-| Notes | Phase 82 (Fork Harvest Wave 3 — `../ai-rc-engineer-pm`) — 8 epics E336–E343 **APPROVED 2026-08-22** by the user. 四鏡頭比對 fork 後的發現：**athena 資產層已幾乎同步**（agents 0 差異、skills fork 只多 1 支、commands 只多 `approve.md`、`components/ui/` 0 差異、docs 幾乎對齊），且模板功能面**大幅領先**（billing 三家 · sales pages · admin 營收後台 · 2FA · API keys · webhooks），fork 自 2026-07-13 起未再推進。真正的 delta 集中在 **next-app 的 UI 組裝層**。使用者決策：範圍 **A+C**（管理介面/原件 + skill/context，B 組 auth/audit 硬化留 backlog）· 儀表板採 **混合式**（加 widget kit 並升級首頁，不整頁重寫）· 交付走 **athena pipeline**。Wave 1 = E336+E338+E340+E341+E342+E343 → Wave 2 = E337+E339（`epic-graph.sh --phase 82` 已驗證 exit 0）。**明確不回收**：`design-system-coverage.sh`（指向不存在的 `client/src/pages`，Vite 死碼，前次稽核已判定）· rc 領域邏輯（holidays/gantt/cases）· agent persona 改名（fork 的 SAGE/DOC/ARGUS 烙在 description 與 tony 路由）。**編號紅線**：兩 repo 已撞號（雙方各有自己的 E334/E335），模板側自 E336 起編。 |
+| Cycle | 41 |
+| State | AWAITING_APPROVAL |
+| Date | 2026-08-27 |
+| Notes | **Phase 87 提案（AWAITING_APPROVAL）** — Phase 86 執行過程中發現的 5 個 follow-up。使用者要求把 6 個候選轉成 epic；其中 (3) resendActivation 漏標與 (4) CSV 匯出缺欄同屬 `on_behalf` 完整性，合併為一個 epic，符合每輪最多 5 案的預算規則。**最高優先是 E357** —— 它讓整道 e2e 閘門在特定情況下失去意義，而非只是不方便。詳見下方 Cycle 41 段落。 |
+| Prev36 | Phase 82 (Fork Harvest Wave 3 — `../ai-rc-engineer-pm`) — 8 epics E336–E343 **APPROVED 2026-08-22** by the user. 四鏡頭比對 fork 後的發現：**athena 資產層已幾乎同步**（agents 0 差異、skills fork 只多 1 支、commands 只多 `approve.md`、`components/ui/` 0 差異、docs 幾乎對齊），且模板功能面**大幅領先**（billing 三家 · sales pages · admin 營收後台 · 2FA · API keys · webhooks），fork 自 2026-07-13 起未再推進。真正的 delta 集中在 **next-app 的 UI 組裝層**。使用者決策：範圍 **A+C**（管理介面/原件 + skill/context，B 組 auth/audit 硬化留 backlog）· 儀表板採 **混合式**（加 widget kit 並升級首頁，不整頁重寫）· 交付走 **athena pipeline**。Wave 1 = E336+E338+E340+E341+E342+E343 → Wave 2 = E337+E339（`epic-graph.sh --phase 82` 已驗證 exit 0）。**明確不回收**：`design-system-coverage.sh`（指向不存在的 `client/src/pages`，Vite 死碼，前次稽核已判定）· rc 領域邏輯（holidays/gantt/cases）· agent persona 改名（fork 的 SAGE/DOC/ARGUS 烙在 description 與 tony 路由）。**編號紅線**：兩 repo 已撞號（雙方各有自己的 E334/E335），模板側自 E336 起編。 |
 | Prev35 | Phase 77 (高轉換銷售頁 + 統一一次性金流) — 4 epics E326–E329 APPROVED 2026-07-12 from a user-supplied sales-page PRD (AIDA copy structure + unified ECPay/NewebPay/Stripe one-time payment interface). User decisions: **ECPay 綠界 = launch gateway** (deploys set `BILLING_PROVIDER=ecpay`; resolver code default stays stripe) · scope = 結帳+訂單+**交付開通** (full) · formal epics via /athena:plan. ~70% infra pre-existed (E249 provider contract, E250/E261 landing sections, ecpay/stripe providers, payment_events idempotency) — epics cover only the true gaps: sales route+4 sections (E326), products/orders+checkout+SOLID interface segregation (E327), entitlement delivery+自動建帳/啟用信 (E328), NewebPay slot (E329). Wave 1: E326+E327 → Wave 2: E328+E329. **Addendum (同日)**: CRM 整合 → **Phase 78 E330** (order.completed + system-scoped webhook egress reusing E268 + Google Sheet/MailerLite recipes; first-party @saas/crm-* connectors = backlog). **Addendum 2 (同日)**: 後台 audit → **Phase 79 E331+E332** (admin 營收後台: 會員/訂單/訂閱台 + 多銷售頁管理 sales_pages+CRUD+ISR; E326 amended with resolver 解耦 constraint). **Addendum 3 (同日)**: 風格多樣化 → 三層渲染架構 (preset/variant/custom) — E326 +3 style presets, E332 +style 選擇+render_mode, 新 **Phase 80 E333** sales-page-builder skill (HTML ingest → custom TSX + registry). |
 | Prev34 | Phase 75 (Backport Wave 2) — 5 epics E319–E323 APPROVED + **EXECUTED** 2026-07-08 (implement→QA→commit→push→PR each; merges pending user, pull-only perms). Ran as a **sequential PR stack** (shared files: stop-verifier/CLAUDE/package.json) — dogfooding E319's own in-repo-chain mode. PRs: **#72 E320 · #73 E319 · #74 E321 · #75 E322 · #76 E323**, stacked. E323 scoped to Part A + @saas/{scheduler,audit-log}; **E324 follow-up** = @saas/{rbac-scoped-visibility,sentry-pii,csv-io} + the 8 orphans E320 found. |
 | Prev33 | Phase 73 (Template Enhancement Backport from ai-rc-engineer-pm, E311–E317) — 7 epics, all parallel. TONY chief-of-staff · new-project wizard · docs reorg · service-map+dead-code (docs-level) · testing-strategy skill · scripts tooling · zeabur-deploy skill. APPROVED + merged (PRs #59–#66). |
 | Prev32 | Phase 72 (Follow-ups from /athena:align, E307–E310) — TOTP e2e, usage limits, export expansion, 2FA recovery + onboarding persistence. Merged via PR #57 (#58 for state flip). 518 tests, migration 0010. |
 | Prev31 | Phase 71 (Athena Toolchain, E302–E306) — rebrand skill, mockup-to-epics + /athena:plan mockup, alignment-audit + /athena:align, user-guide-builder + VitePress dev-docs (deployed to Cloudflare Pages), zeabur-deploy skill. Merged via PR #54. |
+
+---
+
+## Cycle 41 — 2026-08-27 — Mode: follow-up (source: Phase 86 執行過程的實地發現)
+
+**Theme**: **把 Phase 86 途中撞到的六個問題收斂成可執行的 epic.**
+
+這一輪的來源不是研究或稽核，而是**實際執行 Phase 86 時被絆到**的東西 —— 每一項都有現場證據
+（重現指令、真實輸出、退出碼），不是推測。
+
+### 預算處理
+
+使用者列了 6 個候選，每輪上限 5 案。候選 (3)`resendActivation` 漏標 `on_behalf` 與
+(4) CSV 匯出缺 `on_behalf` 欄**同屬一件事的兩半**（E356 交付的完整性），合併為 E359。
+
+### 提案
+
+| Epic | 名稱 | 優先 | Size | SP |
+|---|---|---|---|---|
+| **E357** | e2e 目標 app 身分驗證 | **P0** | M | 8 |
+| **E358** | `check-orphan-exports.mjs` 的有狀態 regex 假陽性 | P1 | S | 2 |
+| **E359** | `on_behalf` 完整性收口（漏標 + CSV 匯出） | P1 | S | 3 |
+| **E360** | `rate-limit` 測試的 1ms 視窗 flake | P2 | S | 2 |
+| **E361** | 狀態檔／分支錯置的防護 | P2 | M | 5 |
+
+**Total: 20 SP**（上限 80）
+
+---
+
+#### E357 — e2e 目標 app 身分驗證（P0, M, 8 SP）
+
+**問題（有現場證據）**：`playwright.config.ts:11` 的 baseURL 預設 `http://localhost:3000`，
+`:42` 設 `reuseExistingServer: true`。本機 port 3000 被 `/Users/cloud-f1/Documents/git_saas/data-clarity-portal`
+佔用 —— **本模板的另一個 fork**。實測：
+
+    curl :3000 → <title>Next.js SaaS 起手式 · AI-Ready Modular Template</title>   與本專案完全相同
+    curl :3000/api/health → {"status":"ok","timestamp":"..."}                      與本專案完全相同
+
+E355 的實作 agent 因此拿到 10 failed / 36 passed，它 `git stash` 掉整個 epic 在乾淨樹上重跑得到
+**一模一樣的失敗**，才確定不是自己的問題。整個 Phase 86 的 e2e 都必須改用專屬 port + `lsof -a -p PID -d cwd`
+驗證才敢採信。
+
+**為什麼是 P0**：這不是「不方便」，是**閘門會在錯誤的對象上回報看似合理的失敗**（或更糟：
+在錯誤的對象上通過）。任何在多 fork 機器上跑 e2e 的人都會中，而且不會知道自己中了。
+
+**設計難點（留給 spec 階段，不在提案裡定案）**：`/api/health` 已存在但只回 `{status, timestamp}`，
+兩個 fork 位元組相同。加識別欄位的**內容**才是真問題 —— 任何繼承自 config 的識別
+（`NEXT_PUBLIC_APP_NAME`、`package.json` name）在 fork 尚未改名時仍會撞。候選方向：
+建置期注入的 repo 識別（git remote / 絕對路徑雜湊）、或從 repo 路徑推導專屬 port。
+**必須保留 `reuseExistingServer` 的暖機效益**（loop 協定明文推薦暖伺服器定向測試）。
+
+**驗收方向**：在 port 3000 被另一個 fork 佔用的情況下跑 `pnpm test:e2e` → **明確中止並指出真正原因**，
+而非跑出一堆測試失敗。
+
+---
+
+#### E358 — `check-orphan-exports.mjs` 的有狀態 regex 假陽性（P1, S, 2 SP）
+
+**問題**：`scripts/check-orphan-exports.mjs:98` 把 `new RegExp(\`\\b${name}\\b\`, "g")` 建在迴圈外，
+在迴圈內反覆 `.test(t)`。`g` 旗標讓 `.test()` 推進 `lastIndex`，連續呼叫在**不同字串**上交替回
+true/false。已實測重現：
+
+    call1: true   call2: false   call3: true      （三個字串都含該符號）
+
+後果：E355 的 `nextFailedState` 被誤報為孤兒，實際接在 `lib/auth.ts:79` 與 `actions/auth.ts:165`。
+`make verify` 裡它是非嚴格的，但會誤導審閱者。
+
+**修法**：`.test()` 用的 regex 去掉 `g`（若他處需要 `.match()` 的全域版本，另建一個）。
+加一條回歸測試：同一符號出現在三個以上檔案時，三次判定都必須為 true。
+
+---
+
+#### E359 — `on_behalf` 完整性收口（P1, S, 3 SP）
+
+E356 交付的兩個缺口，同屬「代操作旗標是否真的可信」：
+
+**(a) `actions/admin-revenue.ts:142` `resendActivation` 漏標。** admin **為另一個使用者鑄造
+password-reset token 並寄出啟用信**（`db.insert(passwordResetTokensTable).values({ userId: user.id })`，
+metadata 甚至記了 `{ userId: user.id }`），卻寫成 `on_behalf = false`。這正是 E356 規格 Solution §4
+字面點名的「重設他人密碼」。規格的 Key Files 只列 `actions/admin.ts` 所以字面未違約，但 AC#5 語意涵蓋。
+
+**QA 是怎麼找到的（值得記）**：實作者用 `grep "logAudit("` 列舉，表格看起來完整（10 行、每行有理由），
+但 `defineAction` 走 `lib/define-action.ts:203` 的宣告式路徑，**那族 9 個寫入點永遠不含 `logAudit(` 字樣**。
+QA 多加一個 `grep "audit:"` 才發現。
+
+**(b) CSV 匯出與 UI 不一致。** `exportAuditLog()` 的 header 陣列與 row mapper 都不含 `on_behalf`，
+而匯出按鈕就長在同一個 `_audit-panel.tsx` 裡 —— 使用者在 UI 看得到「代操作」badge，
+按下旁邊的匯出拿到的 CSV 卻沒有這一欄。稽核匯出的用途正是離線調查／合規交付，
+恰好是最需要這個旗標的場景。
+
+**架構已支援**：`lib/define-action.ts:40` 的 `AuditEntry = Parameters<typeof logAudit>[0]`，
+`onBehalf` 自動透傳，(a) 補一行、(b) 補兩行，零型別改動。
+**但驗收必須包含「用兩個 grep 重新列舉一次」**，確認沒有第三個漏網。
+
+---
+
+#### E360 — `rate-limit` 測試的 1ms 視窗 flake（P2, S, 2 SP）
+
+`lib/rate-limit.test.ts:42` 「resets the window after it expires」用 **1ms** 視窗，
+兩次連續 `rateLimit()` 若跨過毫秒邊界，第二次就重新充值 → `expected true to be false`。
+Phase 86 期間至少兩個 agent 各撞到一次（實作與 QA），單獨重跑 5 次全綠。
+
+這是 CI 的定時炸彈，也是**噪音來源** —— 它讓每個 agent 都要花力氣確認「這不是我弄壞的」。
+修法：fake timers（`vi.useFakeTimers()` + `vi.advanceTimersByTime()`），視窗改成有意義的長度。
+
+---
+
+#### E361 — 狀態檔／分支錯置的防護（P2, M, 5 SP）
+
+**問題**：Phase 86 期間我（orchestrator）犯了兩次同類錯誤：
+
+1. `git reset --hard origin/main`（loop 協定建議的同步方式）沖掉了工作區裡**未提交**的
+   `epic-progress.md` 步驟標記 —— implement/qa/commit 全退回 ⬜
+2. 把狀態 commit 移到 epic 分支後，仍在 main 上跑 `state-update.sh`，讓 main 的複本
+   變成不一致（spec ✅、implement ⬜、qa ⬜、commit ✅）
+
+兩次都被後續檢查抓到並修正，但**根因相同**：狀態檔活在工作區，而 orchestrator 在多個分支間切換。
+
+**E353 的 drift gate 抓不到這一類。** 它比對「`EPIC_INDEX.md` 是否與 `epic-progress.md` 同步」——
+兩個檔案可以完美同步，而**內容對這個分支而言是錯的**。這是不同的失效模式。
+
+**候選方向（留給 spec）**：`state-update.sh` 在偵測到「當前分支不是預期的狀態承載分支」時警告；
+或狀態更新後立即自動 commit（消除裸露窗口）；或 `pre-merge-check` 比對狀態檔與 git 歷史的一致性
+（例如 merge=✅ 但該 epic 沒有對應的合併 commit）。
+
+---
+
+**狀態**: 🟡 AWAITING_APPROVAL — 2026-08-27。使用者需執行
+`/athena:plan approve E357,E358,E359,E360,E361`（或逐一 approve/reject/defer）。
 
 ---
 
