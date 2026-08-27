@@ -428,7 +428,7 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E361 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 87 — auto-merged PR #155 |
 | E362 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 88 — auto-merged PR #164 · 閘門在真正的分支樹上通過並產生首批 per-epic 事件 |
 | E363 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 88 — auto-merged PR #169 · 閘門在正確分支樹上通過 |
-| E364 | ✅ | ✅ | ✅ | ⬜ | ⬜ | Phase 88 — PASS · QA 用真實 instance 不符驗 AC#2（比 implement 更強）· 6 種邊界補測 · 1 項 ADVISORY |
+| E364 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 88 — b37153f · 1 檔案 · 無殘留 |
 | E365 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 88 — 🟢 APPROVED (2026-08-27). spec 已寫（e365-claudemd-e2e-identity-contract.md）— 依賴 E363（共用 CLAUDE.md） |
 | E366 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 88 — 🟢 APPROVED (2026-08-27). spec 已寫（e366-totalpages-orphan.md） |
 
