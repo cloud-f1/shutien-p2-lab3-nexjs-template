@@ -1,7 +1,7 @@
 // E298 — unit tests for the in-memory rate limiter + the rateLimitGuard()
 // Server-Action helper. Fully db-free: exercises the pure bucket logic and the
 // guard's bail behaviour, resetting state via __resetRateLimit() between cases.
-import { beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
   __resetRateLimit,
@@ -16,6 +16,12 @@ const MINUTE_MS = 60_000
 
 beforeEach(() => {
   __resetRateLimit()
+})
+
+afterEach(() => {
+  // Scoped restore so fake timers used by one test (below) never leak into
+  // sibling tests in this file or other files in the same worker (E360).
+  vi.useRealTimers()
 })
 
 describe("rateLimit", () => {
@@ -37,16 +43,16 @@ describe("rateLimit", () => {
   })
 
   it("resets the window after it expires", () => {
+    vi.useFakeTimers()
     const key = "rl:window"
-    expect(rateLimit(key, 1, 1).ok).toBe(true)
-    expect(rateLimit(key, 1, 1).ok).toBe(false)
-    // Window of 1ms — after a tick the bucket is expired and refills.
-    return new Promise<void>((resolve) => {
-      setTimeout(() => {
-        expect(rateLimit(key, 1, 1).ok).toBe(true)
-        resolve()
-      }, 5)
-    })
+    expect(rateLimit(key, 1, MINUTE_MS).ok).toBe(true)
+    expect(rateLimit(key, 1, MINUTE_MS).ok).toBe(false)
+    // Deterministically advance past the window's expiry — no real wall-clock
+    // wait, no boundary race (was: a real 1ms window + real setTimeout, flaky
+    // whenever the two calls straddled a millisecond tick — see E360). The
+    // top-level afterEach() restores real timers even if an assertion throws.
+    vi.advanceTimersByTime(MINUTE_MS + 1)
+    expect(rateLimit(key, 1, MINUTE_MS).ok).toBe(true)
   })
 })
 
