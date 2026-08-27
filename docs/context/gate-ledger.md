@@ -10,7 +10,7 @@
 > A phase with no section below has no `gate_result` events recorded — that
 > means nothing was emitted under it, not that every gate passed.
 
-Generated: 2026-08-27T01:34:09Z
+Generated: 2026-08-27T11:20:50Z
 
 ## Phase 83
 
@@ -49,11 +49,12 @@ Phase 85 gate ledger
 
 ```
 Phase 86 gate ledger
-  e2e          2 pass · 1 skipped  ⚠ 未結清
+  e2e          2 pass · 1 skipped
     ? Wave 1 部分整合（E353+E354）：E355 的 implement agent 同時在跑 db:e2e-setup（drop→create→migrate→seed saas_dev_e2e）與 port 3000，併發 e2e 會互相破壞。完整整合閘門含 e2e 將於 E355 完成後對 E353+E354+E355 三者重跑。
   int          2 pass
   lint         3 pass
   typecheck    3 pass
   unit         3 pass
+  ✓ skips accepted (2026-08-27T11:20:50Z): e2e 延後後已於完整整合閘門與 E356 publish 各執行一次並通過 51/51
 ```
 

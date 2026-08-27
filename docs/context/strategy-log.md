@@ -10,9 +10,9 @@
 | Field | Value |
 |-------|-------|
 | Cycle | 41 |
-| State | AWAITING_APPROVAL |
+| State | APPROVED |
 | Date | 2026-08-27 |
-| Notes | **Phase 87 提案（AWAITING_APPROVAL）** — Phase 86 執行過程中發現的 5 個 follow-up。使用者要求把 6 個候選轉成 epic；其中 (3) resendActivation 漏標與 (4) CSV 匯出缺欄同屬 `on_behalf` 完整性，合併為一個 epic，符合每輪最多 5 案的預算規則。**最高優先是 E357** —— 它讓整道 e2e 閘門在特定情況下失去意義，而非只是不方便。詳見下方 Cycle 41 段落。 |
+| Notes | **Phase 87 已核准（2026-08-27）** — Phase 86 執行過程中發現的 5 個 follow-up。使用者要求把 6 個候選轉成 epic；其中 (3) resendActivation 漏標與 (4) CSV 匯出缺欄同屬 `on_behalf` 完整性，合併為一個 epic，符合每輪最多 5 案的預算規則。**最高優先是 E357** —— 它讓整道 e2e 閘門在特定情況下失去意義，而非只是不方便。詳見下方 Cycle 41 段落。 |
 | Prev36 | Phase 82 (Fork Harvest Wave 3 — `../ai-rc-engineer-pm`) — 8 epics E336–E343 **APPROVED 2026-08-22** by the user. 四鏡頭比對 fork 後的發現：**athena 資產層已幾乎同步**（agents 0 差異、skills fork 只多 1 支、commands 只多 `approve.md`、`components/ui/` 0 差異、docs 幾乎對齊），且模板功能面**大幅領先**（billing 三家 · sales pages · admin 營收後台 · 2FA · API keys · webhooks），fork 自 2026-07-13 起未再推進。真正的 delta 集中在 **next-app 的 UI 組裝層**。使用者決策：範圍 **A+C**（管理介面/原件 + skill/context，B 組 auth/audit 硬化留 backlog）· 儀表板採 **混合式**（加 widget kit 並升級首頁，不整頁重寫）· 交付走 **athena pipeline**。Wave 1 = E336+E338+E340+E341+E342+E343 → Wave 2 = E337+E339（`epic-graph.sh --phase 82` 已驗證 exit 0）。**明確不回收**：`design-system-coverage.sh`（指向不存在的 `client/src/pages`，Vite 死碼，前次稽核已判定）· rc 領域邏輯（holidays/gantt/cases）· agent persona 改名（fork 的 SAGE/DOC/ARGUS 烙在 description 與 tony 路由）。**編號紅線**：兩 repo 已撞號（雙方各有自己的 E334/E335），模板側自 E336 起編。 |
 | Prev35 | Phase 77 (高轉換銷售頁 + 統一一次性金流) — 4 epics E326–E329 APPROVED 2026-07-12 from a user-supplied sales-page PRD (AIDA copy structure + unified ECPay/NewebPay/Stripe one-time payment interface). User decisions: **ECPay 綠界 = launch gateway** (deploys set `BILLING_PROVIDER=ecpay`; resolver code default stays stripe) · scope = 結帳+訂單+**交付開通** (full) · formal epics via /athena:plan. ~70% infra pre-existed (E249 provider contract, E250/E261 landing sections, ecpay/stripe providers, payment_events idempotency) — epics cover only the true gaps: sales route+4 sections (E326), products/orders+checkout+SOLID interface segregation (E327), entitlement delivery+自動建帳/啟用信 (E328), NewebPay slot (E329). Wave 1: E326+E327 → Wave 2: E328+E329. **Addendum (同日)**: CRM 整合 → **Phase 78 E330** (order.completed + system-scoped webhook egress reusing E268 + Google Sheet/MailerLite recipes; first-party @saas/crm-* connectors = backlog). **Addendum 2 (同日)**: 後台 audit → **Phase 79 E331+E332** (admin 營收後台: 會員/訂單/訂閱台 + 多銷售頁管理 sales_pages+CRUD+ISR; E326 amended with resolver 解耦 constraint). **Addendum 3 (同日)**: 風格多樣化 → 三層渲染架構 (preset/variant/custom) — E326 +3 style presets, E332 +style 選擇+render_mode, 新 **Phase 80 E333** sales-page-builder skill (HTML ingest → custom TSX + registry). |
 | Prev34 | Phase 75 (Backport Wave 2) — 5 epics E319–E323 APPROVED + **EXECUTED** 2026-07-08 (implement→QA→commit→push→PR each; merges pending user, pull-only perms). Ran as a **sequential PR stack** (shared files: stop-verifier/CLAUDE/package.json) — dogfooding E319's own in-repo-chain mode. PRs: **#72 E320 · #73 E319 · #74 E321 · #75 E322 · #76 E323**, stacked. E323 scoped to Part A + @saas/{scheduler,audit-log}; **E324 follow-up** = @saas/{rbac-scoped-visibility,sentry-pii,csv-io} + the 8 orphans E320 found. |
@@ -146,8 +146,10 @@ Phase 86 期間至少兩個 agent 各撞到一次（實作與 QA），單獨重�
 
 ---
 
-**狀態**: 🟡 AWAITING_APPROVAL — 2026-08-27。使用者需執行
-`/athena:plan approve E357,E358,E359,E360,E361`（或逐一 approve/reject/defer）。
+**狀態**: ✅ **APPROVED — 2026-08-27**，使用者以 `/athena:plan approve E357,E358,E359,E360,E361` 全數核准。
+
+五份規格已寫入 `docs/epics/e35[789]-*.md` / `e36[01]-*.md`，四個狀態面已註冊。
+`epic-graph.sh --phase 87` 解析為單一 wave（五個並行，檔案互斥）。Total 20 SP。
 
 ---
 
