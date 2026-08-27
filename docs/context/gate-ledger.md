@@ -10,51 +10,63 @@
 > A phase with no section below has no `gate_result` events recorded — that
 > means nothing was emitted under it, not that every gate passed.
 
-Generated: 2026-08-27T13:13:39Z
+Generated: 2026-08-27T15:49:51Z
 
 ## Phase 83
 
 ```
 Phase 83 gate ledger
-  e2e          1 pass
-  int          1 pass
-  lint         1 pass
-  typecheck    1 pass
-  unit         1 pass
+  Wave 整合閘門 (epic 欄位為空 — /athena:integrate Step 4 或 batch.md Step 4c):
+    e2e          1 pass
+    int          1 pass
+    lint         1 pass
+    typecheck    1 pass
+    unit         1 pass
+  Per-epic pre-merge-check (epic 欄位有值 — scripts/pre-merge-check.sh):
+    ⚠ 本 phase 沒有任何 per-epic 閘門紀錄 — pre-merge-check.sh 從未在任何一次 epic publish 時執行過（E362）
 ```
 
 ## Phase 84
 
 ```
 Phase 84 gate ledger
-  e2e          1 pass
-  int          1 pass
-  lint         1 pass
-  typecheck    1 pass
-  unit         1 pass
+  Wave 整合閘門 (epic 欄位為空 — /athena:integrate Step 4 或 batch.md Step 4c):
+    e2e          1 pass
+    int          1 pass
+    lint         1 pass
+    typecheck    1 pass
+    unit         1 pass
+  Per-epic pre-merge-check (epic 欄位有值 — scripts/pre-merge-check.sh):
+    ⚠ 本 phase 沒有任何 per-epic 閘門紀錄 — pre-merge-check.sh 從未在任何一次 epic publish 時執行過（E362）
 ```
 
 ## Phase 85
 
 ```
 Phase 85 gate ledger
-  e2e          1 pass
-  int          1 pass
-  lint         1 pass
-  typecheck    1 pass
-  unit         1 pass
+  Wave 整合閘門 (epic 欄位為空 — /athena:integrate Step 4 或 batch.md Step 4c):
+    e2e          1 pass
+    int          1 pass
+    lint         1 pass
+    typecheck    1 pass
+    unit         1 pass
+  Per-epic pre-merge-check (epic 欄位有值 — scripts/pre-merge-check.sh):
+    ⚠ 本 phase 沒有任何 per-epic 閘門紀錄 — pre-merge-check.sh 從未在任何一次 epic publish 時執行過（E362）
 ```
 
 ## Phase 86
 
 ```
 Phase 86 gate ledger
-  e2e          2 pass · 1 skipped
-    ? Wave 1 部分整合（E353+E354）：E355 的 implement agent 同時在跑 db:e2e-setup（drop→create→migrate→seed saas_dev_e2e）與 port 3000，併發 e2e 會互相破壞。完整整合閘門含 e2e 將於 E355 完成後對 E353+E354+E355 三者重跑。
-  int          2 pass
-  lint         3 pass
-  typecheck    3 pass
-  unit         3 pass
+  Wave 整合閘門 (epic 欄位為空 — /athena:integrate Step 4 或 batch.md Step 4c):
+    e2e          2 pass · 1 skipped
+      ? Wave 1 部分整合（E353+E354）：E355 的 implement agent 同時在跑 db:e2e-setup（drop→create→migrate→seed saas_dev_e2e）與 port 3000，併發 e2e 會互相破壞。完整整合閘門含 e2e 將於 E355 完成後對 E353+E354+E355 三者重跑。
+    int          2 pass
+    lint         3 pass
+    typecheck    3 pass
+    unit         3 pass
+  Per-epic pre-merge-check (epic 欄位有值 — scripts/pre-merge-check.sh):
+    ⚠ 本 phase 沒有任何 per-epic 閘門紀錄 — pre-merge-check.sh 從未在任何一次 epic publish 時執行過（E362）
   ✓ skips accepted (2026-08-27T11:20:50Z): e2e 延後後已於完整整合閘門與 E356 publish 各執行一次並通過 51/51
 ```
 
@@ -62,10 +74,25 @@ Phase 86 gate ledger
 
 ```
 Phase 87 gate ledger
-  e2e          1 pass
-  int          1 pass
-  lint         1 pass
-  typecheck    1 pass
-  unit         1 pass
+  Wave 整合閘門 (epic 欄位為空 — /athena:integrate Step 4 或 batch.md Step 4c):
+    e2e          1 pass
+    int          1 pass
+    lint         1 pass
+    typecheck    1 pass
+    unit         1 pass
+  Per-epic pre-merge-check (epic 欄位有值 — scripts/pre-merge-check.sh):
+    ⚠ 本 phase 沒有任何 per-epic 閘門紀錄 — pre-merge-check.sh 從未在任何一次 epic publish 時執行過（E362）
+```
+
+## Phase 88
+
+```
+Phase 88 gate ledger
+  Wave 整合閘門 (epic 欄位為空 — /athena:integrate Step 4 或 batch.md Step 4c):
+    (本 phase 沒有任何 wave 整合閘門紀錄)
+  Per-epic pre-merge-check (epic 欄位有值 — scripts/pre-merge-check.sh):
+    lint         1 pass
+    typecheck    1 pass
+    unit         1 pass
 ```
 
