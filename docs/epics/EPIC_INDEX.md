@@ -467,7 +467,7 @@ Phase 46+ epics: enriched template — epic files include Implementation Phases,
 | E360 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 87 — auto-merged PR #156 |
 | E361 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 87 — auto-merged PR #155 |
 | E362 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 88 — auto-merged PR #164 · 閘門在真正的分支樹上通過並產生首批 per-epic 事件 |
-| E363 | ✅ | ✅ | ✅ | ⬜ | ⬜ | Phase 88 — PASS · 六條 AC 由 QA 自行重跑 · decay 7→9、match 0.5→3.5 為實測 · 1 項 ADVISORY |
+| E363 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 88 — 932d5a3 · 7 檔案 · 無 debug 殘留 |
 | E364 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 88 — 🟢 APPROVED (2026-08-27). spec 已寫（e364-gate-failure-diagnostics.md） |
 | E365 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 88 — 🟢 APPROVED (2026-08-27). spec 已寫（e365-claudemd-e2e-identity-contract.md）— 依賴 E363（共用 CLAUDE.md） |
 | E366 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 88 — 🟢 APPROVED (2026-08-27). spec 已寫（e366-totalpages-orphan.md） |
