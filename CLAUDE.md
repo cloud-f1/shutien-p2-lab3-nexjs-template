@@ -48,6 +48,16 @@ npx shadcn@latest add <component-name>
 > Running several worktrees at once? `STACK_NAME=<name> docker compose up -d` gives each its own
 > containers — the names are no longer hardcoded singletons.
 
+> **e2e also verifies the target is THIS checkout (E357).** Before any test runs,
+> `next-app/e2e/global-setup.ts` calls `/api/health` and compares its `appInstanceId` (a hash of
+> the server's project path, unless `APP_INSTANCE_ID` overrides it) against this checkout's own
+> id — a mismatch **aborts the whole run**,
+> nothing gets tested. Three env vars control it: `APP_INSTANCE_ID` (server-side, pins identity for
+> containers/standalone builds where the path is meaningless), `E2E_EXPECTED_APP_INSTANCE_ID`
+> (runner-side, accept a specific target id instead of computing one), `E2E_SKIP_TARGET_CHECK=1`
+> (runner-side, disables the check entirely — last resort). Full explanation and recipes:
+> `docs/context/test-status.md` → "Standing precondition — e2e runs against a VERIFIED target (E357)".
+
 > **Quality gate before merge:** run `scripts/pre-merge-check.sh [--e2e]` from the repo root —
 > it checks repo hygiene (no nested `.git`, no accidental mass deletions) + typecheck + lint +
 > unit (+ e2e). The athena loop's `merge` step should pass this first. **`make verify` (E322)**
