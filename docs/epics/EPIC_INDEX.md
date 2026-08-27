@@ -469,7 +469,7 @@ Phase 46+ epics: enriched template — epic files include Implementation Phases,
 | E362 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 88 — auto-merged PR #164 · 閘門在真正的分支樹上通過並產生首批 per-epic 事件 |
 | E363 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 88 — auto-merged PR #169 · 閘門在正確分支樹上通過 |
 | E364 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 88 — auto-merged PR #174 · 閘門在正確分支樹上通過，AUDIT_LOG_PATH 指向主 repo |
-| E365 | ✅ | ✅ | ✅ | ⬜ | ⬜ | Phase 88 — PASS · 逐句事實查核 + 錨點確認存在 · 採納精確度回饋於 09b9e63 · 發現 QA 讀到過期 spec |
+| E365 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 88 — 173b432（實作）+ 09b9e63（QA 精確度回饋）· 只改 CLAUDE.md · 無殘留 |
 | E366 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 88 — auto-merged PR #180 · Wave 1 收尾 |
 <!-- EPIC_MATRIX_END -->
 
