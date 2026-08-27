@@ -95,3 +95,66 @@ RED（加入 canary + 測試參照）：
 **`totalPages` 未被重新標記** —— 證明 allowlist 的範圍是精確的，沒有被改寬。
 
 移除 canary 後 `git diff` 兩檔皆空（完全還原）；GREEN：`✅ No orphan exports...`
+
+---
+
+## QA 結果（2026-08-28）— PASS，含一項 ADVISORY
+
+### 決策（B）經獨立複驗成立
+
+QA 自己讀了 `data-table-generic.tsx:210`、`admin/page.tsx`（`LIST_CAP = 500`，走 `resolvePagination`）、
+並 `grep -rn "totalPages"` 全 `next-app/` —— **唯一的非定義參照是 `pagination.test.ts`，零正式呼叫者**。
+接進 UI 會重複 DataTable 已在客戶端算好的頁數。**B 正確。**
+
+### ⚠ ADVISORY — 第二條豁免路徑：同檔「使用」把註解也算進去
+
+我要求 QA 除了避開 `/^_/` 之外，還要清查**其他**會讓故障注入靜默失效的路徑。它找到了：
+
+`scripts/check-orphan-exports.mjs:122-123`
+```js
+const selfHits = (text.match(globalRef) || []).length
+const usedInFile = selfHits > 1
+```
+
+`\bname\b` 的全域比對數的是**整個檔案文字**的出現次數 —— **包含註解與 JSDoc**。
+QA 的第一個 canary 帶了一句 `/** e366QaCanary — ... */`，`selfHits` 因此為 2，
+被判定「同檔已使用」→ **偵測器完全沒抓到，exit 0 全綠**。拿掉註解裡的自我提及後才正確轉紅。
+
+**寫了文件的程式碼反而豁免於死碼偵測。**
+
+#### orchestrator 的量化與更正
+
+我做了探針（副本停用該豁免）測影響範圍。**第一次測到空氣** —— 我把副本放在 scratchpad 執行，
+腳本用相對自身位置解析 `SCAN_ROOTS`，所以它一個檔案都沒掃到，卻回報「0 個孤兒」。
+**這正是本 phase 反覆在講的「在錯的地方跑出來的綠毫無意義」，我自己又做了一次。**
+把探針放進 `scripts/` 重跑才得到真值。
+
+真值：停用該豁免後回報 **40 個**（正常回報 1 個）。
+
+**但 40 不是「隱藏的孤兒數」** —— 那條豁免有正當用途（保護同模組內接線的常數）。
+抽驗三個：`computeAppInstanceId`（`:117` 真實呼叫）、`channelKey`（`:207` 真實呼叫）、
+`MAX_FAILED_LOGIN_ATTEMPTS`（`:122` 真實使用；`:107` 雖是註解提及，但不是它豁免的原因）
+—— **3/3 都是正當豁免**。
+
+**準確結論**：盲點真實存在且可示範，但**目前沒有證據顯示它正在遮蔽真孤兒**。
+風險是前瞻性的 —— 未來一個「有 JSDoc、沒接線」的匯出會隱形。
+
+建議比照 `test-rule-nextjs-invariants.sh` 的 `[KNOWN BLIND SPOT]` 慣例，在腳本自身註解中記載。
+**非阻斷**，且非本 epic 引入（該邏輯未被本次 allowlist-only 變更觸及）。
+
+### 其他豁免路徑（QA 清查，均為既有且合理）
+
+- `SCAN_ROOTS = ["lib"]` —— 只掃 `lib/`，`actions/`／`app/`／`components/` 的孤兒本就不在範圍
+- `isTestOnlyConvention`（`/^_/`）—— implement 已記載的那條
+- 副檔名／目錄過濾 —— 標準做法
+
+### 第二個 commit（hook 產生的 bugfix-log stub）
+
+QA 查證屬實：`scripts/hooks/post-commit-bugfix-log.sh` 對 `fix:`／`fix(` 開頭的 commit
+自動附加 stub（含 hash／時間／檔案 + `_(pending — enrich during /athena:save)_` 佔位）。
+與同檔既有條目格式一致，是預期的自動行為，留在分支上恰當。
+
+### AC #4 故障注入（QA 自己做的，與 implement 的獨立）
+
+RED 抓到 `e366QaCanary`，且 **`totalPages` 未被重新標記** —— allowlist 範圍精確、未被改寬。
+`git checkout --` 還原後 `git status --porcelain` 與 `git diff --stat` 皆空。
