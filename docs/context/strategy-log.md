@@ -10,7 +10,7 @@
 | Field | Value |
 |-------|-------|
 | Cycle | 42 |
-| State | ⏸ AWAITING HUMAN APPROVAL |
+| State | ✅ APPROVED — 2026-08-27（使用者以 `/athena:plan approve` 核准全部 5 案）→ Phase 88 |
 | Date | 2026-08-27 |
 | Notes | **Mode: audit** — 使用者帶著 7 個候選（來自 Phase 86–87 實地發現）要求逐條驗證，不要照單全收。結果：2 條是舊聞或已緩解（#1 `pre-merge-check.sh` 本體其實已在 E345 補上 `emit_gate`——真正的洞在 `/athena:batch` Step 4 的逐-epic publish 步驟從未真正呼叫它；#3 的「unsalted-hash 文件措辭」已在 `lib/app-identity.ts` 的註解中正確自我揭露「非安全控制」，不成立），其餘維持真實問題並各自查到具體檔案/行號證據。額外稽核發現 Tier 0 記憶層自建置以來**從未完成過一次真正的 promotion**（一份待套用 6 週的 proposal 靜靜躺著），列為本輪最高優先。5 案共 23 SP，最高 P1、無 P0——不是因為問題不重要，是因為都是「機制存在但沒接好/沒跑完」而非新缺口，修法都小而精確。 |
 | Prev41 | Phase 87（E357–E361，源自 Cycle 41 的 Phase 86 實地發現 follow-up）— 5 epics APPROVED + **EXECUTED** 2026-08-27。整合閘門 PASS：typecheck 0 · lint 0 · unit 908/908 · int 118/118 · e2e 51/51 · make hook-test 26 檔全過。**E357（P0）**修掉 e2e 靜默測錯 app（同機另一個本模板 fork 佔用 `:3000`，`<title>`/`/api/health` 與本專案位元組相同、完全無法辨識，改用專案絕對路徑的 sha256 摘要當識別）；E358 修 `check-orphan-exports.mjs` 有狀態 regex（`.test()` 推進 `lastIndex`）造成的假陽性；E359 補齊 `resendActivation`/CSV 匯出的 `on_behalf` 稽核完整性；E360 修 `rate-limit.test.ts` 的 1ms 視窗 flake；E361（由 P2 上調 P1）新增狀態檔內部一致性守衛，**上線當天就抓到自己要防的那類錯誤**（收尾時原要重蹈 Phase 86 事故 3）。 |
@@ -22,6 +22,13 @@
 ---
 
 ## Cycle 42 — 2026-08-27 — Mode: audit
+
+> **✅ APPROVED 2026-08-27** — 使用者核准全部 5 案，登錄為 **Phase 88**。
+> **E363 範圍於核准時調整**：原提案第一部分（套用擱置 6 週的 promotion）在提案寫成後、核准前已執行完畢
+> （Tier 0 從零建立、30 條教訓、9 個檔案），故自 epic 移除；改納入兩個提案當時未發現的問題 ——
+> `lesson-tags.json`(12) 與 `half-life-defaults.json`(8) 的登錄表分歧（`dx-patterns.md`/`workflow-patterns.md`
+> 現正落在衰減／遺忘生命週期之外），以及 `domains:` 仍是遷移前的 `server/`/`client/` 路徑。
+> **E365 設為依賴 E363**（兩者都改 `CLAUDE.md`，並行必衝突）。
 
 ### 來源
 使用者提供 7 個候選（Phase 86–87 實地發現）並要求逐條重新驗證（grep/read 確認，不照單全收），
