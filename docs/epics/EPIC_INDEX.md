@@ -470,7 +470,7 @@ Phase 46+ epics: enriched template — epic files include Implementation Phases,
 | E363 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 88 — auto-merged PR #169 · 閘門在正確分支樹上通過 |
 | E364 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 88 — auto-merged PR #174 · 閘門在正確分支樹上通過，AUDIT_LOG_PATH 指向主 repo |
 | E365 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 88 — 🟢 APPROVED (2026-08-27). spec 已寫（e365-claudemd-e2e-identity-contract.md）— 依賴 E363（共用 CLAUDE.md） |
-| E366 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 88 — 6e85c4b（實作）+ 015d3de（hook 自動產生的 bugfix-log stub，QA 已查證屬實）· 無殘留 |
+| E366 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 88 — auto-merged PR #180 · Wave 1 收尾 |
 <!-- EPIC_MATRIX_END -->
 
 ## Dependency Rules
