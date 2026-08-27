@@ -45,7 +45,15 @@ Phase 87 實測：五個 epic 的 publish，`pre-merge-check.sh` 總共執行 **
 
 1. **`batch.md` Step 4 範例碼補回 canonical 第 1 步** —— 在 `git push` 之前插入
    `pre-merge-check.sh` 呼叫與非零即中止的分支，並把 `PMC_EPIC`/`PMC_PHASE` 環境變數帶進去
-   （`pre-merge-check.sh` 第 52–54 行已支援，只是沒人傳）。
+   **⚠ 更正（implement 階段實測發現）**：本 spec 原本斷言「`pre-merge-check.sh` 第 52–54 行已支援，
+   只是沒人傳」—— **這是錯的，未經查證就寫下**。原始那行是
+   `PMC_EPIC=$(git branch --show-current ...)` **無條件覆寫**，任何外部匯入的值都會被清掉。
+
+   而 `batch.md` 的 orchestrator **按分支名推送、從不 checkout**（它在 `main` 上依序推每個
+   `feat/E{n}-*`），所以 `git branch --show-current` 根本無法辨識當下發布的是哪個 epic ——
+   光靠自動偵測會讓每一筆 per-epic 事件都掛空 epic，與 wave 整合閘門的事件無從區分，
+   **正好抵銷本 epic 的目的**。故一併加入 `${PMC_EPIC:-}` fallback：外部有設就勝出，
+   未設則沿用原本的分支名偵測（`ship.md`/`pr.md` 從已 checkout 的分支呼叫，不受影響）。
 2. **`gate-ledger.sh` 區分來源** —— 依 `epic` 欄位是否為 null 分成「wave 整合閘門」與
    「per-epic pre-merge-check」兩區塊呈現，並在 per-epic 區塊為 0 筆時**明確標示**
    「本 phase 沒有任何 per-epic 閘門紀錄」，而不是靜靜地只顯示整合閘門那一組。
