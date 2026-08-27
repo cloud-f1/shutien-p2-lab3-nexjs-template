@@ -102,3 +102,52 @@ CLAUDE.md 寫「Tier 0 (global): ~/.claude/template-memory/ cross-project wisdom
 
 - 不再執行 promotion 本身（已完成）。
 - 不改 `learn.md` 既有的 `|| true` 語意 —— 那是刻意的 best-effort 設計；新守衛走 `make verify` 這條會擋人的路徑。
+
+---
+
+## QA 結果（2026-08-28）— PASS，含一項 ADVISORY
+
+六條 AC 全由 QA **自行重跑驗證**。關鍵證據都是實測數字，不是讀碼推論：
+
+| 驗證 | 舊狀態 | 新狀態 |
+|---|---|---|
+| `score.sh decay-all`（對真 Tier 0 的副本） | `decayed 7 file(s)` | `decayed 9 file(s)` |
+| `match.sh` 對 `testing-patterns.md` | `client/e2e/…` → 0.5（只有 strength，domain 零命中） | `next-app/e2e/…` → **3.5**（domain 命中） |
+| `backfill-half-life.sh` | 靜默跳過 2 個磁碟檔 | 9 個磁碟檔全 `[keep]` |
+
+後兩列證明這不是純粹改 JSON 的化妝 —— 檢索相關性與衰減涵蓋範圍**實際改變了**。
+
+### spec 推翻經 QA 獨立確認成立
+
+QA 自己讀了 `auto-promote-check.sh:148-150`：`now_epoch=$(date +%s); printf '%s' "$now_epoch" > "$watermark_file"`
+在 proposal 寫出後**無條件執行**。原 spec 條件確實永遠不可能觸發，替代條件正確。
+
+### 故障注入紅綠，QA 自己跑過一次
+
+備份真實 watermark（`1787837412`）→ 設為 2026-01-01 → `make verify` 在
+`check-promotion-staleness.sh` 這步 `Error 1`，且確認 `pre-merge-check.sh`/typecheck **從未執行**
+（守衛置於昂貴步驟之前生效）→ 還原 → 轉綠 → **與備份逐位元組比對相同**。
+
+### 測試污染正式資料：本次乾淨（前兩個 epic 都中招）
+
+QA 特別查了這點。`test-check-promotion-staleness.sh` 用 `mktemp -d` + `trap ... EXIT`，
+並把 5 個路徑（`PROMOTION_PROPOSALS_DIR`／`PROMOTION_WATERMARK_FILE`／`TEMPLATE_MEMORY_DIR`／
+`LESSON_TAGS_JSON`／`HALF_LIFE_DEFAULTS_JSON`）全部以環境變數注入 temp 目錄。
+QA 以 md5sum 前後比對 9 個真實 Tier 0 檔案與 watermark，**完全一致**。
+
+對照組：E362 的 QA 曾因未設 `GATE_LEDGER_PATH` 覆蓋掉真實帳本；E363 的 implement 兩次
+被 `score.sh decay-all` / `test-isolation-guard.sh` 寫進真 Tier 0。**這支新測試是本 session
+第一個從一開始就做對隔離的。**
+
+### ⚠ ADVISORY — 守衛量的是 watermark，不是「每份 proposal 是否被審過」
+
+單一全域 watermark 意味著：處理**任何一份** proposal（或一次新的自動觸發）都會刷新**所有**
+待處理檔案的「新鮮度」。實測現況：磁碟上有 5 份 proposal（4 份 2026-05-19、1 份 2026-07-13），
+watermark 因 2026-08-27 的 promote 而是 0 天新，守衛因此回報 `OK`。
+
+守衛的措辭是**誠實的** —— 它寫「**presumed** reviewed/applied」，沒有宣稱那些真的被審過。
+且這是既有設計（`promotion-proposals/README.md` 明文：「the watermark guarantees it will not
+be re-proposed」），**非 E363 引入**，也在本 epic 範圍之外。
+
+就本專案當下而言沒有實害：2026-08-27 的 promote 是從**來源檔**（`qa-patterns.md`／`debug-log.md`）
+促銷，是所有 proposal 內容的超集，那 5 個檔案是陳舊產物而非待辦工作。清理它們屬後續。
