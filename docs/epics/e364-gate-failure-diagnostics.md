@@ -32,7 +32,15 @@ gate 失敗時，把該 gate 的 log **尾端 N 行**（或以 `ABORTED`／`FAIL
 
 ## Key Files
 
-- `scripts/pre-merge-check.sh`（第 115／119／123／134 行的四個 `bad "..."` 分支）
+- `scripts/pre-merge-check.sh`（四個 `bad "..."` 分支）
+
+  **⚠ 更正（implement 階段）**：本 spec 引用的行號 115／119／123／134 **已經過時**。
+  該檔案在 E345（`emit_gate`）與 E362（`${PMC_EPIC:-}` fallback）之後行號位移，
+  實際為 **138／142／146／157**。派工時已提醒 agent「行號可能已位移，先完整讀檔再動手」，
+  它照做並回報確認 —— 若照行號硬找會改錯地方。
+
+  **教訓**：spec 裡的行號在多個 epic 連續改同一檔案時必然腐化。引用**函式名或語法特徵**
+  （如「四個 `bad "..."` 分支」）比行號耐久。
 - `next-app/e2e/global-setup.ts`（第 98–148 行，abort 訊息的來源，**不改**）
 
 ## Acceptance Criteria
