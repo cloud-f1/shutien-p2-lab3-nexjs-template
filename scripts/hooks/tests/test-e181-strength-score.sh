@@ -7,7 +7,9 @@
 #   - score.sh reinforce applies correct deltas with clamping
 #   - score.sh reinforce dedupes within a session (same signal -> only one bump)
 #   - score.sh decay matches expected math within 1% tolerance
-#   - score.sh decay-all walks all 8 known files
+#   - score.sh decay-all walks every file registered in half-life-defaults.json
+#     (E363: count is read dynamically from the registry, not hardcoded —
+#     that registry has grown since this test was first written)
 #   - score.sh flag-weak prints lessons with S < 0.10
 #   - audit log gets `strength_reinforced` and `strength_decayed` events
 #
@@ -61,7 +63,8 @@ fresh_dedup() {
   echo "$d"
 }
 
-# Stub a target dir mirroring the 8 documented Tier 0 files.
+# Stub a target dir with one fixture file per key registered in
+# half-life-defaults.json (whatever that count currently is).
 stub_tier0() {
   local dir="$1"
   for name in $(jq -r '.defaults | keys[]' "$DEFAULTS_JSON"); do
@@ -90,7 +93,7 @@ t1_migration_inserts_fields() {
     done
   done
   if [ "$missing" = "0" ]; then
-    pass "migration inserts strength/last_retrieved/retrieval_count/created on all 8 files"
+    pass "migration inserts strength/last_retrieved/retrieval_count/created on all registered files"
   else
     fail "migration inserts all 4 fields on every file" "$missing keys missing"
   fi
@@ -348,7 +351,7 @@ EOF
   fi
 }
 
-# ---- t12: decay-all walks all 8 known Tier 0 files ----
+# ---- t12: decay-all walks every registered Tier 0 file ----
 t12_decay_all() {
   local dir; dir=$(mktemp -d -p "$TMP" t12.XXXXXX)
   local audit="$dir/audit.jsonl"
@@ -358,12 +361,17 @@ t12_decay_all() {
   AUDIT_LOG_PATH="$audit" HALF_LIFE_DEFAULTS_JSON="$DEFAULTS_JSON" STRENGTH_NOW="2026-05-07" \
     "$SCORE" decay-all "$dir" >/dev/null
 
+  # E363: expected count is read from the registry itself, not hardcoded —
+  # half-life-defaults.json legitimately grows over time (it went 8 -> 13
+  # when E363 backfilled the entries that had been silently missing).
+  local expected
+  expected=$(jq -r '.defaults | keys | length' "$DEFAULTS_JSON")
   local count
   count=$(jq -c 'select(.event == "strength_decayed")' "$audit" 2>/dev/null | wc -l | tr -d ' ')
-  if [ "$count" = "8" ]; then
-    pass "decay-all walks all 8 Tier 0 files (8 strength_decayed events)"
+  if [ "$count" = "$expected" ]; then
+    pass "decay-all walks all $expected registered Tier 0 files ($count strength_decayed events)"
   else
-    fail "decay-all walks all 8 files" "got $count strength_decayed events"
+    fail "decay-all walks all registered files" "expected $expected, got $count strength_decayed events"
   fi
 }
 
@@ -503,7 +511,7 @@ EOF
   fi
 }
 
-# ---- t18: decay-all completes in <2s on 8-file fixture (perf budget) ----
+# ---- t18: decay-all completes in <2s on the registry-sized fixture (perf budget) ----
 t18_decay_all_perf_budget() {
   local dir; dir=$(mktemp -d -p "$TMP" t18.XXXXXX)
   local audit="$dir/audit.jsonl"
@@ -524,7 +532,7 @@ t18_decay_all_perf_budget() {
     return
   fi
   if [ "$elapsed_ms" -lt 2000 ]; then
-    pass "decay-all completes in <2s on 8-file fixture (${elapsed_ms}ms)"
+    pass "decay-all completes in <2s on the registry-sized fixture (${elapsed_ms}ms)"
   else
     fail "decay-all perf budget" "took ${elapsed_ms}ms (limit 2000ms)"
   fi

@@ -9,7 +9,12 @@
     "integration-gotchas.md": 90,
     "testing-patterns.md": 180,
     "performance-insights.md": 180,
-    "NEW_PROJECT_PRIMER.md": 365
+    "NEW_PROJECT_PRIMER.md": 365,
+    "architecture-patterns.md": 180,
+    "design-handoff-pattern.md": 180,
+    "dx-patterns.md": 180,
+    "mockup-contract.md": 180,
+    "workflow-patterns.md": 180
   },
   "fallback_days": 180,
   "rationale": {
@@ -20,6 +25,11 @@
     "integration-gotchas.md": "Third-party surprises — relevant until vendor changes API",
     "testing-patterns.md": "Test approaches — durable but tied to current stack",
     "performance-insights.md": "Performance learnings — tied to current infrastructure",
-    "NEW_PROJECT_PRIMER.md": "The curated digest — load-bearing, always-on"
+    "NEW_PROJECT_PRIMER.md": "The curated digest — load-bearing, always-on",
+    "architecture-patterns.md": "E363 — backfilled (was missing from this registry while present in lesson-tags.json; not evergreen, tied to current stack, matches architecture-lessons.md's sibling category)",
+    "design-handoff-pattern.md": "E363 — backfilled; design/UI gotchas tied to the current design system",
+    "dx-patterns.md": "E363 — backfilled (was missing from this registry despite being an actual promoted Tier 0 file — the E363 root-cause bug); matches its own promoted frontmatter (half_life_days: 180)",
+    "mockup-contract.md": "E363 — backfilled; design/spec gotchas tied to the current mockup pipeline",
+    "workflow-patterns.md": "E363 — backfilled (was missing from this registry despite being an actual promoted Tier 0 file — the E363 root-cause bug); matches its own promoted frontmatter (half_life_days: 180)"
   }
 }

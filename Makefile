@@ -141,6 +141,7 @@ ci-all: ## Full pre-merge gate: repo hygiene + typecheck + lint + unit (+ e2e wi
 
 verify: ## One umbrella gate: staleness + pre-merge (typecheck·lint·unit) + orphan-export report + integration tests + dev-docs build
 	@bash scripts/staleness-check.sh
+	@bash scripts/memory/check-promotion-staleness.sh
 	@bash scripts/pre-merge-check.sh $(ARGS)
 	@echo "▶ check:orphans (non-strict — reports the known orphans, does not fail the gate)…" && pnpm --dir next-app check:orphans || true
 	@echo "▶ test:int (gracefully skips if no reachable Postgres)…" && pnpm --dir next-app test:int

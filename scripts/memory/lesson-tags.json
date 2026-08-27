@@ -9,17 +9,17 @@
     },
     "architecture-lessons.md": {
       "tags": ["architecture", "evergreen"],
-      "domains": ["server/", "client/"],
+      "domains": ["next-app/"],
       "evergreen": true
     },
     "architecture-patterns.md": {
       "tags": ["architecture", "patterns"],
-      "domains": ["server/", "client/"],
+      "domains": ["next-app/"],
       "evergreen": false
     },
     "design-handoff-pattern.md": {
       "tags": ["design", "ui", "primitives"],
-      "domains": ["client/src/components/ui/", "client/src/pages/", "docs/design/"],
+      "domains": ["next-app/components/ui/", "next-app/app/", "docs/design/"],
       "evergreen": false
     },
     "dx-patterns.md": {
@@ -29,37 +29,37 @@
     },
     "failure-patterns.md": {
       "tags": ["debugging", "failure"],
-      "domains": ["server/", "client/"],
+      "domains": ["next-app/"],
       "evergreen": false
     },
     "integration-gotchas.md": {
       "tags": ["integration", "third-party"],
-      "domains": ["server/app/", "client/src/api/"],
+      "domains": ["next-app/app/api/", "next-app/actions/"],
       "evergreen": false
     },
     "mockup-contract.md": {
       "tags": ["design", "ui", "spec"],
-      "domains": ["docs/design/", "client/src/pages/"],
+      "domains": ["docs/design/", "next-app/app/"],
       "evergreen": false
     },
     "performance-insights.md": {
       "tags": ["performance", "optimization"],
-      "domains": ["server/", "client/"],
+      "domains": ["next-app/"],
       "evergreen": false
     },
     "security-learnings.md": {
       "tags": ["security", "auth", "evergreen"],
-      "domains": ["server/app/api/", "server/app/core/", "client/src/api/auth", "client/src/pages/auth/"],
+      "domains": ["next-app/app/api/", "next-app/lib/auth", "next-app/app/(auth)/"],
       "evergreen": true
     },
     "testing-patterns.md": {
       "tags": ["testing", "tdd", "coverage"],
-      "domains": ["server/tests/", "client/src/tests/", "client/e2e/"],
+      "domains": ["next-app/e2e/", "next-app/lib/", "next-app/actions/"],
       "evergreen": false
     },
     "workflow-patterns.md": {
       "tags": ["workflow", "epic-pipeline", "ci", "alembic"],
-      "domains": ["docs/epics/", ".claude/", "scripts/hooks/", "server/alembic/"],
+      "domains": ["docs/epics/", ".claude/", "scripts/hooks/", "next-app/drizzle/migrations/"],
       "evergreen": false
     }
   },
@@ -76,19 +76,16 @@
     "perf|optim": ["performance"]
   },
   "path_tag_cues": {
-    "$comment": "Path-prefix → tags. Matched against `git diff --name-only main`. Path prefixes are matched literally; a changed file `server/app/api/v1/endpoints/auth.py` triggers all cues whose key it begins with.",
-    "server/alembic/": ["alembic", "workflow"],
-    "server/tests/": ["testing", "tdd"],
-    "client/src/tests/": ["testing", "tdd"],
-    "client/e2e/": ["testing", "tdd"],
-    "server/app/api/": ["server", "api"],
-    "server/app/core/": ["server", "security"],
-    "server/app/domains/": ["server", "domain"],
-    "client/src/components/ui/": ["ui", "primitives", "design"],
-    "client/src/pages/auth/": ["auth", "security", "ui"],
-    "client/src/pages/": ["ui", "client"],
-    "client/src/api/": ["client", "api"],
-    "client/src/styles/": ["design", "ui"],
+    "$comment": "Path-prefix → tags. Matched against `git diff --name-only main`. Path prefixes are matched literally; a changed file `next-app/app/api/v1/endpoints/auth.ts` triggers all cues whose key it begins with. E363: rewritten to next-app/-relative paths (was server/, client/ from the pre-Next.js FastAPI+Vite split); `next-app/tests/`-style cues for `server/tests/`/`client/src/tests/` were dropped rather than faked — unit tests are colocated `*.test.ts` files throughout lib/ and actions/ with no single directory prefix to match, so next-app/e2e/ is the only precise equivalent kept below. server/app/domains/ (business-domain modules) and client/src/api/ (client-side API-calling layer) both collapsed onto next-app/actions/ (Server Actions) in this stack, so their tag sets were merged onto that one key.",
+    "next-app/drizzle/migrations/": ["alembic", "workflow"],
+    "next-app/e2e/": ["testing", "tdd"],
+    "next-app/app/api/": ["server", "api"],
+    "next-app/lib/": ["server", "security"],
+    "next-app/actions/": ["server", "domain", "client", "api"],
+    "next-app/components/ui/": ["ui", "primitives", "design"],
+    "next-app/app/(auth)/": ["auth", "security", "ui"],
+    "next-app/app/": ["ui", "client"],
+    "next-app/app/globals.css": ["design", "ui"],
     "docs/openapi.yaml": ["api", "spec", "workflow"],
     "docs/epics/": ["epic-pipeline", "workflow"],
     "docs/design/": ["design", "ui"],

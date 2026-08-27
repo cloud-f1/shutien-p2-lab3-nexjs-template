@@ -284,8 +284,8 @@ Per-epic model is **tiered by complexity** (sonnet baseline, opus for complex/ul
 ## Memory System
 
 ```
-Tier 0 (global):  ~/.claude/template-memory/   cross-project wisdom (15 files)
-Tier 1 (project): docs/context/                this project's state (16 files)
+Tier 0 (global):  ~/.claude/template-memory/   cross-project wisdom (file count drifts — `ls ~/.claude/template-memory/*.md | wc -l`)
+Tier 1 (project): docs/context/                this project's state (file count drifts — `ls docs/context/*.md | wc -l`)
 
 "Update your document" → agent writes to its designated doc
 /athena:save           → all agents checkpoint simultaneously
