@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest"
 
-import { isUniqueViolation, PG_UNIQUE_VIOLATION } from "./idempotency-utils"
+import { isUniqueViolation, PG_UNIQUE_VIOLATION } from "./db-errors"
 
-describe("idempotency-utils", () => {
+describe("db-errors", () => {
   describe("isUniqueViolation", () => {
     it("detects a Postgres unique violation by SQLSTATE 23505", () => {
       expect(isUniqueViolation({ code: PG_UNIQUE_VIOLATION })).toBe(true)

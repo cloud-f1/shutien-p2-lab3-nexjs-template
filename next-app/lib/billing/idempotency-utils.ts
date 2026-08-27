@@ -2,11 +2,15 @@
  * Pure idempotency helpers (E274) — NO db import, unit-testable WITHOUT a
  * DATABASE_URL.
  *
- * The webhook handlers dedup on Postgres' unique-violation by the SQLSTATE CODE
- * (23505), NOT by string-matching the human-readable error message. The
- * `postgres` driver surfaces the code on `err.code`. Matching the code is locale-
- * and wording-independent, so a translated/Postgres-version-shifted message can
- * never silently break dedup.
+ * `isUniqueViolation`/`PG_UNIQUE_VIOLATION` were generalized out of this
+ * module in E354 into `lib/db-errors.ts` (a Postgres unique-violation check
+ * is not billing-specific — `actions/sales-pages.ts` needed the exact same
+ * code-based check for slug uniqueness). This file re-exports them so the
+ * existing billing call sites (`app/api/billing/stripe/webhook/route.ts`,
+ * `lib/billing/plans.ts`) and their imports keep working unchanged.
+ *
+ * See `lib/db-errors.ts` for why detection is by SQLSTATE CODE only — never
+ * the message text.
  *
  * NB: a constraint-name-specific variant was removed in E324 — the idempotency
  * sites (stripe/webhook + ecpay return/period) all dedup via DB-level
@@ -15,20 +19,4 @@
  * catch-site (lib/billing/plans.ts) only needs the generic code check.
  */
 
-/** Postgres SQLSTATE for unique_violation. */
-export const PG_UNIQUE_VIOLATION = "23505" as const
-
-/** Structural shape of a Postgres driver error we care about. */
-interface PgErrorLike {
-  code?: unknown
-}
-
-/**
- * True iff the given thrown value is a Postgres unique-violation (SQLSTATE
- * 23505). Detection is by error CODE only — never the message text.
- */
-export function isUniqueViolation(err: unknown): boolean {
-  if (err == null || typeof err !== "object") return false
-  const code = (err as PgErrorLike).code
-  return code === PG_UNIQUE_VIOLATION
-}
+export { PG_UNIQUE_VIOLATION, isUniqueViolation } from "@/lib/db-errors"

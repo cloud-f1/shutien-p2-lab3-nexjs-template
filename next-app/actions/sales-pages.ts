@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
 
 import { db } from "@/lib/db"
+import { isUniqueViolation } from "@/lib/db-errors"
 import { defineAction } from "@/lib/define-action"
 import { isAdmin } from "@/lib/is-admin"
 import { salesPagesTable } from "@/lib/schema/sales"
@@ -63,7 +64,7 @@ const createSalesPageAction = defineAction<typeof createSalesPageSchema, { id: s
       }
     } catch (err) {
       // Unique-violation on slug → friendly message instead of a 500.
-      if (err instanceof Error && err.message.includes("sales_pages_slug_unique")) {
+      if (isUniqueViolation(err)) {
         return { error: "此網址代稱已被使用，請換一個。" }
       }
       throw err
@@ -122,7 +123,7 @@ const updateSalesPageAction = defineAction<typeof updateSalesPageSchema, { id: s
 
       if (result.count === 0) return { error: "找不到銷售頁。" }
     } catch (err) {
-      if (err instanceof Error && err.message.includes("sales_pages_slug_unique")) {
+      if (isUniqueViolation(err)) {
         return { error: "此網址代稱已被使用，請換一個。" }
       }
       throw err
