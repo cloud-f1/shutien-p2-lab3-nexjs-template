@@ -33,6 +33,7 @@ export default defineConfig({
         "lib/user-utils.ts",
         "lib/rate-limit.ts",
         "lib/totp-utils.ts",
+        "lib/auth-utils.ts",
         "lib/registry/validate-manifest.ts",
         "lib/billing/provider.ts",
         "lib/billing/billing-utils.ts",

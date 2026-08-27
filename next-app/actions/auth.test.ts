@@ -13,10 +13,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 // next/headers, next/navigation, @/lib/auth are pulled in by actions/auth.ts but
 // not exercised by the reset actions — stub them so the module loads.
-vi.mock("@/lib/auth", () => ({ signIn: vi.fn(), signOut: vi.fn() }))
-vi.mock("next/headers", () => ({ headers: async () => new Map() }))
+const mockSignIn = vi.fn()
+vi.mock("@/lib/auth", () => ({ signIn: (...a: unknown[]) => mockSignIn(...a), signOut: vi.fn() }))
+vi.mock("next/headers", () => ({ headers: async () => new Map(), cookies: vi.fn() }))
+const mockRedirect = vi.fn()
 vi.mock("next/navigation", () => ({
-  redirect: vi.fn(),
+  redirect: (...a: unknown[]) => mockRedirect(...a),
   unstable_rethrow: vi.fn(),
 }))
 
@@ -24,8 +26,23 @@ const mockGetUserByEmail = vi.fn()
 const mockGetPasswordResetToken = vi.fn()
 vi.mock("@/lib/queries", () => ({
   getUserByEmail: (...a: unknown[]) => mockGetUserByEmail(...a),
+  getUserById: vi.fn(),
   getVerificationToken: vi.fn(),
   getPasswordResetToken: (...a: unknown[]) => mockGetPasswordResetToken(...a),
+}))
+
+// 2FA plumbing pulled in by actions/auth.ts — stubbed so the module loads and so
+// the 2FA login branch can be driven without cookies/otplib.
+const mockSetPending2fa = vi.fn()
+vi.mock("@/lib/pending-2fa", () => ({
+  setPending2fa: (...a: unknown[]) => mockSetPending2fa(...a),
+  readPending2fa: vi.fn(),
+  clearPending2fa: vi.fn(),
+  issueNonce: vi.fn(),
+}))
+vi.mock("@/lib/totp-utils", () => ({
+  verifyToken: vi.fn(),
+  verifyBackupCode: vi.fn(),
 }))
 
 const mockSendVerificationEmail = vi.fn()
@@ -36,16 +53,20 @@ vi.mock("@/lib/email", () => ({
 }))
 
 const mockHashPassword = vi.fn()
+const mockComparePassword = vi.fn()
 vi.mock("@/lib/password", () => ({
   hashPassword: (...a: unknown[]) => mockHashPassword(...a),
+  comparePassword: (...a: unknown[]) => mockComparePassword(...a),
 }))
 
 // Rate-limit: default to "allowed". cooldown() controls the request flow.
 const mockCooldown = vi.fn()
+const mockRecordFailure = vi.fn()
 vi.mock("@/lib/rate-limit", () => ({
   isRateLimited: () => ({ ok: true }),
-  recordFailure: vi.fn(),
+  recordFailure: (...a: unknown[]) => mockRecordFailure(...a),
   cooldown: (...a: unknown[]) => mockCooldown(...a),
+  rateLimitGuard: () => null,
 }))
 
 // DB mock — record inserts/updates/deletes through a tiny chainable builder.
@@ -88,7 +109,12 @@ vi.mock("drizzle-orm", () => ({ eq: (...a: unknown[]) => ({ __eq: a }) }))
 
 // --- Import the SUT after mocks --------------------------------------------
 
-import { requestPasswordReset, resetPassword } from "./auth"
+import { loginAction, requestPasswordReset, resetPassword } from "./auth"
+import {
+  ACCOUNT_LOCKED_MESSAGE,
+  LOCKOUT_DURATION_MS,
+  MAX_FAILED_LOGIN_ATTEMPTS,
+} from "@/lib/auth-utils"
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -188,5 +214,212 @@ describe("resetPassword", () => {
     expect(mockHashPassword).toHaveBeenCalledWith("Abcd1234")
     expect(dbState.updated[0]).toMatchObject({ passwordHash: "new-hash" })
     expect(dbState.deletes).toBe(1) // token consumed
+  })
+})
+
+// ---------------------------------------------------------------------------
+// E355 — persistent login lockout, PATH 2: the 2FA branch of loginAction.
+//
+// This is the path a TOTP-enabled user's password takes. lib/auth.ts
+// `authorize()` deliberately refuses raw credentials for those users (they
+// finish via the nonce path), so their password is compared HERE and NOWHERE
+// ELSE. Wiring the lockout only into authorize() would therefore leave every
+// 2FA-enabled account brute-forceable with no persistent lock ever set — which
+// is exactly the hole these tests exist to keep closed.
+// ---------------------------------------------------------------------------
+
+function loginForm(email = "ada@example.com", password = "Correct1234"): FormData {
+  const fd = new FormData()
+  fd.set("email", email)
+  fd.set("password", password)
+  return fd
+}
+
+const totpUser = (over: Record<string, unknown> = {}) => ({
+  id: "user_2fa",
+  email: "ada@example.com",
+  passwordHash: "hash",
+  emailVerified: new Date("2026-01-01T00:00:00.000Z"),
+  totpEnabled: true,
+  failedLoginCount: 0,
+  lockedUntil: null,
+  ...over,
+})
+
+describe("loginAction — 2FA branch lockout wiring (E355, path 2)", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it("counts a wrong password for a TOTP user (nextFailedState wired + persisted)", async () => {
+    mockGetUserByEmail.mockResolvedValue(totpUser({ failedLoginCount: 1 }))
+    mockComparePassword.mockResolvedValue(false)
+
+    const res = await loginAction(null, loginForm("ada@example.com", "wrong"))
+
+    expect(res).toEqual({ error: "電子郵件或密碼錯誤。" })
+    // the DB-backed counter advanced — NOT just the in-memory bucket
+    expect(dbState.updated).toEqual([{ failedLoginCount: 2, lockedUntil: null }])
+    // the pre-existing in-memory throttle still fires too (both layers)
+    expect(mockRecordFailure).toHaveBeenCalledTimes(2) // email bucket + ip bucket
+    expect(mockSetPending2fa).not.toHaveBeenCalled()
+  })
+
+  it("LOCKS a TOTP user on the 5th consecutive wrong password", async () => {
+    mockGetUserByEmail.mockResolvedValue(
+      totpUser({ failedLoginCount: MAX_FAILED_LOGIN_ATTEMPTS - 1 }),
+    )
+    mockComparePassword.mockResolvedValue(false)
+
+    const before = Date.now()
+    const res = await loginAction(null, loginForm("ada@example.com", "wrong"))
+    const after = Date.now()
+
+    expect(res).toEqual({ error: "電子郵件或密碼錯誤。" })
+    const written = dbState.updated[0] as { failedLoginCount: number; lockedUntil: Date }
+    expect(written.failedLoginCount).toBe(MAX_FAILED_LOGIN_ATTEMPTS)
+    expect(written.lockedUntil).toBeInstanceOf(Date)
+    expect(written.lockedUntil.getTime()).toBeGreaterThanOrEqual(before + LOCKOUT_DURATION_MS)
+    expect(written.lockedUntil.getTime()).toBeLessThanOrEqual(after + LOCKOUT_DURATION_MS)
+  })
+
+  it("blocks a LOCKED TOTP user before bcrypt, with the friendly message", async () => {
+    mockGetUserByEmail.mockResolvedValue(
+      totpUser({
+        failedLoginCount: MAX_FAILED_LOGIN_ATTEMPTS,
+        lockedUntil: new Date(Date.now() + 60_000),
+      }),
+    )
+    mockComparePassword.mockResolvedValue(true)
+
+    const res = await loginAction(null, loginForm())
+
+    expect(res).toEqual({ error: ACCOUNT_LOCKED_MESSAGE })
+    expect(mockComparePassword).not.toHaveBeenCalled() // no expensive hash
+    expect(dbState.updated).toHaveLength(0)
+    expect(mockSetPending2fa).not.toHaveBeenCalled()
+  })
+
+  it("full sequence: 5 misses lock the TOTP account, the 6th try is refused", async () => {
+    let row = totpUser()
+    mockComparePassword.mockResolvedValue(false)
+
+    for (let i = 0; i < MAX_FAILED_LOGIN_ATTEMPTS; i++) {
+      mockGetUserByEmail.mockResolvedValue(row)
+      const res = await loginAction(null, loginForm("ada@example.com", "wrong"))
+      expect(res).toEqual({ error: "電子郵件或密碼錯誤。" })
+      row = totpUser(dbState.updated[dbState.updated.length - 1] as Record<string, unknown>)
+    }
+    expect(mockComparePassword).toHaveBeenCalledTimes(MAX_FAILED_LOGIN_ATTEMPTS)
+
+    // 6th attempt — even with the CORRECT password.
+    mockComparePassword.mockClear()
+    mockComparePassword.mockResolvedValue(true)
+    mockGetUserByEmail.mockResolvedValue(row)
+    const res = await loginAction(null, loginForm())
+
+    expect(res).toEqual({ error: ACCOUNT_LOCKED_MESSAGE })
+    expect(mockComparePassword).not.toHaveBeenCalled()
+  })
+
+  it("clears the counter/lock when a TOTP user's password is CORRECT", async () => {
+    mockGetUserByEmail.mockResolvedValue(totpUser({ failedLoginCount: 3 }))
+    mockComparePassword.mockResolvedValue(true)
+
+    await loginAction(null, loginForm())
+
+    expect(dbState.updated).toEqual([{ failedLoginCount: 0, lockedUntil: null }])
+    expect(mockSetPending2fa).toHaveBeenCalledWith("user_2fa")
+    expect(mockRedirect).toHaveBeenCalledWith("/login/2fa")
+  })
+
+  it("does NOT write on a clean TOTP password check with no prior failures", async () => {
+    mockGetUserByEmail.mockResolvedValue(totpUser())
+    mockComparePassword.mockResolvedValue(true)
+
+    await loginAction(null, loginForm())
+
+    expect(dbState.updated).toHaveLength(0)
+    expect(mockRedirect).toHaveBeenCalledWith("/login/2fa")
+  })
+
+  it("restarts the count for a TOTP user after an EXPIRED lock", async () => {
+    mockGetUserByEmail.mockResolvedValue(
+      totpUser({
+        failedLoginCount: MAX_FAILED_LOGIN_ATTEMPTS,
+        lockedUntil: new Date(Date.now() - 1000),
+      }),
+    )
+    mockComparePassword.mockResolvedValue(false)
+
+    await loginAction(null, loginForm("ada@example.com", "wrong"))
+
+    expect(mockComparePassword).toHaveBeenCalledTimes(1) // expired ⇒ not blocked
+    expect(dbState.updated).toEqual([{ failedLoginCount: 1, lockedUntil: null }])
+  })
+
+  it("ENABLE_LOGIN_LOCKOUT=false ⇒ 10 misses write NOTHING for a TOTP user", async () => {
+    vi.stubEnv("ENABLE_LOGIN_LOCKOUT", "false")
+    mockGetUserByEmail.mockResolvedValue(totpUser())
+    mockComparePassword.mockResolvedValue(false)
+
+    for (let i = 0; i < 10; i++) {
+      const res = await loginAction(null, loginForm("ada@example.com", "wrong"))
+      expect(res).toEqual({ error: "電子郵件或密碼錯誤。" })
+    }
+
+    expect(mockComparePassword).toHaveBeenCalledTimes(10)
+    expect(dbState.updated).toHaveLength(0)
+  })
+
+  it("ENABLE_LOGIN_LOCKOUT=false ⇒ an existing lock stops blocking (escape hatch)", async () => {
+    vi.stubEnv("ENABLE_LOGIN_LOCKOUT", "false")
+    mockGetUserByEmail.mockResolvedValue(
+      totpUser({
+        failedLoginCount: MAX_FAILED_LOGIN_ATTEMPTS,
+        lockedUntil: new Date(Date.now() + 15 * 60 * 1000),
+      }),
+    )
+    mockComparePassword.mockResolvedValue(true)
+
+    await loginAction(null, loginForm())
+
+    expect(mockRedirect).toHaveBeenCalledWith("/login/2fa") // got through
+    expect(dbState.updated).toHaveLength(0) // columns kept, not cleared
+  })
+})
+
+describe("loginAction — lockout pre-check for NON-2FA users (path 1 UX)", () => {
+  const plainUser = (over: Record<string, unknown> = {}) => ({
+    id: "user_1",
+    email: "ada@example.com",
+    passwordHash: "hash",
+    emailVerified: new Date("2026-01-01T00:00:00.000Z"),
+    totpEnabled: false,
+    failedLoginCount: 0,
+    lockedUntil: null,
+    ...over,
+  })
+
+  it("returns the friendly locked message instead of calling signIn", async () => {
+    mockGetUserByEmail.mockResolvedValue(
+      plainUser({
+        failedLoginCount: MAX_FAILED_LOGIN_ATTEMPTS,
+        lockedUntil: new Date(Date.now() + 60_000),
+      }),
+    )
+
+    const res = await loginAction(null, loginForm())
+
+    expect(res).toEqual({ error: ACCOUNT_LOCKED_MESSAGE })
+    expect(mockSignIn).not.toHaveBeenCalled()
+  })
+
+  it("falls through to signIn when the account is not locked", async () => {
+    mockGetUserByEmail.mockResolvedValue(plainUser())
+
+    await loginAction(null, loginForm())
+
+    expect(mockSignIn).toHaveBeenCalledTimes(1)
   })
 })

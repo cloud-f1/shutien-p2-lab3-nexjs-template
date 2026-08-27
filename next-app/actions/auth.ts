@@ -26,6 +26,14 @@ import {
   isResetTokenValid,
 } from "@/lib/password-reset-utils"
 import { isRateLimited, recordFailure, cooldown, rateLimitGuard } from "@/lib/rate-limit"
+import {
+  ACCOUNT_LOCKED_MESSAGE,
+  clearedLoginState,
+  hasLoginFailuresToClear,
+  isLocked,
+  isLockoutEnabled,
+  nextFailedState,
+} from "@/lib/auth-utils"
 import { verifyToken, verifyBackupCode } from "@/lib/totp-utils"
 import {
   setPending2fa,
@@ -129,16 +137,43 @@ export async function loginAction(prevState: FormState, formData: FormData): Pro
     return { error: "請先驗證您的電子郵件再登入，請檢查您的收件匣。" }
   }
 
+  // E355 — persistent lockout pre-check. Covers BOTH password paths: the 2FA
+  // branch just below and the signIn()/authorize() path further down (which
+  // enforces the same gate itself — this is only the friendly message, and it
+  // also spares us the bcrypt round-trip). isLocked() returns false whenever
+  // ENABLE_LOGIN_LOCKOUT is off, which is the deliberate escape hatch.
+  if (isLocked(user, new Date())) {
+    return { error: ACCOUNT_LOCKED_MESSAGE }
+  }
+
   // 2FA gate (E297): a TOTP-enabled user must clear the /login/2fa challenge
   // before a session is created. authorize() refuses the raw-credentials path
   // for these users, so we verify the password HERE, stash a signed
   // pending-2FA cookie, and route to the challenge instead of signing in.
+  //
+  // E355 — this is the SECOND password-verification path in the template, and
+  // it must carry its own lockout wiring: authorize() never sees a TOTP user's
+  // password, so counting only there would leave every 2FA-enabled account
+  // brute-forceable with no persistent lock ever being set.
   if (user?.passwordHash && user.emailVerified && user.totpEnabled) {
     const ok = await comparePassword(password, user.passwordHash)
     if (!ok) {
       recordFailure(emailKey, WINDOW_MS)
       recordFailure(ipKey, WINDOW_MS)
+      // Flag off ⇒ complete no-op: no counting, no lock, no DB write.
+      if (isLockoutEnabled()) {
+        const next = nextFailedState(user, new Date())
+        await db
+          .update(usersTable)
+          .set({ failedLoginCount: next.failedLoginCount, lockedUntil: next.lockedUntil })
+          .where(eq(usersTable.id, user.id))
+      }
       return { error: "電子郵件或密碼錯誤。" }
+    }
+    // Correct password clears any accumulated failures / lock (skip the UPDATE
+    // when there is nothing to clear).
+    if (isLockoutEnabled() && hasLoginFailuresToClear(user)) {
+      await db.update(usersTable).set(clearedLoginState()).where(eq(usersTable.id, user.id))
     }
     await setPending2fa(user.id)
     redirect("/login/2fa")

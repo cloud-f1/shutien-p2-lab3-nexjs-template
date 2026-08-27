@@ -40,6 +40,15 @@ export const usersTable = pgTable("users", {
   // `onboardingDismissed` when the user explicitly closes the card.
   onboardingCompletedAt: timestamp("onboarding_completed_at", { mode: "date" }),
   onboardingDismissed: boolean("onboarding_dismissed").notNull().default(false),
+  // E355 — persistent login lockout. A SECOND layer over the in-memory throttle
+  // in lib/rate-limit.ts: consecutive failed-password attempts accumulate here,
+  // so a lockout survives a process restart / serverless instance recycle.
+  // Reset to 0 on a successful password verification.
+  failedLoginCount: integer("failed_login_count").notNull().default(0),
+  // Non-null AND in the future ⇒ the account is locked until this instant.
+  // timestamptz so the stored instant is unambiguous to raw-SQL readers too
+  // (integration tests read this column directly via postgres-js).
+  lockedUntil: timestamp("locked_until", { withTimezone: true, mode: "date" }),
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
 })
