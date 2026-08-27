@@ -427,7 +427,7 @@ Status: ⬜ pending | 🔄 in-progress | ✅ done | ⏭️ skip | ❌ failed
 | E360 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 87 — auto-merged PR #156 |
 | E361 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 87 — auto-merged PR #155 |
 | E362 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 88 — auto-merged PR #164 · 閘門在真正的分支樹上通過並產生首批 per-epic 事件 |
-| E363 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 88 — 🟢 APPROVED (2026-08-27). spec 已寫（e363-tier0-staleness-and-registry.md）— 範圍於核准時調整 |
+| E363 | ✅ | ✅ | ⬜ | ⬜ | ⬜ | Phase 88 — 四項工作完成（未提交，由 commit 步驟處理）· spec 的 watermark 判定條件被實測推翻並更正 |
 | E364 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 88 — 🟢 APPROVED (2026-08-27). spec 已寫（e364-gate-failure-diagnostics.md） |
 | E365 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 88 — 🟢 APPROVED (2026-08-27). spec 已寫（e365-claudemd-e2e-identity-contract.md）— 依賴 E363（共用 CLAUDE.md） |
 | E366 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 88 — 🟢 APPROVED (2026-08-27). spec 已寫（e366-totalpages-orphan.md） |

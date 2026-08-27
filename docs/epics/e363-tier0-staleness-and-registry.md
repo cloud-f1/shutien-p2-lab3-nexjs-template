@@ -61,7 +61,17 @@ CLAUDE.md 寫「Tier 0 (global): ~/.claude/template-memory/ cross-project wisdom
 ## Solution
 
 1. **`scripts/memory/check-promotion-staleness.sh`（新）** —— 掃 `docs/context/promotion-proposals/`，
-   任何 proposal 檔的 mtime 超過 N 天（預設 14）且 watermark 未越過它 → **非零退出並大聲輸出**。
+   任何 proposal 檔的 mtime 超過 N 天（預設 14）→ **非零退出並大聲輸出**。
+
+   **⚠ 更正（implement 階段實測發現）**：本 spec 原本寫的判定條件是「mtime 超過 N 天
+   **且 watermark 未越過它**」—— **後半段永遠不可能成立**。`scripts/hooks/auto-promote-check.sh:148`
+   在**產生 proposal 的當下就把 watermark 輪轉成 `date +%s`**（註解自述：「Advance the watermark
+   so the NEXT run only scans history since this proposal」），所以 `watermark >= file_mtime`
+   從檔案誕生那一刻起就恆為真，該條件會讓守衛**永遠不觸發** —— 正好是這個 epic 要消滅的那種靜默失效。
+
+   實際採用的等價條件：**watermark 本身超過 N 天沒有前進，而 proposal 檔仍然存在**。
+   以真實 fixture（`20260713-005943.md` + 凍結在其建立時間的 watermark）重放該事故，得到正確的 RED，
+   watermark 前進後轉 GREEN。
    接進 `make verify`，**不要**用 `|| true` 包起來。
 2. **登錄表一致性檢查** —— 比對 `lesson-tags.json` ∪ `half-life-defaults.json` ∪ 磁碟實際檔案，
    三者差集非空即報告。可併入上述腳本或獨立一支。同時把 5 個缺漏檔名補進 `half-life-defaults.json`。
