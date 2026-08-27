@@ -10,7 +10,7 @@
 > A phase with no section below has no `gate_result` events recorded — that
 > means nothing was emitted under it, not that every gate passed.
 
-Generated: 2026-08-27T15:49:51Z
+Generated: 2026-08-27T17:28:46Z
 
 ## Phase 83
 
@@ -91,8 +91,8 @@ Phase 88 gate ledger
   Wave 整合閘門 (epic 欄位為空 — /athena:integrate Step 4 或 batch.md Step 4c):
     (本 phase 沒有任何 wave 整合閘門紀錄)
   Per-epic pre-merge-check (epic 欄位有值 — scripts/pre-merge-check.sh):
-    lint         1 pass
-    typecheck    1 pass
-    unit         1 pass
+    lint         3 pass
+    typecheck    3 pass
+    unit         3 pass
 ```
 
