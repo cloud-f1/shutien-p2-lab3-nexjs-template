@@ -1,14 +1,33 @@
 import { defineConfig, devices } from "@playwright/test"
 
+/**
+ * ONE base URL for the whole run — `use.baseURL` (what the specs hit) and
+ * `webServer.url` (what Playwright probes/starts) must never disagree, or the
+ * suite reuses a server on :3000 while testing something else entirely.
+ */
+const BASE_URL =
+  process.env.PLAYWRIGHT_BASE_URL?.trim() || "http://localhost:3000"
+const BASE_PORT = (() => {
+  try {
+    return new URL(BASE_URL).port
+  } catch {
+    return ""
+  }
+})()
+
 export default defineConfig({
   testDir: "./e2e",
+  // E357 — refuse to run against a server that is not this checkout. Aborts the
+  // whole run with one actionable message instead of producing a suite-full of
+  // failures (or a false green) against another app squatting on the port.
+  globalSetup: "./e2e/global-setup.ts",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: "list",
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
+    baseURL: BASE_URL,
     trace: "on-first-retry",
   },
   // VRT tolerance: absorb sub-pixel font-rendering diffs; disable animations so
@@ -38,11 +57,17 @@ export default defineConfig({
     ? undefined
     : {
         command: "pnpm dev",
-        url: "http://localhost:3000",
+        // Follow PLAYWRIGHT_BASE_URL: reuse the warm server you started
+        // yourself on that port (the fast loop-protocol path), and if nothing
+        // is there, boot ours on the SAME port instead of blindly on :3000.
+        url: BASE_URL,
         reuseExistingServer: true,
         // Cold Next 16 + turbopack dev boot can exceed the 60s default.
         timeout: 120_000,
         env: {
+          // Only set when the base URL names an explicit port; `next dev`
+          // defaults to 3000, which is what the default BASE_URL means anyway.
+          ...(BASE_PORT ? { PORT: BASE_PORT } : {}),
           // e2e gets its OWN database — NEVER saas_dev. Sharing the dev DB meant an
           // e2e run reshaped your dev data, and parallel worktrees migrated one
           // database against different branch schemas (that is how saas_dev drifted

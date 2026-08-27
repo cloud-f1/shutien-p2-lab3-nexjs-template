@@ -5,6 +5,71 @@
 
 ---
 
+## Standing precondition — e2e runs against a VERIFIED target (E357)
+
+> Keep this section when overwriting the run-log sections below it.
+
+`pnpm test:e2e` now proves, before a single test runs, that the base URL is served by
+**this checkout**. `/api/health` reports an `appInstanceId` — a digest of the server's
+project directory — and `next-app/e2e/global-setup.ts` compares it against the id of the
+checkout the specs were loaded from. Mismatch → the whole run **aborts** with one
+actionable message; nothing is tested.
+
+**Why the identity is the project path and not a config value:** a fork that has not been
+rebranded yet is byte-identical to upstream — same `package.json` name/version, same
+`NEXT_PUBLIC_APP_NAME`, same `<title>`, same `/api/health` shape. Phase 86 lost real hours
+to exactly that: another fork of this template held `:3000`, `reuseExistingServer: true`
+attached to it, and E355 got 10 plausible-looking failures that had nothing to do with its
+code. Two checkouts cannot share an absolute path, so the path separates them; the git
+remote does not (a `cp -R` or `git worktree` copy keeps it).
+
+### What this changes for a test run
+
+- **Warm-server reuse is unchanged** — `reuseExistingServer: true` still stands, and the
+  loop protocol's warm-server targeting (~5s for one spec vs. 2–4min cold) still applies.
+  The gate only adds one HTTP request to `/api/health` before the suite starts.
+- `use.baseURL` and `webServer.url` now both follow `PLAYWRIGHT_BASE_URL`, and the
+  auto-started server inherits that port. Previously the suite could test `:3600` while
+  Playwright probed/booted `:3000` — two different servers in one run.
+- A run that used to fail 51 tests against a foreign app now exits non-zero in globalSetup
+  and says so. **A red gate here is not a product regression** — read the message.
+
+### Escape hatches (in the abort message too)
+
+| Variable | Side | Use |
+|---|---|---|
+| `APP_INSTANCE_ID` | server | Pin identity where the runtime path is meaningless — containers (`WORKDIR /app`), `output: "standalone"` servers |
+| `E2E_EXPECTED_APP_INSTANCE_ID` | runner | Accept a target reporting this id |
+| `E2E_SKIP_TARGET_CHECK=1` | runner | Disable the check entirely (last resort) |
+
+Known false-mismatch cases — all of which fail loudly, never silently: starting the server
+from a directory other than `next-app/`, and running e2e from the host against the
+`docker compose` app (a different path *and* the wrong database — the abort is correct
+there).
+
+### The standing recipe when `:3000` is busy
+
+```bash
+cd next-app
+E2E_DB_NAME=saas_dev_e2e_<tag> pnpm db:e2e-setup
+
+# DATABASE_URL is REQUIRED on this line. A hand-started `pnpm dev` loads .env.local
+# (DATABASE_URL=…/saas_dev). playwright.config's webServer.env only applies when
+# PLAYWRIGHT starts the server; on this warm-reuse path it is bypassed entirely —
+# without the override the destructive suite runs against your DEV database, the
+# exact failure CLAUDE.md flags in bold (it is what produced the 17-vs-15 drift).
+DATABASE_URL=postgresql://saas_user:saas_pass@localhost:5432/saas_dev_e2e_<tag> \
+  PORT=3600 pnpm dev &
+
+lsof -a -p "$(lsof -nP -iTCP:3600 -sTCP:LISTEN | tail -1 | awk '{print $2}')" -d cwd -Fn
+PLAYWRIGHT_BASE_URL=http://localhost:3600 pnpm test:e2e
+```
+
+The `lsof` line is now belt-and-braces rather than the only defence — the gate catches it
+either way.
+
+---
+
 ## E329 QA — 2026-07-12 (藍新 NewebPay provider — MPG one-time, OneTimePaymentGateway only)
 
 **Branch**: `feat/E329-newebpay-provider` (commit `e0c38a0`) · **Worktree**:

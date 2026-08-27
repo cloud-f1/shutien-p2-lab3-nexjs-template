@@ -25,6 +25,7 @@ export default defineConfig({
       include: [
         "lib/validations/**",
         "lib/is-admin.ts",
+        "lib/app-identity.ts",
         "lib/api-keys-utils.ts",
         "lib/webhooks-utils.ts",
         "lib/team-utils.ts",
