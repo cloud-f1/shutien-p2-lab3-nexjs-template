@@ -163,3 +163,23 @@ silently. See `docs/epics/e341-doc-code-contract-test.md` § Out of Scope.
 ### Security
 - [GENERALIZABLE] **不為不存在的帳號寫稽核事件** —— `actor_id` 可為 null 是 schema 允許，但把登入失敗歸屬到真實使用者列才能保持軌跡可查詢，並**避免把稽核日誌變成未驗證寫入面**（帳號列舉／log 灌爆）。這是政策選擇，需有測試守著。(E356)
 - **同一個功能可能有第三個「完成點」。** 2FA 使用者的 session 實際在 `authorizeCredentials` 的 **nonce 交換**處建立，不在 `loginAction` 的 2FA 分支 —— 把 `auth.login` 寫在後者會為「只過密碼、可能永遠過不了 TOTP」的人記下登入成功。判準：`issueNonce()` 只在 TOTP／備用碼驗證成功後才被呼叫，所以 nonce 的存在本身就是憑證。(E356)
+
+## Batch Learning — 2026-08-28 (E362–E366)
+
+### Architecture
+- [GENERALIZABLE] **迴圈跑的是登錄表／範例碼，不是實際狀態 —— 未登錄者靜默消失、不報錯。** `batch.md` 的 publish 範例碼漏掉 canonical block 第一步，per-epic 閘門於是 Phase 83–87 從未執行；三支記憶腳本用 `jq '.defaults|keys[]'` 迭代登錄表而非掃描目錄，未登錄的檔案永遠不衰減、不被封存。**判準：迭代來源是「宣告」還是「實際狀態」？** (E362, E363)
+
+### Testing
+- [GENERALIZABLE] **故障注入前必須確認注入物不在任何豁免清單／規則內** —— 否則是「注入本身沒有注入」。canary 命名為 `_` 開頭時被 `/^_/` 規則結構性豁免，「注入後沒紅」會被誤讀成注入失敗甚至「偵測器壞了」。比空包彈更上一層：不是測試沒驗到東西，而是驗證機制對測試對象是盲的。(E366)
+- [GENERALIZABLE] **「同檔已使用」若用全文比對判定，註解提及也算數。** `selfHits = text.match(/\bname\b/g).length > 1` 讓任何在自己 JSDoc 裡被提及的匯出豁免於死碼偵測 —— **寫了文件的程式碼反而不受檢查**。量化時要區分「被豁免總數」與「誤豁免數」：實測 40 vs 抽驗 3/3 皆正當。(E366)
+- [GENERALIZABLE] **測試隔離的正確形狀**：`mktemp -d` + `trap ... EXIT` + **每一條**外部路徑都以環境變數注入 temp。以 md5sum 前後比對正式資料佐證。同一 session 中前兩次未做而污染了真實帳本與 Tier 0。(E363)
+
+### DX
+- [GENERALIZABLE] **worktree 是時間點快照，會以三種方式漂移**：(1) 帶著自己的 `.claude/audit.jsonl`，事件隨 worktree 移除而消失 (2) spec 停在建立時版本，QA 可能讀到過期要求 (3) 佔用分支使主 repo `git checkout` 失敗。**對策**：閘門前先驗 `git branch --show-current`、明確傳 `AUDIT_LOG_PATH`。(E362, E364, E365)
+- [GENERALIZABLE] **`cmd && cmd` 的短路會製造「在錯的樹上跑出來的綠」。** `git checkout` 因分支被 worktree 佔用而失敗 → `&&` 短路 → 閘門跑在 `main` 上回綠，對目標 epic 毫無意義。腳本副本放在別的目錄執行也同理（相對路徑解析不到，掃到零個檔案卻回報「乾淨」）。(E362, E366)
+- [GENERALIZABLE] **把 `git reset --hard` 用 `;` 接在可能失敗的 commit 之後 = 自製資料遺失。** 本次 batch learning 第一次撰寫即因 pre-commit hook 崩潰（`NODE_OPTIONS` 陳舊 preload）而 commit 失敗，後續以 `;` 串接的 `reset --hard` 照跑，沖掉未提交的 19 行。**破壞性步驟必須條件式串接，或先驗證前一步的退出碼。** (E362–E366 收尾)
+
+### Documentation
+- [GENERALIZABLE] **spec 給「程序」比給「對既有機制的斷言」耐久。** 本 phase 統計：給斷言的 3 個 epic 各被 implement 抓到一項錯誤（「X 已支援 Y」「條件 Z 會觸發」）；給程序的 2 個（「去看 X 再決定」「以程式碼為準，不符就明講」）零錯誤。**斷言會腐化，程序不會。** (E362–E366)
+- [GENERALIZABLE] **spec 裡的行號在多個 epic 連續改同一檔案時必然腐化** —— 本 phase 兩次（115→138、30→51）。引用**函式名或語法特徵**（「四個 `bad` 分支」）比行號耐久；派工時明確提醒「先讀活檔」兩次都成功攔下。(E364, E365)
+- [GENERALIZABLE] **文件裡的錨點要驗證存在 —— 死連結是文件最常見的謊言**（每個字都對，讀者跟過去撲空）。純文件變更沒有測試可跑時，驗收標準只能是逐句對著原始碼事實查核。(E365)
