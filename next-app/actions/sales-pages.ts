@@ -93,6 +93,8 @@ const updateSalesPageAction = defineAction<typeof updateSalesPageSchema, { id: s
         id: salesPagesTable.id,
         status: salesPagesTable.status,
         publishedAt: salesPagesTable.publishedAt,
+        // E367 — needed to revalidate the OLD path on a slug rename (see below).
+        slug: salesPagesTable.slug,
       })
       .from(salesPagesTable)
       .where(eq(salesPagesTable.id, input.id))
@@ -130,6 +132,9 @@ const updateSalesPageAction = defineAction<typeof updateSalesPageSchema, { id: s
     }
 
     revalidateSalesPage(input.slug)
+    // E367 — a rename leaves the OLD public path holding a stale ISR cache that
+    // would otherwise serve a page that no longer exists, indefinitely.
+    if (existing.slug !== input.slug) revalidatePath(`/p/${existing.slug}`)
     return {
       data: { id: input.id, slug: input.slug },
       audit: {
