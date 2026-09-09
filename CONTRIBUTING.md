@@ -203,6 +203,31 @@ make smoke ... --vrt     # add the visual-regression gate (see below)
    ```
    Re-run `test:vrt:update` whenever you make an intentional visual change.
 
+   **What this means in practice (E374):** because the baselines are per-machine, this suite
+   **cannot detect a regression somebody else introduced** — it compares the app against the
+   last snapshot *you* took, and on a fresh clone the first run simply records the current
+   appearance (regressions included) as "correct". It is a local before/after tool for whoever
+   is changing UI, not a shared gate, which is why it is deliberately absent from
+   `pre-merge-check.sh`. That is a decision, not an oversight: shipped screenshots of the
+   template's own UI would be wrong for every fork the moment it rebrands.
+
+   The spec now warns when your baselines are older than `app/` + `components/`, so
+   "silently comparing against three months ago" is no longer possible — that is exactly how
+   four cases sat red from 2026-06-15 until the Phase 90 audit found them (all four turned out
+   to be expected evolution: E296's GitHub button, E297's real 2FA replacing a placeholder,
+   E328/E332's sidebar entries, E337/E338's widget kit).
+
+   **Running e2e or VRT against a warm server you started yourself?** `AUTH_URL` must match that
+   server's port. Auth.js resolves post-login redirects against it, and `.env.local` pins it to
+   `:3000` — so a hand-started server on any other port sends the browser off-origin the moment a
+   test logs in. Worse than failing: if a *sibling fork* of this template holds that port, the
+   authenticated specs assert against **that** app and pass. `globalSetup` now aborts on the
+   mismatch; servers Playwright starts itself get it from `webServer.env`.
+   ```bash
+   AUTH_URL=http://localhost:3600 NEXT_PUBLIC_APP_URL=http://localhost:3600 \
+     DATABASE_URL=<e2e db> PORT=3600 pnpm dev
+   ```
+
 ---
 
 ## Authoring a Module

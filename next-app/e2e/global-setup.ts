@@ -207,6 +207,77 @@ async function assertPristineSeedState() {
   )
 }
 
+/**
+ * E374 — the auth redirect must stay on the origin we are testing.
+ *
+ * Auth.js v5 resolves `signIn(..., { redirectTo: "/dashboard" })` against
+ * AUTH_URL, which `.env.local` pins to :3000. A warm server started by hand on
+ * another port therefore sends the browser OFF this origin the moment a test
+ * logs in. `webServer.env` now sets AUTH_URL for servers PLAYWRIGHT starts, but
+ * the warm-reuse path (the fast loop protocol) bypasses that entirely — which
+ * is exactly how this went unnoticed.
+ *
+ * Why it deserves an abort rather than a warning: when nothing listens on the
+ * AUTH_URL port the suite dies loudly at `loginAs`, which is survivable. When a
+ * SIBLING FORK of this template is listening there — they share routes and 繁中
+ * copy — the authenticated specs assert against THAT app and PASS. Observed on
+ * 2026-09-09: a green run on :3600 went red the instant ../data-clarity-portal
+ * stopped holding :3000. E357's target check cannot catch it; that one verifies
+ * the base URL once, and this redirect leaves the origin mid-test.
+ */
+async function assertAuthUrlMatchesTarget(baseURL: string) {
+  let location: string | null = null
+  try {
+    const res = await fetch(new URL("/api/auth/signin", baseURL).toString(), {
+      redirect: "manual",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    })
+    location = res.headers.get("location")
+  } catch {
+    return // the health probe above already covers "server not answering"
+  }
+  if (!location) return
+
+  const callbackUrl = new URL(location, baseURL).searchParams.get("callbackUrl")
+  if (!callbackUrl) return
+
+  let authOrigin: string
+  try {
+    authOrigin = new URL(callbackUrl).origin
+  } catch {
+    return // relative callbackUrl — same origin by construction
+  }
+
+  const targetOrigin = new URL(baseURL).origin
+  if (authOrigin === targetOrigin) return
+
+  throw new Error(
+    [
+      "",
+      "\u2500".repeat(74),
+      "[e2e] ABORTED \u2014 AUTH_URL does not match the server under test (E374).",
+      "",
+      `  testing        : ${targetOrigin}`,
+      `  auth redirects : ${authOrigin}`,
+      "",
+      "  Every spec that logs in would be navigated to the second origin. If a",
+      "  sibling fork of this template is listening there, the authenticated",
+      "  specs would assert against THAT app and PASS \u2014 which is worse than",
+      "  failing. E357 cannot see this: it verifies the base URL once, and this",
+      "  redirect leaves that origin mid-test.",
+      "",
+      "  Fix \u2014 start the server with AUTH_URL matching its port:",
+      `    AUTH_URL=${targetOrigin} NEXT_PUBLIC_APP_URL=${targetOrigin} \\`,
+      `      DATABASE_URL=<e2e db> PORT=${new URL(baseURL).port || "3000"} pnpm dev`,
+      "",
+      "  (Servers that Playwright starts itself get this from webServer.env.",
+      "   This check exists for the warm-reuse path, which bypasses it.)",
+      "\u2500".repeat(74),
+      "",
+    ].join("\n"),
+  )
+}
+
 export default async function globalSetup(config: FullConfig) {
   if (process.env.E2E_SKIP_TARGET_CHECK === "1") {
     console.warn(
@@ -278,6 +349,9 @@ export default async function globalSetup(config: FullConfig) {
     `[e2e] target verified — ${baseURL} is this checkout (instance ${expected})`
   )
 
-  // E373 — second precondition, after the target is confirmed to be ours.
+  // E374 — the auth redirect must not leave this origin.
+  await assertAuthUrlMatchesTarget(baseURL)
+
+  // E373 — seed accounts must start pristine.
   await assertPristineSeedState()
 }

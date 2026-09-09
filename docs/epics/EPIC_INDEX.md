@@ -480,7 +480,7 @@ Phase 46+ epics: enriched template — epic files include Implementation Phases,
 | E371 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 89 — 🟢 APPROVED (2026-09-09). F2+F5+F8+F10 認證邊界 · 訪客結帳預蓋 emailVerified 為最重 |
 | E372 | ✅ | ✅ | ✅ | ✅ | ✅ | Phase 90 — 🟢 APPROVED (2026-09-09). E370 fast-follow：headers() scope-safe + test:int 進 pre-merge 閘門 |
 | E373 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 90 — 🟢 APPROVED (2026-09-09). e2e 種子狀態隔離 —— two-factor teardown 失敗會把 2FA 留給下一輪 |
-| E374 | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | Phase 90 — 🟢 APPROVED (2026-09-09). VRT 基準線決策 —— 4 個快照自 Phase 62 起紅，且不在閘門內 |
+| E374 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 90 — 🟢 APPROVED (2026-09-09). VRT 基準線決策 —— 4 個快照自 Phase 62 起紅，且不在閘門內 |
 | E375 | ✅ | ✅ | ✅ | ✅ | ⬜ | Phase 90 — 🟢 APPROVED (2026-09-09). 限流可觀測性 + 公開結帳門檻檢討 + orders.ts:138 的假宣稱 |
 <!-- EPIC_MATRIX_END -->
 
