@@ -84,6 +84,16 @@ export function getCustomSalesPageLoader(slug: string): SalesPageLoader | undefi
     : undefined
 }
 
+/**
+ * NOTE (E367) — being in this registry decides WHICH renderer runs, not WHETHER
+ * the page is public. `/p/[slug]` applies the shared status gate
+ * (`isCustomSalesPageVisible`) to a registered slug just as it does to a
+ * structured one. A registered slug with NO `sales_pages` row stays visible on
+ * purpose: it is a pure code page with no status to honour. Do not "tidy" that
+ * branch into a gate — it would 404 every custom page a fork ships before it
+ * ever opens the admin UI.
+ */
+
 /** True when a slug is claimed by the custom registry. */
 export function isCustomSalesSlug(slug: string): boolean {
   return Object.prototype.hasOwnProperty.call(CUSTOM_SALES_PAGES, slug)

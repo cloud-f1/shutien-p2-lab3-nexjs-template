@@ -5,7 +5,7 @@ import { productsTable, salesPagesTable } from "@/lib/schema"
 import { getConfigSalesPageContent, getConfigSalesPageSlugs, salesPageContentSchema, type SalesPageContent } from "@/lib/sales/content"
 import { getCustomSalesSlugs, type SalesPageProduct } from "@/lib/sales/custom-pages"
 import { verifyPreviewToken } from "@/lib/sales/preview-token"
-import { canServeSalesPageRow } from "@/lib/sales/visibility"
+import { canServeSalesPageRow, isSalesPageStatusVisible } from "@/lib/sales/visibility"
 
 /**
  * DB-first sales-page content resolver (E332).
@@ -55,6 +55,50 @@ export async function getSalesPageContent(
   }
 
   return getConfigSalesPageContent(slug)
+}
+
+/**
+ * Is a slug claimed by the E333 custom registry allowed to render right now? (E367)
+ *
+ * The `/p/[slug]` route checks the custom registry BEFORE any DB read, so before
+ * E367 a `custom` row's `status` was never consulted — an admin could hit 取消發佈,
+ * get a success toast + a `sales_page.unpublished` audit row + a revalidate, and
+ * the page kept serving to anonymous visitors. This restores the status gate for
+ * that path using the SAME rule the structured renderer uses.
+ *
+ * Two deliberate "visible" outcomes, both of which must survive future edits:
+ *
+ * 1. **No `sales_pages` row → visible.** A registered slug with no DB row is a
+ *    PURE CODE page (shipped in the repo, nothing to publish or unpublish). It
+ *    has no status to honour, so gating it would silently 404 every custom page
+ *    a fork ships before it ever touches the admin UI.
+ * 2. **DB unreachable → visible.** Matches the degradation posture the rest of
+ *    this module already takes (`getSalesPageContent` falls back to config on a
+ *    DB error rather than 500-ing). Failing CLOSED here would turn any Postgres
+ *    blip — and every DB-less build-time prerender — into a 404 for pages that
+ *    are mostly pure-code. The leak E367 fixes is the NORMAL path, where the DB
+ *    is up and says "draft"; a DB outage is not an attacker-controlled input.
+ */
+export async function isCustomSalesPageVisible(
+  slug: string,
+  opts?: { previewToken?: string | null },
+): Promise<boolean> {
+  let row: { status: "draft" | "published" } | undefined
+  try {
+    ;[row] = await db
+      .select({ status: salesPagesTable.status })
+      .from(salesPagesTable)
+      .where(eq(salesPagesTable.slug, slug))
+      .limit(1)
+  } catch {
+    return true // (2) above
+  }
+
+  if (!row) return true // (1) above
+
+  const hasValidPreview =
+    row.status === "draft" ? verifyPreviewToken(slug, opts?.previewToken) : false
+  return isSalesPageStatusVisible(row.status, hasValidPreview)
 }
 
 /**

@@ -20,6 +20,7 @@ import {
   getAllSalesPageSlugs,
   getSalesPageContent,
   getSalesPageProduct,
+  isCustomSalesPageVisible,
 } from "@/lib/sales/resolver"
 import { getSalesStyleTokens, type SalesStyleTokens } from "@/lib/sales/styles"
 import { cn } from "@/lib/utils"
@@ -48,9 +49,12 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   const { slug } = await params
   const { preview } = await searchParams
 
-  // Custom registry wins (E333): a registered slug owns its own metadata.
+  // Custom registry wins (E333): a registered slug owns its own metadata — but
+  // only when it is actually visible (E367). Without this check a draft custom
+  // page leaked its title/description even while the page body 404'd.
   const customLoader = getCustomSalesPageLoader(slug)
   if (customLoader) {
+    if (!(await isCustomSalesPageVisible(slug, { previewToken: preview }))) return {}
     const mod = await customLoader()
     return mod.metadata ?? {}
   }
@@ -115,6 +119,9 @@ export default async function SalesPage({ params, searchParams }: PageProps) {
   // query prices or wire payment themselves.
   const customLoader = getCustomSalesPageLoader(slug)
   if (customLoader) {
+    // E367 — status gate BEFORE rendering. The registry claiming a slug decides
+    // WHICH renderer runs; it does not decide WHETHER the page is public.
+    if (!(await isCustomSalesPageVisible(slug, { previewToken: preview }))) notFound()
     const { default: CustomSalesPage } = await customLoader()
     const product = await getSalesPageProduct(slug)
     return (
