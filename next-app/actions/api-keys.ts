@@ -77,10 +77,21 @@ export async function revokeApiKey(id: string): Promise<{ error?: string }> {
   const limited = rateLimitGuard(`apikey:revoke:${session.user.id}`, 10, MINUTE_MS)
   if (limited) return limited
 
-  await db
+  const result = await db
     .update(apiKeysTable)
     .set({ revokedAt: new Date() })
     .where(and(eq(apiKeysTable.id, id), eq(apiKeysTable.userId, session.user.id)))
+
+  // E368 — an ownership-scoped WHERE matching zero rows means the key does not
+  // exist or belongs to someone else. Returning success here did two bad things:
+  // the UI showed a revocation that never happened, AND the audit write below
+  // ran anyway — letting any authenticated caller inject a forged
+  // `api_key.revoked` entry naming a resource they cannot touch. The audit
+  // write MUST stay after this check.
+  if (result.count === 0) {
+    return { error: "找不到金鑰，或您沒有權限撤銷。" }
+  }
+
   await logAudit({ actorId: session.user.id, action: "api_key.revoked", targetType: "api_key", targetId: id })
 
   revalidatePath("/dashboard/system")

@@ -75,10 +75,16 @@ export async function setWebhookActive(id: string, active: boolean): Promise<{ e
   const limited = rateLimitGuard(`webhook:toggle:${session.user.id}`, 10, MINUTE_MS)
   if (limited) return limited
 
-  await db
+  const result = await db
     .update(webhooksTable)
     .set({ active })
     .where(and(eq(webhooksTable.id, id), eq(webhooksTable.userId, session.user.id)))
+
+  // E368 — see actions/api-keys.ts revokeApiKey for the full rationale.
+  if (result.count === 0) {
+    return { error: "找不到 webhook，或您沒有權限修改。" }
+  }
+
   revalidatePath("/dashboard/system")
   return {}
 }
@@ -90,9 +96,15 @@ export async function deleteWebhook(id: string): Promise<{ error?: string }> {
   const limited = rateLimitGuard(`webhook:delete:${session.user.id}`, 10, MINUTE_MS)
   if (limited) return limited
 
-  await db
+  const result = await db
     .delete(webhooksTable)
     .where(and(eq(webhooksTable.id, id), eq(webhooksTable.userId, session.user.id)))
+
+  // E368 — audit write must not run for a delete that matched nothing.
+  if (result.count === 0) {
+    return { error: "找不到 webhook，或您沒有權限刪除。" }
+  }
+
   await logAudit({
     actorId: session.user.id,
     action: "webhook.deleted",
@@ -215,10 +227,16 @@ export async function setSystemWebhookActive(
   const limited = rateLimitGuard(`webhook:sys:toggle:${guard.userId}`, 10, MINUTE_MS)
   if (limited) return limited
 
-  await db
+  const result = await db
     .update(webhooksTable)
     .set({ active })
     .where(and(eq(webhooksTable.id, id), eq(webhooksTable.scope, "system")))
+
+  // E368 — scope-scoped WHERE matching zero rows ⇒ no state changed, no event.
+  if (result.count === 0) {
+    return { error: "找不到系統 webhook。" }
+  }
+
   await logAudit({
     actorId: guard.userId,
     action: active ? "system_webhook.enabled" : "system_webhook.disabled",
@@ -237,9 +255,15 @@ export async function deleteSystemWebhook(id: string): Promise<{ error?: string 
   const limited = rateLimitGuard(`webhook:sys:delete:${guard.userId}`, 10, MINUTE_MS)
   if (limited) return limited
 
-  await db
+  const result = await db
     .delete(webhooksTable)
     .where(and(eq(webhooksTable.id, id), eq(webhooksTable.scope, "system")))
+
+  // E368 — see setSystemWebhookActive.
+  if (result.count === 0) {
+    return { error: "找不到系統 webhook。" }
+  }
+
   await logAudit({
     actorId: guard.userId,
     action: "system_webhook.deleted",
