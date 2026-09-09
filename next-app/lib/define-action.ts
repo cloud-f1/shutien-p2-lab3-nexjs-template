@@ -112,6 +112,28 @@ export interface DefineActionConfig<
 export const PUBLIC_ACTION_DEFAULT_RATE_LIMIT = { limit: 10, windowMs: 60_000 } as const
 
 /**
+ * Client-IP throttle key, or a shared fallback bucket (E372).
+ *
+ * `headers()` THROWS ("called outside a request scope") wherever there is no
+ * Next request context — an integration test, a script, a background job. E370
+ * called it unconditionally on the public path, which broke every existing
+ * `checkout.int.test.ts` case that exercises the guest path (no session ⇒
+ * actorId null ⇒ headers() reached). Production request handling was fine, but
+ * the action became uncallable from anything that is not a request.
+ *
+ * The fallback is ONE SHARED bucket rather than "unlimited": an unattributable
+ * caller gets throttled together with all other unattributable callers. Failing
+ * open here would make "call it from a context without headers" a bypass.
+ */
+async function throttleSubjectFromRequest(): Promise<string> {
+  try {
+    return clientIpKey(await headers())
+  } catch {
+    return "no-request-scope"
+  }
+}
+
+/**
  * Config for a PUBLIC (guest-allowed) action (E327). No login gate and no role
  * gate; the handler/authorize hooks receive a `PublicActionCtx` (nullable actor).
  * Reserve for genuine pre-auth / guest endpoints and mark the file with
@@ -189,7 +211,7 @@ export function defineAction<
         // (so a logged-in guest-checkout user isn't lumped in with the whole
         // NAT), else by client IP.
         const { limit, windowMs } = cfg.rateLimit ?? PUBLIC_ACTION_DEFAULT_RATE_LIMIT
-        const subject = actorId ?? clientIpKey(await headers())
+        const subject = actorId ?? (await throttleSubjectFromRequest())
         const limited = rateLimitGuard(`public-action:${subject}`, limit, windowMs)
         if (limited) return limited as ActionResult<O>
 

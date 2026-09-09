@@ -190,6 +190,20 @@ if (cd "$APP" && pnpm -s lint >/tmp/pmc-lint.log 2>&1); then ok "eslint clean"; 
 say "Unit tests (vitest)"
 if (cd "$APP" && pnpm -s test >/tmp/pmc-unit.log 2>&1); then ok "unit tests pass"; emit_gate unit pass; else bad "unit tests failed (see /tmp/pmc-unit.log)"; emit_gate unit fail; print_gate_failure /tmp/pmc-unit.log; fi
 
+# ── Gate 5b: integration tests (E372) ───────────────────────────────────────
+# Why this is here at all: E370 shipped through FIVE green pre-merge gates while
+# breaking every guest-path case in test/int/checkout.int.test.ts. It called
+# next/headers' headers() unconditionally on defineAction's public path, which
+# throws outside a request scope. Nothing caught it because this gate ran
+# `pnpm test` (unit only) — `test:int` lived exclusively in `make verify`, which
+# the publish path never calls.
+#
+# Safe to run unconditionally: test/int/harness.ts probes Postgres and the specs
+# `describe.skipIf(!reachable)`, so with no DB this passes trivially rather than
+# failing the publish.
+say "Integration tests (vitest, int)"
+if (cd "$APP" && pnpm -s test:int >/tmp/pmc-int.log 2>&1); then ok "integration tests pass (or skipped — no reachable Postgres)"; emit_gate int pass; else bad "integration tests failed (see /tmp/pmc-int.log)"; emit_gate int fail; print_gate_failure /tmp/pmc-int.log; fi
+
 # ── Gate 6 (optional): e2e ──────────────────────────────────────────────────
 # Note: e2e here is opt-in (--e2e flag) — when this flag is omitted, e2e is
 # simply not run by THIS invocation, and nothing is emitted for it. That is

@@ -76,6 +76,28 @@ describe.skipIf(!reachable)("actions/checkout.ts — createOneTimeCheckout (publ
     await truncateDomain(["audit_log", "orders", "products", "users"])
   })
 
+  /**
+   * E372 — regression. E370 added a per-client throttle to defineAction's public
+   * path and reached for `headers()` UNCONDITIONALLY to key it. `headers()`
+   * throws "called outside a request scope" wherever there is no Next request
+   * context, so every guest-path case in this file broke: no session ⇒ actorId
+   * null ⇒ headers() reached ⇒ throw.
+   *
+   * It survived five green pre-merge gates because (a) `pre-merge-check.sh`
+   * runs `pnpm test` (unit) and not `test:int`, and (b) the NEW test written
+   * alongside E370 mocked `next/headers` — the mock hid the very fragility the
+   * test was meant to cover. This file deliberately does NOT mock it; that is
+   * what makes the case below meaningful.
+   */
+  it("E372: the guest path does not require a Next request scope", async () => {
+    const slug = "e372-scope"
+    await seedProduct(tdb, slug)
+    actorId = null
+    // The assertion is simply that this RESOLVES rather than throwing.
+    const res = await checkout.createOneTimeCheckout({ productSlug: slug, email: "guest@e372.test" })
+    expect("ok" in res || "error" in res).toBe(true)
+  })
+
   it("IS callable with no session (guest checkout) — order created with user_id null", async () => {
     actorId = null
     await seedProduct(tdb, "guest-product")
