@@ -82,6 +82,23 @@ export default defineConfig({
             process.env.E2E_DATABASE_URL ??
             "postgresql://saas_user:saas_pass@localhost:5432/saas_dev_e2e",
           AUTH_SECRET: process.env.AUTH_SECRET ?? "e2e-test-secret",
+          // E374 — AUTH_URL must match the port we are actually serving on.
+          //
+          // Auth.js v5 resolves `signIn(..., { redirectTo })` against AUTH_URL,
+          // and `.env.local` pins it to :3000. On any other port the browser is
+          // sent to http://localhost:3000/dashboard after login — i.e. OFF this
+          // server entirely. If nothing is listening there the whole suite dies
+          // with ERR_CONNECTION_REFUSED at `loginAs`; far worse, if a SIBLING
+          // FORK of this template is listening (they share the routes and the
+          // 繁中 copy), the authenticated specs quietly assert against THAT app
+          // and pass. E357's target check cannot see this: it verifies the base
+          // URL once, and this redirect leaves that origin mid-test.
+          //
+          // Observed for real on 2026-09-09 — a run on :3600 was green while
+          // ../data-clarity-portal held :3000, and went red the moment that
+          // process stopped. Nothing about the failure pointed at AUTH_URL.
+          AUTH_URL: BASE_URL,
+          NEXT_PUBLIC_APP_URL: BASE_URL,
           // Surface the seeded quick-login buttons for e2e. The demo-login gate
           // is now STRICT (only NEXT_PUBLIC_ENABLE_DEMO_LOGIN==="true"), so this
           // keeps the demo path available under test. (loginAs() fills the form
