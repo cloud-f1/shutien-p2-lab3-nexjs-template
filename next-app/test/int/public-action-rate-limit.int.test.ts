@@ -15,6 +15,8 @@
  */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { ONE_TIME_CHECKOUT_RATE_LIMIT } from "@/lib/billing/checkout-schema"
+
 import { isPostgresReachable, setupTestDb, teardownTestDb, truncateDomain, type TestDb } from "./harness"
 
 const reachable = await isPostgresReachable()
@@ -73,9 +75,10 @@ describe.skipIf(!reachable)("E370 — public actions are throttled by default", 
     createOneTimeCheckout({ productSlug: "e370-product", email: "guest@e370.test" })
 
   it("AC1 — past the threshold the action is refused AND no order row is created", async () => {
-    // Drive well past the 10/min default.
+    // Driven by the SAME constant the action uses (E375) — a tuning change can
+    // no longer silently turn this assertion into a no-op.
     let refusedAt = -1
-    for (let i = 0; i < 15; i++) {
+    for (let i = 0; i < ONE_TIME_CHECKOUT_RATE_LIMIT.limit + 5; i++) {
       const res = await call()
       if ("error" in res && res.error && /稍後|次數|頻繁|請稍/.test(res.error)) {
         refusedAt = i
@@ -95,7 +98,7 @@ describe.skipIf(!reachable)("E370 — public actions are throttled by default", 
     const throttled = (r: Awaited<ReturnType<typeof call>>) =>
       "error" in r && /稍後|次數|頻繁|請稍/.test(r.error ?? "")
 
-    for (let i = 0; i < 12; i++) await call()
+    for (let i = 0; i < ONE_TIME_CHECKOUT_RATE_LIMIT.limit + 2; i++) await call()
 
     // First half of the claim: client A IS now throttled. Without this the test
     // passes trivially when NO throttle exists at all — it would assert only

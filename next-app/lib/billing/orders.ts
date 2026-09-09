@@ -134,8 +134,17 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
  * (existing user) email. Returns whether a NEW account was created.
  *
  * Entirely best-effort: any failure (provisioning OR mail) is swallowed so the
- * settlement result is never affected — the paid transition already committed,
- * and a lost activation mail degrades to the standard forgot-password flow.
+ * settlement result is never affected — the paid transition already committed.
+ *
+ * E375 — this comment used to end "and a lost activation mail degrades to the
+ * standard forgot-password flow." That was never true. `requestPasswordReset`
+ * only acts `if (user?.passwordHash)`, and the account provisioned here has
+ * `passwordHash: null` by design — the buyer would get `{ success: true }` and
+ * no mail, forever. The recovery paths that DO exist:
+ *   - the buyer registers normally: E371 lets a registration claim an unclaimed
+ *     shell (no password, no verified email), which sends a verification mail;
+ *   - an admin re-sends the activation mail (`canResendActivation` in
+ *     lib/billing/admin-revenue.ts, gated on exactly that null passwordHash).
  */
 async function deliverEntitlement(orderId: string): Promise<boolean> {
   try {

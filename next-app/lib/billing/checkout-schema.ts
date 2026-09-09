@@ -49,3 +49,20 @@ export const oneTimeCheckoutSchema = z.object({
 })
 
 export type OneTimeCheckoutInput = z.infer<typeof oneTimeCheckoutSchema>
+
+/**
+ * Per-client throttle for the ONE public (guest-reachable) checkout action.
+ *
+ * Lives here, not in `actions/checkout.ts`, because that file is `"use server"`
+ * — every export there is a public endpoint, and Next only permits async
+ * functions. Keeping the number in one place also stops the action and its
+ * tests from drifting apart, which is exactly what E348/E352/E369 kept finding.
+ *
+ * Why 30/min rather than defineAction's conservative 10: the key is the client
+ * IP, and CGNAT/office egress puts many REAL buyers behind one address. A
+ * successful launch is the likeliest way to trip it and the failure is silent
+ * lost revenue. 30/min still bounds an anonymous flooder hard. E375 logs a
+ * `rate_limit.blocked` line the first time each bucket trips, so tuning this is
+ * an observable exercise rather than a guess.
+ */
+export const ONE_TIME_CHECKOUT_RATE_LIMIT = { limit: 30, windowMs: 60_000 } as const

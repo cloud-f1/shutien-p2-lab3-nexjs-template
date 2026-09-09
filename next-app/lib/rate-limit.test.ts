@@ -121,3 +121,64 @@ describe("cooldown", () => {
     expect(blocked.retryAfter).toBeGreaterThan(0)
   })
 })
+
+/**
+ * E375 — the throttle used to be entirely silent. After E370 it can be the only
+ * thing between a real buyer and a checkout, so it has to be visible to whoever
+ * operates a fork — without becoming a visitor-tracking log of its own.
+ */
+describe("rate limit observability (E375)", () => {
+  let warn: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    __resetRateLimit()
+    warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+  })
+  afterEach(() => warn.mockRestore())
+
+  /** Parsed `rate_limit.blocked` payloads emitted so far. */
+  const emitted = () =>
+    warn.mock.calls
+      .map((c: unknown[]) => {
+        try {
+          return JSON.parse(String(c[0])) as Record<string, unknown>
+        } catch {
+          return null
+        }
+      })
+      .filter(
+        (o: Record<string, unknown> | null): o is Record<string, unknown> =>
+          o?.event === "rate_limit.blocked",
+      )
+
+  it("reports once when a bucket trips, not once per blocked request", () => {
+    for (let i = 0; i < 10; i++) rateLimit("checkout:203.0.113.9", 3, 60_000)
+    expect(emitted()).toHaveLength(1)
+  })
+
+  it("does NOT emit while the caller is under the limit", () => {
+    rateLimit("checkout:203.0.113.9", 3, 60_000)
+    rateLimit("checkout:203.0.113.9", 3, 60_000)
+    expect(emitted()).toHaveLength(0)
+  })
+
+  it("logs the scope but NEVER the key — the key identifies the person", () => {
+    const ip = "203.0.113.9"
+    for (let i = 0; i < 5; i++) rateLimit(`public-action:${ip}`, 1, 60_000)
+
+    const [payload] = emitted()
+    expect(payload.scope).toBe("public-action")
+    // The subject must not appear anywhere in the emitted line. A throttle that
+    // transcribes every blocked visitor's IP is a tracking table nobody agreed to.
+    expect(JSON.stringify(payload)).not.toContain(ip)
+    expect(payload.limit).toBe(1)
+  })
+
+  it("reports separately for different buckets", () => {
+    rateLimit("a:1", 1, 60_000)
+    rateLimit("a:1", 1, 60_000)
+    rateLimit("b:2", 1, 60_000)
+    rateLimit("b:2", 1, 60_000)
+    expect(emitted()).toHaveLength(2)
+  })
+})

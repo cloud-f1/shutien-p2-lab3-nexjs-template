@@ -11,6 +11,47 @@
 type Bucket = {
   count: number
   resetAt: number // epoch ms when the window expires
+  /** E375 — has this window already been reported? Keeps the log to one line
+   *  per bucket per window instead of one per blocked request. */
+  reported?: boolean
+}
+
+/**
+ * E375 — observability for a control that was previously entirely silent.
+ *
+ * `rateLimitGuard` returned an error string and recorded NOTHING. After E370
+ * that string can be the only thing standing between a real buyer and a
+ * checkout, and the operator of a fork had no way to see it happening: the
+ * buyer sees "請求過於頻繁", the operator sees conversion drop, and nothing
+ * connects the two. The failure mode is silent lost revenue.
+ *
+ * Written to the server log rather than `audit_log` ON PURPOSE. A DB write per
+ * blocked request would make the throttle its own amplifier — the endpoint an
+ * attacker is hammering would generate a row per hit, which is the shape of
+ * problem E356 refused for login events. One line per bucket per window is
+ * enough to answer "is this firing, and how often".
+ *
+ * The key is NOT logged. Keys embed the subject — a user id, or a client IP —
+ * and a throttle that transcribes every blocked visitor's IP into the logs is a
+ * visitor-tracking table nobody consented to. Only the PREFIX (everything
+ * before the final `:`) is emitted, which is the part that identifies the
+ * endpoint rather than the person.
+ */
+function keyPrefix(key: string): string {
+  const i = key.lastIndexOf(":")
+  return i === -1 ? key : key.slice(0, i)
+}
+
+function reportThrottle(key: string, limit: number, windowMs: number, count: number) {
+  console.warn(
+    JSON.stringify({
+      event: "rate_limit.blocked",
+      scope: keyPrefix(key),
+      limit,
+      windowMs,
+      observed: count,
+    }),
+  )
 }
 
 const buckets = new Map<string, Bucket>()
@@ -48,6 +89,11 @@ export function rateLimit(key: string, limit: number, windowMs: number): RateLim
   }
 
   if (bucket.count >= limit) {
+    // E375 — report the TRANSITION, once per bucket per window.
+    if (!bucket.reported) {
+      bucket.reported = true
+      reportThrottle(key, limit, windowMs, bucket.count)
+    }
     return { ok: false, retryAfter: Math.ceil((bucket.resetAt - now) / 1000) }
   }
 
@@ -65,6 +111,12 @@ export function isRateLimited(key: string, limit: number): RateLimitResult {
   const bucket = buckets.get(key)
   if (!bucket || bucket.resetAt <= now) return { ok: true, retryAfter: 0 }
   if (bucket.count >= limit) {
+    // E375 — same transition report. This path has no windowMs of its own (the
+    // window was set by recordFailure), so report the remaining time instead.
+    if (!bucket.reported) {
+      bucket.reported = true
+      reportThrottle(key, limit, bucket.resetAt - now, bucket.count)
+    }
     return { ok: false, retryAfter: Math.ceil((bucket.resetAt - now) / 1000) }
   }
   return { ok: true, retryAfter: 0 }
