@@ -12,8 +12,10 @@
 
 import type { ZodType, z } from "zod"
 import { revalidatePath } from "next/cache"
+import { headers } from "next/headers"
 
 import { auth } from "@/lib/auth"
+import { clientIpKey, rateLimitGuard } from "@/lib/rate-limit"
 import { getLiveRole } from "@/lib/permissions"
 import { logAudit } from "@/lib/audit"
 import type { Role } from "@/lib/schema"
@@ -103,6 +105,13 @@ export interface DefineActionConfig<
 }
 
 /**
+ * Default throttle for every `{ public: true }` action (E370): 10 calls per
+ * minute per client. Conservative on purpose — a public action is an
+ * unauthenticated write surface, and the actions that need more can say so.
+ */
+export const PUBLIC_ACTION_DEFAULT_RATE_LIMIT = { limit: 10, windowMs: 60_000 } as const
+
+/**
  * Config for a PUBLIC (guest-allowed) action (E327). No login gate and no role
  * gate; the handler/authorize hooks receive a `PublicActionCtx` (nullable actor).
  * Reserve for genuine pre-auth / guest endpoints and mark the file with
@@ -115,6 +124,16 @@ export interface DefinePublicActionConfig<
 > {
   /** Discriminant — opts this action out of the login/role gate. */
   public: true
+  /**
+   * Per-client-IP throttle (E370). Defaults to
+   * `PUBLIC_ACTION_DEFAULT_RATE_LIMIT` — a public action is reachable with no
+   * session at all, so it gets a limiter by DEFAULT rather than on request.
+   * Before E370 the public path had none, and `createOneTimeCheckout` (the one
+   * unauthenticated action in the codebase) was therefore the only action with
+   * no throttle of any kind. Set explicitly to tune; there is no way to opt out,
+   * which is the point.
+   */
+  rateLimit?: { limit: number; windowMs: number }
   /** Input validation schema. */
   schema: S
   /** Resource-level authorization hook (see DefineActionConfig for semantics). */
@@ -166,6 +185,14 @@ export function defineAction<
       let role: Role | null = null
 
       if (cfg.public) {
+        // E370 — throttle BEFORE any work. Keyed by session when we have one
+        // (so a logged-in guest-checkout user isn't lumped in with the whole
+        // NAT), else by client IP.
+        const { limit, windowMs } = cfg.rateLimit ?? PUBLIC_ACTION_DEFAULT_RATE_LIMIT
+        const subject = actorId ?? clientIpKey(await headers())
+        const limited = rateLimitGuard(`public-action:${subject}`, limit, windowMs)
+        if (limited) return limited as ActionResult<O>
+
         // Opportunistically link a logged-in caller, but never require it.
         if (actorId) role = (await getLiveRole(actorId)) ?? null
       } else {

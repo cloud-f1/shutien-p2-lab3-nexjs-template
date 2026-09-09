@@ -135,3 +135,9 @@
 **Files:** scripts/check-orphan-exports.mjs
 **Root Cause:** _(pending — enrich during /athena:save)_
 **Test Added:** _(pending)_
+
+## 2026-09-09T20:54:13+08:00 — 6f220d1
+**Message:** fix(E368): 影響列數與稽核完整性 — 把 items.ts 的正確寫法推及全類 + Rule 26
+**Files:** next-app/actions/admin.ts,next-app/actions/api-keys.ts,next-app/actions/notifications.ts,next-app/actions/team.ts,next-app/actions/webhooks.ts,next-app/test/int/rows-affected-audit.int.test.ts,scripts/hooks/CLAUDE.md,scripts/hooks/lib/rows-affected-scan.awk,scripts/hooks/stop-verifier.sh,scripts/hooks/tests/test-rule-26-rows-affected.sh
+**Root Cause:** _(pending — enrich during /athena:save)_
+**Test Added:** _(pending)_

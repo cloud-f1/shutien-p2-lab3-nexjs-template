@@ -41,6 +41,12 @@ const DATA_HTML_PREFIX = "data:text/html;charset=utf-8,"
 
 const createOneTimeCheckoutAction = defineAction<typeof oneTimeCheckoutSchema, CheckoutData>({
   public: true,
+  // E370 — stated explicitly even though it matches the factory default, so the
+  // one endpoint reachable with NO session shows its throttle at the call site.
+  // Unlimited anonymous calls here meant unbounded `orders` rows (pending, with
+  // an attacker-chosen customerEmail), burnt gateway session quota, and one
+  // logAudit write per hit.
+  rateLimit: { limit: 10, windowMs: 60_000 },
   schema: oneTimeCheckoutSchema,
   handler: async (input, ctx) => {
     // 2. Load the active product — amount + currency are server-owned.

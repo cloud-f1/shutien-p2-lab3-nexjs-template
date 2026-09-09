@@ -22,14 +22,15 @@ export interface CreateCheckoutResult {
 /**
  * Create a hosted checkout session for the given plan.
  *
+ * E370 — redirect URLs are built server-side from NEXT_PUBLIC_APP_URL, never
+ * taken from the caller. This module is the fork-facing example: shipping the
+ * unvalidated-URL shape here would propagate it into every fork that installs
+ * the billing module.
+ *
  * @param planId - The provider price ID (e.g. Stripe price_xxx)
- * @param successUrl - URL to redirect to after successful payment
- * @param cancelUrl - URL to redirect to if the user cancels
  */
 export async function createCheckoutSession(
   planId: string,
-  successUrl: string,
-  cancelUrl: string,
 ): Promise<CreateCheckoutResult> {
   // Require authentication
   const session = await auth()
@@ -42,12 +43,13 @@ export async function createCheckoutSession(
   }
 
   try {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
     const provider = await resolvePaymentProvider()
     const result = await provider.createCheckout({
       planId,
       userId: session.user.id,
-      successUrl,
-      cancelUrl,
+      successUrl: `${appUrl}/dashboard/system?billing=success`,
+      cancelUrl: `${appUrl}/#pricing`,
       customerEmail: session.user.email ?? undefined,
     })
 
