@@ -114,6 +114,37 @@ describe.skipIf(!reachable)("actions/webhooks.ts wiring (int)", () => {
       `
       expect(audits[0].n).toBe(1)
     })
+
+    /**
+     * E369 — the behaviour change that matters most in this epic. The old
+     * `sanitizeEvents()` filtered unknown event names out and, finding the set
+     * empty, returned `["*"]`. A single typo therefore turned "subscribe to one
+     * event" into "subscribe to EVERYTHING", silently, on an endpoint whose job
+     * is shipping data to a third-party URL. It is now a validation error.
+     */
+    it("REJECTS a typo'd event name instead of silently subscribing to ['*']", async () => {
+      const u = await seedUser({ email: "typo@int.test", role: "editor" })
+      actorId = u.id
+
+      const result = await webhooks.createWebhook({
+        url: "https://example.com/typo",
+        events: ["user.craeted"], // note the transposition
+      })
+
+      expect(result.error).toBeTruthy()
+      expect(result.secret).toBeUndefined()
+      const rows = await tdb.sql`SELECT id FROM webhooks WHERE user_id = ${u.id}`
+      expect(rows).toHaveLength(0) // ← the old code created a row with events=['*']
+    })
+
+    it("REJECTS an empty event list", async () => {
+      const u = await seedUser({ email: "empty@int.test", role: "editor" })
+      actorId = u.id
+      const result = await webhooks.createWebhook({ url: "https://example.com/e", events: [] })
+      expect(result.error).toBeTruthy()
+      const rows = await tdb.sql`SELECT id FROM webhooks WHERE user_id = ${u.id}`
+      expect(rows).toHaveLength(0)
+    })
   })
 
   describe("setWebhookActive", () => {

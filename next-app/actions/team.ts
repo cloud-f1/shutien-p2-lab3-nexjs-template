@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache"
 import { db } from "@/lib/db"
 import { logAudit } from "@/lib/audit"
 import { sendInviteEmail } from "@/lib/email"
+import { inviteMemberSchema } from "@/lib/validations/system"
 import { requireAdmin, requireAuth } from "@/lib/permissions"
 import { rateLimitGuard } from "@/lib/rate-limit"
 import { invitationsTable, usersTable, type Role } from "@/lib/schema"
@@ -13,8 +14,6 @@ import { generateInviteToken, inviteExpiry, isInviteValid } from "@/lib/team-uti
 import { toCsv } from "@/lib/export-utils"
 import { teamMemberToExportRow, invitationToExportRow } from "@/lib/export-row-mappers"
 
-const VALID_ROLES: Role[] = ["admin", "editor", "viewer"]
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
 const MINUTE_MS = 60_000
 const HOUR_MS = 60 * MINUTE_MS
@@ -30,9 +29,11 @@ export async function inviteMember(input: {
   const limited = rateLimitGuard(`team:invite:${session.user.id}`, 5, HOUR_MS)
   if (limited) return limited
 
-  const email = input.email?.trim().toLowerCase()
-  if (!email || !EMAIL_RE.test(email)) return { error: "請輸入有效的電子郵件。" }
-  if (!VALID_ROLES.includes(input.role)) return { error: "無效的角色。" }
+  // E369 — one definition of "valid email" for the whole codebase. The local
+  // EMAIL_RE this replaces accepted `a@b.c`, which z.string().email() rejects.
+  const parsed = inviteMemberSchema.safeParse(input)
+  if (!parsed.success) return { error: parsed.error.issues[0]!.message }
+  const { email, role } = parsed.data
 
   // Don't invite someone who already has an account.
   const [existing] = await db
@@ -46,7 +47,7 @@ export async function inviteMember(input: {
   const now = new Date()
   await db.insert(invitationsTable).values({
     email,
-    role: input.role,
+    role,
     token,
     invitedBy: session.user.id,
     expiresAt: inviteExpiry(now),
@@ -55,7 +56,7 @@ export async function inviteMember(input: {
     actorId: session.user.id,
     action: "invitation.created",
     targetType: "invitation",
-    metadata: { email, role: input.role },
+    metadata: { email, role },
   })
 
   // Best-effort email delivery: a transport failure must not fail the invite —

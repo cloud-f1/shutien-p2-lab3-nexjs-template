@@ -11,31 +11,19 @@ import { webhooksTable } from "@/lib/schema"
 import { deliverToEndpoint, generateWebhookSecret } from "@/lib/webhooks"
 import { toCsv } from "@/lib/export-utils"
 import { webhookToExportRow } from "@/lib/export-row-mappers"
+import {
+  createSystemWebhookSchema,
+  createWebhookSchema,
+} from "@/lib/validations/system"
 
 const MINUTE_MS = 60_000
 
-const VALID_EVENTS = [
-  "*",
-  "user.created",
-  "user.role_changed",
-  "api_key.created",
-  "api_key.revoked",
-  "subscription.updated",
-] as const
-
-function sanitizeEvents(events: string[]): string[] {
-  const set = new Set(events.filter((e) => (VALID_EVENTS as readonly string[]).includes(e)))
-  return set.size ? [...set] : ["*"]
-}
-
-function isHttpsUrl(raw: string): boolean {
-  try {
-    const u = new URL(raw)
-    return u.protocol === "https:"
-  } catch {
-    return false
-  }
-}
+// E369 — VALID_EVENTS / sanitizeEvents() / isHttpsUrl() all lived here as
+// hand-rolled checks. They now come from lib/validations/system.ts. The
+// important behaviour change: an invalid event list is REJECTED rather than
+// silently rewritten to ["*"] — a typo used to turn "subscribe to one event"
+// into "subscribe to everything", with no error, on an endpoint that ships data
+// to a third-party URL.
 
 /** Create a webhook endpoint for the current user. Returns the signing secret ONCE. */
 export async function createWebhook(input: {
@@ -47,14 +35,14 @@ export async function createWebhook(input: {
   const limited = rateLimitGuard(`webhook:create:${session.user.id}`, 10, MINUTE_MS)
   if (limited) return limited
 
-  const url = input.url?.trim()
-  if (!url || !isHttpsUrl(url)) return { error: "請輸入有效的 HTTPS URL。" }
-  if (url.length > 2048) return { error: "URL 過長（最多 2048 個字元）。" }
+  const parsed = createWebhookSchema.safeParse(input)
+  if (!parsed.success) return { error: parsed.error.issues[0]!.message }
+  const { url, events } = parsed.data
 
   const secret = generateWebhookSecret()
   const [row] = await db
     .insert(webhooksTable)
-    .values({ userId: session.user.id, url, events: sanitizeEvents(input.events), secret })
+    .values({ userId: session.user.id, url, events, secret })
     .returning({ id: webhooksTable.id })
   await logAudit({
     actorId: session.user.id,
@@ -156,14 +144,6 @@ export async function exportWebhooks(): Promise<
 // ---------------------------------------------------------------------------
 
 /** Site-wide events a system endpoint may subscribe to (E330). */
-const VALID_SYSTEM_EVENTS = ["*", "order.completed"] as const
-
-function sanitizeSystemEvents(events: string[]): string[] {
-  const set = new Set(
-    events.filter((e) => (VALID_SYSTEM_EVENTS as readonly string[]).includes(e)),
-  )
-  return set.size ? [...set] : ["order.completed"]
-}
 
 async function ensureAdmin(): Promise<{ userId: string } | { error: string }> {
   try {
@@ -189,9 +169,12 @@ export async function createSystemWebhook(input: {
   const limited = rateLimitGuard(`webhook:sys:create:${guard.userId}`, 10, MINUTE_MS)
   if (limited) return limited
 
-  const url = input.url?.trim()
-  if (!url || !isHttpsUrl(url)) return { error: "請輸入有效的 HTTPS URL。" }
-  if (url.length > 2048) return { error: "URL 過長（最多 2048 個字元）。" }
+  // E369 — same schema treatment as the user-scoped path. The `["order.completed"]`
+  // default now lives in the schema, applied only when `events` is ABSENT — an
+  // explicitly-supplied invalid list is an error, not a silent substitution.
+  const parsed = createSystemWebhookSchema.safeParse(input)
+  if (!parsed.success) return { error: parsed.error.issues[0]!.message }
+  const { url, events } = parsed.data
 
   const secret = generateWebhookSecret()
   const [row] = await db
@@ -199,7 +182,7 @@ export async function createSystemWebhook(input: {
     .values({
       userId: guard.userId,
       url,
-      events: sanitizeSystemEvents(input.events ?? ["order.completed"]),
+      events,
       secret,
       scope: "system",
     })

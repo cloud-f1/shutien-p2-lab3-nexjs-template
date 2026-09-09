@@ -10,6 +10,7 @@ import { generateApiKey } from "@/lib/api-keys-utils"
 import { logAudit } from "@/lib/audit"
 import { rateLimitGuard } from "@/lib/rate-limit"
 import { toCsv } from "@/lib/export-utils"
+import { createApiKeySchema } from "@/lib/validations/system"
 import { apiKeyToExportRow } from "@/lib/export-row-mappers"
 
 const MINUTE_MS = 60_000
@@ -21,9 +22,10 @@ export async function createApiKey(name: string): Promise<{ plaintext?: string; 
   const limited = rateLimitGuard(`apikey:create:${session.user.id}`, 10, MINUTE_MS)
   if (limited) return limited
 
-  const trimmed = name?.trim()
-  if (!trimmed) return { error: "請輸入金鑰名稱。" }
-  if (trimmed.length > 100) return { error: "金鑰名稱過長（最多 100 個字元）。" }
+  // E369 — validation comes from the shared schema, not a hand-rolled check.
+  const parsed = createApiKeySchema.safeParse({ name })
+  if (!parsed.success) return { error: parsed.error.issues[0]!.message }
+  const trimmed = parsed.data.name
 
   const { plaintext, prefix, hashedKey } = generateApiKey()
   await db.insert(apiKeysTable).values({ userId: session.user.id, name: trimmed, prefix, hashedKey })
