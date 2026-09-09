@@ -115,11 +115,7 @@ describe("createCheckoutSession", () => {
       sessionId: "cs_1",
     })
 
-    const res = await createCheckoutSession(
-      "price_pro_demo",
-      "https://app/success",
-      "https://app/cancel",
-    )
+    const res = await createCheckoutSession("price_pro_demo")
 
     expect(res.success).toBe(true)
     expect(res.checkoutUrl).toBe("https://checkout.stripe.com/x")
@@ -131,6 +127,18 @@ describe("createCheckoutSession", () => {
         userId: "user_1",
       }),
     )
+    // E370 — the redirect URLs are server-owned. They used to be caller
+    // parameters passed straight to the gateway, so an authenticated attacker
+    // could mint a genuine, correctly branded checkout session pointing at a
+    // site they control and send that real link to a victim.
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
+    const passed = mockCreateCheckout.mock.calls[0][0] as {
+      successUrl: string
+      cancelUrl: string
+    }
+    expect(passed.successUrl.startsWith(appUrl)).toBe(true)
+    expect(passed.cancelUrl.startsWith(appUrl)).toBe(true)
+
     // Audit records the checkout start with the resolved plan UUID.
     expect(mockLogAudit).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -141,13 +149,13 @@ describe("createCheckoutSession", () => {
   })
 
   it("rejects an unknown providerPriceId (not in config)", async () => {
-    const res = await createCheckoutSession("price_nope", "s", "c")
+    const res = await createCheckoutSession("price_nope")
     expect(res.success).toBe(false)
     expect(mockResolveOrCreatePlanId).not.toHaveBeenCalled()
   })
 
   it("rejects an empty providerPriceId", async () => {
-    const res = await createCheckoutSession("", "s", "c")
+    const res = await createCheckoutSession("")
     expect(res.success).toBe(false)
     expect(res.error).toContain("無效")
   })
@@ -155,7 +163,7 @@ describe("createCheckoutSession", () => {
   it("surfaces a provider error as a failed result", async () => {
     mockResolveOrCreatePlanId.mockResolvedValue("uuid-pro-123")
     mockCreateCheckout.mockRejectedValue(new Error("gateway down"))
-    const res = await createCheckoutSession("price_pro_demo", "s", "c")
+    const res = await createCheckoutSession("price_pro_demo")
     expect(res.success).toBe(false)
     expect(res.error).toContain("gateway down")
   })

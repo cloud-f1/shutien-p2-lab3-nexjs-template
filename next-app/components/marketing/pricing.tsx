@@ -26,12 +26,9 @@ function PricingCard({ tier, period }: PricingCardProps & { period: BillingPerio
     if (!tier.providerPriceId) return
     setError(null)
     startTransition(async () => {
-      const origin = window.location.origin
-      const res = await createCheckoutSession(
-        tier.providerPriceId!,
-        `${origin}/dashboard/system?billing=success`,
-        `${origin}/#pricing`,
-      )
+      // E370 — the redirect URLs are now built server-side from
+      // NEXT_PUBLIC_APP_URL; the client no longer gets to choose them.
+      const res = await createCheckoutSession(tier.providerPriceId!)
       if (res.success && res.checkoutUrl) window.location.href = res.checkoutUrl
       else setError(res.error ?? "無法開始結帳，請稍後再試。")
     })

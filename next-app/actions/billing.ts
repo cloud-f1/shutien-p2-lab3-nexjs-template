@@ -40,14 +40,17 @@ export interface CreateCheckoutResult {
 /**
  * Create a hosted checkout session for the given plan.
  *
+ * E370 — the post-payment redirect URLs are built HERE, server-side, from
+ * NEXT_PUBLIC_APP_URL. They used to be plain parameters passed straight through
+ * to the gateway: an authenticated caller could mint a genuine, correctly
+ * branded checkout session whose `successUrl` pointed at a site they control,
+ * then send that real gateway link to a victim. `actions/checkout.ts` (E327)
+ * already built its URLs this way; this brings the subscription path in line.
+ *
  * @param providerPriceId - The config tier's providerPriceId (Stripe price_xxx / ECPay PlanID)
- * @param successUrl - URL to redirect to after successful payment
- * @param cancelUrl - URL to redirect to if the user cancels
  */
 export async function createCheckoutSession(
   providerPriceId: string,
-  successUrl: string,
-  cancelUrl: string,
 ): Promise<CreateCheckoutResult> {
   // Require authentication — redirects to /login if unauthenticated.
   const session = await requireAuth()
@@ -77,6 +80,11 @@ export async function createCheckoutSession(
       providerKey === "ecpay"
         ? `${tier.interval}:${tier.monthlyPrice}:${tier.name}`
         : tier.providerPriceId
+
+    // E370 — server-owned redirect targets; never caller-supplied.
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
+    const successUrl = `${appUrl}/dashboard/system?billing=success`
+    const cancelUrl = `${appUrl}/#pricing`
 
     const provider = await resolvePaymentProvider()
     const result = await provider.createCheckout({

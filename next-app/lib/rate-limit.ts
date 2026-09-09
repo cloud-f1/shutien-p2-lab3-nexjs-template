@@ -125,3 +125,27 @@ export function rateLimitGuard(
 export function __resetRateLimit() {
   buckets.clear()
 }
+
+/**
+ * Client-IP rate-limit key for endpoints reachable with NO session (E370).
+ *
+ * A public Server Action has no user id to key on, so without this every
+ * anonymous caller shares (or escapes) the limiter. Reads the standard proxy
+ * headers; falls back to a single shared bucket when none is present, which is
+ * deliberately conservative — an unattributable caller is throttled with all
+ * other unattributable callers rather than let through.
+ *
+ * NOTE: `x-forwarded-for` is client-controllable unless a trusted proxy
+ * overwrites it. Zeabur/Cloud Run both do. On a deployment where they do NOT,
+ * this degrades to per-attacker-chosen-key throttling — annoying to bypass but
+ * not a hard boundary. It is a brake on casual abuse, matching this module's
+ * stated posture; a hard boundary needs the Redis/edge-KV backing described in
+ * the file header.
+ */
+export function clientIpKey(headers: {
+  get(name: string): string | null
+}): string {
+  const fwd = headers.get("x-forwarded-for")
+  if (fwd) return fwd.split(",")[0]!.trim()
+  return headers.get("x-real-ip")?.trim() || "unknown-ip"
+}
