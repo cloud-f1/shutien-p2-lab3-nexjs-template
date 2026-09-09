@@ -27,6 +27,7 @@ import { normalizeUtm, isEmptyUtm } from "@/lib/analytics/funnel-utils"
 import {
   oneTimeCheckoutSchema,
   type OneTimeCheckoutInput,
+  ONE_TIME_CHECKOUT_RATE_LIMIT,
 } from "@/lib/billing/checkout-schema"
 import { resolveOneTime, resolveProviderKey, type ProviderKey } from "@/lib/billing/resolver"
 import { orderAccessToken } from "@/lib/billing/order-token"
@@ -41,12 +42,9 @@ const DATA_HTML_PREFIX = "data:text/html;charset=utf-8,"
 
 const createOneTimeCheckoutAction = defineAction<typeof oneTimeCheckoutSchema, CheckoutData>({
   public: true,
-  // E370 — stated explicitly even though it matches the factory default, so the
-  // one endpoint reachable with NO session shows its throttle at the call site.
-  // Unlimited anonymous calls here meant unbounded `orders` rows (pending, with
-  // an attacker-chosen customerEmail), burnt gateway session quota, and one
-  // logAudit write per hit.
-  rateLimit: { limit: 10, windowMs: 60_000 },
+  // E375 — the number lives in lib/billing/checkout-schema.ts so this action
+  // and its tests cannot drift apart (see that constant for the reasoning).
+  rateLimit: ONE_TIME_CHECKOUT_RATE_LIMIT,
   schema: oneTimeCheckoutSchema,
   handler: async (input, ctx) => {
     // 2. Load the active product — amount + currency are server-owned.
