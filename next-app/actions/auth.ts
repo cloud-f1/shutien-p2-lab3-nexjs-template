@@ -86,16 +86,45 @@ export async function registerUser(prevState: FormState, formData: FormData): Pr
   // silently skip the insert and still route to the verification page with a
   // generic success path — an attacker cannot distinguish "taken" from "new".
   const existing = await getUserByEmail(email)
-  if (!existing) {
+
+  // E371 — one exception, and it is NOT an enumeration leak.
+  //
+  // E327 guest checkout provisions a SHELL account for the purchase email
+  // (lib/auth-provision.ts): no password hash, and since E371 no emailVerified
+  // either. Because `customerEmail` is unproven, anyone could buy the cheapest
+  // product as victim@example.com and permanently burn that address for
+  // self-registration — the victim's later registerUser took the "already
+  // exists → skip" branch and sat on /verify-email forever, with no mail and no
+  // error.
+  //
+  // A shell has NO credentials, so completing its registration cannot take over
+  // anything. And it stays non-enumerating because the OUTSIDE behaviour is
+  // identical in all three cases (new / shell / real account): same redirect,
+  // and a mail is sent in exactly the cases where one would have been anyway.
+  const isUnclaimedShell =
+    existing != null && existing.passwordHash == null && existing.emailVerified == null
+
+  if (!existing || isUnclaimedShell) {
     const passwordHash = await hashPassword(password)
-    const [user] = await db
-      .insert(usersTable)
-      .values({ name, email, passwordHash })
-      .returning({ id: usersTable.id })
+    let userId: string
+
+    if (isUnclaimedShell) {
+      await db
+        .update(usersTable)
+        .set({ name, passwordHash, updatedAt: new Date() })
+        .where(eq(usersTable.id, existing!.id))
+      userId = existing!.id
+    } else {
+      const [user] = await db
+        .insert(usersTable)
+        .values({ name, email, passwordHash })
+        .returning({ id: usersTable.id })
+      userId = user.id
+    }
 
     const token = crypto.randomBytes(32).toString("hex")
     await db.insert(emailVerificationTokensTable).values({
-      userId: user.id,
+      userId,
       token,
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
     })
@@ -279,9 +308,15 @@ export async function resendVerificationEmail(
 
   const user = await getUserByEmail(email)
 
-  // Don't reveal whether the email exists
+  // E371 (F8) — non-enumerating on EVERY branch. The line below used to be
+  // `return { error: "此電子郵件已驗證。" }`, which separated "registered and
+  // verified" from everything else for an attacker walking a list of addresses
+  // — directly contradicting the comment sitting above it. requestPasswordReset
+  // (further down this file) is the shape being matched: always `{ success: true }`,
+  // do the real work only when it applies. The 60s per-email cooldown above
+  // still limits mail-bombing.
   if (!user?.passwordHash) return { success: true }
-  if (user.emailVerified) return { error: "此電子郵件已驗證。" }
+  if (user.emailVerified) return { success: true }
 
   await db
     .delete(emailVerificationTokensTable)
@@ -364,9 +399,37 @@ export async function resetPassword(
   }
 
   const passwordHash = await hashPassword(result.data.password)
+
+  // E371 — this UPDATE now carries two things it was missing.
+  //
+  // F2: clearedLoginState(). The E355 lockout columns were cleared in exactly
+  // two places, BOTH of which require a successful password comparison. A user
+  // locked out by 5 bad attempts who does the natural remedy — 忘記密碼 → reset
+  // — got a new hash but kept `lockedUntil` in the future, so loginAction still
+  // refused the CORRECT new password. (The lock is 15 minutes, not permanent,
+  // so this was a confusing window rather than a dead account — which is also
+  // why no admin-unlock action is needed.)
+  //
+  // F5: emailVerified. Redeeming this token proves control of the mailbox it
+  // was sent to. That matters most for the E327 guest-checkout activation link,
+  // which mints exactly this kind of token — see lib/auth-provision.ts, where
+  // the stamp used to be applied at row-creation time for an address nobody had
+  // proven. Stamped only when absent, so an existing verification date is kept.
+  const existingVerified = await db
+    .select({ emailVerified: usersTable.emailVerified })
+    .from(usersTable)
+    .where(eq(usersTable.id, record.userId))
+    .limit(1)
+    .then((r) => r[0]?.emailVerified ?? null)
+
   await db
     .update(usersTable)
-    .set({ passwordHash, updatedAt: new Date() })
+    .set({
+      passwordHash,
+      updatedAt: new Date(),
+      emailVerified: existingVerified ?? new Date(),
+      ...clearedLoginState(),
+    })
     .where(eq(usersTable.id, record.userId))
 
   await db
@@ -374,6 +437,50 @@ export async function resetPassword(
     .where(eq(passwordResetTokensTable.id, record.id))
 
   return { success: true }
+}
+
+
+/**
+ * E371 (F10) — record a failed SECOND-FACTOR attempt against the same persistent
+ * lockout columns the password factor uses (E355).
+ *
+ * Before this, `verifyTotpLogin` / `useBackupCode` were guarded only by
+ * `rateLimitGuard`, whose backing store is the in-process Map in
+ * lib/rate-limit.ts — its own header states the state "is lost on restart and is
+ * NOT shared across serverless instances or horizontally-scaled replicas". That
+ * is precisely the weakness E355 introduced DB columns to close, and only the
+ * first factor got them.
+ *
+ * Why the in-memory limiter was not enough on its own: an attacker who already
+ * has the password can call `loginAction` again — a CORRECT password resets
+ * `failedLoginCount` — to mint a fresh pending-2FA cookie, and keep guessing the
+ * second factor across process recycles and replicas with nothing ever
+ * persisted.
+ *
+ * Honours ENABLE_LOGIN_LOCKOUT exactly like the password path: flag off ⇒ no DB
+ * write at all (E355's "complete no-op" contract).
+ *
+ * Returns true when THIS failure tripped the lock, so the caller can say so.
+ */
+async function recordSecondFactorFailure(userId: string): Promise<boolean> {
+  if (!isLockoutEnabled()) return false
+  const user = await getUserById(userId)
+  if (!user) return false
+  const next = nextFailedState(user, new Date())
+  await db
+    .update(usersTable)
+    .set({ failedLoginCount: next.failedLoginCount, lockedUntil: next.lockedUntil })
+    .where(eq(usersTable.id, userId))
+  if (next.lockedUntil) {
+    await logAudit({
+      actorId: userId,
+      action: "auth.locked",
+      targetType: "user",
+      targetId: userId,
+      metadata: { method: "totp" },
+    })
+  }
+  return next.lockedUntil !== null
 }
 
 // ─── Two-Factor Login Challenge (E297) ─────────────────────────────────────
@@ -401,8 +508,28 @@ export async function verifyTotpLogin(
     return { error: "驗證階段無效，請重新登入。" }
   }
 
+  // E371 — a persistently locked account cannot complete the second factor
+  // either. Checked BEFORE the TOTP maths so a locked attacker burns no CPU,
+  // matching the ordering invariant E355 established in lib/auth.ts.
+  if (isLocked(user, new Date())) {
+    return { error: "此帳號因多次登入失敗已暫時鎖定，請稍後再試。" }
+  }
+
   if (!verifyToken(user.totpSecret, token)) {
-    return { error: "驗證碼錯誤，請再試一次。" }
+    const tripped = await recordSecondFactorFailure(userId)
+    return {
+      error: tripped
+        ? "驗證碼錯誤次數過多，此帳號已暫時鎖定，請稍後再試。"
+        : "驗證碼錯誤，請再試一次。",
+    }
+  }
+
+  // E371 — a correct second factor clears accumulated failures, mirroring what
+  // a correct password does in loginAction. Without this, three bad codes
+  // followed by a good one leaves the counter at 3, and the NEXT login's two
+  // slips would lock an account that has done nothing wrong.
+  if (isLockoutEnabled() && hasLoginFailuresToClear(user)) {
+    await db.update(usersTable).set(clearedLoginState()).where(eq(usersTable.id, userId))
   }
 
   const nonce = issueNonce(userId)
@@ -436,6 +563,12 @@ export async function useBackupCode(
     return { error: "驗證階段無效，請重新登入。" }
   }
 
+  // E371 — same persistent-lockout gate as verifyTotpLogin. Checked before the
+  // bcrypt loop below, which is the expensive part (one compare per stored code).
+  if (isLocked(user, new Date())) {
+    return { error: "此帳號因多次登入失敗已暫時鎖定，請稍後再試。" }
+  }
+
   // Find the matching hash (bcrypt — must compare each).
   let matchIndex = -1
   for (let i = 0; i < user.backupCodes.length; i++) {
@@ -445,15 +578,33 @@ export async function useBackupCode(
     }
   }
   if (matchIndex === -1) {
-    return { error: "備用碼無效或已使用。" }
+    const tripped = await recordSecondFactorFailure(userId)
+    return {
+      error: tripped
+        ? "備用碼錯誤次數過多，此帳號已暫時鎖定，請稍後再試。"
+        : "備用碼無效或已使用。",
+    }
   }
 
-  // Consume the code (single-use): remove its hash from the array.
+  // Consume the code (single-use): remove its hash from the array. E371 folds
+  // the failure-counter reset into the same UPDATE — see verifyTotpLogin.
   const remaining = user.backupCodes.filter((_, i) => i !== matchIndex)
   await db
     .update(usersTable)
-    .set({ backupCodes: remaining, updatedAt: new Date() })
+    .set({
+      backupCodes: remaining,
+      updatedAt: new Date(),
+      ...(isLockoutEnabled() && hasLoginFailuresToClear(user) ? clearedLoginState() : {}),
+    })
     .where(eq(usersTable.id, userId))
+
+  // E371 — a correct second factor clears accumulated failures, mirroring what
+  // a correct password does in loginAction. Without this, three bad codes
+  // followed by a good one leaves the counter at 3, and the NEXT login's two
+  // slips would lock an account that has done nothing wrong.
+  if (isLockoutEnabled() && hasLoginFailuresToClear(user)) {
+    await db.update(usersTable).set(clearedLoginState()).where(eq(usersTable.id, userId))
+  }
 
   const nonce = issueNonce(userId)
   await clearPending2fa()
