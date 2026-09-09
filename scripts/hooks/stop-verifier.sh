@@ -79,6 +79,7 @@ emit_rule_fired() {
 # comment, e.g. lib/usage.ts, lib/sales/queries.ts)? Strips a leading UTF-8
 # BOM defensively; tolerates an optional trailing semicolon.
 RULE_25_AWK="${USE_SERVER_GUARD_AWK:-scripts/hooks/lib/use-server-guard-scan.awk}"
+RULE_26_AWK="${ROWS_AFFECTED_AWK:-scripts/hooks/lib/rows-affected-scan.awk}"
 is_real_use_server_file() {
   local first
   first=$(grep -m1 -v '^[[:space:]]*$' "$1" 2>/dev/null \
@@ -174,6 +175,28 @@ while IFS= read -r FILE; do
         VIOLATIONS="${VIOLATIONS}\n❌ Rule 25: $FILE:$R25_LINE — export \`$R25_NAME\` in a \"use server\" file has no reachable guard.\n   Every export in a \"use server\" file is a public POST endpoint; a guard nested behind a conditional (e.g. an optional param) is not a guard. Fix with ONE of:\n     1. Call a guard as the first unconditional step — requireAuth()/requireEditor()/requireAdmin()/requireRole()/requireFlag() (lib/permissions.ts), or build it with defineAction() (lib/define-action.ts).\n     2. Mark it explicitly public — add '// stop-verifier:public-action' (genuine pre-auth endpoints only, e.g. login/password-reset).\n     3. Move it to lib/ as an internal (non-\"use server\") function, callable only from an already-authorized Server Component or Route Handler.\n"
         emit_rule_fired 25 block
       done <<< "$RULE_25_HITS"
+    fi
+  fi
+
+  # Rule 26 (E368): a Server Action that performs an ownership-scoped
+  # UPDATE/DELETE and writes an audit event MUST inspect the rows-affected
+  # count. Server Actions are public POST endpoints: when the scoped WHERE
+  # matches zero rows (someone else's id, or a nonexistent one) the write is a
+  # no-op, but an unconditional logAudit() still fires — letting any
+  # authenticated caller inject a forged entry naming a resource they cannot
+  # touch, into the compliance surface E356/E359 hardened.
+  #
+  # actions/items.ts was already correct; eight other functions were not. The
+  # fix had been applied per-case rather than to the pattern — this rule is what
+  # makes the pattern hold.
+  if echo "$FILE" | grep -qE "^next-app/actions/.*\.ts$" && [ -f "$RULE_26_AWK" ]; then
+    RULE_26_HITS=$(awk -f "$RULE_26_AWK" "$FILE" 2>/dev/null)
+    if [ -n "$RULE_26_HITS" ]; then
+      while IFS='|' read -r R26_LINE R26_NAME; do
+        [ -z "$R26_NAME" ] && continue
+        VIOLATIONS="${VIOLATIONS}\n❌ Rule 26: $FILE:$R26_LINE — \`$R26_NAME\` writes an audit event after a scoped UPDATE/DELETE without checking rows-affected.\n   A scoped WHERE that matches zero rows is a no-op, but the audit write still fires — a forged entry attributed to the caller, naming a resource they cannot touch. Fix with ONE of:\n     1. Capture the result and bail before auditing: 'const result = await db.update(...); if (result.count === 0) return { error: ... }' (see actions/items.ts).\n     2. Use .returning() and test the returned row for null.\n     3. Prove existence first with a SELECT + missing-row guard, then write by the proven id (see actions/team.ts acceptInvitation).\n     4. If genuinely a no-op-tolerant bulk write, mark it '// stop-verifier:rows-affected-ok'.\n"
+        emit_rule_fired 26 block
+      done <<< "$RULE_26_HITS"
     fi
   fi
 

@@ -78,10 +78,19 @@ export async function revokeInvitation(id: string): Promise<{ error?: string }> 
   const limited = rateLimitGuard(`team:revoke:${session.user.id}`, 20, MINUTE_MS)
   if (limited) return limited
 
-  await db
+  const result = await db
     .update(invitationsTable)
     .set({ status: "revoked" })
     .where(and(eq(invitationsTable.id, id), eq(invitationsTable.status, "pending")))
+
+  // E368 — the WHERE also requires status='pending', so zero rows means the
+  // invitation is missing OR already revoked/accepted. Reporting success (and
+  // writing `invitation.revoked`) for a no-op made the audit trail claim a state
+  // transition that never occurred.
+  if (result.count === 0) {
+    return { error: "找不到待處理的邀請（可能已被撤銷或已接受）。" }
+  }
+
   await logAudit({
     actorId: session.user.id,
     action: "invitation.revoked",

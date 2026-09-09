@@ -32,7 +32,17 @@ export async function setUserRole(userId: string, role: Role) {
     return { error: selfErr }
   }
 
-  await db.update(usersTable).set({ role, updatedAt: new Date() }).where(eq(usersTable.id, userId))
+  const result = await db
+    .update(usersTable)
+    .set({ role, updatedAt: new Date() })
+    .where(eq(usersTable.id, userId))
+
+  // E368 — a nonexistent userId updates zero rows; auditing anyway would let an
+  // admin write a `user.role_changed` entry for an account that never existed.
+  if (result.count === 0) {
+    return { error: "找不到該使用者。" }
+  }
+
   await logAudit({
     actorId: session.user.id,
     action: "user.role_changed",
@@ -61,7 +71,13 @@ export async function deleteUser(userId: string) {
     return { error: selfDeleteErr }
   }
 
-  await db.delete(usersTable).where(eq(usersTable.id, userId))
+  const result = await db.delete(usersTable).where(eq(usersTable.id, userId))
+
+  // E368 — see setUserRole. No row deleted ⇒ no `user.deleted` event.
+  if (result.count === 0) {
+    return { error: "找不到該使用者。" }
+  }
+
   await logAudit({
     actorId: session.user.id,
     action: "user.deleted",
@@ -90,7 +106,7 @@ export async function resetUserTotp(userId: string) {
   const limited = rateLimitGuard(`admin:reset-2fa:${session.user.id}`, 20, MINUTE_MS)
   if (limited) return limited
 
-  await db
+  const result = await db
     .update(usersTable)
     .set({
       totpSecret: null,
@@ -99,6 +115,11 @@ export async function resetUserTotp(userId: string) {
       updatedAt: new Date(),
     })
     .where(eq(usersTable.id, userId))
+
+  // E368 — see setUserRole. No row updated ⇒ no `user.totp_reset` event.
+  if (result.count === 0) {
+    return { error: "找不到該使用者。" }
+  }
 
   await logAudit({
     actorId: session.user.id,
