@@ -54,8 +54,22 @@ export async function provisionUserForOrder(
       name: name ?? null,
       // NO usable password — the buyer sets one via the activation link.
       passwordHash: null,
-      // Purchase-email ownership is proven by receiving the activation mail.
-      emailVerified: new Date(),
+      // E371 — NOT verified yet. `customerEmail` comes straight off the guest
+      // checkout form and is never proven; the old code stamped `new Date()`
+      // right here, and the comment that justified it ("ownership is proven by
+      // receiving the activation mail") described something the code did not do
+      // — the stamp landed at row creation, not at redemption.
+      //
+      // What that bought an attacker: buy the cheapest product as
+      // victim@example.com, and the victim now has a pre-verified account they
+      // never created. When they later register, registerUser takes its
+      // non-enumerating "already exists → skip insert" branch — no mail, no
+      // error, redirect to /verify-email — and the address is unusable for
+      // self-registration.
+      //
+      // The stamp now happens where the proof does: actions/auth.ts
+      // resetPassword, which is what the activation link redeems.
+      emailVerified: null,
     })
     .returning({ id: usersTable.id })
 

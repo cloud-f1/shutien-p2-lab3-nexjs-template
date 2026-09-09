@@ -70,10 +70,18 @@ vi.mock("@/lib/rate-limit", () => ({
 }))
 
 // DB mock — record inserts/updates/deletes through a tiny chainable builder.
-const dbState: { inserted: unknown[]; updated: unknown[]; deletes: number } = {
+const dbState: {
+  inserted: unknown[]
+  updated: unknown[]
+  deletes: number
+  /** Rows the next db.select(...) chain resolves to (E371 — resetPassword reads
+   *  the current emailVerified before deciding whether to stamp it). */
+  selectRows: unknown[]
+} = {
   inserted: [],
   updated: [],
   deletes: 0,
+  selectRows: [],
 }
 vi.mock("@/lib/db", () => {
   const insert = () => ({
@@ -96,11 +104,22 @@ vi.mock("@/lib/db", () => {
       return []
     },
   })
-  return { db: { insert, update, delete: del } }
+  // E371 — resetPassword now SELECTs the user's current emailVerified so it
+  // stamps only when absent. The chain is .select().from().where().limit().
+  const select = () => {
+    const chain = {
+      from: () => chain,
+      where: () => chain,
+      limit: () => chain,
+      then: (resolve: (v: unknown) => unknown) => resolve(dbState.selectRows),
+    }
+    return chain
+  }
+  return { db: { insert, update, delete: del, select } }
 })
 
 vi.mock("@/lib/schema", () => ({
-  usersTable: { id: "id", passwordHash: "password_hash" },
+  usersTable: { id: "id", passwordHash: "password_hash", emailVerified: "email_verified" },
   emailVerificationTokensTable: { id: "id", userId: "user_id" },
   passwordResetTokensTable: { id: "id", userId: "user_id" },
 }))
@@ -130,6 +149,7 @@ beforeEach(() => {
   dbState.inserted = []
   dbState.updated = []
   dbState.deletes = 0
+  dbState.selectRows = []
   mockCooldown.mockReturnValue({ ok: true })
 })
 
@@ -223,6 +243,27 @@ describe("resetPassword", () => {
     expect(mockHashPassword).toHaveBeenCalledWith("Abcd1234")
     expect(dbState.updated[0]).toMatchObject({ passwordHash: "new-hash" })
     expect(dbState.deletes).toBe(1) // token consumed
+
+    // E371 — the same UPDATE now also clears the E355 lockout (F2: a locked
+    // user's natural remedy left lockedUntil in the future, so the CORRECT new
+    // password was still refused) and stamps emailVerified, since redeeming
+    // this token proves control of the mailbox (F5).
+    expect(dbState.updated[0]).toMatchObject({ failedLoginCount: 0, lockedUntil: null })
+    expect((dbState.updated[0] as { emailVerified: Date | null }).emailVerified).toBeInstanceOf(Date)
+  })
+
+  it("keeps an EXISTING emailVerified date rather than re-stamping it (E371)", async () => {
+    const original = new Date("2026-01-01T00:00:00Z")
+    mockGetPasswordResetToken.mockResolvedValue({
+      id: "tk_2",
+      userId: "user_1",
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    })
+    mockHashPassword.mockResolvedValue("new-hash")
+    dbState.selectRows = [{ emailVerified: original }]
+
+    await resetPassword("valid", "Abcd1234")
+    expect((dbState.updated[0] as { emailVerified: Date }).emailVerified).toEqual(original)
   })
 })
 
