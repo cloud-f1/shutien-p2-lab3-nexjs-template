@@ -21,6 +21,11 @@ export default defineConfig({
   // whole run with one actionable message instead of producing a suite-full of
   // failures (or a false green) against another app squatting on the port.
   globalSetup: "./e2e/global-setup.ts",
+  // E373 — clears 2FA/lockout residue from the seed accounts after every run,
+  // unconditionally. two-factor.spec.ts's own afterAll cannot be relied on:
+  // it bails when an earlier test in that file failed, which is how three
+  // Phase 89 runs were poisoned.
+  globalTeardown: "./e2e/global-teardown.ts",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

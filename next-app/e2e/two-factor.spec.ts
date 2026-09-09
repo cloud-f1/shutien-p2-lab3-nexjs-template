@@ -11,14 +11,29 @@
  * TOTP codes are computed in-test via otplib (same library used by totp-utils.ts),
  * so the test never needs a real authenticator app.
  *
- * User lifecycle: tests use SEED_EDITOR (editor@example.com / Editor123!) as the
- * 2FA subject so the admin account remains clean for other specs. Each test that
- * enables 2FA disables it in an afterEach teardown to keep the DB clean between runs.
+ * User lifecycle (E373): this suite runs against an EPHEMERAL account it creates
+ * in `beforeAll`, not the shared seed editor. Two separate problems made the
+ * shared account untenable:
+ *
+ *   1. The `afterAll` below bails when an earlier test failed (it needs the
+ *      captured secret to drive the disable flow), so a single failure left 2FA
+ *      ENABLED on editor@example.com and every later run's editor password login
+ *      was redirected to /login/2fa. Phase 89 hit this three times, and it
+ *      self-amplified: 11 failures on one run, 16 on the next.
+ *   2. Even with the DB cleaned, `verifyTotpLogin` is rate-limited by
+ *      `2fa:login:<userId>` (5 per 15 min) in the IN-PROCESS Map from
+ *      lib/rate-limit.ts. A warm dev server carries those counts across runs and
+ *      `db:e2e-setup` cannot clear them — they are not rows. Three consecutive
+ *      full runs exhausted the budget for the shared editor.
+ *
+ * A per-run account fixes both: nothing is left on a shared account, and the
+ * limiter key (the user id) is new every run. `e2e/global-teardown.ts` deletes
+ * these accounts, and also clears seed-account 2FA unconditionally as a belt.
  */
 import { test, expect } from "@playwright/test"
 import { generateSync } from "otplib"
 
-import { SEED_EDITOR } from "./helpers/auth"
+import { provisionEphemeralUser } from "./seed-state"
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -52,6 +67,8 @@ async function fillLoginForm(
 
 let capturedSecret = ""
 let capturedBackupCodes: string[] = []
+/** The per-run throwaway account this suite operates on (E373). */
+let subject: { email: string; password: string }
 
 // ─── suite ───────────────────────────────────────────────────────────────────
 
@@ -62,6 +79,15 @@ let capturedBackupCodes: string[] = []
  * parallel execution for this suite to be safe.
  */
 test.describe.serial("Two-Factor Authentication (TOTP)", () => {
+  test.beforeAll(async () => {
+    const user = await provisionEphemeralUser("2fa", "editor")
+    test.skip(
+      user === null,
+      "no reachable database — cannot provision the ephemeral 2FA account",
+    )
+    subject = user!
+  })
+
   /**
    * Disable 2FA ONCE, after the whole serial chain, so the seed user is left clean.
    *
@@ -78,8 +104,8 @@ test.describe.serial("Two-Factor Authentication (TOTP)", () => {
       if (!capturedSecret) return
 
       await page.goto("/login")
-      await page.fill('input[name="email"]', SEED_EDITOR.email)
-      await page.fill('input[name="password"]', SEED_EDITOR.password)
+      await page.fill('input[name="email"]', subject.email)
+      await page.fill('input[name="password"]', subject.password)
       await page.click('button[type="submit"]')
       // 2FA is on, so password login lands on the challenge — clear it with a code.
       await page.waitForURL(/\/login\/2fa/, { timeout: 10000 })
@@ -125,8 +151,8 @@ test.describe.serial("Two-Factor Authentication (TOTP)", () => {
   test("enable 2FA from Settings → Security", async ({ page }) => {
     // Log in as editor
     await page.goto("/login")
-    await page.fill('input[name="email"]', SEED_EDITOR.email)
-    await page.fill('input[name="password"]', SEED_EDITOR.password)
+    await page.fill('input[name="email"]', subject.email)
+    await page.fill('input[name="password"]', subject.password)
     await page.click('button[type="submit"]')
     await page.waitForURL(/\/dashboard/, { timeout: 10000 })
 
@@ -185,7 +211,7 @@ test.describe.serial("Two-Factor Authentication (TOTP)", () => {
     // Ensure we have a captured secret (means 2FA was enabled in previous test)
     expect(capturedSecret).toBeTruthy()
 
-    await fillLoginForm(page, SEED_EDITOR.email, SEED_EDITOR.password)
+    await fillLoginForm(page, subject.email, subject.password)
 
     // Should redirect to the 2FA challenge page, NOT dashboard
     await expect(page).toHaveURL(/\/login\/2fa/, { timeout: 10000 })
@@ -200,7 +226,7 @@ test.describe.serial("Two-Factor Authentication (TOTP)", () => {
     expect(capturedSecret).toBeTruthy()
 
     // Trigger the 2FA challenge
-    await fillLoginForm(page, SEED_EDITOR.email, SEED_EDITOR.password)
+    await fillLoginForm(page, subject.email, subject.password)
     await expect(page).toHaveURL(/\/login\/2fa/, { timeout: 10000 })
 
     // Fill the 6-digit token
@@ -219,7 +245,7 @@ test.describe.serial("Two-Factor Authentication (TOTP)", () => {
   test("wrong TOTP code stays on /login/2fa with an error message", async ({ page }) => {
     expect(capturedSecret).toBeTruthy()
 
-    await fillLoginForm(page, SEED_EDITOR.email, SEED_EDITOR.password)
+    await fillLoginForm(page, subject.email, subject.password)
     await expect(page).toHaveURL(/\/login\/2fa/, { timeout: 10000 })
 
     // Enter a clearly wrong code
@@ -237,7 +263,7 @@ test.describe.serial("Two-Factor Authentication (TOTP)", () => {
   test("backup code on /login/2fa (改用備用碼 mode) completes login", async ({ page }) => {
     expect(capturedBackupCodes.length).toBeGreaterThan(0)
 
-    await fillLoginForm(page, SEED_EDITOR.email, SEED_EDITOR.password)
+    await fillLoginForm(page, subject.email, subject.password)
     await expect(page).toHaveURL(/\/login\/2fa/, { timeout: 10000 })
 
     // Switch to backup-code mode
@@ -256,7 +282,7 @@ test.describe.serial("Two-Factor Authentication (TOTP)", () => {
   test("backup code is single-use — second use returns an error", async ({ page }) => {
     expect(capturedBackupCodes.length).toBeGreaterThan(0)
 
-    await fillLoginForm(page, SEED_EDITOR.email, SEED_EDITOR.password)
+    await fillLoginForm(page, subject.email, subject.password)
     await expect(page).toHaveURL(/\/login\/2fa/, { timeout: 10000 })
 
     // Switch to backup mode and reuse the SAME backup code (already consumed above)

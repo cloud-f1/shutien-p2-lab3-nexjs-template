@@ -1,5 +1,15 @@
 /**
- * e2e target-identity gate (E357).
+ * e2e global setup — two preconditions, both of which abort the whole run
+ * rather than let it produce a plausible-looking wrong answer:
+ *
+ *   1. target identity (E357) — the base URL is THIS checkout, not a sibling
+ *      fork that happens to hold the port.
+ *   2. seed-account state (E373) — the demo accounts start pristine. A run that
+ *      begins with 2FA still enabled on editor@example.com produces a batch of
+ *      30-second timeouts that read like a product regression; one explicit
+ *      line is worth more than that.
+ *
+ * ── target-identity gate (E357) ──
  *
  * Runs once, before any test, and proves the base URL belongs to THIS checkout.
  * Playwright orders `webServer` (a setup plugin) ahead of `globalSetup`, so by
@@ -18,6 +28,7 @@ import type { FullConfig } from "@playwright/test"
 // Relative, not `@/lib/...` — global setup must not depend on Playwright
 // resolving the tsconfig path alias.
 import { computeAppInstanceId } from "../lib/app-identity"
+import { findDirtySeedAccounts } from "./seed-state"
 
 const HEALTH_PATH = "/api/health"
 /** Per-attempt HTTP timeout. */
@@ -147,6 +158,55 @@ function abort(
   throw new Error(lines.join("\n"))
 }
 
+/**
+ * E373 — refuse to start from a polluted seed state.
+ *
+ * Silent when the DB is unreachable: e2e can legitimately target a server whose
+ * database this process has no route to, and aborting there would be a worse
+ * failure than the one being prevented.
+ */
+async function assertPristineSeedState() {
+  const dirty = await findDirtySeedAccounts()
+  if (dirty === null || dirty.length === 0) return
+
+  const detail = dirty
+    .map((a) => {
+      const bits = [
+        a.totpEnabled ? "2FA ENABLED" : "",
+        a.lockedUntil ? `locked until ${a.lockedUntil.toISOString()}` : "",
+      ].filter(Boolean)
+      return `      ${a.email} — ${bits.join(" \u00b7 ")}`
+    })
+    .join("\n")
+
+  throw new Error(
+    [
+      "",
+      "\u2500".repeat(74),
+      "[e2e] ABORTED \u2014 seed accounts are not in their pristine state (E373).",
+      "",
+      "  Dirty accounts:",
+      detail,
+      "",
+      "  Password login for these accounts gets redirected to /login/2fa (or",
+      "  refused outright), so every spec that logs in as them fails with a",
+      "  30-second timeout that looks like a product bug. Phase 89 hit exactly",
+      "  that cascade three times \u2014 11 failures on one run, 16 on the next.",
+      "  This check converts it into the single line you are reading.",
+      "",
+      "  How it happens: two-factor.spec.ts enables 2FA and disables it in its",
+      "  own afterAll \u2014 but that teardown opens with `if (!capturedSecret)",
+      "  return`, so an earlier failure in that file leaves 2FA on.",
+      "  e2e/global-teardown.ts now clears it unconditionally, so seeing this",
+      "  means the process was killed before teardown could run.",
+      "",
+      "  Fix:  pnpm db:e2e-setup     # drop \u2192 create \u2192 migrate \u2192 seed",
+      "\u2500".repeat(74),
+      "",
+    ].join("\n"),
+  )
+}
+
 export default async function globalSetup(config: FullConfig) {
   if (process.env.E2E_SKIP_TARGET_CHECK === "1") {
     console.warn(
@@ -217,4 +277,7 @@ export default async function globalSetup(config: FullConfig) {
   console.log(
     `[e2e] target verified — ${baseURL} is this checkout (instance ${expected})`
   )
+
+  // E373 — second precondition, after the target is confirmed to be ours.
+  await assertPristineSeedState()
 }
