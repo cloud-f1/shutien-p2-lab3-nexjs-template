@@ -141,3 +141,19 @@
 **Files:** next-app/actions/admin.ts,next-app/actions/api-keys.ts,next-app/actions/notifications.ts,next-app/actions/team.ts,next-app/actions/webhooks.ts,next-app/test/int/rows-affected-audit.int.test.ts,scripts/hooks/CLAUDE.md,scripts/hooks/lib/rows-affected-scan.awk,scripts/hooks/stop-verifier.sh,scripts/hooks/tests/test-rule-26-rows-affected.sh
 **Root Cause:** _(pending — enrich during /athena:save)_
 **Test Added:** _(pending)_
+
+## 2026-09-12T17:50:05+08:00 — 84c5076 (squashed as ac750e0, PR #206)
+**Message:** fix(hooks): archive-context.sh must not evict undated reference sections
+**Files:** scripts/archive-context-tests/test-h3-fixture.sh,scripts/archive-context.sh,scripts/hooks/tests/test-archive-context-undated-sections.sh
+**Root Cause:** The dated-entry rule was added to the "newest" entry order only
+(PR #204). Oldest-first files still counted every heading as an entry, so
+review-findings.md's undated `## Severity Levels` legend ranked as entry #1 and
+was archived as "the oldest" once the file reached its 15-entry limit. The file
+preamble had the same defect independently: it ranked 0 and `0 <= cutoff`, so it
+was archived too. Fired twice on 2026-09-12 nine minutes apart — the second time
+with #204 already merged, which is what showed #204 had only covered half the
+class.
+**Test Added:** scripts/hooks/tests/test-archive-context-undated-sections.sh (8
+assertions across both entry orders). test-h3-fixture.sh scenario C kept its
+assertion but its fixture now carries dates, since undated headings are reference
+blocks by contract.
