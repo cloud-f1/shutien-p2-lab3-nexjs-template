@@ -68,6 +68,22 @@ HEADING_DEPTH=(
   2
   2
 )
+# Entry order per file. "oldest" = entries appended chronologically (archive
+# the FIRST ones, keep the last $limit live). "newest" = newest entry on top
+# (session-summary.md: `## Latest Session` first) — archive the LAST dated
+# entries, keep the preamble + first $limit live. In "newest" mode only
+# headings carrying a `20YY-MM` date count as entries; undated sections
+# (e.g. "## Stack quick reference") are reference blocks: never counted, never
+# archived. Before this flag the hook evicted the newest session + file header.
+ENTRY_ORDER=(
+  oldest
+  oldest
+  oldest
+  oldest
+  oldest
+  oldest
+  newest
+)
 
 CHECK_ONLY=0
 AUTO=0
@@ -133,7 +149,7 @@ fi
 # format. Returns 0 always.
 # $4 = heading depth (2 for H2, 3 for H3)
 extract_lessons_before_archive() {
-  local file="$1" limit="$2" entries="$3" depth="${4:-2}"
+  local file="$1" limit="$2" entries="$3" depth="${4:-2}" order="${5:-oldest}"
   local cutoff=$((entries - limit))
   (( cutoff > 0 )) || return 0
 
@@ -151,10 +167,18 @@ extract_lessons_before_archive() {
   local proposal="$proposal_dir/archive-${ts}.md"
   local tmp="$proposal.tmp"
 
-  awk -v cutoff="$cutoff" -v pat="$heading_pat" '
-    $0 ~ pat { h_count++ }
-    h_count <= cutoff && /\[GENERALIZABLE\]/ { print FILENAME ":" NR ": " $0 }
-  ' "$file" > "$tmp" 2>/dev/null || true
+  if [[ "$order" == "newest" ]]; then
+    # dated entries beyond $limit (counting from the top) are the ones leaving
+    awk -v limit="$limit" -v pat="$heading_pat" '
+      $0 ~ pat { if ($0 ~ /20[0-9][0-9]-[0-9][0-9]/) e_count++; cur_dated = ($0 ~ /20[0-9][0-9]-[0-9][0-9]/) }
+      cur_dated && e_count > limit && /\[GENERALIZABLE\]/ { print FILENAME ":" NR ": " $0 }
+    ' "$file" > "$tmp" 2>/dev/null || true
+  else
+    awk -v cutoff="$cutoff" -v pat="$heading_pat" '
+      $0 ~ pat { h_count++ }
+      h_count <= cutoff && /\[GENERALIZABLE\]/ { print FILENAME ":" NR ": " $0 }
+    ' "$file" > "$tmp" 2>/dev/null || true
+  fi
 
   if [[ -s "$tmp" ]]; then
     {
@@ -180,7 +204,7 @@ extract_lessons_before_archive() {
 # single awk pass. The live file is rewritten atomically via a .new sibling.
 # $3 = heading depth (2 for H2, 3 for H3)
 split_file_at_heading() {
-  local file="$1" limit="$2" depth="${3:-2}"
+  local file="$1" limit="$2" depth="${3:-2}" order="${4:-oldest}"
   local tmp_new="$file.new"
   local tmp_arch; tmp_arch=$(mktemp 2>/dev/null || echo "$file.arch.$$")
 
@@ -192,6 +216,14 @@ split_file_at_heading() {
     heading_pat='^## '
   fi
 
+  if [[ "$order" == "newest" ]]; then
+    # Keep preamble + first $limit dated entries + every undated section live;
+    # archive dated entries ranked > $limit (they are the oldest, at the bottom).
+    awk -v limit="$limit" -v archive="$tmp_arch" -v pat="$heading_pat" '
+      $0 ~ pat { dated = ($0 ~ /20[0-9][0-9]-[0-9][0-9]/); if (dated) e_count++ }
+      { if (dated && e_count > limit) print $0 >> archive; else print $0 }
+    ' "$file" > "$tmp_new" 2>/dev/null
+  else
   awk -v limit="$limit" -v archive="$tmp_arch" -v pat="$heading_pat" '
     $0 ~ pat { h_count++ }
     { lines[NR]=$0; at[NR]=h_count }
@@ -204,6 +236,7 @@ split_file_at_heading() {
       }
     }
   ' "$file" > "$tmp_new" 2>/dev/null
+  fi
 
   if [[ -s "$tmp_arch" ]]; then
     {
@@ -230,16 +263,23 @@ while (( i < ${#LIMIT_FILES[@]} )); do
   fname="${LIMIT_FILES[$i]}"
   limit="${LIMIT_VALUES[$i]}"
   depth="${HEADING_DEPTH[$i]:-2}"
+  order="${ENTRY_ORDER[$i]:-oldest}"
   i=$((i + 1))
   file="$root/$fname"
   [[ -f "$file" ]] || continue
 
   # Count entry headings at the configured depth.
   # depth=2 → count ## headings; depth=3 → count ### headings.
+  # newest-first files: only dated headings are entries.
   if [[ "$depth" -eq 3 ]]; then
-    entries=$(grep -cE '^### ' "$file" 2>/dev/null || true)
+    hpat='^### '
   else
-    entries=$(grep -cE '^## ' "$file" 2>/dev/null || true)
+    hpat='^## '
+  fi
+  if [[ "$order" == "newest" ]]; then
+    entries=$(grep -E "$hpat" "$file" 2>/dev/null | grep -cE '20[0-9]{2}-[0-9]{2}' || true)
+  else
+    entries=$(grep -cE "$hpat" "$file" 2>/dev/null || true)
   fi
   entries=${entries:-0}
   [[ "$entries" =~ ^[0-9]+$ ]] || entries=0
@@ -254,10 +294,10 @@ while (( i < ${#LIMIT_FILES[@]} )); do
     (( AUTO == 0 )) && printf 'archiving: %s (%d entries at H%d depth, limit %d)\n' "$fname" "$entries" "$depth" "$limit"
 
     # 1. Extract [GENERALIZABLE] lines from soon-to-archive sections.
-    extract_lessons_before_archive "$file" "$limit" "$entries" "$depth"
+    extract_lessons_before_archive "$file" "$limit" "$entries" "$depth" "$order"
 
     # 2. Split + rewrite the live file; append archived sections to month file.
-    split_file_at_heading "$file" "$limit" "$depth"
+    split_file_at_heading "$file" "$limit" "$depth" "$order"
 
     archived_count=$((entries - limit))
     archived_files+=("$fname:$archived_count")
