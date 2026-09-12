@@ -771,11 +771,15 @@ Phase 82: E336 + E338 + E340 + E341 + E342 + E343 (WAVE 1 — PARALLEL, 檔案�
 Phase 83: E344 → E345 (SEQUENTIAL — 整合節點執行關卡、帳本記錄關卡，天然的先後關係；且兩者皆需修改 .claude/commands/athena/batch.md，並行只會製造衝突。E344 owns integrate.md + agents/integrator.md + batch.md 的整合節點插入；E345 owns audit-emit-gate.sh + gate-ledger.sh + phase 完成守衛 + verification-discipline skill)
 Phase 84: E346 + E347 + E348 (WAVE 1 — PARALLEL, 檔案互斥: E346 owns lib/usage.ts + actions/usage.ts + api/v1/items/route.ts · E347 owns api/billing/ecpay/{return,period}/route.test.ts · E348 owns lib/validations/items.ts + lib/items-utils.ts + actions/items.ts + lib/openapi/registry.ts) → E349 (WAVE 2 — after E346；它是 E346 那類串接層缺陷的系統性防線，需先確立修法形狀)
 Phase 85: E350 + E352 (WAVE 1 — PARALLEL, 檔案互斥: E350 owns actions/sales-pages.ts + lib/sales/ + admin/sales-pages/page.tsx · E352 owns actions/items.ts + lib/validations/items.ts + lib/items-utils.ts) → E351 (WAVE 2 — after E350，需要 E346 與 E350 的修正前後形狀作為回歸 fixture，證明規則當初抓得到；owns scripts/hooks/stop-verifier.sh + tests + CLAUDE.md 規則表)
+Phase 86: E353 + E354 + E355 (WAVE 1 — PARALLEL, 檔案互斥) → E356 (WAVE 2 — after E355, 共用同一批登入接線點)
+Phase 87: E357 + E358 + E359 + E360 + E361 (WAVE 1 — 全部五個並行, 檔案互斥)
+Phase 88: E362 + E363 + E364 + E366 (WAVE 1 — PARALLEL) → E365 (WAVE 2 — after E363: 兩者都改 CLAUDE.md, 並行必衝突)
+Phase 89–90: 無 wave plan（review-driven —— 由一次 /code-review 的 finding 逐案展開, 每個 finding 一個 PR）
 ```
 
 ---
 
-**Next Action:** **✅ Phase 82 (E336–E343) COMPLETE 2026-08-22 — Fork Harvest Wave 3（`../ai-rc-engineer-pm`）.** 8 epics + 1 fast-follow 全數合併（PRs #105/#106/#108/#109/#110/#111/#112/#114/#115）。整合閘門 PASS：typecheck 0 · lint 0 errors · 794/794（79 files）· 87.03% 覆蓋 · test:int 30/30 · doc-contract 13/13。 **下一步**：backlog 已排空。B 組（本 phase 未納入，來源已確認可回收）—— fork E324 DB-backed 登入鎖定 · fork E327 audit `onBehalf` + 登入事件 · `isUniqueViolation` 從 `lib/billing/idempotency-utils.ts` 泛化到 `lib/db-errors.ts`。另有兩個既有問題待處理：`make hook-test` 在 main 上為 5/9 紅；共用 `saas_dev` 有 17 個已套用 migration 但分支僅 15 個 `.sql` 檔。要開新 cycle 請跑 `/athena:plan`（提案需人工核准），核准後用新的 `/athena:approve <phase>` 一次翻四個狀態面。
+**Next Action:** **✅ Phase 90 (E372–E375) COMPLETE 2026-09-12 — 77 phases, backlog 排空.** Phase 89（E367–E371, PRs #190–#194）修補 `next-app/` 產品程式碼稽核的 10 個 finding；Phase 90（E372–E375, PRs #196/#198/#199/#200）是稽核自身的產物。Context 寫回於 PR #205。 **下一步**：backlog 已排空，要開新 cycle 請跑 `/athena:plan`（提案需人工核准），核准後用 `/athena:approve <phase>` 一次翻四個狀態面。 **此處先前列的三項遺留事項均已結清**：B 組回收已於 Phase 86 完成（fork E324 → E355 持久登入鎖定 · fork E327 → E356 `onBehalf` + 登入事件 · `isUniqueViolation` → E354 `lib/db-errors.ts`）；`make hook-test` 已於 Phase 87 轉綠（2026-09-12 實測 exit 0，涵蓋新增的 archive-context 測試）；migration 計數已對齊（repo 現有 17 個 `.sql`，與先前記錄的 17 筆已套用相符 —— DB 端未複驗，本機無 `psql`）。
 
 ---
 
