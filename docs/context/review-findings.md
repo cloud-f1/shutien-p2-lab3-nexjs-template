@@ -650,3 +650,48 @@ Same artifact as prior rounds (E332): `saas_dev_e2e` already had demo data from 
 ### Recommended next step
 
 **fix-before-commit (narrow)** — the implementation is sound (privacy, RBAC, migration discipline, TTFB-safety, and conventions all check out clean), but two of the five acceptance criteria in `e334-conversion-funnel-analytics.md` lack the test evidence the spec itself requires ("seed 數據驗證" for AC #1, "e2e 或 int test 佐證" for AC #2). Add a seed fixture + one int or e2e test covering the UTM→`orders.utm` path before merging; everything else is ready to ship as-is.
+
+---
+
+## 2026-09-09 — `/code-review` 指向 `next-app/` 產品程式碼（非 diff）
+
+範圍刻意不是 diff：`HEAD == origin/main`，工作區乾淨。三條軸線 —— Server Action 授權邊界 ·
+Drizzle↔Zod 契約對齊 · auth 路徑；並要求驗證 E350/E351/E352/E355/E356 的修補是否**真的收口**
+而非個案補丁。
+
+**10 個 finding，逐一查證後全部屬實。** 已全數修復（Phase 89 = E367–E371）。
+
+| # | 嚴重度 | 位置 | 修於 |
+|---|---|---|---|
+| F1 | HIGH | `app/p/[slug]/page.tsx:116` — custom 路徑不讀 `status`，草稿頁對外公開 | E367 |
+| F3 | MED | 5 處 owner-scoped 寫入忽略影響列數仍寫稽核 → 可偽造稽核紀錄 | E368 |
+| F4 | MED | `actions/checkout.ts:39` — 唯一免登入 action 無限流 | E370 |
+| F5 | MED | `lib/auth-provision.ts:58` — 為未證實 email 預蓋 `emailVerified` | E371 |
+| F6 | MED | `actions/sales-pages.ts:132` — 改 slug 後舊路徑保有 ISR 快取 | E367 |
+| F7 | MED | `actions/billing.ts:49` — 重導 URL 未驗證直送金流商 | E370 |
+| F2 | LOW | `actions/auth.ts:366` — `resetPassword` 不清鎖定狀態 | E371 |
+| F8 | LOW | `actions/auth.ts:284` — `resendVerificationEmail` 洩漏帳號存在 | E371 |
+| F9 | LOW | 3 個檔案的手刻驗證器仍影子化 Zod 契約 | E369 |
+| F10 | LOW | 2FA 挑戰只有記憶體限流，未接 E355 的持久化欄位 | E371 |
+
+### 三處對 review 描述的更正（查證後）
+
+- **F2 非永久鎖死。** `LOCKOUT_DURATION_MS = 15 * 60 * 1000` 且 `isLocked()` 過期即回 false —— 是
+  15 分鐘的困惑窗口，因此也**不需要**新增 admin 解鎖動作（review 建議加）。
+- **F7 的 `createCheckoutSession` 並非 public action** —— 第一件事就是 `requireAuth()`。攻擊路徑
+  因此窄得多：需要登入者鑄造綁在自己帳號上的 session 再誘導受害者付款。
+- **「UI 會跳成功 toast」不成立**（我轉述時未查證）。呼叫端全是 `void action(...)`，成功失敗都
+  沒有回饋 —— 使用者看到的是「什麼都沒發生」。稽核偽造那一軸不變。
+
+### 驗證為真正收口（無 finding）
+
+E351 的 `"use server"` 守衛（13 個 action 檔逐一列舉，每個匯出都命中守衛或帶明確 public 標記）·
+E350 的 `listSalesPages`（確已移出公開介面，唯一呼叫端先 `requireAdmin()`）· IDOR（detail page 用
+`notFound()` 而非 `redirect()`）· RBAC 從 DB 重讀角色（`getLiveRole`，JWT 的 role 從不作為授權來源）。
+
+### 這次 review 教會的事
+
+**個案修補未推及同類。** F3 與 F9 是同一句話的兩個面 —— `actions/items.ts` 的正確寫法連註解都
+寫好了，隔壁五處沒跟上；E348/E352 刪掉 items 的影子驗證器，其他三個入口原封不動。
+E368 把樣式固化成 stop-verifier Rule 26 後，**規則一能跑就找到 review 沒報的 4 處**
+（報 4 / 實際 8）。寫規則的成本低於「確認沒有第三處」的成本。

@@ -3,81 +3,61 @@
 
 ---
 
-## Latest Session — 2026-07-08 (Phase 75 planned — Backport Wave 2 from ai-rc-engineer-pm)
-Branch: `fix/batch-auto-stop-cron-on-idle` @ `7b26d6a`. Planning-only session (no code shipped). Ran `/athena:plan` (Cycle 34).
+## Latest Session — 2026-09-12 (Phases 89 + 90 shipped — 產品程式碼稽核 + 其連鎖發現)
+`main` @ `5eb2230`. 由一次 `/code-review` 指向 `next-app/` 產品程式碼開始，滾出兩個完整 phase。
 
-### Done This Session
-- **Researched the downstream fork `../ai-rc-engineer-pm` (瑞成工程專案管理系統)** across 4 lenses in parallel (agents/skills/commands/hooks · next-app features+UI+design · docs/scripts/infra/deploy · git+epics E294→E323). Separated GENERALIZABLE from PRODUCT-SPECIFIC (engineering-PM domain excluded).
-- **Found the key nuance:** Phase 73 (Cycle 33) already backported the *skill/docs* layer from this same fork — but only lightly (e.g. E314 shipped a hand-written `docs/architecture/payments-service-map.md`, NOT the fork's runnable `scripts/service-map.cjs`). The fork then built a second wave of *executable* tooling + patterns (its E301–E323) the template lacks.
-- **Proposed + APPROVED Phase 75 (Cycle 34): 5 epics E319–E323, 64 SP, single parallel wave.** E323 shape = **Hybrid** (bake-in primitives + optional `@saas` modules) per user decision. All 5 approved.
-- Wrote 5 epic files (`docs/epics/e319..e323-*.md`), registered rows in `EPIC_INDEX.md` + `epic-progress.md` (status matrix + deps block + parallelism), marked strategy-log Cycle 34 APPROVED. `epic-graph.sh --phase 75` resolves to Wave 1 = [E319–E323].
+### Phase 89 — 產品程式碼稽核修補 (E367–E371, PR #190–#194)
+Review 出 10 個 finding，**逐一查證、無虛報**，但我更正了其中三處描述：F2 非永久鎖死而是
+15 分鐘窗口（因此不需 admin 解鎖）· F7 的 `createCheckoutSession` 並非 public（第一件事就是
+`requireAuth()`）· 「UI 會跳成功 toast」不成立（呼叫端全是 `void action(...)`，成功失敗都無回饋）。
 
-### Phase 75 epics
-- **E319** orchestration/guardrail hardening (flow Step 6 in-repo chain · audit Step 6 doc↔code + brand-staleness · stop-verifier public-action marker + 2 Tier-0 notes).
-- **E320** executable dead-code/arch guards (real `service-map.cjs` + `check-orphan-exports.mjs`/`check:orphans`) — upgrades E314 docs→runnable.
-- **E321** test pyramid middle layer (`test:int` throwaway-DB harness + jsdom/RTL component tests + `docs/qa/`). ⚠ in-repo.
-- **E322** CI/deploy/release hardening + doctrine (CI SHA-pin+least-priv+docs-job · docs-deploy split + `user-docs/` · `make verify` + `make deploy-gcp` · runtime-vs-build-time env / per-env seeding / version-in-sidebar).
-- **E323** reusable patterns HYBRID (bake-in: `defineAction` · responsive-modal · calendar/date-picker · mobile-tab-bar · ui-spec-epic; `@saas` modules: scheduler · audit-log · rbac-scoped-visibility · sentry · csv-io). ⚠ in-repo.
+- **E367 (HIGH，實際外洩)** — `/p/[slug]` 命中 E333 custom registry 就無條件渲染、不讀 `status`；
+  而 `canServeSalesPageRow` 對 custom 直接回 false 讓位給 registry。**兩側都以為對方在管。**
+  admin 按下取消發佈：動作回成功、寫稽核、revalidate，頁面照樣公開。
+- **E368** — 五處 owner-scoped 寫入不看影響列數卻無條件寫稽核 → 任何登入者可偽造稽核紀錄。
+  **不逐案補 if，而是固化成 stop-verifier Rule 26** —— 規則一能跑就找到 review 沒報的另外 4 處
+  （report 4 / 實際 8）。
+- **E369** — 影子驗證器歸零。`sanitizeEvents` 不是拒絕而是**靜默改寫成 `["*"]`**：打錯一個事件名，
+  「訂閱一個」變成「訂閱全部」。
+- **E370** — 唯一免登入的 action 沒有限流（工廠層 public 路徑也沒有）+ 重導 URL 改 server 端組。
+- **E371** — 訪客結帳為未證實 email 預蓋 `emailVerified` · resetPassword 不清鎖定 ·
+  resendVerificationEmail 洩漏帳號存在 · 2FA 沒接上 E355 的持久化欄位。
 
-### Current State
-- Nothing executed — plan-and-confirm only. All Phase 75 state registered; strategy-log Cycle 34 = APPROVED.
-- Working branch is still `fix/batch-auto-stop-cron-on-idle` (pre-existing cron auto-stop work, unrelated to this plan).
+### Phase 90 — 稽核的產物 (E372–E375, PR #196/#198/#199/#200)
+- **E372** — E370 無條件呼叫 `headers()` 打掛 checkout.int 訪客路徑，**通過五道全綠閘門**。
+  已把 `test:int` 接進 `pre-merge-check.sh`（Gate 5b）。
+- **E373** — e2e 種子狀態隔離。三道防線 + 每輪專屬帳號。
+- **E374** — VRT 契約落地 + **AUTH_URL 陷阱**（見下）。
+- **E375** — 限流可觀測性（只發 scope 不發 key）· 結帳門檻 30/min 單一來源 · 修掉一句假宣稱。
 
-### Next Actions (ordered)
-1. `git push` the branch, then execute Phase 75 via `/loop 2m /athena:batch auto` (or `/athena:loop` one step at a time). Agent opens PRs; **user merges** (pull-only perms).
-2. Optional: add **E324 — checkpoint-hygiene** (squash `/athena:save` session-checkpoint noise before the template inherits the fork's ~50%-checkpoint git history) — advisory logged in strategy-log Cycle 34.
+### 三個值得記住的診斷
+1. **新測試的 mock 會遮住它要涵蓋的脆弱性。** E370 的新測試 mock 了 `next/headers`；
+   既有的 `checkout.int.test.ts` 沒 mock，才是照出問題的那一個。**既有測試沒有這個偏誤。**
+2. **2FA 殘留其實是兩個問題。** DB 殘留（已知）+ **行程內記憶體限流器**（`2fa:login` 的桶在
+   `lib/rate-limit.ts` 的 Map，暖 server 跨輪帶著走，`db:e2e-setup` 清不到 —— 它不是一列資料）。
+   前兩次都誤判成前者。
+3. **`AUTH_URL` 會讓 e2e 測到別的 app。** `.env.local` 釘在 `:3000`，Auth.js 用它解析登入導向。
+   在其他 port 跑時，若**姊妹 fork** 佔著 `:3000`（共用路由與繁中文案），已登入的 spec 會對
+   那個 app 斷言**並通過**。實測本日 `:3600` 的綠色結果，在 `data-clarity-portal` 停止的瞬間轉紅。
+   E357 攔不到 —— 它只驗一次 base URL，這個導向是測試中途離開 origin 的。
 
-### Open Questions
-- Should E323's `@saas` modules (scheduler/audit-log/rbac-visibility/sentry/csv-io) all land in one epic, or split the last three into a follow-up E324 if scope runs long? (Noted in E323 Out of Scope.)
+### 貫穿兩個 phase 的主軸
+**個案修補未推及同類；而把樣式固化成規則，規則一寫出來就證明了這件事。**
+E368 的 Rule 26 找到 review 沒報的一半；E369 是 E348/E352 只修 items 的延續。
+
+### 我自己犯的同類錯（都已修成結構性保證）
+- `seed-state.ts` 初版整段 `catch` 回報 "unreachable"，卻藏著壞查詢 —— helper 從頭沒運作過，
+  **還用令人安心的語氣說明自己的故障**。改為只有 `select 1` 探測能回 `null`。
+- Rule 26 掃描器第一版用單行 `db.update(` 而 drizzle 跨行鏈式 → 對八個已知壞函式全報「乾淨」。
 
 ---
 
-## Latest Session — 2026-06-16 (Phases 63–68 — hardening + fork-ability + production)
-Branch: `main` @ `25dabef`. The E274–E293 program is fully merged (PRs #19/#22/#24–#42 across the phases; see EPIC_INDEX).
+## Earlier phases
 
-### Shipped
-- **Phase 63–64 — Data/billing hardening**: E274 billing money-path (plan-id→UUID FK fix, `currentPeriodEnd`, cancel-subscription UI, real `reconcile()`, ECPay renewal cron, SQLSTATE-23505 idempotent upsert; #27 — E274a JSON-configurable pricing + checkout shipped earlier #19) · E275 schema split `lib/schema.ts` → `lib/schema/{auth,items,billing,system}` + barrel, migration 0006 composite PKs/UNIQUEs/indexes (#22) · E276 API consistency: deleteUser audit log, billing requireAuth+繁中, https-only webhooks, transactional acceptInvitation, shared billing-enum source (#24).
-- **Phase 65 — FastAPI→Next.js cleanup**: E277 agent-brain reconceive (`/athena:dba`→drizzle-kit, `/athena:audit`→Drizzle/Zod/UI drift, de-staled 9 agents + 9 commands; #26) · E278 onboarding/dev docs rewritten to Next.js (#28) · E279 deleted dead FastAPI+Vite worked examples + templates (#25) · E280 removed 33 dead-stack files, rewrote Makefile Next.js-only, fixed `.pre-commit`/`.dockerignore`/pre-deploy-guard (#29).
-- **Phase 66 — AI-dev trust**: E281 generated OpenAPI contract from Zod (`@asteasolutions/zod-to-openapi`) + `/api/openapi` + coverage guard + smoke drift-gate (#30) · E282 rewrote `stop-verifier.sh` for `next-app/` (8 Next.js rules, was 23 dead FastAPI/Vite rules) + refreshed `scripts/hooks/CLAUDE.md` + `dba-migrations.md` (#31) · E283 restored `/athena:domain` as a copy-from-items generator (`scripts/new-domain.sh` + `make new-domain`; #32).
-- **Phase 67 — Fork-ability**: E284 de-footgun `@saas` registry install (guarded install-landing, `SAAS_REGISTRY_URL`, drift warnings, homepage → cloud-f1; #38) · E285 one-knob rebrand (`NEXT_PUBLIC_APP_NAME`/`lib/branding.ts`) + root metadata + logo inline-style fix + demo-login hardening + engines pin (#39) · E286 fork guide rewritten to Next.js, README → `docs/guides/` (#33) · E287 single-service `deploy-zeabur.sh`, Dockerfile `NEXT_PUBLIC_APP_URL` ARG, GCP migrate/seed via builder image + correct seed path (#42).
-- **Phase 68 — Production hardening**: E288 GitHub Actions CI (`.github/workflows/ci.yml`; #34) · E289 HTTP security headers + CSP on all routes (`lib/security-headers.ts` + `next.config.ts`; #35) · E290 password-reset flow + invite emails, migration 0007 `password_reset_tokens` (#40) · E291 public REST API via `api_keys` (`app/api/v1/items`, `verifyApiKey` + scopes), registered in the E281 OpenAPI contract (#36) · E292 billing e2e + Stripe Customer Portal (`createPortalSession` + Manage-billing button; #37) · E293 baseline observability — `instrumentation.ts` + env-gated Sentry + `lib/logger.ts`, `lib/audit.ts` logs failures (#41).
-
-### Current state
-- **~327 unit tests green** · migrations through **0007** · `main` @ **25dabef**. typecheck + lint + build green.
-- **Run locally:** `docker compose up --build -d` → http://localhost:3000 (Mailpit :8025). Logins: admin@/editor@/viewer@example.com (Admin123!/Editor123!/Viewer123!).
-
-### Open / next
-- **CI auto-trigger** — a follow-up (PR #43) disables `.github/workflows/ci.yml`'s auto-trigger to manual-only; merge #43 or disable the workflow via the Actions UI.
-- **Release tag** — program complete; suggest tagging `v0.3.0` (agent can't push tags/main).
-
----
-
-## Latest Session — 2026-06-15 (Phases 58–62 shipped → v0.2.0 + polish)
-Branch: `main` @ `488a034` (#16). Merge order on main: #11 (P58) → #12 (P59) → #14 (P60+P61) → #15 (P62) → #16 (polish).
-
-### Shipped
-- **Phase 58 — AI-Ready Modular SaaS** (#11): shadcn `@saas` registry (`registry.json` → `public/r/*.json`) + `module-author` / `install-*` skills + `module.manifest.json` spec + `PaymentProvider` abstraction (Stripe **default** + 綠界 ECPay 定期定額) + `@saas/landing` + MCP. Migration 0004.
-- **Phase 59 — Deployment Enablement** (#12): Zeabur (`zbpack.json`) + **GCP Cloud Run + Cloud SQL** runbooks + `.env.example` + `deploy-config` skill + `install-deploy-tools.sh`.
-- **Phases 60–61 — Cobalt design** (#14): oklch tokens + FX layer (`cobalt-fx.css`) + landing redesign + dashboard polish + ⌘K palette + notifications dropdown + breadcrumb + tabbed settings + auth split-screen + `/dashboard/components`. Playwright VRT gate.
-- **Phase 62 — Backend SaaS surfaces** (#15, migration 0005): API keys (E267) · webhooks + deliveries (E268) · audit log (E269) · team invites + permission matrix + member status (E270) · billing UI (E271) · notifications (E272). Owner/admin RBAC; pure logic in db-free `*-utils` modules.
-- **Polish** (#16): landing → full 繁體中文 · `make local*` targets · dashboard left-alignment · logo mark + favicon (`components/logo.tsx`, `app/icon.svg`, `favicon.ico`, `apple-icon.png`).
-- **v0.2.0**: `CHANGELOG.md` `[0.2.0]` + `next-app/package.json` bump + `docs/releases/v0.2.0.md`.
-
-### Fixes this session
-- **API-key parse bug** (`fix(E267)`): greedy prefix split mis-parsed base64url secrets → valid keys rejected intermittently. Prefix now hex; surfaced by the coverage run, not `pnpm test`.
-- **Fresh-DB migration gate**: `pnpm db:test-migrate` (`drizzle/test-migrate.ts`) applies all migrations to a throwaway DB + asserts tables; wired into `make smoke`.
-- **Enriched seed**: `pnpm db:seed` now populates billing/api-keys/webhooks/audit/invites/notifications/items (idempotent).
-- **`make local-db` env**: drizzle-kit/tsx don't read `.env.local` → targets now source it + tolerate an already-migrated DB (PR #17, pending).
-
-### Current state
-- **232 unit tests green** · coverage **80.7% stmts** (db-free layer; `vitest.config` scoped off db-bound `actions/**`) · Playwright e2e + VRT · typecheck + lint (0 err) + build all green.
-- **Run locally:** `make local-setup` once → `make local` → http://localhost:3000 (Mailpit :8025). Or `docker compose up --build -d`. Logins: admin@/editor@/viewer@example.com (Admin123!/Editor123!/Viewer123!).
-- **Local dev env:** host `pnpm dev` reads `next-app/.env.local` (gitignored). Recommendation: single `docker-compose` + `.env.local`, not a dev/prod compose split.
-
-### Open / next
-- **PR #17** (`fix/make-local-db-env`) — Makefile `.env.local` sourcing fix — awaiting merge.
-- **v0.2.0 tag + GitHub release** — after #17: `git tag -a v0.2.0 && git push origin v0.2.0` + `gh release create v0.2.0 --notes-file docs/releases/v0.2.0.md` (user-run; agent can't push tags/main or merge PRs).
-- Intentionally English: `/dashboard/components` storybook + the "Webhooks" tab (tech terms).
+`docs/context/epic-progress.md` is the SSOT for every phase (77 complete as of 2026-09-12) —
+each row carries the full account, so this file no longer duplicates them. Previous sessions
+covered here before being compressed: Phase 75 planning (2026-07-08), Phases 63–68 hardening
+(2026-06-16), Phases 58–62 + v0.2.0 (2026-06-15).
 
 ---
 

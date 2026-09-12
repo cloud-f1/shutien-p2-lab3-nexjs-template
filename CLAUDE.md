@@ -173,7 +173,10 @@ Pass `--effort <tier>` to any athena command to scale cost vs depth. Resolved by
 
 `standard` is byte-identical to today's hardcoded values — omitting `--effort` changes no current behavior.
 
-## Current State (Phases 53–57 complete — 2026-06-13)
+## Foundation (Phases 53–57 — 2026-06-13)
+
+> Historical, and still accurate as the shape of the stack. For what is CURRENT, see
+> **Active Epic** below and `docs/context/epic-progress.md` (the SSOT).
 
 The Vite SPA (`client/`) + FastAPI (`server/`) stack was **fully migrated to Next.js** under `next-app/`,
 then hardened. Shipped to `main` via PRs #1–#8:
@@ -204,12 +207,36 @@ FastAPI/Vite skills were removed; vendor `next-best-practices` + `vercel-*` rema
 
 ## Active Epic
 
-**Phases 75–76 ✅ Complete (Backport Wave 2 + follow-up, shipped in v0.4.0) — backlog drained.**
-Latest work (2026-07-10): full athena-pipeline audit + hardening — auto-merge publish protocol
-(loop/batch/ship/pr/autopilot 預設 auto-merge，QA + pre-publish gates 不變；`ATHENA_AUTO_MERGE=0` 可改回 human-merge — user-authorized 2026-07-13), agent frontmatter
-standardized (`name:` + `tools:`), telemetry fixes (bash/agent_complete events now actually land),
-skills directory normalized (no loose `.md` files), 3 new skills (security-audit ·
-drizzle-migration-safety · release-versioning). See `docs/context/athena-pipeline-audit-2026-07-10.md`.
+**Phases 89–90 ✅ Complete (2026-09-12) — backlog drained. 77 phases complete.**
+
+Phase 89 (E367–E371) remediated a `next-app/` product-code review: a draft sales page served
+publicly (`/p/[slug]` checked the E333 custom registry and never read `status`, while
+`canServeSalesPageRow` returned false for custom and deferred to the registry — **each side
+assumed the other owned it**), five owner-scoped writes that audited a no-op (any authenticated
+caller could forge an audit row), shadow validators where `sanitizeEvents` silently rewrote a
+typo'd event list to `["*"]`, the one unauthenticated action with no rate limit, and four auth
+boundary gaps (guest checkout pre-stamped `emailVerified` for an unproven address).
+
+Phase 90 (E372–E375) is what auditing Phase 89 turned up — each item bigger than the epic that
+found it. See `docs/context/session-summary.md` for the full account; the three that change how
+you work here:
+
+- **`pre-merge-check.sh` now runs `test:int`** (Gate 5b). E370 shipped a defect through FIVE green
+  gates because the publish path ran unit tests only — and because the test written alongside it
+  mocked `next/headers`, hiding the exact fragility it was meant to cover. **A new test's mocks
+  tend to match the new code's assumptions; the pre-existing tests are the ones without that bias.**
+- **`AUTH_URL` must match the port you serve on** when running e2e against a warm server you
+  started yourself. Auth.js resolves post-login redirects against it and `.env.local` pins `:3000`
+  — so on any other port a sibling fork holding `:3000` makes the authenticated specs assert
+  against **that** app and pass. `globalSetup` now aborts on the mismatch. (E357 cannot see this:
+  it verifies the base URL once, and this redirect leaves the origin mid-test.)
+- **VRT baselines are per-machine and gitignored** — the suite cannot detect a regression someone
+  else introduced, and that is a deliberate decision for a template every fork rebrands. It warns
+  when your baselines are older than `app/` + `components/`.
+
+Rule 26 (E368) is the new stop-verifier rule: an `actions/*.ts` function that does a scoped
+`db.update`/`db.delete` **and** writes an audit event must inspect rows-affected. Writing the rule
+found the half of the class the review had missed (reported 4, actual 8).
 
 See `docs/epics/EPIC_INDEX.md` for current phase and next action.
 Run `/athena:loop` to advance, or `/athena:loop status` to check state.
