@@ -71,10 +71,17 @@ HEADING_DEPTH=(
 # Entry order per file. "oldest" = entries appended chronologically (archive
 # the FIRST ones, keep the last $limit live). "newest" = newest entry on top
 # (session-summary.md: `## Latest Session` first) — archive the LAST dated
-# entries, keep the preamble + first $limit live. In "newest" mode only
-# headings carrying a `20YY-MM` date count as entries; undated sections
-# (e.g. "## Stack quick reference") are reference blocks: never counted, never
-# archived. Before this flag the hook evicted the newest session + file header.
+# entries, keep the preamble + first $limit live. Before this flag the hook
+# evicted the newest session + file header.
+#
+# In BOTH modes only headings carrying a `20YY-MM` date count as entries;
+# undated sections (review-findings.md's "## Severity Levels" legend,
+# debug-log.md's "## Pre-Loaded Failure Patterns", deploy-log.md's "## Known
+# Deploy Gotchas") are reference blocks: never counted, never archived. The
+# "newest" mode got this rule first; applying it only there left oldest-first
+# files evicting their own legend as if it were the oldest entry — observed
+# 2026-09-12, when review-findings.md hit 15 entries and the archiver ejected
+# "## Severity Levels" on every Stop hook.
 ENTRY_ORDER=(
   oldest
   oldest
@@ -175,8 +182,8 @@ extract_lessons_before_archive() {
     ' "$file" > "$tmp" 2>/dev/null || true
   else
     awk -v cutoff="$cutoff" -v pat="$heading_pat" '
-      $0 ~ pat { h_count++ }
-      h_count <= cutoff && /\[GENERALIZABLE\]/ { print FILENAME ":" NR ": " $0 }
+      $0 ~ pat { cur_dated = ($0 ~ /20[0-9][0-9]-[0-9][0-9]/); if (cur_dated) h_count++ }
+      cur_dated && h_count <= cutoff && /\[GENERALIZABLE\]/ { print FILENAME ":" NR ": " $0 }
     ' "$file" > "$tmp" 2>/dev/null || true
   fi
 
@@ -224,15 +231,17 @@ split_file_at_heading() {
       { if (dated && e_count > limit) print $0 >> archive; else print $0 }
     ' "$file" > "$tmp_new" 2>/dev/null
   else
+  # Only dated sections are entries; the preamble and any undated reference
+  # section carry rank 0 and always stay live.
   awk -v limit="$limit" -v archive="$tmp_arch" -v pat="$heading_pat" '
-    $0 ~ pat { h_count++ }
-    { lines[NR]=$0; at[NR]=h_count }
+    $0 ~ pat { dated = ($0 ~ /20[0-9][0-9]-[0-9][0-9]/); if (dated) h_count++ }
+    { lines[NR]=$0; at[NR]=(dated ? h_count : 0) }
     END {
       cutoff = h_count - limit
       if (cutoff < 0) cutoff = 0
       for (i=1; i<=NR; i++) {
-        if (at[i] <= cutoff && cutoff > 0) print lines[i] >> archive
-        else                                print lines[i]
+        if (at[i] >= 1 && at[i] <= cutoff && cutoff > 0) print lines[i] >> archive
+        else                                             print lines[i]
       }
     }
   ' "$file" > "$tmp_new" 2>/dev/null
@@ -270,17 +279,13 @@ while (( i < ${#LIMIT_FILES[@]} )); do
 
   # Count entry headings at the configured depth.
   # depth=2 → count ## headings; depth=3 → count ### headings.
-  # newest-first files: only dated headings are entries.
+  # Only dated headings are entries, in both entry orders.
   if [[ "$depth" -eq 3 ]]; then
     hpat='^### '
   else
     hpat='^## '
   fi
-  if [[ "$order" == "newest" ]]; then
-    entries=$(grep -E "$hpat" "$file" 2>/dev/null | grep -cE '20[0-9]{2}-[0-9]{2}' || true)
-  else
-    entries=$(grep -cE "$hpat" "$file" 2>/dev/null || true)
-  fi
+  entries=$(grep -E "$hpat" "$file" 2>/dev/null | grep -cE '20[0-9]{2}-[0-9]{2}' || true)
   entries=${entries:-0}
   [[ "$entries" =~ ^[0-9]+$ ]] || entries=0
 

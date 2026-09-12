@@ -151,22 +151,24 @@ else
 fi
 
 # --- TEST SCENARIO C: --check mode detects H3 over-limit ---
+# Entry headings must carry a 20YY-MM date: undated sections are reference
+# blocks by contract (never counted, never archived), in both entry orders.
 H3_FILE2="$TMP/docs/context/orchestration-log.md"
 cat > "$H3_FILE2" << 'EOF'
 # Orchestration Log
 
 ## Active Sessions
 
-### Session A
+### Session A — 2026-02-01
 Content.
 
-### Session B
+### Session B — 2026-02-02
 Content.
 
-### Session C
+### Session C — 2026-02-03
 Content.
 
-### Session D
+### Session D — 2026-02-04
 Content.
 EOF
 
