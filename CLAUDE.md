@@ -117,6 +117,14 @@ scripts/epic-graph.sh      Dependency graph parser + wave planner
 - Run `make drift-check` to detect divergence (exits non-zero if diff found).
 - Run `scripts/sync-to-plugin.sh --apply` to export changes to `athena-core` (default: `../athena-core`).
 
+> **⚠ 不要無條件跑 `--apply`（2026-09-12 實測）。** 上面那句「單向同步」已經不成立：
+> 58 個兩邊都有、內容不同的檔案裡，**56 個是雙向分歧**（兩邊各有對方沒有的內容），
+> 1 個只有下游有（`skills/athena-loop-speedups` —— 模板才是落後的一方），
+> 只有 1 個能安全單向推。`scripts/memory/{inject,score,match,half-life-resolve}.sh`
+> 更是結構性不同（下游用 `CLAUDE_PLUGIN_ROOT` 定址），覆蓋會直接讓 plugin 失效。
+> 先跑不帶 `--apply` 的 dry-run，只同步下游沒有獨有內容的檔案。
+> 完整測量與逐檔數字：`docs/context/athena-core-divergence-2026-09-12.md`。
+
 ## Deployment
 
 - Platform: Zeabur (primary, Road 1) — `next-app/` as a single service with `zbpack.json`. GCP
