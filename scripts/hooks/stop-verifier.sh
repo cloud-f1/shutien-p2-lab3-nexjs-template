@@ -33,7 +33,7 @@ LARGE_WARNINGS=""
 # via scripts/hooks/rule-to-lesson.json; rules without a mapping record `rule_id` only.
 RULE_FIRED_AUDIT_LOG="${AUDIT_LOG_PATH:-.claude/audit.jsonl}"
 RULE_FIRED_LESSON_MAP="${RULE_TO_LESSON_PATH:-scripts/hooks/rule-to-lesson.json}"
-RULE_FIRED_EPIC=$(git branch --show-current 2>/dev/null | sed -n 's/.*\(E[0-9]\{1,\}\).*/\1/Ip')
+RULE_FIRED_EPIC=$(git branch --show-current 2>/dev/null | grep -oiE '(^|[/_-])E[0-9]+' | head -1 | sed 's/^[/_-]//' | tr '[:lower:]' '[:upper:]')
 [ -z "$RULE_FIRED_EPIC" ] && RULE_FIRED_EPIC="none"
 RULE_FIRED_EPIC=$(echo "$RULE_FIRED_EPIC" | tr '[:lower:]' '[:upper:]')
 

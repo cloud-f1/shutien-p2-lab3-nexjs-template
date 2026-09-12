@@ -52,7 +52,9 @@ AGENT="${CLAUDE_AGENT:-unknown}"
 
 # Epic from current branch
 BRANCH=$(git branch --show-current 2>/dev/null || echo "")
-EPIC=$(echo "$BRANCH" | sed -n 's/.*\(E[0-9]\{1,\}\).*/\1/Ip' | tr '[:lower:]' '[:upper:]')
+# First E<digits> token that starts a path/slug segment (feat/E342-athena-sync-wave4 → E342, not E4:
+# the previous `.*\(E[0-9]+\).*` was greedy and kept the LAST match in the branch name).
+EPIC=$(echo "$BRANCH" | grep -oiE '(^|[/_-])E[0-9]+' | head -1 | sed 's/^[/_-]//' | tr '[:lower:]' '[:upper:]')
 [ -z "$EPIC" ] && EPIC="none"
 
 # Timestamp (overridable for tests)
