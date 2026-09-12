@@ -107,38 +107,16 @@ silently. See `docs/epics/e341-doc-code-contract-test.md` § Out of Scope.
 
 `/athena:plan brainstorm "idea"` runs `@strategist` in dialogue (≤7 Qs, 2–3 approaches, section-by-section review) → JSON spec → `brainstorm-emit.sh` appends to strategy-log; `approve E{n}` renders the epic file with Implementation Phases / Per-Phase Checkpoints / Test Strategy. Additive — epics without these sections still validate.
 
-## Batch Learning — 2026-05-19 (E188–E192)
+## Batch Learning — 2026-05-19 / 2026-06-04 (E188–E192, E216) — compressed
 
-### Architecture
-- [GENERALIZABLE] Audit event as verification evidence: `verification_check {check, exit, agent, epic}` event in `.claude/audit.jsonl` — agents emit BEFORE claiming done; stop-verifier gate checks recency (10-min window). Prevents completion theater without running tests. (E188)
-- [GENERALIZABLE] Pilot-mode env var for new stop-verifier rules: gate behind `STOP_RULE_23_ENABLED=1` for 5+ days, flip default-on only after fixture-replay against 50+ historical commits shows zero false positives. Avoids false-positive lockout while measuring rule quality. (E188)
-- [GENERALIZABLE] Jaccard+cosine hybrid for semantic similarity: `0.5×tag_jaccard + 0.5×cosine_body` for pairwise lesson overlap; union-find clustering for transitivity. Handles both exact-vocab match (Jaccard) and content drift (cosine). (E190)
-- Evergreen bypass on min-strength filter: lessons with `evergreen: true` in frontmatter always pass retrieval regardless of decay score — prevents permanently relevant patterns from being filtered out by Ebbinghaus decay. (E189)
-- Read-only corpus hygiene: exclude meta-files (README.md, CLAUDE.md, NEW_PROJECT_PRIMER.md, `*archive*`) before running similarity analysis — prevents meta-documents from matching as near-duplicates of content files. (E190)
+Their `[GENERALIZABLE]` entries were promoted to Tier 0 (`~/.claude/template-memory/`) and are
+no longer duplicated here. Headline lessons, kept as pointers:
 
-### DX
-- [GENERALIZABLE] Brainstorm-first as fallback-preserving default: new default is dialogue-driven; old audit-driven mode preserved as explicit fallback. No features removed — just priority reordered. Reduces "what do we build?" ambiguity without deleting the escape hatch. (E191)
-- [GENERALIZABLE] Promotion proposal as knowledge artifact: `docs/context/promotion-proposals/YYYYMMDD-name.md` documents rationale, evidence, and "promote when" criteria — seeds future `/athena:promote` with the human review gate already written. (E191)
-- Per-session dedup via `/tmp/brainstorm-session-$$-<name>` sentinels: prevents over-reinforcement of Tier 0 strength when the same retrieval script is called multiple times in one dialogue session. (E189)
-
-### Documentation
-- [GENERALIZABLE] Parallel line-count parity for bilingual docs: EN and zh-TW guides should mirror each other section-by-section (same section count, same worked example). Line count equality is a completeness proxy — large divergence signals a coverage gap in one language. (E192)
-- zh-TW QA vocabulary gate: verify presence of Traditional Chinese markers (腦力激盪/驗收標準/豐富化) AND scan for Simplified-only characters (发/响/时/长) as a QA pre-merge check. Prevents accidental Simplified content in 繁體中文 guides. (E192)
-
-## Batch Learning — 2026-06-04 (E216)
-
-> Scope note: this batch covers **E216 only** (E211–E215, Phase 51, were not extracted). This file was compressed on 2026-06-04 — pre-E156 batch learnings condensed into the archive block above; all `[GENERALIZABLE]` lessons live in Tier 0.
-
-### Architecture
-- [GENERALIZABLE] Native Workflow engine `isolation:'worktree'` is **per-AGENT, not per-task**: a multi-stage pipeline that must share one working tree needs ONE fused worktree-isolated agent, not separate stage-agents (separate agents strand later stages in the main repo, blind to earlier changes). Cost: stage-gating moves from engine-enforced to in-prompt. (E216)
-- [GENERALIZABLE] Verify a tool's **mechanism, not its label**: athena's `batch.md` "WORKFLOW-NATIVE" posture is `claude -p --output-format json --json-schema` subprocess IPC — NOT the harness `Workflow` tool (which appears nowhere in the repo, and isn't in `batch.md` allowed-tools). A confident name-collision can misframe an entire design. (E216)
-
-### Testing
-- [GENERALIZABLE] grep-based static fixture tests **false-positive on prose** that names the banned pattern (e.g. a `# never claude -p` comment, or a banned code form written in a comment). Make the assertion negation/context-aware, or keep the banned literal out of prose. Hit twice in one session. (E216)
-
-### DX
-- [GENERALIZABLE] **Adversarially validate the BUILT artifact, not just the design.** 2 of E216's 3 real bugs originated in a fluent synthesis-agent design (silent wave truncation; cross-agent worktree stranding) and survived the build green — a second skeptic pass over the as-built code caught them. Confidence ≠ correctness. (E216)
-- Concurrency caps limit **parallelism via chunked batches** (`slice(i, i+CAP)`), never truncate the work list (`slice(0, CAP)`) — silent truncation violates no-silent-caps (E199). (E216)
+- Verification discipline (E188 → stop-verifier Rule 23): a completion claim needs a
+  `verification_check` event, not a recollection.
+- Memory decay + retrieval scoring (E181/E190): a lesson nobody retrieves is not wisdom, it is
+  sediment — hence half-life + consolidation detection.
+- E216: doc examples drift from the code they describe unless something executes them.
 
 ## Batch Learning — 2026-08-27 (E352–E356)
 
@@ -183,3 +161,50 @@ silently. See `docs/epics/e341-doc-code-contract-test.md` § Out of Scope.
 - [GENERALIZABLE] **spec 給「程序」比給「對既有機制的斷言」耐久。** 本 phase 統計：給斷言的 3 個 epic 各被 implement 抓到一項錯誤（「X 已支援 Y」「條件 Z 會觸發」）；給程序的 2 個（「去看 X 再決定」「以程式碼為準，不符就明講」）零錯誤。**斷言會腐化，程序不會。** (E362–E366)
 - [GENERALIZABLE] **spec 裡的行號在多個 epic 連續改同一檔案時必然腐化** —— 本 phase 兩次（115→138、30→51）。引用**函式名或語法特徵**（「四個 `bad` 分支」）比行號耐久；派工時明確提醒「先讀活檔」兩次都成功攔下。(E364, E365)
 - [GENERALIZABLE] **文件裡的錨點要驗證存在 —— 死連結是文件最常見的謊言**（每個字都對，讀者跟過去撲空）。純文件變更沒有測試可跑時，驗收標準只能是逐句對著原始碼事實查核。(E365)
+
+## Batch Learning — 2026-09-12 (E367–E375, Phases 89–90)
+
+### Testing
+- [GENERALIZABLE] **為新程式碼寫的新測試，其 mock 往往正好對齊新程式碼的假設，因此無法證偽它。**
+  E370 的新測試 mock 了 `next/headers`，遮住了它本該涵蓋的脆弱性；既有的 `checkout.int.test.ts`
+  沒 mock，才是照出問題的那一個。**既有測試沒有這個偏誤 —— 改動後先看它們紅了什麼，比看新測試綠了什麼有用。** (E372)
+- [GENERALIZABLE] **斷言只看回傳值的測試，抓不到副作用類的缺陷。** E368 每個測試都同時斷言
+  「回傳 error」**與**「`audit_log` 增加 0 列」；只有後者能抓到稽核偽造。回傳值對了不代表沒多寫東西。 (E368)
+- [GENERALIZABLE] **紅綠重現要逐 epic 做，而且要能指出「紅的正好是哪幾個」。** 本兩階段五個 epic
+  各做一次：停用閘門→2 紅、還原五處→5 紅、移除限流→2 紅。若還原修正後測試仍全綠，那個測試沒有價值。 (Phase 89)
+- [GENERALIZABLE] **一個測試在「修正未套用」時也會綠，就是空包彈。** E370 的 AC2 初版只斷言
+  「另一個 IP 沒被擋」—— 在完全沒有限流時當然成立。補上「第一個 client 確實被擋」才成為真實斷言。 (E370)
+
+### Architecture
+- [GENERALIZABLE] **兩個守衛互相讓位＝沒有守衛。** `/p/[slug]` 讓位給 registry、
+  `canServeSalesPageRow` 對 custom 回 false 讓位給路由 —— 雙方都以為對方在管，草稿頁因此公開。
+  **看到「這個 case 由別處負責」的註解時，去確認那個別處真的做了。** (E367)
+- [GENERALIZABLE] **把個案修補固化成規則，規則本身會告訴你這一類還有幾處。** E368 的 Rule 26
+  一能跑就找到 review 沒報的 4 處（報 4 / 實際 8）。**寫規則的成本，經常低於「確認沒有第三處」的成本。** (E368)
+- [GENERALIZABLE] **靜默改寫比拒絕危險。** `sanitizeEvents` 把無效事件清單改寫成 `["*"]`：
+  打錯一個字，「訂閱一個」變成「訂閱全部」。**驗證失敗時要回錯誤，不要回一個「合理的預設」。** (E369)
+- [GENERALIZABLE] **註解描述的意圖，未必是程式碼實作的東西。** `emailVerified` 的註解寫
+  「ownership is proven by receiving the activation mail」，但章是在建立當下蓋的。
+  同一 phase 另有兩例（`orders.ts` 的 forgot-password 宣稱、VRT 的 "committed baselines"）。
+  **稽核時把每句宣稱當成待驗證的斷言。** (E371, E374, E375)
+
+### DX
+- [GENERALIZABLE] **會替自己的故障編出無害理由的守衛，比沒有守衛更糟 —— 它讓人不再查看。**
+  `seed-state.ts` 初版整段 `catch` 回報 "database unreachable"，卻藏著壞查詢，從頭沒運作過。
+  **修法不是加分類器再測它，而是讓誤判結構上不可能**（只有專門的 `select 1` 探測能回 null）。 (E373)
+- [GENERALIZABLE] **掃描器要先對「已知壞」的輸入驗證會紅。** Rule 26 第一版用單行
+  `db.update(` 而 drizzle 是跨行鏈式，對八個已知壞函式全報「乾淨」。**能給假安全感的工具，
+  價值低於沒有工具。** fixture 因此刻意用跨行形式釘住。 (E368)
+- [GENERALIZABLE] **偽陽性和漏報一樣致命 —— 吵雜的規則會被關掉。** Rule 26 要認得
+  「先 SELECT 證實存在再寫入」這個正確樣式（含藏在 helper 後面的），最終 8 真實 0 偽陽性。 (E368)
+- [GENERALIZABLE] **清得掉的狀態不只在資料庫裡。** e2e 的 2FA 殘留其實是兩個問題：DB 列
+  （`db:e2e-setup` 清得掉）+ **行程內記憶體限流器**（暖 server 跨輪帶著走，drop DB 清不到）。
+  前兩次都只診斷出前者。**「重建 DB 還是壞」時，下一個要問的是「有什麼活在行程裡」。** (E373)
+- [GENERALIZABLE] **測試綠，不代表測的是你的 app。** `AUTH_URL` 釘在 `:3000` 而 server 跑在
+  其他 port 時，登入會把瀏覽器送出本 origin；若姊妹 fork 佔著該 port（共用路由與文案），
+  已登入的 spec 會對那個 app 斷言並通過。**一次性的目標檢查（E357）擋不住測試中途的 origin 轉移。** (E374)
+
+### Documentation
+- [GENERALIZABLE] **基準線不受版控的視覺回歸套件，不是回歸套件** —— 它只跟你自己上次拍的比，
+  新 clone 第一次跑會把當下畫面（含既存回歸）記成「正確」。這對模板是合理取捨（fork 會改品牌），
+  **但必須明說，並讓陳舊變成可見訊號**，否則它會安靜地腐爛三個月。 (E374)

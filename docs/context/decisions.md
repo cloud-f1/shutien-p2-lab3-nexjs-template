@@ -391,3 +391,50 @@ The `get_pair_excludes()` function in `scripts/sync-to-plugin.sh` (bash 3.x-comp
 
 **後續**：E351 把這條慣例變成 stop-verifier 規則 —— 散文（`security-audit` skill）
 擋不住，E341 已經證明過。
+
+---
+
+## VRT 維持在發布閘門之外 —— 明說的決定，不是疏忽 (E374, 2026-09-12)
+
+**決定**：`e2e/vrt/` 不進 `pre-merge-check.sh`，也不進 `test:e2e`（後者是 `--project=chromium`）。
+它的位置是 `pnpm test:vrt` / `scripts/smoke.sh --vrt`，由要改 UI 的人自己跑。
+
+**為什麼**：`.gitignore` 有一條 `*.png`，所以基準線**不在版控裡**。這造成一個必須說清楚的後果 ——
+
+> 基準線不受版控的視覺回歸套件，不是回歸套件。它只跟**你自己**上次拍的比；新 clone 上第一次
+> 跑會把當下畫面（**含任何既存回歸**）記成「正確」。
+
+一個每台機器自訂基準的東西，閘門不了。而把基準線納入版控也不對：本模板的每個 fork 都會改品牌
+（`rebrand` skill），隨附模板自己的 UI 截圖對他們第一天就是錯的；且檔名帶 `-darwin` 後綴，
+Linux CI 本來就不匹配。
+
+**代價與補償**：這個決定的代價是「沒人會發現它壞了」—— 實際發生過，四個案例從 2026-06-15 紅到
+Phase 90 稽核才被看見（全部是預期演進：E296 GitHub 按鈕、E297 真 2FA 取代佔位、E328/E332 側欄、
+E337/E338 widget kit）。補償是把**靜默換成訊號**：spec 的 `beforeAll` 在基準線比 `app/` +
+`components/` 舊時印出天數差。腐爛仍可能發生，但不再是無聲的。
+
+**先前狀態**：spec 檔頭原本寫 "diffs against **committed** baselines" —— 與事實相反。
+`CONTRIBUTING.md` 早就寫對了（"platform-suffixed and gitignored"），矛盾出在 spec 這一側。
+
+---
+
+## public action 預設限流保守、個別端點有意識調高 (E370/E375, 2026-09-12)
+
+**決定**：`defineAction` 的 `{ public: true }` 分支**強制**套用 per-client 限流，預設
+`PUBLIC_ACTION_DEFAULT_RATE_LIMIT = 10/min`，**且無法退出**。個別 action 可以調高，但必須在
+程式碼裡寫出理由。`createOneTimeCheckout` 因此是 `30/min`，常數放在
+`lib/billing/checkout-schema.ts`（單一來源，測試由同一個常數驅動）。
+
+**為什麼是工廠層而非個別 action**：稽核發現全專案唯一免登入的 action 也是唯一沒有限流的 ——
+每個需登入的動作都帶 `rateLimitGuard`，偏偏那個無 session 就能打的沒有。修在工廠層，
+未來新增的每個 public action 自動繼承；修在個別 action，下一個又會漏。
+
+**為什麼結帳是 30 而不是預設的 10**：key 是 client IP，而 CGNAT 與辦公室出口會把**大量真實買家**
+放在同一個位址。一場成功的發表會 —— 這個模板存在的目的 —— 是最可能觸發它的場景，而失敗模式是
+**靜默的營收損失**（買家看到「請求過於頻繁」，營運者看到轉換率下降，兩者之間沒有線索）。
+30/min 仍硬性限制匿名灌注。預設維持 10，是因為新端點應該從保守開始、有意識地調高。
+
+**配套（E375）**：限流觸發現在會發出 `rate_limit.blocked` 事件，每桶每視窗一次，**只發 scope
+不發 key** —— key 內嵌主體（userId 或 IP），把每位被擋訪客的 IP 抄進日誌，就是一份沒人同意過的
+訪客紀錄表。寫到 server log 而非 `audit_log`：每個被擋請求寫一列 DB 會讓限流器變成自己的放大器，
+正是 E356 為登入事件拒絕過的形狀。
