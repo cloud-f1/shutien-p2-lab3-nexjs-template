@@ -293,8 +293,11 @@ t7_read_only() {
 
   # Record mtime before
   local mtime_before
-  mtime_before=$(stat -f "%m" "$dir/readonly-test.md" 2>/dev/null \
-    || stat -c "%Y" "$dir/readonly-test.md" 2>/dev/null || echo "0")
+  # GNU first: on Linux `stat -f` means "filesystem status" and exits 0 with a
+  # multi-line dump (free-block counts drift between calls → false FAIL in CI);
+  # `stat -c` is what fails cleanly on macOS, so it is the safe probe order.
+  mtime_before=$(stat -c "%Y" "$dir/readonly-test.md" 2>/dev/null \
+    || stat -f "%m" "$dir/readonly-test.md" 2>/dev/null || echo "0")
 
   TEMPLATE_MEMORY_DIR="$dir" \
     CONSOLIDATION_THRESHOLD=0.7 \
@@ -302,8 +305,11 @@ t7_read_only() {
     "$SCRIPT" >/dev/null 2>&1
 
   local mtime_after
-  mtime_after=$(stat -f "%m" "$dir/readonly-test.md" 2>/dev/null \
-    || stat -c "%Y" "$dir/readonly-test.md" 2>/dev/null || echo "0")
+  # GNU first: on Linux `stat -f` means "filesystem status" and exits 0 with a
+  # multi-line dump (free-block counts drift between calls → false FAIL in CI);
+  # `stat -c` is what fails cleanly on macOS, so it is the safe probe order.
+  mtime_after=$(stat -c "%Y" "$dir/readonly-test.md" 2>/dev/null \
+    || stat -f "%m" "$dir/readonly-test.md" 2>/dev/null || echo "0")
 
   # Check no new files were created in dir (besides the audit we explicitly set outside dir)
   local new_files
