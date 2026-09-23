@@ -147,3 +147,30 @@ describe("trim-then-parse composition (mirrors actions/items.ts)", () => {
     if (!u.success) expect(u.error.errors[0].message).toBe("請輸入標題")
   })
 })
+
+// Lab 3 (course-ai-coding-advanced-shutien, ch03-lab3) — note field validation
+// contract: optional, max 200 chars, must not be entirely composed of symbol
+// characters. As of this commit, createItemSchema/updateItemSchema have NO
+// `note` field at all. Zod's z.object() silently DROPS unknown keys by
+// default, so a naive `expect(result.success).toBe(true/false)` assertion
+// would NOT go red here — success stays true either way. These 3 tests
+// assert on data retention / rejection instead, which DOES go red against
+// today's schema (data.note is undefined; success stays true for the
+// too-long and all-symbol cases because the field doesn't exist to reject).
+describe("note field (RED — not implemented yet)", () => {
+  it("retains a legit note in data.note", () => {
+    const r = createItemSchema.safeParse({ title: "My item", note: "需回診複診" })
+    expect(r.success).toBe(true)
+    if (r.success) expect(r.data.note).toBe("需回診複診")
+  })
+
+  it("rejects a 201-character note", () => {
+    const r = createItemSchema.safeParse({ title: "My item", note: "a".repeat(201) })
+    expect(r.success).toBe(false)
+  })
+
+  it("rejects a note made entirely of symbol characters", () => {
+    const r = createItemSchema.safeParse({ title: "My item", note: "!!!@@@###$$$" })
+    expect(r.success).toBe(false)
+  })
+})
